@@ -123,10 +123,10 @@ ANIMATION_CONFIG = {
 
 # API端點
 API_ENDPOINTS = {
-    'find_city': 'https://morgan.vercel.app/api/find-city-geonames',
-    'translate': 'https://morgan.vercel.app/api/translate-location',
-    'generate_story': 'https://morgan.vercel.app/api/generatePiStory',  # 使用 Pi 專用的故事生成 API
-    'save_record': 'https://morgan.vercel.app/api/save-record'
+    'find_city': 'https://morgan-orcin.vercel.app/api/find-city-geonames',
+    'translate': 'https://morgan-orcin.vercel.app/api/translate-location',
+    'generate_story': 'https://morgan-orcin.vercel.app/api/generatePiStory',  # 使用 Pi 專用的故事生成 API
+    'save_record': 'https://morgan-orcin.vercel.app/api/save-record'
 }
 
 # 使用者設定
