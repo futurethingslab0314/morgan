@@ -40,7 +40,7 @@ import platform
 logger = logging.getLogger(__name__)
 
 # 配置常數
-WEBSITE_URL = os.getenv('WEBSITE_URL', "https://morgan.vercel.app/pi.html")
+WEBSITE_URL = os.getenv('WEBSITE_URL', "https://morgan-orcin.vercel.app/pi.html")
 USER_NAME = os.getenv('USER_NAME', 'unknown')  # 從環境變數設定，預設為 unknown
 WAIT_TIMEOUT = 30
 LOAD_DELAY = 2
@@ -191,6 +191,7 @@ class WebControllerDSI:
             self.logger.info("正在載入用戶資料...")
             
             # 確保用戶名稱已設定
+            clean_user_name = self.user_name.strip()
             self.driver.execute_script(f"""
                 // 設定全域變數
                 window.rawUserDisplayName = '{clean_user_name}';

@@ -17,6 +17,7 @@
         const flightTicketButton = document.getElementById('flightTicketButton');
         if (flightTicketButton) {
             flightTicketButton.addEventListener('click', showFlightTicketModal);
+            console.log('✅ 飛機按鈕事件已綁定');
         }
 
         // 綁定關閉按鈕事件
@@ -40,6 +41,21 @@
                 }
             });
         }
+
+        // 🆕 頁面載入後自動嘗試計算初始票券
+        setTimeout(() => {
+            console.log('✈️ 自動嘗試計算初始票券...');
+            try {
+                // 嘗試從 localStorage 獲取上次時間
+                const lastTime = localStorage.getItem('lastWakeupTime');
+                const lastEvent = lastTime ? { localTime: lastTime } : null;
+
+                calculateAndDisplayFlightTicket(lastEvent);
+                console.log('✅ 初始票券計算完成');
+            } catch (error) {
+                console.log('ℹ️ 初始票券計算跳過（首次使用或資料不足）');
+            }
+        }, 3000); // 延遲 3 秒確保頁面完全載入
     }
 
     /**
@@ -49,8 +65,33 @@
         console.log('✈️ 顯示航班票券', currentFlightTicket);
 
         if (!currentFlightTicket) {
-            console.warn('⚠️ 尚無航班票券資料');
-            return;
+            console.warn('⚠️ 尚無航班票券資料，嘗試立即生成...');
+
+            // 🆕 自動生成票券
+            try {
+                // 嘗試從 localStorage 獲取上次時間
+                const lastTime = localStorage.getItem('lastWakeupTime');
+                const lastEvent = lastTime ? { localTime: lastTime } : null;
+
+                const ticket = calculateAndDisplayFlightTicket(lastEvent);
+
+                if (!ticket) {
+                    console.warn('⚠️ 無法生成票券，使用預設首次票券');
+                    // 使用預設首次票券
+                    currentFlightTicket = {
+                        deltaMin: 0,
+                        direction: "LOCAL",
+                        distanceKm: 5,
+                        fuelUsed: 5,
+                        ticketType: "Neighborhood Hop",
+                        narrative: "這是你的第一次起飛，飛行 5 公里，耗油 5。"
+                    };
+                }
+            } catch (error) {
+                console.error('❌ 生成票券失敗:', error);
+                alert('無法生成航班票券：' + error.message);
+                return;
+            }
         }
 
         // 更新彈窗內容
@@ -187,11 +228,21 @@
             // 更新 UI 顯示油耗
             updateFuelDisplay(ticket.fuelUsed);
 
-            // 啟用飛機按鈕
+            // 啟用飛機按鈕（移除 disabled 邏輯，始終可點擊）
             const flightButton = document.getElementById('flightTicketButton');
             if (flightButton) {
-                flightButton.disabled = false;
                 flightButton.classList.add('active');
+                flightButton.style.cursor = 'pointer';
+                flightButton.style.opacity = '1';
+            }
+
+            // 🆕 保存當前時間到 localStorage（供下次使用）
+            try {
+                const currentTime = window.FlightTicket.formatCurrentTime();
+                localStorage.setItem('lastWakeupTime', currentTime);
+                console.log('✅ 已保存當前時間:', currentTime);
+            } catch (e) {
+                console.warn('⚠️ 無法保存時間到 localStorage:', e);
             }
 
             return ticket;
@@ -229,8 +280,10 @@
 
         const flightButton = document.getElementById('flightTicketButton');
         if (flightButton) {
-            flightButton.disabled = true;
+            // 🆕 不再禁用按鈕，只移除 active 樣式
+            // flightButton.disabled = true;  // 移除這行
             flightButton.classList.remove('active');
+            flightButton.style.opacity = '0.7'; // 半透明表示未計算
         }
     }
 
