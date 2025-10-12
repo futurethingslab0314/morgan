@@ -1,0 +1,388 @@
+/* flight-ticket.css */
+/* 航班票券 UI 樣式 */
+
+/* ============= 航班資訊Bar ============= */
+.flight-info-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px 0;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+}
+
+.fuel-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Orbitron', 'Press Start 2P', monospace;
+}
+
+.fuel-icon {
+    font-size: 16px;
+    animation: fuel-pulse 2s ease-in-out infinite;
+}
+
+@keyframes fuel-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+}
+
+.fuel-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.fuel-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    min-width: 30px;
+    text-align: right;
+}
+
+.fuel-value.fuel-update {
+    animation: fuel-update 0.5s ease-out;
+}
+
+@keyframes fuel-update {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.3);
+        color: #ffdd00;
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ============= 飛機按鈕 ============= */
+.flight-ticket-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.flight-ticket-button:hover {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.flight-ticket-button:active {
+    transform: scale(0.95) rotate(-5deg);
+}
+
+.flight-ticket-button:disabled {
+    background: rgba(255, 255, 255, 0.1);
+    cursor: not-allowed;
+    opacity: 0.5;
+    box-shadow: none;
+}
+
+.flight-ticket-button.active::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(45deg);
+    animation: shine 3s ease-in-out infinite;
+}
+
+@keyframes shine {
+    0% {
+        transform: translateX(-100%) rotate(45deg);
+    }
+
+    100% {
+        transform: translateX(100%) rotate(45deg);
+    }
+}
+
+/* ============= 航班票券Modal ============= */
+.flight-ticket-modal .modal-dialog {
+    max-width: 500px;
+}
+
+.flight-ticket-wrapper {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid rgba(102, 126, 234, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.flight-ticket-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    padding: 15px 20px;
+}
+
+.flight-ticket-title {
+    font-family: 'Orbitron', 'Press Start 2P', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 0;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.flight-ticket-body {
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* ============= 票券區塊 ============= */
+.ticket-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ticket-section:last-child {
+    margin-bottom: 0;
+}
+
+/* 票種徽章 */
+.ticket-type-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.badge-neighborhood {
+    background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+    color: #1a1a2e;
+}
+
+.badge-city {
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    color: #1a1a2e;
+}
+
+.badge-regional {
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    color: #1a1a2e;
+}
+
+.badge-country {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    color: #1a1a2e;
+}
+
+.badge-continental {
+    background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+    color: #1a1a2e;
+}
+
+.badge-longhaul {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    color: #1a1a2e;
+}
+
+/* 方向顯示 */
+.ticket-direction {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.direction-arrow {
+    font-size: 24px;
+    color: #00ff88;
+    animation: arrow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes arrow-pulse {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    50% {
+        transform: translateX(5px);
+    }
+}
+
+.direction-text {
+    letter-spacing: 2px;
+}
+
+/* ============= 數據統計 ============= */
+.ticket-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 10px;
+}
+
+.ticket-stat {
+    text-align: center;
+    padding: 12px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.ticket-stat:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.ticket-stat-highlight {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.3);
+}
+
+.stat-label {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    font-family: 'Orbitron', monospace;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+}
+
+.stat-value.fuel-value {
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+/* ============= 敘述區塊 ============= */
+.ticket-narrative {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.narrative-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    font-family: 'Orbitron', monospace;
+}
+
+.narrative-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0;
+    font-family: 'Courier Prime', 'Courier New', monospace;
+}
+
+/* ============= Modal 動畫 ============= */
+.flight-ticket-modal {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.flight-ticket-modal.show {
+    opacity: 1;
+}
+
+.flight-ticket-modal.show .modal-content-wrapper {
+    animation: slideInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ============= 響應式設計 ============= */
+@media (max-width: 600px) {
+    .flight-info-bar {
+        padding: 6px 10px;
+    }
+
+    .fuel-label {
+        font-size: 10px;
+    }
+
+    .fuel-value {
+        font-size: 14px;
+    }
+
+    .flight-ticket-button {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .ticket-stats {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .flight-ticket-title {
+        font-size: 14px;
+    }
+}
+
+/* ============= 印刷效果（可選） ============= */
+@media print {
+
+    .flight-info-bar,
+    .flight-ticket-button {
+        display: none;
+    }
+}
