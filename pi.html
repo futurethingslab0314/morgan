@@ -114,6 +114,11 @@
 
             <!-- 結果狀態 -->
             <div id="resultState" class="state result-state">
+                <!-- 航班票券 Web Component（顯示在結果頁面） -->
+                <div id="wumFlightContainer" style="position: fixed; top: 10px; right: 10px; z-index: 1000; max-width: 350px;">
+                    <wum-flight id="wumFlight"></wum-flight>
+                </div>
+                
                 <!-- 左側信息面板 (浮層) -->
                 <div class="result-info-panel">
                     <!-- 移除 Day counter 顯示 -->
@@ -339,7 +344,45 @@
     <script src="core/flight.js"></script>
     <script src="flight-integration.js"></script>
     
+    <!-- 7. 載入 wum-flight Web Component -->
+    <script src="wum-flight.js"></script>
+    
     <script>
+        // 初始化 wum-flight Web Component
+        (function initWumFlight() {
+            const wumFlight = document.getElementById('wumFlight');
+            
+            if (!wumFlight) {
+                console.warn('⚠️ wum-flight 元素未找到');
+                return;
+            }
+            
+            // 等待 Web Component 就緒
+            wumFlight.addEventListener('wum:ready', (e) => {
+                console.log('✈️ wum-flight 已就緒', e.detail.api);
+                window.wumFlightAPI = e.detail.api;
+                
+                // 發送全域就緒事件
+                window.dispatchEvent(new CustomEvent('wumFlightReady', {
+                    detail: { api: e.detail.api }
+                }));
+            });
+            
+            // 監聽票券生成事件
+            wumFlight.addEventListener('wum:ticket-generated', (e) => {
+                console.log('✈️ 新票券已生成', e.detail.ticket);
+                console.log('💰 當前 Fuel:', e.detail.currentFuel);
+                
+                // 可選：更新舊的 UI（保持兼容）
+                const fuelUsedEl = document.getElementById('fuelUsed');
+                if (fuelUsedEl) {
+                    fuelUsedEl.textContent = e.detail.ticket.fuelUsed;
+                }
+            });
+            
+            console.log('✈️ wum-flight 初始化腳本已載入');
+        })();
+        
         // 地圖初始化功能
         function initializeMap() {
             const mapContainer = document.getElementById('mainMapContainer');

@@ -1826,9 +1826,9 @@ window.addEventListener('firebaseReady', async (event) => {
             // 儲存文檔 ID 以供後續更新使用
             window.currentRecordId = docRef.id;
 
-            // ✈️ 計算並顯示航班票券
+            // ✈️ 計算並顯示航班票券（舊系統 - 保持兼容）
             if (window.FlightUI && window.FlightUI.calculateAndDisplayFlightTicket) {
-                console.log('✈️ 開始計算航班票券...');
+                console.log('✈️ [舊系統] 開始計算航班票券...');
                 try {
                     // 準備上一次記錄資料（從查詢結果中獲取最後一筆）
                     let lastEvent = null;
@@ -1845,27 +1845,100 @@ window.addEventListener('firebaseReady', async (event) => {
                             lastEvent = {
                                 localTime: lastData.localTime || null
                             };
-                            console.log('✈️ 找到上一次記錄:', lastEvent);
+                            console.log('✈️ [舊系統] 找到上一次記錄:', lastEvent);
                         }
                     }
 
                     const ticket = window.FlightUI.calculateAndDisplayFlightTicket(lastEvent);
 
                     if (ticket) {
-                        console.log('✈️ 航班票券計算成功:', ticket);
+                        console.log('✈️ [舊系統] 航班票券計算成功:', ticket);
                         // 將票券資訊也保存到 Firebase
                         try {
                             await updateDoc(doc(db, 'wakeup_records', docRef.id), {
                                 flightTicket: ticket
                             });
-                            console.log('✈️ 票券資訊已保存至 Firebase');
+                            console.log('✈️ [舊系統] 票券資訊已保存至 Firebase');
                         } catch (updateError) {
-                            console.warn('⚠️ 保存票券資訊失敗（不影響主流程）:', updateError);
+                            console.warn('⚠️ [舊系統] 保存票券資訊失敗（不影響主流程）:', updateError);
                         }
                     }
                 } catch (flightError) {
-                    console.error('❌ 計算航班票券失敗:', flightError);
+                    console.error('❌ [舊系統] 計算航班票券失敗:', flightError);
                 }
+            }
+
+            // ✈️ 新系統：wum-flight Web Component
+            if (window.wumFlightAPI) {
+                console.log('✈️ [wum-flight] 開始生成票券...');
+                try {
+                    // 取得當前時間（HHMM 格式）
+                    const now = new Date();
+                    const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+                    // 取得上一次記錄的時間
+                    let prevHHMM = null;
+                    if (querySnapshot.size > 0) {
+                        const allDocs = [];
+                        querySnapshot.forEach(doc => allDocs.push(doc));
+                        if (allDocs.length > 0) {
+                            const lastDoc = allDocs[allDocs.length - 1];
+                            const lastData = lastDoc.data();
+                            prevHHMM = lastData.localTime || null;
+                            console.log('✈️ [wum-flight] 上次時間:', prevHHMM);
+                        }
+                    }
+
+                    // 判斷是否夜間
+                    const hours = now.getHours();
+                    const isNight = hours < 6 || hours >= 23;
+
+                    // 生成票券
+                    const ticket = window.wumFlightAPI.generate({
+                        currHHMM: currHHMM,
+                        prevHHMM: prevHHMM,
+                        nightPenalty: isNight,
+                        streakBonus: false,  // 可根據連續天數決定
+                        firstDayFree: false
+                    });
+
+                    if (ticket) {
+                        console.log('✈️ [wum-flight] 票券生成成功:', ticket);
+                        console.log('💰 [wum-flight] 當前 Fuel:', window.wumFlightAPI.getFuel());
+
+                        // 將票券資訊保存到 Firebase
+                        try {
+                            await updateDoc(doc(db, 'wakeup_records', docRef.id), {
+                                wumFlightTicket: ticket,
+                                currentFuel: window.wumFlightAPI.getFuel()
+                            });
+                            console.log('✈️ [wum-flight] 票券資訊已保存至 Firebase');
+                        } catch (updateError) {
+                            console.warn('⚠️ [wum-flight] 保存票券資訊失敗（不影響主流程）:', updateError);
+                        }
+                    }
+                } catch (wumError) {
+                    console.error('❌ [wum-flight] 生成票券失敗:', wumError);
+                }
+            } else {
+                console.log('ℹ️ [wum-flight] API 尚未就緒，稍後嘗試...');
+                // 延遲重試
+                setTimeout(() => {
+                    if (window.wumFlightAPI) {
+                        console.log('✈️ [wum-flight] 延遲生成票券...');
+                        const now = new Date();
+                        const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+                        const hours = now.getHours();
+                        const isNight = hours < 6 || hours >= 23;
+
+                        window.wumFlightAPI.generate({
+                            currHHMM: currHHMM,
+                            nightPenalty: isNight,
+                            streakBonus: false,
+                            firstDayFree: false
+                        });
+                    }
+                }, 2000);
             }
 
             // 2. 🔧 重要：同時調用 /api/save-record API 儲存到 artifacts 集合
