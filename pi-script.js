@@ -361,6 +361,69 @@ window.addEventListener('piStoryReady', (event) => {
 
             updateResultData(resultData);
 
+            // ✈️ 觸發 wum-flight 票券生成（Firebase 未初始化分支）
+            setTimeout(() => {
+                if (window.wumFlightAPI) {
+                    console.log('✈️ [wum-flight] 故事完成後生成票券（Firebase未初始化分支）...');
+
+                    // 取得當前時間（HHMM 格式）
+                    const now = new Date();
+                    const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+                    // Firebase 未初始化，使用 null 作為上次時間（首次起飛）
+                    const prevHHMM = null;
+                    console.log('✈️ [wum-flight] Firebase未初始化，生成首次票券');
+
+                    // 判斷是否夜間
+                    const hours = now.getHours();
+                    const isNight = hours < 6 || hours >= 23;
+
+                    // 生成票券
+                    const ticket = window.wumFlightAPI.generate({
+                        currHHMM: currHHMM,
+                        prevHHMM: prevHHMM,
+                        nightPenalty: isNight,
+                        streakBonus: false,
+                        firstDayFree: false
+                    });
+
+                    if (ticket) {
+                        console.log('✈️ [wum-flight] 票券生成成功（Firebase未初始化分支）:', ticket);
+                        console.log('💰 [wum-flight] 當前 Fuel:', window.wumFlightAPI.getFuel());
+                    }
+                } else {
+                    console.log('ℹ️ [wum-flight] API 尚未就緒（Firebase未初始化分支），等待就緒事件...');
+
+                    // 等待 wum-flight 就緒事件
+                    const handleWumFlightReady = (e) => {
+                        console.log('✈️ [wum-flight] 延遲就緒，開始生成票券（Firebase未初始化分支）...');
+
+                        const now = new Date();
+                        const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+                        const hours = now.getHours();
+                        const isNight = hours < 6 || hours >= 23;
+
+                        const ticket = e.detail.api.generate({
+                            currHHMM: currHHMM,
+                            prevHHMM: null, // Firebase 未初始化，首次起飛
+                            nightPenalty: isNight,
+                            streakBonus: false,
+                            firstDayFree: false
+                        });
+
+                        if (ticket) {
+                            console.log('✈️ [wum-flight] 延遲生成成功（Firebase未初始化分支）:', ticket);
+                        }
+
+                        // 移除事件監聽器
+                        window.removeEventListener('wumFlightReady', handleWumFlightReady);
+                    };
+
+                    window.addEventListener('wumFlightReady', handleWumFlightReady);
+                }
+            }, 2000); // 延遲 2 秒確保 UI 更新完成
+
             const storyTextEl = document.getElementById('storyText');
             if (storyTextEl) {
                 storyTextEl.textContent = '剛起床，正在清喉嚨，準備為你朗誦你的甦醒日誌.....';
@@ -476,6 +539,90 @@ window.addEventListener('piStoryReady', (event) => {
             console.log('✅ [正常分支] 標記語音故事即將顯示，避免重複生成');
 
             updateResultData(resultData);
+
+            // ✈️ 觸發 wum-flight 票券生成
+            setTimeout(() => {
+                if (window.wumFlightAPI) {
+                    console.log('✈️ [wum-flight] 故事完成後生成票券...');
+
+                    // 取得當前時間（HHMM 格式）
+                    const now = new Date();
+                    const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+                    // 從 Firebase 查詢上一次記錄的時間
+                    let prevHHMM = null;
+                    if (latestRecord && latestRecord.localTime) {
+                        // 標準化時間格式
+                        prevHHMM = latestRecord.localTime;
+                        console.log('✈️ [wum-flight] 從 Firebase 找到上次時間:', prevHHMM);
+                    } else {
+                        console.log('✈️ [wum-flight] 沒有找到上次時間，將生成首次票券');
+                    }
+
+                    // 判斷是否夜間
+                    const hours = now.getHours();
+                    const isNight = hours < 6 || hours >= 23;
+
+                    // 生成票券
+                    const ticket = window.wumFlightAPI.generate({
+                        currHHMM: currHHMM,
+                        prevHHMM: prevHHMM,
+                        nightPenalty: isNight,
+                        streakBonus: false,
+                        firstDayFree: false
+                    });
+
+                    if (ticket) {
+                        console.log('✈️ [wum-flight] 票券生成成功:', ticket);
+                        console.log('💰 [wum-flight] 當前 Fuel:', window.wumFlightAPI.getFuel());
+
+                        // 將票券資訊保存到 Firebase（如果需要的話）
+                        if (latestRecord && latestRecord.id) {
+                            try {
+                                // 這裡可以保存票券資訊到 Firebase
+                                console.log('✈️ [wum-flight] 票券資訊可保存至 Firebase');
+                            } catch (updateError) {
+                                console.warn('⚠️ [wum-flight] 保存票券資訊失敗（不影響主流程）:', updateError);
+                            }
+                        }
+                    }
+                } else {
+                    console.log('ℹ️ [wum-flight] API 尚未就緒，等待就緒事件...');
+
+                    // 等待 wum-flight 就緒事件
+                    const handleWumFlightReady = (e) => {
+                        console.log('✈️ [wum-flight] 延遲就緒，開始生成票券...');
+
+                        const now = new Date();
+                        const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+                        let prevHHMM = null;
+                        if (latestRecord && latestRecord.localTime) {
+                            prevHHMM = latestRecord.localTime;
+                        }
+
+                        const hours = now.getHours();
+                        const isNight = hours < 6 || hours >= 23;
+
+                        const ticket = e.detail.api.generate({
+                            currHHMM: currHHMM,
+                            prevHHMM: prevHHMM,
+                            nightPenalty: isNight,
+                            streakBonus: false,
+                            firstDayFree: false
+                        });
+
+                        if (ticket) {
+                            console.log('✈️ [wum-flight] 延遲生成成功:', ticket);
+                        }
+
+                        // 移除事件監聽器
+                        window.removeEventListener('wumFlightReady', handleWumFlightReady);
+                    };
+
+                    window.addEventListener('wumFlightReady', handleWumFlightReady);
+                }
+            }, 2000); // 延遲 2 秒確保 UI 更新完成
 
             // 🔧 修復：現在切換到結果狀態，因為故事已準備完成
             setState('result');

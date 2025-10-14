@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wum-flight 修復測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 5px;
+            background: #00ff88;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #00cc6f;
+            transform: translateY(-2px);
+        }
+        .log-output {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #00ff88;
+            margin-top: 10px;
+        }
+        .log-line {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✈️ wum-flight 修復測試</h1>
+        
+        <div class="test-section">
+            <h3>🎯 測試修改後的整合</h3>
+            <p>這個測試頁面模擬 piStoryReady 事件，測試 wum-flight 是否能正確讀取 Firebase 並生成票券。</p>
+            
+            <button onclick="testStoryEvent()">📖 模擬故事事件</button>
+            <button onclick="testFlightAPI()">✈️ 測試 Flight API</button>
+            <button onclick="testFirebaseData()">🔥 測試 Firebase 資料</button>
+            <button onclick="clearLog()">🗑️ 清除日誌</button>
+            
+            <div id="logOutput" class="log-output">
+                <div class="log-line">等待測試...</div>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+                <wum-flight id="wumFlight"></wum-flight>
+            </div>
+        </div>
+    </div>
+
+    <!-- 載入 wum-flight Web Component -->
+    <script src="wum-flight.js"></script>
+    
+    <!-- 載入 Firebase 模擬 -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+    
+    <script>
+        let api = null;
+        
+        // 等待 wum-flight 就緒
+        const wumFlight = document.getElementById('wum-flight');
+        wumFlight.addEventListener('wum:ready', (e) => {
+            api = e.detail.api;
+            log('✅ wum-flight 已就緒');
+        });
+        
+        wumFlight.addEventListener('wum:ticket-generated', (e) => {
+            log('🎫 票券已生成', e.detail.ticket);
+            log(`💰 當前 Fuel: ${e.detail.currentFuel} / 120`);
+        });
+        
+        // 模擬 Firebase 配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5-AKkFhx9olWx57bdB985IwZA9DpH66o",
+            authDomain: "subjective-clock.firebaseapp.com",
+            projectId: "subjective-clock"
+        };
+        
+        // 初始化 Firebase（僅用於測試）
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            window.db = db;
+            log('✅ Firebase 初始化成功');
+        } catch (error) {
+            log('⚠️ Firebase 初始化失敗（測試模式）:', error.message);
+        }
+        
+        // 模擬 piStoryReady 事件
+        function testStoryEvent() {
+            log('📖 模擬 piStoryReady 事件...');
+            
+            // 模擬故事資料
+            const mockStoryData = {
+                city: 'GRAHAMSTOWN',
+                country: 'South Africa',
+                countryCode: 'za',
+                latitude: -33.30422,
+                longitude: 26.53276,
+                greeting: 'Molo!',
+                language: '科薩語',
+                story: '南非早安！今天的你在南非的格雷姆斯敦醒來。走在這個充滿歷史故事的城市裡，你將會發現一個神祕的傳說，關於一位守護城市的神秘守護者，只有當地人才知道的神奇故事。',
+                fullContent: 'Molo!。南非早安！今天的你在南非的格雷姆斯敦醒來。走在這個充滿歷史故事的城市裡，你將會發現一個神祕的傳說，關於一位守護城市的神秘守護者，只有當地人才知道的神奇故事。',
+                localTime: '4:51:59 AM'
+            };
+            
+            // 模擬 latestRecord（從 Firebase 查詢到的資料）
+            const mockLatestRecord = {
+                id: 'test-record-id',
+                localTime: '4:51:59 AM',
+                timestamp: new Date()
+            };
+            
+            log('📊 模擬資料:', mockStoryData);
+            
+            // 模擬 updateResultData 調用後的 Flight 觸發邏輯
+            setTimeout(() => {
+                if (window.wumFlightAPI) {
+                    log('✈️ [wum-flight] 故事完成後生成票券...');
+                    
+                    // 取得當前時間（HHMM 格式）
+                    const now = new Date();
+                    const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+                    
+                    // 從 Firebase 查詢上一次記錄的時間
+                    let prevHHMM = null;
+                    if (mockLatestRecord && mockLatestRecord.localTime) {
+                        // 標準化時間格式
+                        prevHHMM = mockLatestRecord.localTime;
+                        log('✈️ [wum-flight] 從 Firebase 找到上次時間:', prevHHMM);
+                    } else {
+                        log('✈️ [wum-flight] 沒有找到上次時間，將生成首次票券');
+                    }
+                    
+                    // 判斷是否夜間
+                    const hours = now.getHours();
+                    const isNight = hours < 6 || hours >= 23;
+                    
+                    // 生成票券
+                    const ticket = window.wumFlightAPI.generate({
+                        currHHMM: currHHMM,
+                        prevHHMM: prevHHMM,
+                        nightPenalty: isNight,
+                        streakBonus: false,
+                        firstDayFree: false
+                    });
+                    
+                    if (ticket) {
+                        log('✈️ [wum-flight] 票券生成成功:', ticket);
+                        log('💰 [wum-flight] 當前 Fuel:', window.wumFlightAPI.getFuel());
+                    }
+                } else {
+                    log('ℹ️ [wum-flight] API 尚未就緒，等待就緒事件...');
+                    
+                    // 等待 wum-flight 就緒事件
+                    const handleWumFlightReady = (e) => {
+                        log('✈️ [wum-flight] 延遲就緒，開始生成票券...');
+                        
+                        const now = new Date();
+                        const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+                        
+                        let prevHHMM = null;
+                        if (mockLatestRecord && mockLatestRecord.localTime) {
+                            prevHHMM = mockLatestRecord.localTime;
+                        }
+                        
+                        const hours = now.getHours();
+                        const isNight = hours < 6 || hours >= 23;
+                        
+                        const ticket = e.detail.api.generate({
+                            currHHMM: currHHMM,
+                            prevHHMM: prevHHMM,
+                            nightPenalty: isNight,
+                            streakBonus: false,
+                            firstDayFree: false
+                        });
+                        
+                        if (ticket) {
+                            log('✈️ [wum-flight] 延遲生成成功:', ticket);
+                        }
+                        
+                        // 移除事件監聽器
+                        window.removeEventListener('wumFlightReady', handleWumFlightReady);
+                    };
+                    
+                    window.addEventListener('wumFlightReady', handleWumFlightReady);
+                }
+            }, 2000); // 延遲 2 秒確保 UI 更新完成
+            
+            log('✅ piStoryReady 事件模擬完成');
+        }
+        
+        function testFlightAPI() {
+            log('✈️ 測試 Flight API...');
+            
+            if (api) {
+                log('API 狀態:', {
+                    getFuel: typeof api.getFuel,
+                    generate: typeof api.generate,
+                    getTickets: typeof api.getTickets,
+                    getCurrentTicket: typeof api.getCurrentTicket
+                });
+                
+                log('當前 Fuel:', api.getFuel());
+                log('歷史票券:', api.getTickets());
+                log('當前票券:', api.getCurrentTicket());
+            } else {
+                log('❌ API 尚未就緒');
+            }
+        }
+        
+        function testFirebaseData() {
+            log('🔥 測試 Firebase 資料...');
+            
+            if (window.db) {
+                log('✅ Firebase 已初始化');
+                log('資料庫類型:', typeof window.db);
+            } else {
+                log('❌ Firebase 未初始化');
+            }
+        }
+        
+        function log(message, data) {
+            const logDiv = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            
+            if (data) {
+                logLine.textContent = `[${timestamp}] ${message}: ${JSON.stringify(data, null, 2)}`;
+            } else {
+                logLine.textContent = `[${timestamp}] ${message}`;
+            }
+            
+            logDiv.insertBefore(logLine, logDiv.firstChild);
+            
+            // 限制日誌數量
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('logOutput').innerHTML = '<div class="log-line">日誌已清除</div>';
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 測試頁面已載入');
+            log('等待 wum-flight 就緒...');
+        });
+    </script>
+</body>
+</html>
