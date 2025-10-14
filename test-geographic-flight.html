@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真實地理飛行系統測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 5px;
+            background: #00ff88;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #00cc6f;
+            transform: translateY(-2px);
+        }
+        .log-output {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #00ff88;
+            margin-top: 10px;
+        }
+        .log-line {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .city-input {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .city-input input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+        }
+        .distance-display {
+            background: rgba(0, 255, 136, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✈️ 真實地理飛行系統測試</h1>
+        
+        <div class="layout">
+            <div class="test-section">
+                <h3>🎯 城市資料輸入</h3>
+                
+                <div class="city-input">
+                    <h4>起點城市 (上次起床)</h4>
+                    <input type="text" id="fromCity" placeholder="城市名稱" value="Taipei">
+                    <input type="text" id="fromCountry" placeholder="國家" value="Taiwan">
+                    <input type="number" id="fromLat" placeholder="緯度" value="25.0330" step="0.0001">
+                    <input type="number" id="fromLon" placeholder="經度" value="121.5654" step="0.0001">
+                </div>
+                
+                <div class="city-input">
+                    <h4>終點城市 (今天起床)</h4>
+                    <input type="text" id="toCity" placeholder="城市名稱" value="Tokyo">
+                    <input type="text" id="toCountry" placeholder="國家" value="Japan">
+                    <input type="number" id="toLat" placeholder="緯度" value="35.6762" step="0.0001">
+                    <input type="number" id="toLon" placeholder="經度" value="139.6503" step="0.0001">
+                </div>
+                
+                <button onclick="calculateDistance()">📏 計算距離</button>
+                <button onclick="generateTicket()">🎫 生成票券</button>
+                <button onclick="testFirstFlight()">🚀 測試首次起飛</button>
+                <button onclick="resetSystem()">🔄 重置系統</button>
+                
+                <div id="distanceDisplay" class="distance-display" style="display: none;">
+                    <div id="distanceText"></div>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>📊 系統狀態</h3>
+                <div id="statusDisplay">
+                    <p>等待測試...</p>
+                </div>
+                
+                <h3>📝 測試日誌</h3>
+                <div id="logOutput" class="log-output">
+                    <div class="log-line">等待測試...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <wum-flight id="wumFlight"></wum-flight>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 快速測試案例</h3>
+            <button onclick="testCase('Taipei', 'Tokyo', 25.0330, 121.5654, 35.6762, 139.6503)">台北 → 東京</button>
+            <button onclick="testCase('Tokyo', 'London', 35.6762, 139.6503, 51.5074, -0.1278)">東京 → 倫敦</button>
+            <button onclick="testCase('London', 'New York', 51.5074, -0.1278, 40.7128, -74.0060)">倫敦 → 紐約</button>
+            <button onclick="testCase('New York', 'Sydney', 40.7128, -74.0060, -33.8688, 151.2093)">紐約 → 雪梨</button>
+            <button onclick="testCase('Sydney', 'Taipei', -33.8688, 151.2093, 25.0330, 121.5654)">雪梨 → 台北</button>
+        </div>
+    </div>
+
+    <!-- 載入 wum-flight Web Component -->
+    <script src="wum-flight.js"></script>
+    
+    <script>
+        let api = null;
+        
+        // 等待 wum-flight 就緒
+        const wumFlight = document.getElementById('wum-flight');
+        wumFlight.addEventListener('wum:ready', (e) => {
+            api = e.detail.api;
+            log('✅ wum-flight 已就緒');
+            updateStatus();
+        });
+        
+        wumFlight.addEventListener('wum:ticket-generated', (e) => {
+            log('🎫 票券已生成', e.detail.ticket);
+            log(`💰 當前 Fuel: ${e.detail.currentFuel} / 1000`);
+            updateStatus();
+        });
+        
+        function getCityData(prefix) {
+            return {
+                city: document.getElementById(prefix + 'City').value,
+                country: document.getElementById(prefix + 'Country').value,
+                latitude: parseFloat(document.getElementById(prefix + 'Lat').value),
+                longitude: parseFloat(document.getElementById(prefix + 'Lon').value),
+                timezone: 'UTC'
+            };
+        }
+        
+        function setCityData(prefix, city, country, lat, lon) {
+            document.getElementById(prefix + 'City').value = city;
+            document.getElementById(prefix + 'Country').value = country;
+            document.getElementById(prefix + 'Lat').value = lat;
+            document.getElementById(prefix + 'Lon').value = lon;
+        }
+        
+        function calculateDistance() {
+            const from = getCityData('from');
+            const to = getCityData('to');
+            
+            // 使用 Haversine 公式計算距離
+            const R = 6371; // 地球半徑 (km)
+            const dLat = (to.latitude - from.latitude) * Math.PI / 180;
+            const dLon = (to.longitude - from.longitude) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(from.latitude * Math.PI / 180) * Math.cos(to.latitude * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+            
+            // 顯示距離
+            const distanceDisplay = document.getElementById('distanceDisplay');
+            const distanceText = document.getElementById('distanceText');
+            distanceText.textContent = `距離: ${Math.round(distance)} km`;
+            distanceDisplay.style.display = 'block';
+            
+            log(`📏 計算距離: ${from.city} → ${to.city} = ${Math.round(distance)} km`);
+        }
+        
+        function generateTicket() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            const from = getCityData('from');
+            const to = getCityData('to');
+            
+            log('🎫 生成票券...');
+            log('起點:', from);
+            log('終點:', to);
+            
+            const ticket = api.generate({
+                currCityData: to,
+                prevCityData: from,
+                nightPenalty: false,
+                streakBonus: false,
+                firstDayFree: false
+            });
+            
+            if (ticket) {
+                log('✅ 票券生成成功:', ticket);
+            } else {
+                log('❌ 票券生成失敗');
+            }
+        }
+        
+        function testFirstFlight() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            const to = getCityData('to');
+            
+            log('🚀 測試首次起飛...');
+            log('終點:', to);
+            
+            const ticket = api.generate({
+                currCityData: to,
+                prevCityData: null, // 首次起飛
+                nightPenalty: false,
+                streakBonus: false,
+                firstDayFree: false
+            });
+            
+            if (ticket) {
+                log('✅ 首次起飛票券生成成功:', ticket);
+            } else {
+                log('❌ 首次起飛票券生成失敗');
+            }
+        }
+        
+        function testCase(fromCity, toCity, fromLat, fromLon, toLat, toLon) {
+            setCityData('from', fromCity, 'Country', fromLat, fromLon);
+            setCityData('to', toCity, 'Country', toLat, toLon);
+            
+            calculateDistance();
+            setTimeout(() => {
+                generateTicket();
+            }, 500);
+        }
+        
+        function resetSystem() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            if (confirm('確定要重置系統？這將清除所有資料。')) {
+                api.resetAll();
+                log('🔄 系統已重置');
+                updateStatus();
+            }
+        }
+        
+        function updateStatus() {
+            if (!api) return;
+            
+            const fuel = api.getFuel();
+            const tickets = api.getTickets();
+            const current = api.getCurrentTicket();
+            
+            const statusDiv = document.getElementById('statusDisplay');
+            statusDiv.innerHTML = `
+                <p><strong>⛽ Fuel:</strong> ${fuel} / 1000</p>
+                <p><strong>🎫 歷史票券:</strong> ${tickets.length} 張</p>
+                <p><strong>📍 當前票券:</strong> ${current ? current.ticketType : '無'}</p>
+                ${current ? `<p><strong>🛫 路線:</strong> ${current.fromCity} → ${current.toCity}</p>` : ''}
+                ${current ? `<p><strong>📏 距離:</strong> ${current.distanceKm} km</p>` : ''}
+                ${current ? `<p><strong>⛽ 耗油:</strong> ${current.fuelUsed}</p>` : ''}
+            `;
+        }
+        
+        function log(message, data) {
+            const logDiv = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            
+            if (data) {
+                logLine.textContent = `[${timestamp}] ${message}: ${JSON.stringify(data, null, 2)}`;
+            } else {
+                logLine.textContent = `[${timestamp}] ${message}`;
+            }
+            
+            logDiv.insertBefore(logLine, logDiv.firstChild);
+            
+            // 限制日誌數量
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 真實地理飛行系統測試頁面已載入');
+            log('等待 wum-flight 就緒...');
+        });
+    </script>
+</body>
+</html>

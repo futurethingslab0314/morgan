@@ -366,23 +366,24 @@ window.addEventListener('piStoryReady', (event) => {
                 if (window.wumFlightAPI) {
                     console.log('✈️ [wum-flight] 故事完成後生成票券（Firebase未初始化分支）...');
 
-                    // 取得當前時間（HHMM 格式）
-                    const now = new Date();
-                    const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+                    // 準備當前城市資料
+                    const currCityData = {
+                        city: storyData.city || 'Unknown',
+                        country: storyData.country || 'Unknown',
+                        latitude: storyData.latitude || 0,
+                        longitude: storyData.longitude || 0,
+                        timezone: storyData.timezone || 'UTC'
+                    };
 
-                    // Firebase 未初始化，使用 null 作為上次時間（首次起飛）
-                    const prevHHMM = null;
+                    // Firebase 未初始化，使用 null 作為上次城市（首次起飛）
+                    const prevCityData = null;
                     console.log('✈️ [wum-flight] Firebase未初始化，生成首次票券');
-
-                    // 判斷是否夜間
-                    const hours = now.getHours();
-                    const isNight = hours < 6 || hours >= 23;
 
                     // 生成票券
                     const ticket = window.wumFlightAPI.generate({
-                        currHHMM: currHHMM,
-                        prevHHMM: prevHHMM,
-                        nightPenalty: isNight,
+                        currCityData: currCityData,
+                        prevCityData: prevCityData,
+                        nightPenalty: false, // 移除夜間懲罰
                         streakBonus: false,
                         firstDayFree: false
                     });
@@ -398,16 +399,19 @@ window.addEventListener('piStoryReady', (event) => {
                     const handleWumFlightReady = (e) => {
                         console.log('✈️ [wum-flight] 延遲就緒，開始生成票券（Firebase未初始化分支）...');
 
-                        const now = new Date();
-                        const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-
-                        const hours = now.getHours();
-                        const isNight = hours < 6 || hours >= 23;
+                        // 準備城市資料
+                        const currCityData = {
+                            city: storyData.city || 'Unknown',
+                            country: storyData.country || 'Unknown',
+                            latitude: storyData.latitude || 0,
+                            longitude: storyData.longitude || 0,
+                            timezone: storyData.timezone || 'UTC'
+                        };
 
                         const ticket = e.detail.api.generate({
-                            currHHMM: currHHMM,
-                            prevHHMM: null, // Firebase 未初始化，首次起飛
-                            nightPenalty: isNight,
+                            currCityData: currCityData,
+                            prevCityData: null, // Firebase 未初始化，首次起飛
+                            nightPenalty: false,
                             streakBonus: false,
                             firstDayFree: false
                         });
@@ -549,25 +553,35 @@ window.addEventListener('piStoryReady', (event) => {
                     const now = new Date();
                     const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
 
-                    // 從 Firebase 查詢上一次記錄的時間
-                    let prevHHMM = null;
-                    if (latestRecord && latestRecord.localTime) {
-                        // 標準化時間格式
-                        prevHHMM = latestRecord.localTime;
-                        console.log('✈️ [wum-flight] 從 Firebase 找到上次時間:', prevHHMM);
-                    } else {
-                        console.log('✈️ [wum-flight] 沒有找到上次時間，將生成首次票券');
-                    }
+                    // 準備當前城市資料
+                    const currCityData = {
+                        city: storyData.city || 'Unknown',
+                        country: storyData.country || 'Unknown',
+                        latitude: storyData.latitude || 0,
+                        longitude: storyData.longitude || 0,
+                        timezone: storyData.timezone || 'UTC'
+                    };
 
-                    // 判斷是否夜間
-                    const hours = now.getHours();
-                    const isNight = hours < 6 || hours >= 23;
+                    // 從 Firebase 查詢上一次記錄的城市資料
+                    let prevCityData = null;
+                    if (latestRecord) {
+                        prevCityData = {
+                            city: latestRecord.city || 'Unknown',
+                            country: latestRecord.country || 'Unknown',
+                            latitude: latestRecord.latitude || 0,
+                            longitude: latestRecord.longitude || 0,
+                            timezone: latestRecord.timezone || 'UTC'
+                        };
+                        console.log('✈️ [wum-flight] 從 Firebase 找到上次城市:', prevCityData);
+                    } else {
+                        console.log('✈️ [wum-flight] 沒有找到上次城市，將生成首次票券');
+                    }
 
                     // 生成票券
                     const ticket = window.wumFlightAPI.generate({
-                        currHHMM: currHHMM,
-                        prevHHMM: prevHHMM,
-                        nightPenalty: isNight,
+                        currCityData: currCityData,
+                        prevCityData: prevCityData,
+                        nightPenalty: false, // 移除夜間懲罰
                         streakBonus: false,
                         firstDayFree: false
                     });
@@ -593,21 +607,30 @@ window.addEventListener('piStoryReady', (event) => {
                     const handleWumFlightReady = (e) => {
                         console.log('✈️ [wum-flight] 延遲就緒，開始生成票券...');
 
-                        const now = new Date();
-                        const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+                        // 準備城市資料
+                        const currCityData = {
+                            city: storyData.city || 'Unknown',
+                            country: storyData.country || 'Unknown',
+                            latitude: storyData.latitude || 0,
+                            longitude: storyData.longitude || 0,
+                            timezone: storyData.timezone || 'UTC'
+                        };
 
-                        let prevHHMM = null;
-                        if (latestRecord && latestRecord.localTime) {
-                            prevHHMM = latestRecord.localTime;
+                        let prevCityData = null;
+                        if (latestRecord) {
+                            prevCityData = {
+                                city: latestRecord.city || 'Unknown',
+                                country: latestRecord.country || 'Unknown',
+                                latitude: latestRecord.latitude || 0,
+                                longitude: latestRecord.longitude || 0,
+                                timezone: latestRecord.timezone || 'UTC'
+                            };
                         }
 
-                        const hours = now.getHours();
-                        const isNight = hours < 6 || hours >= 23;
-
                         const ticket = e.detail.api.generate({
-                            currHHMM: currHHMM,
-                            prevHHMM: prevHHMM,
-                            nightPenalty: isNight,
+                            currCityData: currCityData,
+                            prevCityData: prevCityData,
+                            nightPenalty: false,
                             streakBonus: false,
                             firstDayFree: false
                         });
@@ -1973,84 +1996,51 @@ window.addEventListener('firebaseReady', async (event) => {
             // 儲存文檔 ID 以供後續更新使用
             window.currentRecordId = docRef.id;
 
-            // ✈️ 計算並顯示航班票券（舊系統 - 保持兼容）
-            if (window.FlightUI && window.FlightUI.calculateAndDisplayFlightTicket) {
-                console.log('✈️ [舊系統] 開始計算航班票券...');
-                try {
-                    // 準備上一次記錄資料（從查詢結果中獲取最後一筆）
-                    let lastEvent = null;
-                    if (querySnapshot.size > 0) {
-                        // 取得所有記錄並排序
-                        const allDocs = [];
-                        querySnapshot.forEach(doc => {
-                            allDocs.push(doc);
-                        });
-                        // 如果有多於一筆記錄，取倒數第二筆（因為最新的還沒加入查詢結果）
-                        if (allDocs.length > 0) {
-                            const lastDoc = allDocs[allDocs.length - 1];
-                            const lastData = lastDoc.data();
-                            lastEvent = {
-                                localTime: lastData.localTime || null
-                            };
-                            console.log('✈️ [舊系統] 找到上一次記錄:', lastEvent);
-                        }
-                    }
+            // ✈️ 舊系統已移除，只使用新的 wum-flight 系統
 
-                    const ticket = window.FlightUI.calculateAndDisplayFlightTicket(lastEvent);
-
-                    if (ticket) {
-                        console.log('✈️ [舊系統] 航班票券計算成功:', ticket);
-                        // 將票券資訊也保存到 Firebase
-                        try {
-                            await updateDoc(doc(db, 'wakeup_records', docRef.id), {
-                                flightTicket: ticket
-                            });
-                            console.log('✈️ [舊系統] 票券資訊已保存至 Firebase');
-                        } catch (updateError) {
-                            console.warn('⚠️ [舊系統] 保存票券資訊失敗（不影響主流程）:', updateError);
-                        }
-                    }
-                } catch (flightError) {
-                    console.error('❌ [舊系統] 計算航班票券失敗:', flightError);
-                }
-            }
-
-            // ✈️ 新系統：wum-flight Web Component
+            // ✈️ 新系統：wum-flight Web Component（真實地理飛行）
             if (window.wumFlightAPI) {
-                console.log('✈️ [wum-flight] 開始生成票券...');
+                console.log('✈️ [wum-flight] 開始生成真實地理票券...');
                 try {
-                    // 取得當前時間（HHMM 格式）
-                    const now = new Date();
-                    const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+                    // 準備當前城市資料
+                    const currCityData = {
+                        city: recordData.city || 'Unknown',
+                        country: recordData.country || 'Unknown',
+                        latitude: recordData.latitude || 0,
+                        longitude: recordData.longitude || 0,
+                        timezone: recordData.timezone || 'UTC'
+                    };
 
-                    // 取得上一次記錄的時間
-                    let prevHHMM = null;
+                    // 取得上一次記錄的城市資料
+                    let prevCityData = null;
                     if (querySnapshot.size > 0) {
                         const allDocs = [];
                         querySnapshot.forEach(doc => allDocs.push(doc));
                         if (allDocs.length > 0) {
                             const lastDoc = allDocs[allDocs.length - 1];
                             const lastData = lastDoc.data();
-                            prevHHMM = lastData.localTime || null;
-                            console.log('✈️ [wum-flight] 上次時間:', prevHHMM);
+                            prevCityData = {
+                                city: lastData.city || 'Unknown',
+                                country: lastData.country || 'Unknown',
+                                latitude: lastData.latitude || 0,
+                                longitude: lastData.longitude || 0,
+                                timezone: lastData.timezone || 'UTC'
+                            };
+                            console.log('✈️ [wum-flight] 上次城市:', prevCityData);
                         }
                     }
 
-                    // 判斷是否夜間
-                    const hours = now.getHours();
-                    const isNight = hours < 6 || hours >= 23;
-
                     // 生成票券
                     const ticket = window.wumFlightAPI.generate({
-                        currHHMM: currHHMM,
-                        prevHHMM: prevHHMM,
-                        nightPenalty: isNight,
+                        currCityData: currCityData,
+                        prevCityData: prevCityData,
+                        nightPenalty: false, // 移除夜間懲罰
                         streakBonus: false,  // 可根據連續天數決定
                         firstDayFree: false
                     });
 
                     if (ticket) {
-                        console.log('✈️ [wum-flight] 票券生成成功:', ticket);
+                        console.log('✈️ [wum-flight] 真實地理票券生成成功:', ticket);
                         console.log('💰 [wum-flight] 當前 Fuel:', window.wumFlightAPI.getFuel());
 
                         // 將票券資訊保存到 Firebase
@@ -2073,14 +2063,20 @@ window.addEventListener('firebaseReady', async (event) => {
                 setTimeout(() => {
                     if (window.wumFlightAPI) {
                         console.log('✈️ [wum-flight] 延遲生成票券...');
-                        const now = new Date();
-                        const currHHMM = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-                        const hours = now.getHours();
-                        const isNight = hours < 6 || hours >= 23;
+
+                        // 準備城市資料
+                        const currCityData = {
+                            city: recordData.city || 'Unknown',
+                            country: recordData.country || 'Unknown',
+                            latitude: recordData.latitude || 0,
+                            longitude: recordData.longitude || 0,
+                            timezone: recordData.timezone || 'UTC'
+                        };
 
                         window.wumFlightAPI.generate({
-                            currHHMM: currHHMM,
-                            nightPenalty: isNight,
+                            currCityData: currCityData,
+                            prevCityData: null, // 延遲重試時沒有上次資料
+                            nightPenalty: false,
                             streakBonus: false,
                             firstDayFree: false
                         });
