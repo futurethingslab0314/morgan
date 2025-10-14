@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>更新後的飛行系統測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: white;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 5px;
+            background: #00ff88;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #00cc6f;
+            transform: translateY(-2px);
+        }
+        .log-output {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #00ff88;
+            margin-top: 10px;
+        }
+        .log-line {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .status-display {
+            background: rgba(0, 255, 136, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✈️ 更新後的飛行系統測試</h1>
+        
+        <div class="test-section">
+            <h3>🎯 修改內容測試</h3>
+            <ul>
+                <li>✅ 移除時間差 UI</li>
+                <li>✅ 重新排版距離和耗油</li>
+                <li>✅ 移除 alreadyGenerated 限制</li>
+                <li>✅ 持久化保存位置資訊</li>
+            </ul>
+            
+            <button onclick="testFirstFlight()">🚀 測試首次起飛</button>
+            <button onclick="testSubsequentFlight()">✈️ 測試後續飛行</button>
+            <button onclick="testMultipleFlights()">🔄 測試多次飛行</button>
+            <button onclick="testPersistence()">💾 測試持久化</button>
+            <button onclick="resetSystem()">🗑️ 重置系統</button>
+            
+            <div id="statusDisplay" class="status-display">
+                等待測試...
+            </div>
+        </div>
+        
+        <div class="layout">
+            <div class="test-section">
+                <h3>📊 系統狀態</h3>
+                <div id="systemStatus"></div>
+            </div>
+            
+            <div class="test-section">
+                <h3>📝 測試日誌</h3>
+                <div id="logOutput" class="log-output">
+                    <div class="log-line">等待測試...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <wum-flight id="wumFlight"></wum-flight>
+        </div>
+    </div>
+
+    <!-- 載入 wum-flight Web Component -->
+    <script src="wum-flight.js"></script>
+    
+    <script>
+        let api = null;
+        
+        // 等待 wum-flight 就緒
+        const wumFlight = document.getElementById('wum-flight');
+        wumFlight.addEventListener('wum:ready', (e) => {
+            api = e.detail.api;
+            log('✅ wum-flight 已就緒');
+            updateSystemStatus();
+        });
+        
+        wumFlight.addEventListener('wum:ticket-generated', (e) => {
+            log('🎫 票券已生成', e.detail.ticket);
+            log(`💰 當前 Fuel: ${e.detail.currentFuel} / 1000`);
+            updateSystemStatus();
+        });
+        
+        function testFirstFlight() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            log('🚀 測試首次起飛（從台北到東京）...');
+            
+            const ticket = api.generate({
+                currCityData: {
+                    city: 'Tokyo',
+                    country: 'Japan',
+                    latitude: 35.6762,
+                    longitude: 139.6503,
+                    timezone: 'UTC'
+                },
+                prevCityData: null, // 首次起飛
+                nightPenalty: false,
+                streakBonus: false,
+                firstDayFree: false
+            });
+            
+            if (ticket) {
+                log('✅ 首次起飛成功:', ticket);
+            } else {
+                log('❌ 首次起飛失敗');
+            }
+        }
+        
+        function testSubsequentFlight() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            log('✈️ 測試後續飛行（從東京到倫敦）...');
+            
+            const ticket = api.generate({
+                currCityData: {
+                    city: 'London',
+                    country: 'UK',
+                    latitude: 51.5074,
+                    longitude: -0.1278,
+                    timezone: 'UTC'
+                },
+                prevCityData: {
+                    city: 'Tokyo',
+                    country: 'Japan',
+                    latitude: 35.6762,
+                    longitude: 139.6503,
+                    timezone: 'UTC'
+                },
+                nightPenalty: false,
+                streakBonus: false,
+                firstDayFree: false
+            });
+            
+            if (ticket) {
+                log('✅ 後續飛行成功:', ticket);
+            } else {
+                log('❌ 後續飛行失敗');
+            }
+        }
+        
+        function testMultipleFlights() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            log('🔄 測試多次連續飛行...');
+            
+            const flights = [
+                { from: 'Taipei', to: 'Tokyo', fromLat: 25.0330, fromLon: 121.5654, toLat: 35.6762, toLon: 139.6503 },
+                { from: 'Tokyo', to: 'London', fromLat: 35.6762, fromLon: 139.6503, toLat: 51.5074, toLon: -0.1278 },
+                { from: 'London', to: 'New York', fromLat: 51.5074, fromLon: -0.1278, toLat: 40.7128, toLon: -74.0060 }
+            ];
+            
+            let prevCityData = null;
+            flights.forEach((flight, index) => {
+                const currCityData = {
+                    city: flight.to,
+                    country: 'Country',
+                    latitude: flight.toLat,
+                    longitude: flight.toLon,
+                    timezone: 'UTC'
+                };
+                
+                const ticket = api.generate({
+                    currCityData: currCityData,
+                    prevCityData: prevCityData,
+                    nightPenalty: false,
+                    streakBonus: false,
+                    firstDayFree: false
+                });
+                
+                if (ticket) {
+                    log(`✅ 飛行 ${index + 1}: ${flight.from} → ${flight.to}`, ticket);
+                } else {
+                    log(`❌ 飛行 ${index + 1} 失敗`);
+                }
+                
+                prevCityData = currCityData;
+            });
+        }
+        
+        function testPersistence() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            log('💾 測試持久化功能...');
+            
+            // 檢查 localStorage
+            const lastCity = localStorage.getItem('WUM_LAST_CITY');
+            const fuel = localStorage.getItem('WUM_FUEL');
+            const tickets = localStorage.getItem('WUM_TICKETS');
+            
+            log('📦 LocalStorage 內容:');
+            log('- WUM_LAST_CITY:', lastCity ? JSON.parse(lastCity) : null);
+            log('- WUM_FUEL:', fuel);
+            log('- WUM_TICKETS 數量:', tickets ? JSON.parse(tickets).length : 0);
+            
+            // 模擬重啟後的狀態
+            const currentTicket = api.getCurrentTicket();
+            const currentFuel = api.getFuel();
+            const allTickets = api.getTickets();
+            
+            log('🔄 當前系統狀態:');
+            log('- 當前票券:', currentTicket);
+            log('- 當前 Fuel:', currentFuel);
+            log('- 歷史票券數量:', allTickets.length);
+        }
+        
+        function resetSystem() {
+            if (!api) {
+                log('❌ API 尚未就緒');
+                return;
+            }
+            
+            if (confirm('確定要重置系統？這將清除所有資料。')) {
+                api.resetAll();
+                log('🗑️ 系統已重置');
+                updateSystemStatus();
+            }
+        }
+        
+        function updateSystemStatus() {
+            if (!api) return;
+            
+            const fuel = api.getFuel();
+            const tickets = api.getTickets();
+            const current = api.getCurrentTicket();
+            const lastCity = localStorage.getItem('WUM_LAST_CITY');
+            
+            const statusDiv = document.getElementById('systemStatus');
+            statusDiv.innerHTML = `
+                <p><strong>⛽ Fuel:</strong> ${fuel} / 1000</p>
+                <p><strong>🎫 歷史票券:</strong> ${tickets.length} 張</p>
+                <p><strong>📍 當前票券:</strong> ${current ? current.ticketType : '無'}</p>
+                ${current ? `<p><strong>🛫 路線:</strong> ${current.fromCity} → ${current.toCity}</p>` : ''}
+                ${current ? `<p><strong>📏 距離:</strong> ${current.distanceKm} km</p>` : ''}
+                ${current ? `<p><strong>⛽ 耗油:</strong> ${current.fuelUsed}</p>` : ''}
+                <p><strong>💾 上次城市:</strong> ${lastCity ? JSON.parse(lastCity).city : '無'}</p>
+            `;
+        }
+        
+        function log(message, data) {
+            const logDiv = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line';
+            
+            if (data) {
+                logLine.textContent = `[${timestamp}] ${message}: ${JSON.stringify(data, null, 2)}`;
+            } else {
+                logLine.textContent = `[${timestamp}] ${message}`;
+            }
+            
+            logDiv.insertBefore(logLine, logDiv.firstChild);
+            
+            // 限制日誌數量
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 更新後的飛行系統測試頁面已載入');
+            log('等待 wum-flight 就緒...');
+        });
+    </script>
+</body>
+</html>

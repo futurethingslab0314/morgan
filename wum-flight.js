@@ -234,9 +234,12 @@ class WumFlight extends HTMLElement {
       fromCountry = prevCityData.country;
       toCountry = currCityData.country;
     } else {
-      // 首次起飛：起點為 8:00 的地區
+      // 首次起飛：從 8:00 時區城市到當前位置
       const homeBase = this.getCityAt8AM();
-      distanceKm = 0;
+      distanceKm = this.calculateDistance(
+        homeBase.latitude, homeBase.longitude,
+        currCityData.latitude, currCityData.longitude
+      );
       fromCity = homeBase.city;
       toCity = currCityData ? currCityData.city : homeBase.city;
       fromCountry = homeBase.country;
@@ -244,7 +247,7 @@ class WumFlight extends HTMLElement {
     }
 
     // 使用新的油耗映射 (0-100)
-    let fuelUsed = firstDayFree || distanceKm === 0 ? 0 : this.mapDistanceToFuel(distanceKm);
+    let fuelUsed = firstDayFree ? 0 : this.mapDistanceToFuel(distanceKm);
 
     // 移除夜間懲罰，保留穩定紅利
     if (streakBonus && fuelUsed > 0) {
@@ -267,8 +270,8 @@ class WumFlight extends HTMLElement {
 
     // 敘述
     let narrative;
-    if (distanceKm === 0) {
-      narrative = `首次起飛。從 ${fromCity} 出發，準備開始你的甦醒之旅。`;
+    if (!prevCityData) {
+      narrative = `首次起飛。從 ${fromCity} (${fromCountry}) 飛往 ${toCity} (${toCountry})，距離 ${Math.round(distanceKm)} 公里，耗油 ${fuelUsed}（NT$${money}）。`;
     } else {
       narrative = `從 ${fromCity} (${fromCountry}) 飛往 ${toCity} (${toCountry})，距離 ${Math.round(distanceKm)} 公里，耗油 ${fuelUsed}（NT$${money}）。`;
     }
@@ -361,11 +364,13 @@ class WumFlight extends HTMLElement {
         this.state.lastDate = null;
         this.state.tickets = [];
         this.state.currentTicket = null;
+        this.state.lastCityData = null;
 
         localStorage.removeItem(this.STORAGE_KEYS.FUEL);
         localStorage.removeItem(this.STORAGE_KEYS.LAST_HHMM);
         localStorage.removeItem(this.STORAGE_KEYS.LAST_DATE);
         localStorage.removeItem(this.STORAGE_KEYS.TICKETS);
+        localStorage.removeItem('WUM_LAST_CITY');
 
         this.render();
         console.log('[wum-flight] 已完全重置');
@@ -383,16 +388,12 @@ class WumFlight extends HTMLElement {
       return;
     }
 
-    const today = this.todayISO();
-    const alreadyGenerated = (this.state.lastDate === today);
-
-    // 使用提供的 prevCityData 或從狀態取得
+    // 移除 alreadyGenerated 限制，每次都生成新票券
     const effectivePrev = prevCityData || this.state.lastCityData;
 
     console.log('[wum-flight] 生成真實地理票券:', {
       effectivePrev,
       currCityData,
-      alreadyGenerated,
       currentFuel: this.state.fuel
     });
 
@@ -406,23 +407,20 @@ class WumFlight extends HTMLElement {
     // 儲存當前票券
     this.state.currentTicket = ticket;
 
-    // 只在首次生成時扣油
-    if (!alreadyGenerated) {
+    // 每次都扣油（除非 firstDayFree）
+    if (!firstDayFree && ticket.fuelUsed > 0) {
       const oldFuel = this.state.fuel;
       this.state.fuel = this.clamp(this.state.fuel - ticket.fuelUsed, 0, this.FUEL_MAX);
       this.saveFuel();
 
-      // 記錄今天已生成
-      this.saveLastDate(today);
-
-      // 加入歷史
-      this.state.tickets.push(ticket);
-      this.saveTickets();
-
       console.log(`[wum-flight] 🎫 生成新票券，扣油 ${ticket.fuelUsed}（${oldFuel} → ${this.state.fuel}）`);
     } else {
-      console.log('[wum-flight] ℹ️ 今天已生成過票券，不再扣油');
+      console.log('[wum-flight] ℹ️ 首次起飛或免油費，不扣油');
     }
+
+    // 加入歷史
+    this.state.tickets.push(ticket);
+    this.saveTickets();
 
     // 更新 lastCityData
     this.state.lastCityData = currCityData;
@@ -433,7 +431,7 @@ class WumFlight extends HTMLElement {
 
     // 發送事件
     this.dispatchEvent(new CustomEvent('wum:ticket-generated', {
-      detail: { ticket, alreadyGenerated, currentFuel: this.state.fuel }
+      detail: { ticket, currentFuel: this.state.fuel }
     }));
 
     return ticket;
@@ -733,10 +731,6 @@ class WumFlight extends HTMLElement {
             </div>
             
             <div class="ticket-stats">
-              <div class="stat">
-                <div class="stat-label">時間差</div>
-                <div class="stat-value">${ticket.deltaMin === 0 ? '首次' : ticket.deltaMin + ' 分'}</div>
-              </div>
               <div class="stat">
                 <div class="stat-label">距離</div>
                 <div class="stat-value">${ticket.distanceKm} km</div>
