@@ -401,12 +401,15 @@ window.addEventListener('piStoryReady', (event) => {
 
                         // 準備城市資料
                         const currCityData = {
-                            city: storyData.city || 'Unknown',
-                            country: storyData.country || 'Unknown',
-                            latitude: storyData.latitude || 0,
-                            longitude: storyData.longitude || 0,
+                            city: storyData.city || 'Taipei',
+                            country: storyData.country || 'Taiwan',
+                            latitude: storyData.latitude || 25.0330, // 台北緯度
+                            longitude: storyData.longitude || 121.5654, // 台北經度
                             timezone: storyData.timezone || 'UTC'
                         };
+
+                        // 添加調試日誌
+                        console.log('✈️ [wum-flight] Firebase未初始化分支城市資料:', currCityData);
 
                         const ticket = e.detail.api.generate({
                             currCityData: currCityData,
@@ -555,12 +558,22 @@ window.addEventListener('piStoryReady', (event) => {
 
                     // 準備當前城市資料
                     const currCityData = {
-                        city: storyData.city || 'Unknown',
-                        country: storyData.country || 'Unknown',
-                        latitude: storyData.latitude || 0,
-                        longitude: storyData.longitude || 0,
+                        city: storyData.city || 'Taipei',
+                        country: storyData.country || 'Taiwan',
+                        latitude: storyData.latitude || 25.0330, // 台北緯度
+                        longitude: storyData.longitude || 121.5654, // 台北經度
                         timezone: storyData.timezone || 'UTC'
                     };
+
+                    // 添加調試日誌
+                    console.log('✈️ [wum-flight] 故事資料調試:', {
+                        originalCity: storyData.city,
+                        originalLat: storyData.latitude,
+                        originalLon: storyData.longitude,
+                        finalCity: currCityData.city,
+                        finalLat: currCityData.latitude,
+                        finalLon: currCityData.longitude
+                    });
 
                     // 從 Firebase 查詢上一次記錄的城市資料
                     let prevCityData = null;
@@ -2004,12 +2017,22 @@ window.addEventListener('firebaseReady', async (event) => {
                 try {
                     // 準備當前城市資料
                     const currCityData = {
-                        city: recordData.city || 'Unknown',
-                        country: recordData.country || 'Unknown',
-                        latitude: recordData.latitude || 0,
-                        longitude: recordData.longitude || 0,
+                        city: recordData.city || 'Taipei',
+                        country: recordData.country || 'Taiwan',
+                        latitude: recordData.latitude || 25.0330, // 台北緯度
+                        longitude: recordData.longitude || 121.5654, // 台北經度
                         timezone: recordData.timezone || 'UTC'
                     };
+
+                    // 添加調試日誌
+                    console.log('✈️ [wum-flight] Firebase已初始化分支城市資料:', {
+                        originalCity: recordData.city,
+                        originalLat: recordData.latitude,
+                        originalLon: recordData.longitude,
+                        finalCity: currCityData.city,
+                        finalLat: currCityData.latitude,
+                        finalLon: currCityData.longitude
+                    });
 
                     // 取得上一次記錄的城市資料
                     let prevCityData = null;
@@ -2066,12 +2089,15 @@ window.addEventListener('firebaseReady', async (event) => {
 
                         // 準備城市資料
                         const currCityData = {
-                            city: recordData.city || 'Unknown',
-                            country: recordData.country || 'Unknown',
-                            latitude: recordData.latitude || 0,
-                            longitude: recordData.longitude || 0,
+                            city: recordData.city || 'Taipei',
+                            country: recordData.country || 'Taiwan',
+                            latitude: recordData.latitude || 25.0330, // 台北緯度
+                            longitude: recordData.longitude || 121.5654, // 台北經度
                             timezone: recordData.timezone || 'UTC'
                         };
+
+                        // 添加調試日誌
+                        console.log('✈️ [wum-flight] 延遲重試分支城市資料:', currCityData);
 
                         window.wumFlightAPI.generate({
                             currCityData: currCityData,
