@@ -1862,7 +1862,6 @@ body {
 #mainMapContainer,
 #mainMapContainer * {
     z-index: 1 !important;
-    max-z-index: 10 !important;
 }
 
 /* 結果資訊面板 - 顯示在地圖標記附近 */
@@ -1935,10 +1934,548 @@ body {
 
 /* 歷史標記樣式 - 移除hover效果 */
 .history-marker {
-    /* 移除所有hover和動畫效果 */
+    pointer-events: none;
 }
 
 /* 今日標記樣式 - 移除hover效果和動畫 */
 .today-marker {
-    /* 移除所有hover效果和動畫 */
+    pointer-events: none;
+}
+
+/* ===== 遊戲化 UI 樣式 ===== */
+
+/* 遊戲開始畫面 */
+.game-start-state {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b69 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999999 !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.5s ease;
+    overflow: hidden;
+}
+
+/* 科技感背景動畫 */
+.game-start-state::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+    animation: techPulse 4s ease-in-out infinite;
+}
+
+@keyframes techPulse {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.game-start-state.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.game-start-container {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 1000px;
+    width: 90%;
+    max-height: 600px;
+    height: 80vh;
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 科技感邊框效果 */
+.game-start-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 20px;
+    padding: 2px;
+    background: linear-gradient(45deg, #00d4ff, #ff00ff, #00ff88, #ffaa00);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation: borderGlow 3s linear infinite;
+}
+
+@keyframes borderGlow {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* 遊戲標題 */
+.game-title-section {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.game-main-title {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ffffff;
+    margin: 0 0 10px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.game-subtitle {
+    font-size: 1.2rem;
+    color: #e0e0e0;
+    margin: 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* 資源條 */
+.game-resources {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 40px;
+    justify-content: center;
+}
+
+.resource-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 200px;
+}
+
+.resource-bar .resource-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.resource-bar .resource-label {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 5px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.resource-bar .resource-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #00ff88;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.resource-bar-fill {
+    width: 100%;
+    height: 20px;
+    background: #ecf0f1;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.resource-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+.money-bar .resource-fill {
+    background: linear-gradient(90deg, #f39c12, #e67e22);
+}
+
+.fuel-bar .resource-fill {
+    background: linear-gradient(90deg, #3498db, #2980b9);
+}
+
+/* 目的地選擇 */
+.destination-selection {
+    margin-bottom: 30px;
+}
+
+.selection-title {
+    text-align: center;
+    font-size: 1.5rem;
+    color: #2c3e50;
+    margin-bottom: 20px;
+}
+
+.destination-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.destination-option {
+    background: linear-gradient(135deg, #74b9ff, #0984e3);
+    color: white;
+    border: none;
+    border-radius: 15px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
+}
+
+.destination-option:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(116, 185, 255, 0.4);
+}
+
+.destination-option.selected {
+    background: linear-gradient(135deg, #00b894, #00a085);
+    transform: scale(1.05);
+}
+
+.destination-option.locked {
+    background: linear-gradient(135deg, #b2bec3, #636e72);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* 機票預覽 */
+.ticket-preview {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 15px;
+    padding: 25px;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.ticket-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.ticket-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.3rem;
+}
+
+.ticket-price {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+.ticket-route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.from-city,
+.to-city {
+    color: #2c3e50;
+}
+
+.route-arrow {
+    color: #74b9ff;
+    font-size: 1.5rem;
+}
+
+.ticket-details {
+    display: flex;
+    justify-content: space-between;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.ticket-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.confirm-button,
+.change-button {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+
+.confirm-button {
+    background: linear-gradient(135deg, #00b894, #00a085);
+    color: white;
+}
+
+.confirm-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 184, 148, 0.4);
+}
+
+.change-button {
+    background: linear-gradient(135deg, #74b9ff, #0984e3);
+    color: white;
+}
+
+.change-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(116, 185, 255, 0.4);
+}
+
+/* 開始旅程按鈕 */
+.start-journey-section {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.start-journey-button {
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    border: none;
+    border-radius: 15px;
+    padding: 25px 40px;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 200px;
+}
+
+.start-journey-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(0, 212, 255, 0.4);
+    background: linear-gradient(135deg, #00b8e6, #007aa3);
+}
+
+.button-icon {
+    font-size: 2rem;
+}
+
+.button-text {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.button-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    color: #f0f0f0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 懸浮視窗樣式 */
+.destination-modal,
+.ticket-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999999999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.destination-modal.active,
+.ticket-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(20px);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.modal-title {
+    margin: 0;
+    color: #f1f1f1;
+    font-size: 1.5rem;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    background: #f8f9fa;
+    color: #dc3545;
+}
+
+/* 機票內容特殊樣式 */
+.ticket-content {
+    max-width: 500px;
+}
+
+.ticket-details {
+    display: flex;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.ticket-date,
+.ticket-arrival {
+    flex: 1;
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+}
+
+.ticket-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.ticket-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.ticket-arrival .ticket-value {
+    color: #28a745;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .game-start-container {
+        padding: 20px;
+        margin: 20px;
+        height: 90vh;
+    }
+
+    .game-main-title {
+        font-size: 2rem;
+    }
+
+    .game-resources {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .destination-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    }
+
+    .ticket-actions {
+        flex-direction: column;
+    }
+
+    .ticket-details {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
 }

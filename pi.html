@@ -66,38 +66,54 @@
                 <button id="zoomOutButton" class="zoom-button" title="縮小">-</button>
             </div>
             
+            <!-- 遊戲化開始畫面 -->
+            <div id="gameStartState" class="state game-start-state active">
+                <div class="game-start-container">
+                    <!-- 遊戲標題 -->
+                    <div class="game-title-section">
+                        <h1 class="game-main-title">✈️ WAKE UP FLIGHT</h1>
+                        <p class="game-subtitle">每週旅程模式 - 選擇你的目的地</p>
+                    </div>
+                    
+                    <!-- 資源顯示 -->
+                    <div class="game-resources">
+                        <div class="resource-bar money-bar">
+                            <div class="resource-icon">💰</div>
+                            <div class="resource-label">Money</div>
+                            <div class="resource-value" id="gameMoney">10000</div>
+                            <div class="resource-bar-fill">
+                                <div class="resource-fill" id="moneyFill" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="resource-bar fuel-bar">
+                            <div class="resource-icon">⛽</div>
+                            <div class="resource-label">Fuel</div>
+                            <div class="resource-value" id="gameFuel">1000</div>
+                            <div class="resource-bar-fill">
+                                <div class="resource-fill" id="fuelFill" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 開始旅程按鈕 -->
+                    <div class="start-journey-section">
+                        <button id="startJourneyBtn" class="start-journey-button">
+                            <div class="button-icon">✈️</div>
+                            <div class="button-text">開始旅程</div>
+                            <div class="button-subtitle">選擇你的目的地</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- 等待狀態 -->
-            <div id="waitingState" class="state waiting-state active">
+            <div id="waitingState" class="state waiting-state">
                 <!-- 中央內容框 -->
                 <div class="waiting-content-box">
-                    <h1 class="press-button-title blinking-text">PRESS THE BUTTON</h1>
-                    <p class="press-button-subtitle">IT IS TIME TO LAND</p>
-                    <p class="press-button-chinese">按下按鈕，航班準備降落</p>
-
-                    
-                    <!-- 隱藏的緊急備用按鈕 -->
-                    <div id="hiddenBackupButton" onclick="window.startTheDay && window.startTheDay()" style="
-                        position: fixed;
-                        top: 10px;
-                        left: 10px;
-                        width: 50px;
-                        height: 50px;
-                        background: rgba(255, 255, 255, 0.02);
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 50%;
-                        cursor: pointer;
-                        z-index: 9998;
-                        opacity: 0.02;
-                        transition: opacity 0.3s ease;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 12px;
-                        color: rgba(255, 255, 255, 0.1);
-                        user-select: none;
-                    " onmouseover="this.style.opacity='0.1'" onmouseout="this.style.opacity='0.02'" title="隱藏緊急按鈕">
-                        🆘
-                    </div>
+                    <h1 class="press-button-title blinking-text">WAKE UP FLIGHT</h1>
+                    <p class="press-button-subtitle">GAME READY</p>
+                    <p class="press-button-chinese">遊戲已準備就緒</p>
                 </div>
             </div>
 
@@ -105,9 +121,9 @@
             <div id="loadingState" class="state loading-state">
                 <!-- 中央內容框 -->
                 <div class="loading-content-box">
-                    <h1 class="locating-title blinking-text">LANDING...</h1>
-                    <p class="locating-progress">請各位乘客繫好安全帶，航班準備降落......</p>
-                    <p class="locating-subtitle">請按下按鈕，航班準備降落</p>
+                    <h1 class="locating-title blinking-text">LOADING...</h1>
+                    <p class="locating-progress">系統載入中...</p>
+                    <p class="locating-subtitle">請稍候</p>
                 </div>
             </div>
 
@@ -127,21 +143,9 @@
                         <span id="wakeupDate" class="date-value">07/25/2025 Fri</span>
                     </div>
                     
-                    <div class="greeting-info">
-                        <span id="localGreeting" class="local-greeting">GOOD MORNING! (English)</span>
-                    </div>
+                    <!-- 語音問候已隱藏 -->
                     
-                    <div class="location-info">
-                        <h1 id="cityName" class="city-name">LOGAN</h1>
-                        <div class="country-info">
-                            <img id="countryFlag" class="country-flag" src="" alt="Flag">
-                            <span id="countryName" class="country-name">United States</span>
-                        </div>
-                        <!-- 座標信息整合到此處 -->
-                        <div class="coordinates-info">
-                            <span id="coordinates" class="coordinates-text">21.276, 55.517</span>
-                        </div>
-                    </div>
+                    <!-- 位置信息已隱藏 -->
                     
                     
                     <!-- 故事文字容器 (移到白色框內) -->
@@ -162,6 +166,61 @@
                 </div>
             </div>
         </main>
+
+        <!-- 目的地選擇懸浮視窗 -->
+        <div id="destinationModal" class="destination-modal">
+            <div class="modal-overlay" id="modalOverlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">✈️ 選擇目的地</h2>
+                    <button class="modal-close" id="modalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="destination-grid" id="destinationGrid">
+                        <!-- 目的地選項將由 JavaScript 動態生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 機票確認懸浮視窗 -->
+        <div id="ticketModal" class="ticket-modal">
+            <div class="modal-overlay" id="ticketModalOverlay"></div>
+            <div class="modal-content ticket-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">✈️ 機票確認</h2>
+                    <button class="modal-close" id="ticketModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="ticket-card">
+                        <div class="ticket-header">
+                            <h3>✈️ 機票</h3>
+                            <div class="ticket-price" id="ticketPrice">NT$ 0</div>
+                        </div>
+                        <div class="ticket-route">
+                            <span class="from-city">台北 TPE</span>
+                            <span class="route-arrow">→</span>
+                            <span class="to-city" id="selectedDestination">目的地</span>
+                        </div>
+                        <div class="ticket-details">
+                            <div class="ticket-date">
+                                <div class="ticket-label">出發日期</div>
+                                <div class="ticket-value" id="departureDate">2025-01-20</div>
+                            </div>
+                            <div class="ticket-arrival">
+                                <div class="ticket-label">抵達時間</div>
+                                <div class="ticket-value" id="arrivalTime">隔天 08:00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-actions">
+                        <button id="confirmTicket" class="confirm-button">確認購買機票</button>
+                        <button id="changeDestination" class="change-button">重新選擇</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- 隱藏元素 (用於保持相容性) -->
         <div style="display: none;">
@@ -283,6 +342,9 @@
     
     <!-- 6. 載入 wum-flight Web Component (新飛行系統) -->
     <script src="wum-flight.js"></script>
+    
+    <!-- 7. 載入遊戲化系統 -->
+    <script src="game-system.js"></script>
     
     <script>
         // 初始化 wum-flight Web Component

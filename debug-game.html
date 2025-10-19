@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=800, initial-scale=1.0">
+    <title>Debug Game System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .debug-info {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        .success {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 遊戲系統調試</h1>
+    
+    <div class="debug-info" id="statusInfo">
+        <h3>系統狀態</h3>
+        <p>載入中...</p>
+    </div>
+    
+    <div class="debug-info" id="gameInfo">
+        <h3>遊戲狀態</h3>
+        <p>載入中...</p>
+    </div>
+    
+    <div class="debug-info" id="localStorageInfo">
+        <h3>LocalStorage 狀態</h3>
+        <p>載入中...</p>
+    </div>
+    
+    <button onclick="clearGameState()">清除遊戲狀態</button>
+    <button onclick="resetGame()">重置遊戲</button>
+    <button onclick="checkStatus()">重新檢查狀態</button>
+    
+    <script src="game-system.js"></script>
+    <script>
+        function updateStatus() {
+            const statusInfo = document.getElementById('statusInfo');
+            const gameInfo = document.getElementById('gameInfo');
+            const localStorageInfo = document.getElementById('localStorageInfo');
+            
+            // 系統狀態
+            statusInfo.innerHTML = `
+                <h3>系統狀態</h3>
+                <p>遊戲系統: ${window.wakeUpMapGame ? '✅ 已載入' : '❌ 未載入'}</p>
+                <p>時間: ${new Date().toLocaleTimeString()}</p>
+            `;
+            
+            // 遊戲狀態
+            if (window.wakeUpMapGame) {
+                const gameState = window.wakeUpMapGame.getGameState();
+                gameInfo.innerHTML = `
+                    <h3>遊戲狀態</h3>
+                    <p>遊戲已開始: ${gameState.gameStarted ? '✅ 是' : '❌ 否'}</p>
+                    <p>選擇的目的地: ${gameState.selectedDestination ? gameState.selectedDestination.name : '無'}</p>
+                    <p>當前票券: ${gameState.currentTicket ? '✅ 有' : '❌ 無'}</p>
+                    <p>金錢: ${gameState.money}</p>
+                    <p>油耗: ${gameState.fuel}</p>
+                `;
+            } else {
+                gameInfo.innerHTML = '<h3>遊戲狀態</h3><p>❌ 遊戲系統未載入</p>';
+            }
+            
+            // LocalStorage 狀態
+            const saved = localStorage.getItem('wakeUpMapGame');
+            if (saved) {
+                try {
+                    const savedState = JSON.parse(saved);
+                    localStorageInfo.innerHTML = `
+                        <h3>LocalStorage 狀態</h3>
+                        <p>遊戲已開始: ${savedState.gameStarted ? '✅ 是' : '❌ 否'}</p>
+                        <p>選擇的目的地: ${savedState.selectedDestination ? savedState.selectedDestination.name : '無'}</p>
+                        <p>當前票券: ${savedState.currentTicket ? '✅ 有' : '❌ 無'}</p>
+                    `;
+                } catch (e) {
+                    localStorageInfo.innerHTML = '<h3>LocalStorage 狀態</h3><p>❌ 數據損壞</p>';
+                }
+            } else {
+                localStorageInfo.innerHTML = '<h3>LocalStorage 狀態</h3><p>❌ 無保存數據</p>';
+            }
+        }
+        
+        function clearGameState() {
+            localStorage.removeItem('wakeUpMapGame');
+            updateStatus();
+            alert('遊戲狀態已清除');
+        }
+        
+        function resetGame() {
+            if (window.wakeUpMapGame) {
+                window.wakeUpMapGame.resetGame();
+                updateStatus();
+                alert('遊戲已重置');
+            } else {
+                alert('遊戲系統未載入');
+            }
+        }
+        
+        function checkStatus() {
+            updateStatus();
+        }
+        
+        // 監聽遊戲系統就緒事件
+        window.addEventListener('gameSystemReady', () => {
+            console.log('🎮 收到遊戲系統就緒事件');
+            updateStatus();
+        });
+        
+        // 定期更新狀態
+        setInterval(updateStatus, 1000);
+        
+        // 初始更新
+        setTimeout(updateStatus, 100);
+    </script>
+</body>
+</html>

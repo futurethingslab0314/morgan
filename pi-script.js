@@ -37,6 +37,89 @@ let historyMarkersLayer = null; // 歷史點位圖層
 let currentState = 'waiting'; // waiting, loading, result, error
 window.currentState = currentState;
 
+// 🎮 遊戲化系統整合
+let gameSystemReady = false;
+let gameStarted = false;
+
+// 🎮 檢查遊戲系統狀態
+function checkGameSystemStatus() {
+    console.log('🎮 檢查遊戲系統狀態...');
+    console.log('🎮 當前狀態:', { gameSystemReady, gameStarted });
+
+    // 如果遊戲系統已就緒，直接檢查狀態
+    if (gameSystemReady && window.wakeUpMapGame) {
+        console.log('✅ 遊戲系統已就緒，檢查遊戲狀態');
+
+        // 檢查是否已經開始遊戲
+        const gameState = window.wakeUpMapGame.getGameState();
+        if (gameState.gameStarted) {
+            gameStarted = true;
+            console.log('🎮 遊戲已開始，更新狀態');
+        } else {
+            console.log('🎮 遊戲未開始，更新狀態');
+        }
+
+        // 重新檢查初始狀態
+        ensureInitialState();
+    } else {
+        console.log('⏳ 遊戲系統未就緒，等待載入...');
+        // 等待遊戲系統載入
+        const checkGameSystem = () => {
+            if (window.wakeUpMapGame) {
+                gameSystemReady = true;
+                console.log('✅ 遊戲系統已就緒');
+
+                // 檢查是否已經開始遊戲
+                const gameState = window.wakeUpMapGame.getGameState();
+                if (gameState.gameStarted) {
+                    gameStarted = true;
+                    console.log('🎮 遊戲已開始，更新狀態');
+                } else {
+                    console.log('🎮 遊戲未開始，更新狀態');
+                }
+
+                // 重新檢查初始狀態
+                ensureInitialState();
+            } else {
+                console.log('⏳ 等待遊戲系統載入...');
+                setTimeout(checkGameSystem, 100);
+            }
+        };
+
+        checkGameSystem();
+    }
+}
+
+// 🎮 顯示遊戲開始畫面
+function showGameStartState() {
+    const gameStartState = document.getElementById('gameStartState');
+    const waitingState = document.getElementById('waitingState');
+
+    if (gameStartState) {
+        gameStartState.classList.add('active');
+        console.log('🎮 顯示遊戲開始畫面');
+    }
+
+    if (waitingState) {
+        waitingState.classList.remove('active');
+    }
+}
+
+// 🎮 顯示等待狀態
+function showWaitingState() {
+    const gameStartState = document.getElementById('gameStartState');
+    const waitingState = document.getElementById('waitingState');
+
+    if (gameStartState) {
+        gameStartState.classList.remove('active');
+    }
+
+    if (waitingState) {
+        waitingState.classList.add('active');
+        console.log('🎮 顯示等待狀態');
+    }
+}
+
 // 🔧 全域 updateResultData 函數，確保在所有作用域都可訪問
 function updateResultData(data) {
     console.log('📊 updateResultData 被調用，數據:', data);
@@ -96,26 +179,40 @@ function updateResultData(data) {
 
 // 🔧 確保初始狀態正確設定
 function ensureInitialState() {
-    console.log('🔧 確保初始狀態為 waiting');
+    console.log('🔧 確保初始狀態正確');
     const waitingStateEl = document.getElementById('waitingState');
     const loadingStateEl = document.getElementById('loadingState');
     const resultStateEl = document.getElementById('resultState');
     const errorStateEl = document.getElementById('errorState');
+    const gameStartStateEl = document.getElementById('gameStartState');
 
     // 強制移除所有狀態的 active 類別
-    [waitingStateEl, loadingStateEl, resultStateEl, errorStateEl].forEach(el => {
+    [waitingStateEl, loadingStateEl, resultStateEl, errorStateEl, gameStartStateEl].forEach(el => {
         if (el) {
             el.classList.remove('active');
         }
     });
 
-    // 確保 waiting 狀態顯示
-    if (waitingStateEl) {
-        waitingStateEl.classList.add('active');
-        console.log('✅ 強制設定 waiting 狀態為 active');
+    // 🎮 檢查遊戲系統狀態，決定顯示哪個狀態
+    console.log('🔧 狀態檢查:', { gameSystemReady, gameStarted });
+
+    if (gameSystemReady && gameStarted) {
+        // 遊戲已開始，顯示等待狀態
+        if (waitingStateEl) {
+            waitingStateEl.classList.add('active');
+            console.log('✅ 遊戲已開始，設定 waiting 狀態為 active');
+        }
+        currentState = 'waiting';
+    } else {
+        // 遊戲未開始或系統未就緒，顯示遊戲開始畫面
+        if (gameStartStateEl) {
+            gameStartStateEl.classList.add('active');
+            console.log('✅ 遊戲未開始或系統未就緒，設定 gameStart 狀態為 active');
+            console.log('🔧 原因:', { gameSystemReady, gameStarted });
+        }
+        currentState = 'gameStart';
     }
 
-    currentState = 'waiting';
     window.currentState = currentState;
 }
 
@@ -2780,15 +2877,8 @@ window.addEventListener('firebaseReady', async (event) => {
             console.error('❌ setUserNameButton 未找到，無法設定事件');
         }
 
-        if (findCityButton) {
-            findCityButton.addEventListener('click', () => {
-                console.log('🔘 開始這一天按鈕被點擊');
-                startTheDay();
-            });
-            console.log('✅ 開始這一天按鈕事件已設定');
-        } else {
-            console.error('❌ findCityButton 未找到，無法設定事件');
-        }
+        // 按鍵功能已移除 - 改為自動觸發
+        console.log('🎮 按鍵功能已移除，改為遊戲化自動觸發');
 
         if (refreshHistoryButton) {
             refreshHistoryButton.addEventListener('click', loadHistory);
@@ -2878,8 +2968,22 @@ window.addEventListener('error', (event) => {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('📄 DOM 載入完成，等待 Firebase...');
 
-    // 🔧 首先確保初始狀態正確
-    ensureInitialState();
+    // 🎮 監聽遊戲系統就緒事件
+    window.addEventListener('gameSystemReady', (event) => {
+        console.log('🎮 收到遊戲系統就緒事件:', event.detail);
+        gameSystemReady = true;
+        checkGameSystemStatus();
+    });
+
+    // 🎮 延遲檢查遊戲系統狀態，確保遊戲系統已載入
+    setTimeout(() => {
+        checkGameSystemStatus();
+    }, 500);
+
+    // 🔧 延遲確保初始狀態正確，讓遊戲系統先初始化
+    setTimeout(() => {
+        ensureInitialState();
+    }, 100);
 
     console.log('🔍 初始狀態檢查:', {
         firebaseConfig: !!window.firebaseConfig,
@@ -2917,6 +3021,21 @@ document.addEventListener('DOMContentLoaded', () => {
             configScript: document.querySelector('script[src="/api/config"]') ? '已載入' : '未載入'
         });
     }, 1000);
+
+    // 🎮 監聽遊戲開始事件
+    window.addEventListener('gameStarted', (event) => {
+        console.log('🎮 遊戲開始事件觸發:', event.detail);
+        gameStarted = true;
+        showWaitingState();
+
+        // 自動開始這一天（不需要按鍵）
+        setTimeout(() => {
+            console.log('🎮 自動開始這一天...');
+            if (typeof window.startTheDay === 'function') {
+                window.startTheDay();
+            }
+        }, 2000); // 延遲 2 秒讓用戶看到遊戲開始畫面
+    });
 });
 
 // 舊的地圖初始化函數已移除 - 現在只使用一個主要互動地圖 

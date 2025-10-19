@@ -7,7 +7,6 @@
 ```bash
 # 在瀏覽器中打開
 open wum-flight-demo.html
-```
 
 然後：
 1. 點擊「首次起飛」按鈕

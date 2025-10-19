@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=800, initial-scale=1.0">
+    <title>清除遊戲狀態</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #c82333;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 清除遊戲狀態</h1>
+        <p>這個頁面會清除所有保存的遊戲狀態，讓遊戲重新開始。</p>
+        
+        <button onclick="clearAllGameState()">清除所有遊戲狀態</button>
+        
+        <div id="result"></div>
+        
+        <p><a href="pi.html">返回主遊戲</a></p>
+    </div>
+    
+    <script>
+        function clearAllGameState() {
+            try {
+                // 清除所有相關的 localStorage 項目
+                localStorage.removeItem('wakeUpMapGame');
+                localStorage.removeItem('WUM_LAST_CITY');
+                localStorage.removeItem('WUM_FUEL');
+                localStorage.removeItem('WUM_LAST_HHMM');
+                localStorage.removeItem('WUM_LAST_DATE');
+                localStorage.removeItem('WUM_TICKETS');
+                
+                document.getElementById('result').innerHTML = 
+                    '<p class="success">✅ 所有遊戲狀態已清除！</p>' +
+                    '<p>現在可以返回主遊戲頁面了。</p>';
+                    
+                console.log('🎮 所有遊戲狀態已清除');
+            } catch (e) {
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: #dc3545;">❌ 清除失敗: ' + e.message + '</p>';
+            }
+        }
+        
+        // 自動顯示當前狀態
+        window.onload = function() {
+            const saved = localStorage.getItem('wakeUpMapGame');
+            if (saved) {
+                try {
+                    const gameState = JSON.parse(saved);
+                    document.getElementById('result').innerHTML = 
+                        '<p>當前遊戲狀態:</p>' +
+                        '<p>遊戲已開始: ' + (gameState.gameStarted ? '是' : '否') + '</p>' +
+                        '<p>選擇的目的地: ' + (gameState.selectedDestination ? gameState.selectedDestination.name : '無') + '</p>';
+                } catch (e) {
+                    document.getElementById('result').innerHTML = 
+                        '<p style="color: #dc3545;">❌ 遊戲狀態數據損壞</p>';
+                }
+            } else {
+                document.getElementById('result').innerHTML = 
+                    '<p class="success">✅ 沒有保存的遊戲狀態</p>';
+            }
+        };
+    </script>
+</body>
+</html>
