@@ -47,7 +47,6 @@
     </style>
     
     <link rel="stylesheet" href="pi-style.css">
-    <link rel="stylesheet" href="flight-ticket.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
@@ -73,7 +72,7 @@
                 <div class="waiting-content-box">
                     <h1 class="press-button-title blinking-text">PRESS THE BUTTON</h1>
                     <p class="press-button-subtitle">TO LOCATE YOUR WAKEUP LOCATION</p>
-                    <p class="press-button-chinese">按下按鈕，航班準備降落🛩️</p>
+                    <p class="press-button-chinese">按下按鈕，航班準備降落</p>
 
                     
                     <!-- 隱藏的緊急備用按鈕 -->
@@ -108,7 +107,7 @@
                 <div class="loading-content-box">
                     <h1 class="locating-title blinking-text">LOCATING...</h1>
                     <p class="locating-progress">請各位乘客繫好安全帶，航班準備降落......</p>
-                    <p class="locating-subtitle">oo按下按鈕，航班準備降落降落🛩️</p>
+                    <p class="locating-subtitle">按下按鈕，航班準備降落</p>
                 </div>
             </div>
 
@@ -151,9 +150,6 @@
                             <span class="fuel-label">Fuel:</span>
                             <span id="fuelUsed" class="fuel-value">--</span>
                         </div>
-                        <button id="flightTicketButton" class="flight-ticket-button" title="查看航班票券">
-                            ✈️
-                        </button>
                     </div>
                     
                     <!-- 故事文字容器 (移到白色框內) -->
@@ -221,53 +217,6 @@
     </div>
 
     <!-- 航班票券彈窗 -->
-    <div id="flightTicketModal" class="modal flight-ticket-modal" style="display:none;">
-        <div class="modal-dialog">
-            <div class="modal-content-wrapper flight-ticket-wrapper">
-                <div class="modal-header flight-ticket-header">
-                    <h2 class="flight-ticket-title">✈️ 航班票券 FLIGHT TICKET</h2>
-                    <span id="flightTicketModalClose" class="modal-close-button">&times;</span>
-                </div>
-                <div class="modal-body flight-ticket-body">
-                    <!-- 票券主要資訊 -->
-                    <div class="ticket-section ticket-main">
-                        <div class="ticket-type-badge" id="ticketTypeBadge">City Hop</div>
-                        <div class="ticket-direction" id="ticketDirection">
-                            <span class="direction-arrow">→</span>
-                            <span class="direction-text">WESTBOUND</span>
-                        </div>
-                    </div>
-
-                    <!-- 航班數據 -->
-                    <div class="ticket-section ticket-stats">
-                        <div class="ticket-stat">
-                            <div class="stat-label">時間差異</div>
-                            <div class="stat-value" id="ticketDeltaMin">42 分鐘</div>
-                        </div>
-                        <div class="ticket-stat">
-                            <div class="stat-label">飛行距離</div>
-                            <div class="stat-value" id="ticketDistance">312 km</div>
-                        </div>
-                        <div class="ticket-stat ticket-stat-highlight">
-                            <div class="stat-label">燃油消耗</div>
-                            <div class="stat-value fuel-value" id="ticketFuel">24 ⛽</div>
-                        </div>
-                    </div>
-
-                    <!-- 敘述文字 -->
-                    <div class="ticket-section ticket-narrative">
-                        <div class="narrative-label">航班說明</div>
-                        <p class="narrative-text" id="ticketNarrative">
-                            你比昨天晚 42 分鐘起飛，向西 312 公里，耗油 24。
-                        </p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button id="closeFlightTicketButton" class="modal-button-secondary">關閉</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- 1. 首先載入 Firebase 配置 -->
     <script src="/api/config"></script>
@@ -340,11 +289,7 @@
     <!-- 5. 載入主要應用程式腳本 -->
     <script src="pi-script.js"></script>
     
-    <!-- 6. 載入航班票券功能 -->
-    <script src="core/flight.js"></script>
-    <script src="flight-integration.js"></script>
-    
-    <!-- 7. 載入 wum-flight Web Component -->
+    <!-- 6. 載入 wum-flight Web Component (新飛行系統) -->
     <script src="wum-flight.js"></script>
     
     <script>

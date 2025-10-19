@@ -19,7 +19,7 @@
     --error-color: #dc3545;
     --warning-color: #ffc107;
     --border-radius: 8px;
-    --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
 }
 
@@ -99,9 +99,17 @@ body {
 }
 
 @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
 
 /* === 分頁導航 === */
@@ -171,7 +179,8 @@ body {
     margin-bottom: 8px;
 }
 
-.load-button, .start-button {
+.load-button,
+.start-button {
     flex: 1;
     padding: 10px 16px;
     border: none;
@@ -355,19 +364,22 @@ body {
     flex-wrap: wrap;
 }
 
-.date-control, .group-control {
+.date-control,
+.group-control {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.date-control label, .group-control label {
+.date-control label,
+.group-control label {
     font-size: 12px;
     font-weight: 500;
     white-space: nowrap;
 }
 
-.date-input, .group-select {
+.date-input,
+.group-select {
     padding: 4px 8px;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
@@ -419,7 +431,7 @@ body {
 .modal-content-wrapper {
     background-color: white;
     border-radius: var(--border-radius);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     overflow: hidden;
 }
 
@@ -499,16 +511,16 @@ body {
         height: 100vh;
         position: static;
     }
-    
+
     .global-controls {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .history-content {
         flex-direction: column;
     }
-    
+
     .action-buttons {
         flex-direction: column;
     }
@@ -532,18 +544,21 @@ body {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.6),
-        transparent
-    );
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.6),
+            transparent);
     animation: loading 1.5s infinite;
 }
 
 @keyframes loading {
-    0% { left: -100%; }
-    100% { left: 100%; }
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 100%;
+    }
 }
 
 /* === 新增：Pi 顯示專用樣式 === */
@@ -572,16 +587,21 @@ body {
 }
 
 .waiting-state {
-    position: fixed !important; /* 使用 fixed 定位脫離正常文檔流 */
+    position: fixed !important;
+    /* 使用 fixed 定位脫離正常文檔流 */
     top: 0 !important;
     left: 0 !important;
-    width: 100vw !important; /* 覆蓋整個視窗 */
+    width: 100vw !important;
+    /* 覆蓋整個視窗 */
     height: 100vh !important;
-    display: none; /* 預設隱藏，只有 active 時才顯示 */
+    display: none;
+    /* 預設隱藏，只有 active 時才顯示 */
     opacity: 0;
     visibility: hidden;
-    z-index: 1000 !important; /* 非常高的 z-index 確保在最上層 */
-    background: rgba(0, 0, 0, 0.1); /* 輕微的半透明背景讓地圖若隱若現 */
+    z-index: 1000 !important;
+    /* 非常高的 z-index 確保在最上層 */
+    background: rgba(0, 0, 0, 0.1);
+    /* 輕微的半透明背景讓地圖若隱若現 */
     transition: all 0.3s ease-in-out;
 }
 
@@ -591,19 +611,23 @@ body {
     opacity: 1;
     visibility: visible;
     position: relative;
-    z-index: 1; /* 確保在地圖之上 */
+    z-index: 1;
+    /* 確保在地圖之上 */
 }
 
 .waiting-state.active {
-    display: flex !important; /* 只有 active 時才顯示 */
+    display: flex !important;
+    /* 只有 active 時才顯示 */
     opacity: 1 !important;
     visibility: visible !important;
-    position: fixed !important; /* 使用 fixed 定位 */
+    position: fixed !important;
+    /* 使用 fixed 定位 */
     top: 0 !important;
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
-    z-index: 1000 !important; /* 非常高的 z-index 確保在最上層 */
+    z-index: 1000 !important;
+    /* 非常高的 z-index 確保在最上層 */
 }
 
 /* 舊的等待狀態樣式已移除 - 使用新的設計 */
@@ -714,10 +738,13 @@ body {
 
 /* 動畫效果 */
 @keyframes pulseWave {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
         opacity: 1;
     }
+
     50% {
         transform: scale(1.2);
         opacity: 0.7;
@@ -725,8 +752,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Leaflet 地圖樣式調整 */
@@ -735,8 +767,9 @@ body {
 }
 
 .leaflet-control-container {
-    display: none !important; /* 隱藏地圖控制項 */
-} 
+    display: none !important;
+    /* 隱藏地圖控制項 */
+}
 
 /* 舊的結果頁面樣式已移除 - 使用新的設計 */
 
@@ -783,20 +816,54 @@ body {
 }
 
 /* 地圖圖層順序 */
-.main-map-background .leaflet-map-pane { z-index: 100 !important; }
-.main-map-background .leaflet-tile-pane { z-index: 110 !important; }
-.main-map-background .leaflet-overlay-pane { z-index: 120 !important; }
-.main-map-background .leaflet-shadow-pane { z-index: 130 !important; }
-.main-map-background .leaflet-marker-pane { z-index: 140 !important; }
-.main-map-background .leaflet-tooltip-pane { z-index: 150 !important; }
-.main-map-background .leaflet-popup-pane { z-index: 160 !important; }
+.main-map-background .leaflet-map-pane {
+    z-index: 100 !important;
+}
+
+.main-map-background .leaflet-tile-pane {
+    z-index: 110 !important;
+}
+
+.main-map-background .leaflet-overlay-pane {
+    z-index: 120 !important;
+}
+
+.main-map-background .leaflet-shadow-pane {
+    z-index: 130 !important;
+}
+
+.main-map-background .leaflet-marker-pane {
+    z-index: 140 !important;
+}
+
+.main-map-background .leaflet-tooltip-pane {
+    z-index: 150 !important;
+}
+
+.main-map-background .leaflet-popup-pane {
+    z-index: 160 !important;
+}
 
 /* 確保軌跡線和標記在地圖上方 */
-.trajectory-line { z-index: 200 !important; }
-.trajectory-marker { z-index: 210 !important; }
-.trajectory-day { z-index: 220 !important; }
-.trajectory-marker.current-location { z-index: 230 !important; }
-.trajectory-marker.current-location .trajectory-day { z-index: 240 !important; }
+.trajectory-line {
+    z-index: 200 !important;
+}
+
+.trajectory-marker {
+    z-index: 210 !important;
+}
+
+.trajectory-day {
+    z-index: 220 !important;
+}
+
+.trajectory-marker.current-location {
+    z-index: 230 !important;
+}
+
+.trajectory-marker.current-location .trajectory-day {
+    z-index: 240 !important;
+}
 
 /* 隱藏地圖控制項 */
 .main-map-background .leaflet-control-container {
@@ -810,7 +877,8 @@ body {
     left: 15px !important;
     width: 400px !important;
     min-height: 300px !important;
-    background: rgba(255, 255, 255, 0.6) !important;  /* 增加透明度 */
+    background: rgba(255, 255, 255, 0.6) !important;
+    /* 增加透明度 */
     border-radius: 12px !important;
     padding: 20px !important;
     z-index: 999999 !important;
@@ -874,11 +942,16 @@ body {
 /* 專門為國家名稱設定換行規則 */
 .result-info-panel .country-name,
 .country-name {
-    max-width: 300px !important;  /* 設定最大寬度 */
-    word-wrap: break-word !important;  /* 允許長單詞換行 */
-    overflow-wrap: break-word !important;  /* 現代瀏覽器的換行屬性 */
-    line-height: 1.2 !important;  /* 設定行高 */
-    display: inline-block !important;  /* 改為 inline-block 以支援寬度設定 */
+    max-width: 300px !important;
+    /* 設定最大寬度 */
+    word-wrap: break-word !important;
+    /* 允許長單詞換行 */
+    overflow-wrap: break-word !important;
+    /* 現代瀏覽器的換行屬性 */
+    line-height: 1.2 !important;
+    /* 設定行高 */
+    display: inline-block !important;
+    /* 改為 inline-block 以支援寬度設定 */
 }
 
 .day-label {
@@ -941,8 +1014,16 @@ body {
 }
 
 @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+
+    0%,
+    50% {
+        opacity: 1;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
 }
 
 /* 日期信息 */
@@ -1024,7 +1105,8 @@ body {
     align-items: center !important;
     gap: 8px !important;
     margin-bottom: 15px !important;
-    flex-wrap: wrap !important;  /* 允許換行 */
+    flex-wrap: wrap !important;
+    /* 允許換行 */
     /* 移除 white-space: nowrap，允許長文字換行 */
 }
 
@@ -1163,10 +1245,14 @@ body {
 }
 
 @keyframes typingCursor {
-    0%, 40% {
+
+    0%,
+    40% {
         opacity: 1;
     }
-    41%, 100% {
+
+    41%,
+    100% {
         opacity: 0;
     }
 }
@@ -1185,6 +1271,7 @@ body {
     from {
         opacity: 0.8;
     }
+
     to {
         opacity: 1;
     }
@@ -1204,32 +1291,33 @@ body {
 }
 
 /* DSI 800x480 螢幕調整 */
-@media (max-width: 800px), (max-height: 480px) {
+@media (max-width: 800px),
+(max-height: 480px) {
     .result-info-panel {
         padding: 15px !important;
         max-height: 420px !important;
     }
-    
+
     .city-name {
         font-size: 22px !important;
         letter-spacing: 1px !important;
     }
-    
+
     .country-flag {
         width: 24px !important;
         height: 18px !important;
     }
-    
+
     .country-name {
         font-size: 13px !important;
     }
-    
+
     .voice-loading-bar {
         padding: 12px 18px !important;
         min-height: 60px !important;
         max-height: 60px !important;
     }
-    
+
     .voice-loading-text {
         font-size: 14px !important;
         line-height: 1.3 !important;
@@ -1237,7 +1325,7 @@ body {
         max-height: 36px !important;
         overflow: hidden !important;
     }
-    
+
     .coordinates-text {
         font-size: 9px;
     }
@@ -1316,7 +1404,7 @@ body {
     font-size: 16px;
     text-align: center;
     color: #000000;
-    box-shadow: 
+    box-shadow:
         0 0 30px #000000,
         inset 0 0 20px #00000010;
     display: none;
@@ -1329,9 +1417,11 @@ body {
         opacity: 0;
         transform: translate(-50%, -50%) scale(0.5);
     }
+
     70% {
         transform: translate(-50%, -50%) scale(1.1);
     }
+
     100% {
         opacity: 1;
         transform: translate(-50%, -50%) scale(1);
@@ -1354,9 +1444,21 @@ body {
 }
 
 @keyframes dots-blink {
-    0%, 33% { opacity: 1; }
-    34%, 66% { opacity: 0.3; }
-    67%, 100% { opacity: 1; }
+
+    0%,
+    33% {
+        opacity: 1;
+    }
+
+    34%,
+    66% {
+        opacity: 0.3;
+    }
+
+    67%,
+    100% {
+        opacity: 1;
+    }
 }
 
 /* 彈出對話框背景遮罩 */
@@ -1373,7 +1475,7 @@ body {
 
 .popup-overlay.show {
     display: block;
-} 
+}
 
 /* === 等待畫面樣式 === */
 .waiting-state {
@@ -1396,7 +1498,8 @@ body {
     border-radius: 8px;
     padding: 30px 50px;
     text-align: center;
-    z-index: 250 !important; /* 確保在地圖所有元素之上 */
+    z-index: 250 !important;
+    /* 確保在地圖所有元素之上 */
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     display: block !important;
     visibility: visible !important;
@@ -1441,39 +1544,44 @@ body {
 }
 
 @keyframes titleBlink {
-    0%, 70% { 
+
+    0%,
+    70% {
         opacity: 1;
         text-shadow: 2px 2px 0px #FFD700;
     }
-    80%, 100% { 
+
+    80%,
+    100% {
         opacity: 0.3;
         text-shadow: 1px 1px 0px #FFD700;
     }
 }
 
 /* 800x480 螢幕調整 */
-@media (max-width: 800px), (max-height: 480px) {
+@media (max-width: 800px),
+(max-height: 480px) {
     .waiting-content-box {
         padding: 30px 40px;
         max-width: 600px;
     }
-    
+
     .press-button-title {
         font-size: 28px;
         letter-spacing: 2px;
     }
-    
+
     .press-button-subtitle {
         font-size: 12px;
         margin-bottom: 20px;
     }
-    
+
     .press-button-chinese {
         font-size: 14px;
     }
-} 
+}
 
-/* 舊的等待畫面地圖樣式已移除 */ 
+/* 舊的等待畫面地圖樣式已移除 */
 
 /* === Loading 畫面樣式 === */
 .loading-state {
@@ -1496,7 +1604,8 @@ body {
     border-radius: 8px;
     padding: 30px 50px;
     text-align: center;
-    z-index: 100 !important; /* 提高層級，確保在地圖之上 */
+    z-index: 100 !important;
+    /* 提高層級，確保在地圖之上 */
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
     display: block !important;
     visibility: visible !important;
@@ -1538,26 +1647,27 @@ body {
 /* 舊的loading畫面地圖樣式已移除 */
 
 /* 800x480 螢幕調整 */
-@media (max-width: 800px), (max-height: 480px) {
+@media (max-width: 800px),
+(max-height: 480px) {
     .loading-content-box {
         padding: 30px 40px;
         max-width: 600px;
     }
-    
+
     .locating-title {
         font-size: 28px;
         letter-spacing: 2px;
     }
-    
+
     .locating-progress {
         font-size: 14px;
         margin-bottom: 20px;
     }
-    
+
     .locating-subtitle {
         font-size: 12px;
     }
-} 
+}
 
 /* === 調試樣式 - 確保元素顯示 === */
 .result-state .result-info-panel,
@@ -1606,7 +1716,7 @@ body {
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-} 
+}
 
 /* 軌跡線和標記樣式 */
 .trajectory-marker {
@@ -1649,31 +1759,32 @@ body {
 }
 
 /* DSI 800x480 螢幕調整 */
-@media (max-width: 800px), (max-height: 480px) {
+@media (max-width: 800px),
+(max-height: 480px) {
     .map-zoom-controls {
         top: 15px !important;
         right: 15px !important;
         left: auto !important;
     }
-    
+
     .zoom-button {
         width: 35px;
         height: 35px;
         font-size: 16px;
     }
-    
+
     .trajectory-day {
         font-size: 9px;
         min-width: 38px;
         padding: 3px 6px;
     }
-    
+
     .trajectory-marker.current-location .trajectory-day {
         font-size: 11px;
         min-width: 44px;
         padding: 4px 8px;
     }
-} 
+}
 
 /* ===== 緊急調試樣式 - 確保浮動元素顯示 ===== */
 .result-state .result-info-panel,
@@ -1706,7 +1817,8 @@ body {
     left: 20px !important;
     right: 20px !important;
     background: rgba(0, 0, 0, 0.9) !important;
-    border: 3px solid blue !important; /* 緊急調試邊框 */
+    border: 3px solid blue !important;
+    /* 緊急調試邊框 */
     padding: 20px !important;
     pointer-events: auto !important;
     max-width: 800px !important;
@@ -1751,7 +1863,7 @@ body {
 #mainMapContainer * {
     z-index: 1 !important;
     max-z-index: 10 !important;
-} 
+}
 
 /* 結果資訊面板 - 顯示在地圖標記附近 */
 .result-info-panel {
@@ -1829,4 +1941,4 @@ body {
 /* 今日標記樣式 - 移除hover效果和動畫 */
 .today-marker {
     /* 移除所有hover效果和動畫 */
-} 
+}
