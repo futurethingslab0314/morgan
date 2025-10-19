@@ -16,6 +16,7 @@ class WakeUpMapGame {
                     id: 'thailand',
                     name: '泰國',
                     flag: '🇹🇭',
+                    code: 'BKK',
                     price: 2000,
                     distance: 1200,
                     unlocked: true
@@ -24,6 +25,7 @@ class WakeUpMapGame {
                     id: 'japan',
                     name: '日本',
                     flag: '🇯🇵',
+                    code: 'NRT',
                     price: 3000,
                     distance: 2100,
                     unlocked: true
@@ -32,6 +34,7 @@ class WakeUpMapGame {
                     id: 'korea',
                     name: '韓國',
                     flag: '🇰🇷',
+                    code: 'ICN',
                     price: 2500,
                     distance: 1800,
                     unlocked: true
@@ -40,6 +43,7 @@ class WakeUpMapGame {
                     id: 'singapore',
                     name: '新加坡',
                     flag: '🇸🇬',
+                    code: 'SIN',
                     price: 1500,
                     distance: 800,
                     unlocked: true
@@ -48,6 +52,7 @@ class WakeUpMapGame {
                     id: 'vietnam',
                     name: '越南',
                     flag: '🇻🇳',
+                    code: 'SGN',
                     price: 1800,
                     distance: 1000,
                     unlocked: true
@@ -230,10 +235,24 @@ class WakeUpMapGame {
 
     showTicketPreview(destination) {
         // 更新機票資訊
-        document.getElementById('selectedDestination').textContent = `${destination.flag} ${destination.name}`;
+        document.getElementById('selectedDestination').textContent = destination.name;
+        document.getElementById('destinationCode').textContent = destination.code || 'XXX';
         document.getElementById('ticketPrice').textContent = `NT$ ${destination.price.toLocaleString()}`;
         document.getElementById('departureDate').textContent = this.getCurrentDate();
+        document.getElementById('departureTime').textContent = '14:30';
         document.getElementById('arrivalTime').textContent = '隔天 08:00';
+
+        // 生成隨機的航班資訊
+        const flightNumber = `WU-${Math.floor(Math.random() * 9000) + 1000}`;
+        const seatNumber = `${Math.floor(Math.random() * 30) + 1}${String.fromCharCode(65 + Math.floor(Math.random() * 6))}`;
+        const gateNumber = `${String.fromCharCode(65 + Math.floor(Math.random() * 3))}${Math.floor(Math.random() * 20) + 1}`;
+        const ticketNumber = `WU${new Date().getFullYear()}${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
+
+        document.getElementById('flightNumber').textContent = flightNumber;
+        document.getElementById('seatNumber').textContent = seatNumber;
+        document.getElementById('gateNumber').textContent = gateNumber;
+        document.getElementById('ticketNumber').textContent = ticketNumber;
+        document.getElementById('barcodeNumber').textContent = ticketNumber;
 
         // 顯示機票確認視窗
         this.showTicketModal();

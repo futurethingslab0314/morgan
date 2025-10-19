@@ -193,23 +193,67 @@
                 </div>
                 <div class="modal-body">
                     <div class="ticket-card">
+                        <!-- 機票頭部 -->
                         <div class="ticket-header">
-                            <h3>✈️ 機票</h3>
+                            <div class="airline-info">
+                                <div class="airline-logo">✈️</div>
+                                <div class="airline-name">WAKE UP AIRLINES</div>
+                            </div>
                             <div class="ticket-price" id="ticketPrice">NT$ 0</div>
                         </div>
-                        <div class="ticket-route">
-                            <span class="from-city">台北 TPE</span>
-                            <span class="route-arrow">→</span>
-                            <span class="to-city" id="selectedDestination">目的地</span>
-                        </div>
-                        <div class="ticket-details">
-                            <div class="ticket-date">
-                                <div class="ticket-label">出發日期</div>
-                                <div class="ticket-value" id="departureDate">2025-01-20</div>
+                        
+                        <!-- 機票主要資訊 -->
+                        <div class="ticket-main-info">
+                            <div class="ticket-route">
+                                <div class="route-section">
+                                    <div class="city-code">TPE</div>
+                                    <div class="city-name">台北</div>
+                                    <div class="departure-time" id="departureTime">14:30</div>
+                                </div>
+                                <div class="route-arrow">✈️</div>
+                                <div class="route-section">
+                                    <div class="city-code" id="destinationCode">XXX</div>
+                                    <div class="city-name" id="selectedDestination">目的地</div>
+                                    <div class="arrival-time" id="arrivalTime">隔天 08:00</div>
+                                </div>
                             </div>
-                            <div class="ticket-arrival">
-                                <div class="ticket-label">抵達時間</div>
-                                <div class="ticket-value" id="arrivalTime">隔天 08:00</div>
+                            
+                            <!-- 航班詳細資訊 -->
+                            <div class="flight-details">
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">航班號</span>
+                                        <span class="detail-value" id="flightNumber">WU-2025</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">座位</span>
+                                        <span class="detail-value" id="seatNumber">12A</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">登機門</span>
+                                        <span class="detail-value" id="gateNumber">B12</span>
+                                    </div>
+                                </div>
+                                <div class="detail-row">
+                                    <div class="detail-item">
+                                        <span class="detail-label">出發日期</span>
+                                        <span class="detail-value" id="departureDate">2025-01-20</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">艙等</span>
+                                        <span class="detail-value">經濟艙</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">票號</span>
+                                        <span class="detail-value" id="ticketNumber">WU20250120001</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 條碼區域 -->
+                            <div class="ticket-barcode">
+                                <div class="barcode-text">||||| ||||| ||||| ||||| ||||| |||||</div>
+                                <div class="barcode-number" id="barcodeNumber">WU20250120001</div>
                             </div>
                         </div>
                     </div>
