@@ -71,7 +71,7 @@
                 <!-- 中央內容框 -->
                 <div class="waiting-content-box">
                     <h1 class="press-button-title blinking-text">PRESS THE BUTTON</h1>
-                    <p class="press-button-subtitle">TO LOCATE YOUR WAKEUP LOCATION</p>
+                    <p class="press-button-subtitle">IT IS TIME TO LAND</p>
                     <p class="press-button-chinese">按下按鈕，航班準備降落</p>
 
                     
@@ -105,7 +105,7 @@
             <div id="loadingState" class="state loading-state">
                 <!-- 中央內容框 -->
                 <div class="loading-content-box">
-                    <h1 class="locating-title blinking-text">LOCATING...</h1>
+                    <h1 class="locating-title blinking-text">LANDING...</h1>
                     <p class="locating-progress">請各位乘客繫好安全帶，航班準備降落......</p>
                     <p class="locating-subtitle">請按下按鈕，航班準備降落</p>
                 </div>
@@ -143,14 +143,6 @@
                         </div>
                     </div>
                     
-                    <!-- 航班資訊區塊 -->
-                    <div class="flight-info-bar">
-                        <div class="fuel-display">
-                            <span class="fuel-icon">⛽</span>
-                            <span class="fuel-label">Fuel:</span>
-                            <span id="fuelUsed" class="fuel-value">--</span>
-                        </div>
-                    </div>
                     
                     <!-- 故事文字容器 (移到白色框內) -->
                     <div class="story-container">
@@ -318,11 +310,6 @@
                 console.log('✈️ 新票券已生成', e.detail.ticket);
                 console.log('💰 當前 Fuel:', e.detail.currentFuel);
                 
-                // 可選：更新舊的 UI（保持兼容）
-                const fuelUsedEl = document.getElementById('fuelUsed');
-                if (fuelUsedEl) {
-                    fuelUsedEl.textContent = e.detail.ticket.fuelUsed;
-                }
             });
             
             console.log('✈️ wum-flight 初始化腳本已載入');
