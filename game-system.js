@@ -334,8 +334,8 @@ class WakeUpMapGame {
         // 隱藏遊戲開始畫面
         document.getElementById('gameStartState').classList.remove('active');
 
-        // 顯示等待狀態
-        document.getElementById('waitingState').classList.add('active');
+        // 顯示飛行地圖
+        this.showFlightMap();
 
         // 觸發遊戲開始事件
         window.dispatchEvent(new CustomEvent('gameStarted', {
@@ -346,6 +346,217 @@ class WakeUpMapGame {
         }));
 
         console.log('🎮 遊戲開始！', this.gameState.currentTicket);
+    }
+
+    showFlightMap() {
+        // 創建飛行地圖容器
+        const flightMapContainer = document.createElement('div');
+        flightMapContainer.id = 'flightMapContainer';
+        flightMapContainer.className = 'flight-map-container';
+
+        // 添加到結果狀態中
+        const resultState = document.getElementById('resultState');
+        if (resultState) {
+            resultState.appendChild(flightMapContainer);
+        }
+
+        // 初始化飛行地圖
+        this.initializeFlightMap();
+
+        // 顯示結果狀態
+        document.getElementById('resultState').classList.add('active');
+    }
+
+    initializeFlightMap() {
+        const destination = this.gameState.selectedDestination;
+        if (!destination) return;
+
+        // 台北座標
+        const taipeiCoords = [25.0330, 121.5654];
+
+        // 目的地座標（根據目的地ID設定）
+        const destinationCoords = this.getDestinationCoords(destination.id);
+
+        // 創建地圖
+        const map = L.map('flightMapContainer').setView(taipeiCoords, 3);
+
+        // 添加地圖瓦片
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 添加台北標記
+        const taipeiMarker = L.marker(taipeiCoords).addTo(map);
+        taipeiMarker.bindPopup(`
+            <div class="flight-popup">
+                <h3>✈️ 出發地</h3>
+                <p><strong>台北 TPE</strong></p>
+                <p>台灣</p>
+            </div>
+        `);
+
+        // 添加目的地標記
+        const destinationMarker = L.marker(destinationCoords).addTo(map);
+        destinationMarker.bindPopup(`
+            <div class="flight-popup">
+                <h3>🎯 目的地</h3>
+                <p><strong>${destination.name}</strong></p>
+                <p>${destination.flag}</p>
+            </div>
+        `);
+
+        // 添加航線
+        const flightPath = L.polyline([taipeiCoords, destinationCoords], {
+            color: '#ff6b35',
+            weight: 3,
+            opacity: 0.8,
+            dashArray: '10, 10'
+        }).addTo(map);
+
+        // 計算距離
+        const distance = this.calculateDistance(taipeiCoords, destinationCoords);
+
+        // 添加飛行狀態懸浮視窗
+        this.addFlightStatusPopup(map, distance, destination);
+
+        // 調整地圖視圖以包含兩個點
+        const group = new L.featureGroup([taipeiMarker, destinationMarker]);
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+
+    getDestinationCoords(destinationId) {
+        // 根據目的地ID返回座標
+        const coords = {
+            'thailand': [13.7563, 100.5018], // 曼谷
+            'japan': [35.6762, 139.6503], // 東京
+            'korea': [37.5665, 126.9780], // 首爾
+            'singapore': [1.3521, 103.8198], // 新加坡
+            'vietnam': [10.8231, 106.6297] // 胡志明市
+        };
+        return coords[destinationId] || [13.7563, 100.5018]; // 預設曼谷
+    }
+
+    calculateDistance(coord1, coord2) {
+        const R = 6371; // 地球半徑（公里）
+        const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
+        const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(coord1[0] * Math.PI / 180) * Math.cos(coord2[0] * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return Math.round(R * c);
+    }
+
+    addFlightStatusPopup(map, distance, destination) {
+        // 創建飛行狀態懸浮視窗（右上角）
+        const flightStatus = document.createElement('div');
+        flightStatus.className = 'flight-status-popup';
+        flightStatus.innerHTML = `
+            <div class="flight-status-content">
+                <h3>✈️ 飛行狀態</h3>
+                <div class="flight-info">
+                    <div class="info-item">
+                        <span class="label">目的地：</span>
+                        <span class="value">${destination.flag} ${destination.name}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">距離：</span>
+                        <span class="value">${distance.toLocaleString()} 公里</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">狀態：</span>
+                        <span class="value flight-status">準備起飛</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">預計飛行時間：</span>
+                        <span class="value">${Math.round(distance / 800)} 小時</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 創建資源顯示（右下角）
+        const resourceDisplay = document.createElement('div');
+        resourceDisplay.className = 'resource-display-popup';
+        resourceDisplay.innerHTML = `
+            <div class="resource-display-content">
+                <h3>💰 資源</h3>
+                <div class="resource-info">
+                    <div class="resource-item">
+                        <span class="resource-label">💰 Money:</span>
+                        <span class="resource-value" id="flightMoney">${this.gameState.money.toLocaleString()}</span>
+                    </div>
+                    <div class="resource-item">
+                        <span class="resource-label">⛽ Fuel:</span>
+                        <span class="resource-value" id="flightFuel">${this.gameState.fuel}/1000</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 創建簡單機票（左下角）
+        const simpleTicket = document.createElement('div');
+        simpleTicket.className = 'simple-ticket-popup';
+        simpleTicket.innerHTML = `
+            <div class="simple-ticket-content">
+                <div class="ticket-header">
+                    <span class="airline-icon">✈️</span>
+                    <span class="airline-name">WAKE UP</span>
+                </div>
+                <div class="ticket-route">
+                    <div class="from">TPE</div>
+                    <div class="arrow">→</div>
+                    <div class="to">${destination.code || 'XXX'}</div>
+                </div>
+                <div class="ticket-details">
+                    <div class="detail-item">
+                        <span class="detail-label">FLIGHT</span>
+                        <span class="detail-value">WU-${Math.floor(Math.random() * 9000) + 1000}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">DATE</span>
+                        <span class="detail-value">${new Date().toISOString().split('T')[0]}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">GATE</span>
+                        <span class="detail-value">${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">SEAT</span>
+                        <span class="detail-value">${Math.floor(Math.random() * 30) + 1}${String.fromCharCode(65 + Math.floor(Math.random() * 6))}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 添加到地圖容器
+        const mapContainer = document.getElementById('flightMapContainer');
+        if (mapContainer) {
+            mapContainer.appendChild(flightStatus);
+            mapContainer.appendChild(resourceDisplay);
+            mapContainer.appendChild(simpleTicket);
+        }
+
+        // 模擬飛行狀態更新
+        this.simulateFlightStatus(flightStatus, distance);
+    }
+
+    simulateFlightStatus(flightStatusElement, distance) {
+        const statusElement = flightStatusElement.querySelector('.flight-status');
+        const statuses = ['準備起飛', '正在滑行', '起飛中', '爬升中', '巡航中', '下降中', '即將降落', '已降落'];
+        let currentStatus = 0;
+
+        const updateStatus = () => {
+            if (currentStatus < statuses.length) {
+                statusElement.textContent = statuses[currentStatus];
+                statusElement.className = `value flight-status status-${currentStatus}`;
+                currentStatus++;
+                setTimeout(updateStatus, 2000); // 每2秒更新一次
+            }
+        };
+
+        updateStatus();
     }
 
     showGameStartMessage() {
