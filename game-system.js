@@ -179,6 +179,16 @@ class WakeUpMapGame {
 
             grid.appendChild(button);
         });
+
+        // 添加「待解鎖...」選項
+        const lockedOption = document.createElement('div');
+        lockedOption.className = 'destination-option locked-option';
+        lockedOption.innerHTML = `
+            <div class="dest-flag">🔒</div>
+            <div class="dest-name">待解鎖...</div>
+            <div class="dest-price">敬請期待</div>
+        `;
+        grid.appendChild(lockedOption);
     }
 
     showDestinationModal() {
@@ -235,24 +245,35 @@ class WakeUpMapGame {
 
     showTicketPreview(destination) {
         // 更新機票資訊
-        document.getElementById('selectedDestination').textContent = destination.name;
-        document.getElementById('destinationCode').textContent = destination.code || 'XXX';
-        document.getElementById('ticketPrice').textContent = `NT$ ${destination.price.toLocaleString()}`;
-        document.getElementById('departureDate').textContent = this.getCurrentDate();
-        document.getElementById('departureTime').textContent = '14:30';
-        document.getElementById('arrivalTime').textContent = '隔天 08:00';
+        const selectedDestinationEl = document.getElementById('selectedDestination');
+        const destinationCodeEl = document.getElementById('destinationCode');
+        const ticketPriceEl = document.getElementById('ticketPrice');
+        const departureDateEl = document.getElementById('departureDate');
+        const departureTimeEl = document.getElementById('departureTime');
+        const arrivalTimeEl = document.getElementById('arrivalTime');
+
+        if (selectedDestinationEl) selectedDestinationEl.textContent = destination.name;
+        if (destinationCodeEl) destinationCodeEl.textContent = destination.code || 'XXX';
+        if (ticketPriceEl) ticketPriceEl.textContent = `NT$ ${destination.price.toLocaleString()}`;
+        if (departureDateEl) departureDateEl.textContent = this.getCurrentDate();
+        if (departureTimeEl) departureTimeEl.textContent = '11:30';
+        if (arrivalTimeEl) arrivalTimeEl.textContent = '隔天 08:00';
 
         // 生成隨機的航班資訊
         const flightNumber = `WU-${Math.floor(Math.random() * 9000) + 1000}`;
         const seatNumber = `${Math.floor(Math.random() * 30) + 1}${String.fromCharCode(65 + Math.floor(Math.random() * 6))}`;
-        const gateNumber = `${String.fromCharCode(65 + Math.floor(Math.random() * 3))}${Math.floor(Math.random() * 20) + 1}`;
+        const gateNumber = `${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}`;
         const ticketNumber = `WU${new Date().getFullYear()}${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`;
 
-        document.getElementById('flightNumber').textContent = flightNumber;
-        document.getElementById('seatNumber').textContent = seatNumber;
-        document.getElementById('gateNumber').textContent = gateNumber;
-        document.getElementById('ticketNumber').textContent = ticketNumber;
-        document.getElementById('barcodeNumber').textContent = ticketNumber;
+        const flightNumberEl = document.getElementById('flightNumber');
+        const seatNumberEl = document.getElementById('seatNumber');
+        const gateNumberEl = document.getElementById('gateNumber');
+        const barcodeNumberEl = document.getElementById('barcodeNumber');
+
+        if (flightNumberEl) flightNumberEl.textContent = flightNumber;
+        if (seatNumberEl) seatNumberEl.textContent = seatNumber;
+        if (gateNumberEl) gateNumberEl.textContent = gateNumber;
+        if (barcodeNumberEl) barcodeNumberEl.textContent = ticketNumber;
 
         // 顯示機票確認視窗
         this.showTicketModal();

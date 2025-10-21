@@ -2065,12 +2065,14 @@ body {
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-/* 資源條 */
+/* 資源條 - 左右排列 */
 .game-resources {
     display: flex;
+    flex-direction: row;
     gap: 30px;
     margin-bottom: 40px;
     justify-content: center;
+    align-items: center;
 }
 
 .resource-bar {
@@ -2078,6 +2080,8 @@ body {
     flex-direction: column;
     align-items: center;
     min-width: 200px;
+    max-width: 250px;
+    width: 100%;
 }
 
 .resource-bar .resource-icon {
@@ -2173,6 +2177,32 @@ body {
     opacity: 0.6;
 }
 
+/* 待解鎖選項樣式 */
+.destination-option.locked-option {
+    background: linear-gradient(135deg, #ddd, #bbb);
+    cursor: not-allowed;
+    opacity: 0.6;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 閃爍動畫已移除 */
+
+.locked-option .dest-flag {
+    font-size: 1.5rem;
+    opacity: 0.7;
+}
+
+.locked-option .dest-name {
+    color: #666;
+    font-style: italic;
+}
+
+.locked-option .dest-price {
+    color: #888;
+    font-size: 0.9rem;
+}
+
 /* 機票預覽 */
 .ticket-preview {
     background: linear-gradient(135deg, #f8f9fa, #e9ecef);
@@ -2182,13 +2212,7 @@ body {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 }
 
-.ticket-card {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
+/* 舊的 ticket-card 樣式已移除，使用新的 boarding-pass 樣式 */
 
 .ticket-header {
     display: flex;
@@ -2286,7 +2310,7 @@ body {
     background: linear-gradient(135deg, #00d4ff, #0099cc);
     border: none;
     border-radius: 15px;
-    padding: 25px 40px;
+    padding: 25px 60px;
     color: white;
     font-size: 1.2rem;
     font-weight: bold;
@@ -2297,13 +2321,46 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    min-width: 200px;
+    min-width: 300px;
+    max-width: 400px;
+    width: 100%;
 }
 
 .start-journey-button:hover {
     transform: translateY(-3px);
     box-shadow: 0 12px 35px rgba(0, 212, 255, 0.4);
     background: linear-gradient(135deg, #00b8e6, #007aa3);
+}
+
+/* 開始旅程按鈕閃爍效果 */
+.start-journey-button {
+    position: relative;
+    overflow: hidden;
+}
+
+.start-journey-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: buttonShimmer 3s ease-in-out infinite;
+}
+
+@keyframes buttonShimmer {
+    0% {
+        left: -100%;
+    }
+
+    50% {
+        left: 100%;
+    }
+
+    100% {
+        left: 100%;
+    }
 }
 
 .button-icon {
@@ -2406,21 +2463,223 @@ body {
     color: #dc3545;
 }
 
-/* 機票內容特殊樣式 - 長型設計 */
+/* 橫向登機證設計 */
 .ticket-content {
-    max-width: 700px;
+    max-width: 900px;
     width: 95%;
 }
 
-.ticket-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-    border-radius: 15px;
-    padding: 25px;
-    margin-bottom: 25px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border: 2px solid #e9ecef;
-    position: relative;
+.boarding-pass {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     overflow: hidden;
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* 頂部橫幅 */
+.boarding-header {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.airline-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.airline-icon {
+    font-size: 1.5rem;
+}
+
+.boarding-text {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+/* 主要內容區域 - 橫向佈局 */
+.boarding-content {
+    display: flex;
+    align-items: center;
+    padding: 25px 20px;
+    background: white;
+    position: relative;
+}
+
+.departure-info,
+.arrival-info {
+    flex: 1;
+    text-align: center;
+    padding: 0 15px;
+}
+
+.from-label,
+.to-label {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.city-code {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+}
+
+.city-name {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+.departure-time,
+.arrival-time {
+    font-size: 0.9rem;
+    color: #777;
+    font-weight: 500;
+}
+
+/* 中間虛線連接 */
+.flight-route {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    padding: 0 20px;
+}
+
+.route-dots {
+    font-size: 1.2rem;
+    color: #ccc;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+}
+
+.plane-icon {
+    font-size: 1.5rem;
+    color: #ff6b35;
+    animation: planeMove 2s ease-in-out infinite;
+}
+
+@keyframes planeMove {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    50% {
+        transform: translateX(5px);
+    }
+}
+
+/* 乘客資訊區域 */
+.passenger-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-top: 1px solid #eee;
+}
+
+.passenger-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.flight-info {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+}
+
+.info-item {
+    text-align: center;
+    flex: 1;
+}
+
+.info-label {
+    display: block;
+    font-size: 0.7rem;
+    color: #666;
+    margin-bottom: 3px;
+    font-weight: 500;
+}
+
+.info-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333;
+}
+
+/* 條碼區域 */
+.barcode-section {
+    background: #f8f9fa;
+    padding: 15px;
+    text-align: center;
+    border-top: 1px solid #ddd;
+}
+
+.vertical-barcode {
+    font-family: 'Courier New', monospace;
+    font-size: 1.3rem;
+    color: #333;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.barcode-number {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #666;
+    letter-spacing: 1px;
+}
+
+/* 機票動作按鈕區域重新設計 */
+.ticket-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+.price-section {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.ticket-price {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #333;
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    position: static;
+}
+
+.button-section {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
 }
 
 /* 機票頭部 */
@@ -2644,47 +2903,9 @@ body {
     }
 }
 
-/* 機票邊框裝飾和水印效果 */
-.ticket-card {
-    position: relative;
-}
+/* 舊的 ticket-card 樣式已移除，使用新的 boarding-pass 樣式 */
 
-.ticket-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #007bff, #28a745, #ffc107, #dc3545, #6f42c1);
-    border-radius: 15px 15px 0 0;
-    z-index: 1;
-}
-
-.ticket-card::after {
-    content: 'WAKE UP AIRLINES';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 3rem;
-    color: rgba(0, 123, 255, 0.05);
-    font-weight: bold;
-    letter-spacing: 5px;
-    z-index: 0;
-    pointer-events: none;
-    white-space: nowrap;
-}
-
-/* 機票動作按鈕區域 */
-.ticket-actions {
-    display: flex;
-    gap: 15px;
-    justify-content: center;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 2px solid #e9ecef;
-}
+/* 舊的按鈕樣式已移除，使用新的設計 */
 
 .confirm-button,
 .change-button {
