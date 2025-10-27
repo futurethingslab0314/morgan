@@ -12,6 +12,7 @@ class WakeUpMapGame {
             currentDay: 1,
             selectedDestination: null,
             destinations: [
+                // 亞洲線（近距離航線）- 1天抵達
                 {
                     id: 'thailand',
                     name: '泰國',
@@ -19,6 +20,8 @@ class WakeUpMapGame {
                     code: 'BKK',
                     price: 2000,
                     distance: 1200,
+                    region: 'ASIA',
+                    daysToArrive: 1,
                     unlocked: true
                 },
                 {
@@ -28,6 +31,8 @@ class WakeUpMapGame {
                     code: 'NRT',
                     price: 3000,
                     distance: 2100,
+                    region: 'ASIA',
+                    daysToArrive: 1,
                     unlocked: true
                 },
                 {
@@ -37,6 +42,8 @@ class WakeUpMapGame {
                     code: 'ICN',
                     price: 2500,
                     distance: 1800,
+                    region: 'ASIA',
+                    daysToArrive: 1,
                     unlocked: true
                 },
                 {
@@ -46,6 +53,8 @@ class WakeUpMapGame {
                     code: 'SIN',
                     price: 1500,
                     distance: 800,
+                    region: 'ASIA',
+                    daysToArrive: 1,
                     unlocked: true
                 },
                 {
@@ -55,7 +64,66 @@ class WakeUpMapGame {
                     code: 'SGN',
                     price: 1800,
                     distance: 1000,
+                    region: 'ASIA',
+                    daysToArrive: 1,
                     unlocked: true
+                },
+                // 中距離航線 - 2天抵達
+                {
+                    id: 'india',
+                    name: '印度',
+                    flag: '🇮🇳',
+                    code: 'DEL',
+                    price: 4000,
+                    distance: 3500,
+                    region: 'MID',
+                    daysToArrive: 2,
+                    unlocked: false
+                },
+                {
+                    id: 'dubai',
+                    name: '杜拜',
+                    flag: '🇦🇪',
+                    code: 'DXB',
+                    price: 5000,
+                    distance: 4200,
+                    region: 'MID',
+                    daysToArrive: 2,
+                    unlocked: false
+                },
+                {
+                    id: 'australia',
+                    name: '澳洲',
+                    flag: '🇦🇺',
+                    code: 'SYD',
+                    price: 6000,
+                    distance: 4800,
+                    region: 'MID',
+                    daysToArrive: 2,
+                    unlocked: false
+                },
+                // 長距離航線 - 3天抵達
+                {
+                    id: 'london',
+                    name: '倫敦',
+                    flag: '🇬🇧',
+                    code: 'LHR',
+                    price: 8000,
+                    distance: 7200,
+                    region: 'LONG',
+                    daysToArrive: 3,
+                    unlocked: false
+                },
+                {
+                    id: 'newyork',
+                    name: '紐約',
+                    flag: '🇺🇸',
+                    code: 'JFK',
+                    price: 9000,
+                    distance: 8500,
+                    region: 'LONG',
+                    daysToArrive: 3,
+                    unlocked: false
                 }
             ],
             currentTicket: null,
@@ -155,6 +223,11 @@ class WakeUpMapGame {
         document.getElementById('ticketModalOverlay')?.addEventListener('click', () => {
             this.hideTicketModal();
         });
+
+        // 巴特按鈕事件
+        document.getElementById('battButton')?.addEventListener('click', () => {
+            this.handleBattClick();
+        });
     }
 
     renderDestinationGrid() {
@@ -171,6 +244,7 @@ class WakeUpMapGame {
                 <div class="dest-flag">${dest.flag}</div>
                 <div class="dest-name">${dest.name}</div>
                 <div class="dest-price">NT$ ${dest.price.toLocaleString()}</div>
+                <div class="dest-info">${dest.region} • ${dest.daysToArrive}天</div>
             `;
 
             if (!dest.unlocked) {
@@ -257,7 +331,20 @@ class WakeUpMapGame {
         if (ticketPriceEl) ticketPriceEl.textContent = `NT$ ${destination.price.toLocaleString()}`;
         if (departureDateEl) departureDateEl.textContent = this.getCurrentDate();
         if (departureTimeEl) departureTimeEl.textContent = '11:30';
-        if (arrivalTimeEl) arrivalTimeEl.textContent = '隔天 08:00';
+
+        // 根據飛行天數計算到達時間
+        let arrivalTimeText;
+        if (destination.daysToArrive === 1) {
+            arrivalTimeText = '隔天 08:00';
+        } else if (destination.daysToArrive === 2) {
+            arrivalTimeText = '後天 08:00';
+        } else if (destination.daysToArrive === 3) {
+            arrivalTimeText = '3天後 08:00';
+        } else {
+            arrivalTimeText = `${destination.daysToArrive}天後 08:00`;
+        }
+
+        if (arrivalTimeEl) arrivalTimeEl.textContent = arrivalTimeText;
 
         // 生成隨機的航班資訊
         const flightNumber = `WU-${Math.floor(Math.random() * 9000) + 1000}`;
@@ -469,8 +556,8 @@ class WakeUpMapGame {
                         <span class="value flight-status">準備起飛</span>
                     </div>
                     <div class="info-item">
-                        <span class="label">預計飛行時間：</span>
-                        <span class="value">${Math.round(distance / 800)} 小時</span>
+                        <span class="label">預計到達時間：</span>
+                        <span class="value" id="estimatedArrivalTime">計算中...</span>
                     </div>
                 </div>
             </div>
@@ -538,8 +625,31 @@ class WakeUpMapGame {
             mapContainer.appendChild(simpleTicket);
         }
 
+
+        // 計算並顯示預計到達時間
+        this.updateEstimatedArrivalTime(destination);
+
         // 模擬飛行狀態更新
         this.simulateFlightStatus(flightStatus, distance);
+    }
+
+    updateEstimatedArrivalTime(destination) {
+        const arrivalTimeElement = document.getElementById('estimatedArrivalTime');
+        if (!arrivalTimeElement) return;
+
+        // 根據飛行天數計算到達時間
+        let arrivalTimeText;
+        if (destination.daysToArrive === 1) {
+            arrivalTimeText = '明天 08:00';
+        } else if (destination.daysToArrive === 2) {
+            arrivalTimeText = '後天 08:00';
+        } else if (destination.daysToArrive === 3) {
+            arrivalTimeText = '3天後 08:00';
+        } else {
+            arrivalTimeText = `${destination.daysToArrive}天後 08:00`;
+        }
+
+        arrivalTimeElement.textContent = arrivalTimeText;
     }
 
     simulateFlightStatus(flightStatusElement, distance) {
@@ -559,19 +669,240 @@ class WakeUpMapGame {
         updateStatus();
     }
 
+    // 檢查是否準時（正負10分鐘）
+    checkPunctuality() {
+        console.log('🔍 開始檢查準時性...');
+
+        // 使用系統時間
+        const currentTime = new Date();
+        console.log('🕐 使用系統時間:', currentTime);
+
+        // 計算預計到達時間（根據目的地天數）
+        const targetArrivalTime = this.calculateTargetArrivalTime();
+        console.log('🎯 預計到達時間:', targetArrivalTime);
+
+        const currentHour = currentTime.getHours();
+        const currentMinute = currentTime.getMinutes();
+        const targetHour = targetArrivalTime.getHours();
+        const targetMinute = targetArrivalTime.getMinutes();
+
+        // 檢查日期是否相同
+        const currentDate = currentTime.toDateString();
+        const targetDate = targetArrivalTime.toDateString();
+        const isSameDate = currentDate === targetDate;
+
+        console.log(`📅 日期檢查: 當前日期 ${currentDate}, 目標日期 ${targetDate}, 是否同一天 ${isSameDate}`);
+
+        if (!isSameDate) {
+            console.log('❌ 日期不同，視為遲到');
+            return 'LATE';
+        }
+
+        // 計算時間差（分鐘）
+        const currentTotalMinutes = currentHour * 60 + currentMinute;
+        const targetTotalMinutes = targetHour * 60 + targetMinute;
+        const timeDifference = Math.abs(currentTotalMinutes - targetTotalMinutes);
+
+        console.log(`🕐 時間檢查: 當前 ${currentHour}:${currentMinute.toString().padStart(2, '0')}, 目標 ${targetHour}:${targetMinute.toString().padStart(2, '0')}, 差異 ${timeDifference} 分鐘`);
+
+        if (timeDifference <= 10) {
+            console.log('✅ 準時！');
+            return 'ON_TIME';
+        } else {
+            console.log('❌ 遲到！');
+            return 'LATE';
+        }
+    }
+
+    // 計算預計到達時間
+    calculateTargetArrivalTime() {
+        if (!this.gameState.selectedDestination) {
+            // 如果沒有選擇目的地，使用預設的08:00
+            const now = new Date();
+            now.setHours(8, 0, 0, 0);
+            return now;
+        }
+
+        const destination = this.gameState.selectedDestination;
+        const now = new Date();
+
+        // 根據飛行天數計算到達時間
+        if (destination.daysToArrive === 1) {
+            // 明天8:00
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(8, 0, 0, 0);
+            return tomorrow;
+        } else if (destination.daysToArrive === 2) {
+            // 後天8:00
+            const dayAfterTomorrow = new Date(now);
+            dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+            dayAfterTomorrow.setHours(8, 0, 0, 0);
+            return dayAfterTomorrow;
+        } else if (destination.daysToArrive === 3) {
+            // 3天後8:00
+            const threeDaysLater = new Date(now);
+            threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+            threeDaysLater.setHours(8, 0, 0, 0);
+            return threeDaysLater;
+        } else {
+            // 其他天數
+            const arrivalDate = new Date(now);
+            arrivalDate.setDate(arrivalDate.getDate() + destination.daysToArrive);
+            arrivalDate.setHours(8, 0, 0, 0);
+            return arrivalDate;
+        }
+    }
+
+    // 巴特按鈕點擊處理
+    handleBattClick() {
+        console.log('🎯 巴特按鈕被點擊');
+
+        const punctuality = this.checkPunctuality();
+        const statusElement = document.querySelector('.flight-status');
+
+        if (!statusElement) {
+            console.log('❌ 找不到飛行狀態元素');
+            return;
+        }
+
+        if (punctuality === 'ON_TIME') {
+            // 準時降落
+            statusElement.textContent = '準時降落';
+            statusElement.className = 'value flight-status on-time';
+            console.log('✅ 準時降落！');
+
+            // 顯示成功訊息
+            alert('✈️ 準時降落\n\n恭喜！您準時抵達目的地！');
+        } else {
+            // 遇到亂流
+            statusElement.textContent = '飛機遇到亂流還在飛行中';
+            statusElement.className = 'value flight-status turbulence';
+            console.log('⚠️ 飛機遇到亂流，還在飛行中');
+
+            // 顯示亂流訊息
+            alert('✈️ 遇到亂流\n\n飛機遇到亂流，請稍後再試！');
+        }
+    }
+
+    setupTimeControls() {
+        const updateTimeBtn = document.getElementById('updateTime');
+        const customDate = document.getElementById('customDate');
+        const customTime = document.getElementById('customTime');
+
+        if (updateTimeBtn && customDate && customTime) {
+            updateTimeBtn.addEventListener('click', () => {
+                const selectedDate = customDate.value;
+                const selectedTime = customTime.value;
+
+                if (selectedDate && selectedTime) {
+                    // 創建自定義日期時間
+                    const customDateTime = new Date(`${selectedDate}T${selectedTime}`);
+
+                    // 更新遊戲狀態中的時間
+                    this.gameState.customDateTime = customDateTime;
+
+                    // 更新頁面顯示
+                    this.updateDateTimeDisplay(customDateTime);
+
+                    // 顯示成功訊息
+                    this.showTimeUpdateMessage(customDateTime);
+                }
+            });
+        }
+    }
+
+    updateDateTimeDisplay(customDateTime) {
+        // 更新主頁面的日期顯示
+        const wakeupDateEl = document.getElementById('wakeupDate');
+        if (wakeupDateEl) {
+            const options = {
+                month: '2-digit',
+                day: '2-digit',
+                year: 'numeric',
+                weekday: 'short'
+            };
+            wakeupDateEl.textContent = customDateTime.toLocaleDateString('zh-TW', options);
+        }
+
+        // 更新其他可能需要時間的地方
+        console.log('🕐 時間已更新為:', customDateTime.toLocaleString('zh-TW'));
+    }
+
+    showTimeUpdateMessage(customDateTime) {
+        // 創建臨時提示訊息
+        const message = document.createElement('div');
+        message.className = 'time-update-message';
+        message.innerHTML = `
+            <div class="message-content">
+                ✅ 時間已更新為：${customDateTime.toLocaleString('zh-TW')}
+            </div>
+        `;
+
+        document.body.appendChild(message);
+
+        // 3秒後移除訊息
+        setTimeout(() => {
+            if (message.parentNode) {
+                message.parentNode.removeChild(message);
+            }
+        }, 3000);
+    }
+
     showGameStartMessage() {
         const destination = this.gameState.selectedDestination;
+
+        // 根據飛行天數計算到達時間
+        let arrivalTimeText;
+        if (destination.daysToArrive === 1) {
+            arrivalTimeText = '隔天 08:00';
+        } else if (destination.daysToArrive === 2) {
+            arrivalTimeText = '後天 08:00';
+        } else if (destination.daysToArrive === 3) {
+            arrivalTimeText = '3天後 08:00';
+        } else {
+            arrivalTimeText = `${destination.daysToArrive}天後 08:00`;
+        }
+
         const message = `
             ✈️ 機票購買成功！
             
             🎫 目的地：${destination.flag} ${destination.name}
             💰 花費：NT$ ${destination.price.toLocaleString()}
-            🕐 抵達時間：隔天 08:00
+            🕐 抵達時間：${arrivalTimeText}
+            📍 區域：${destination.region} (${destination.daysToArrive}天航程)
             
             🎮 本週旅程即將開始！
         `;
 
         alert(message);
+    }
+
+    setupCompactTimeControls() {
+        const updateTimeBtn = document.getElementById('updateTime');
+        const customDate = document.getElementById('customDate');
+        const customTime = document.getElementById('customTime');
+
+        if (updateTimeBtn && customDate && customTime) {
+            updateTimeBtn.addEventListener('click', () => {
+                const selectedDate = customDate.value;
+                const selectedTime = customTime.value;
+
+                if (selectedDate && selectedTime) {
+                    // 創建自定義日期時間
+                    const customDateTime = new Date(`${selectedDate}T${selectedTime}`);
+
+                    // 更新遊戲狀態中的時間
+                    this.gameState.customDateTime = customDateTime;
+
+                    // 更新頁面顯示
+                    this.updateDateTimeDisplay(customDateTime);
+
+                    // 顯示成功訊息
+                    this.showTimeUpdateMessage(customDateTime);
+                }
+            });
+        }
     }
 
     updateResourceDisplay() {

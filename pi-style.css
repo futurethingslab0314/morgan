@@ -3476,6 +3476,176 @@ body {
     }
 }
 
+/* 左上角時間控制樣式 */
+.date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.date-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.time-controls-compact {
+    margin-top: 8px;
+}
+
+.time-control-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.time-input-compact {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.time-input-compact:focus {
+    outline: none;
+    border-color: #ff6b35;
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.1);
+}
+
+.time-update-btn-compact {
+    padding: 4px 8px;
+    background: linear-gradient(135deg, #ff6b35, #ff8c42);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.time-update-btn-compact:hover {
+    background: linear-gradient(135deg, #ff8c42, #ff6b35);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+}
+
+.time-update-btn-compact:active {
+    transform: translateY(0);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .time-control-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .time-input-compact {
+        width: 100%;
+    }
+
+    .time-update-btn-compact {
+        width: 100%;
+    }
+}
+
+/* 舊的時間控制樣式（保留以防需要） */
+.time-controls {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+.time-control-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.time-control-item label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    min-width: 60px;
+}
+
+.time-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.time-input:focus {
+    outline: none;
+    border-color: #ff6b35;
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+.time-update-btn {
+    width: 100%;
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #ff6b35, #ff8c42);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 5px;
+}
+
+.time-update-btn:hover {
+    background: linear-gradient(135deg, #ff8c42, #ff6b35);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.time-update-btn:active {
+    transform: translateY(0);
+}
+
+/* 時間更新訊息 */
+.time-update-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    animation: messageSlideIn 0.3s ease-out;
+}
+
+.message-content {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(40, 167, 69, 0.3);
+    font-weight: 600;
+    text-align: center;
+}
+
+@keyframes messageSlideIn {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
 /* 響應式設計 */
 @media (max-width: 768px) {
     .flight-status-popup {
@@ -3484,6 +3654,17 @@ body {
         left: 10px;
         min-width: auto;
         max-width: none;
+    }
+
+    .time-control-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 5px;
+    }
+
+    .time-control-item label {
+        min-width: auto;
+        text-align: left;
     }
 
     .resource-display-popup {

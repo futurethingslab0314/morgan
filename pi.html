@@ -139,8 +139,17 @@
                     <!-- 移除 Day counter 顯示 -->
                     
                     <div class="date-info">
-                        <span class="date-label">Date:</span>
-                        <span id="wakeupDate" class="date-value">07/25/2025 Fri</span>
+                        <div class="date-display">
+                            <span class="date-label">Date:</span>
+                            <span id="wakeupDate" class="date-value">07/25/2025 Fri</span>
+                        </div>
+                        <div class="time-controls-compact">
+                            <div class="time-control-row">
+                                <input type="date" id="customDate" class="time-input-compact" value="${new Date().toISOString().split('T')[0]}">
+                                <input type="time" id="customTime" class="time-input-compact" value="${new Date().toTimeString().slice(0, 5)}">
+                                <button id="updateTime" class="time-update-btn-compact">更新</button>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- 語音問候已隱藏 -->
@@ -510,6 +519,11 @@
                     characterData: true,
                     subtree: true
                 });
+            }
+            
+            // 初始化時間控制
+            if (window.gameSystem) {
+                window.gameSystem.setupCompactTimeControls();
             }
             
             // 確保地圖初始化
