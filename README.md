@@ -3,7 +3,7 @@
 #### 小挑戰練習：
 請將這份wakeupmap-pi, branch: yutingpi02版本，下載複製成一個新的branch或是開一個新的repository。
 #### repository說明
-repository意思是儲存空間。
+repository意思是儲存空間oo。
 
 #### 如果我之前下載過且將基本環境都設置過，會怎麼辦？
 不需要進行raspberry pi 的基本環境建置，只需要把自己的改完的github 程式碼成功下載至自己的raspberrypi，以及更改 .env, desktop設定即完成。
