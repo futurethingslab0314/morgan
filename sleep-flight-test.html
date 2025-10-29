@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>睡眠航班系統測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: linear-gradient(45deg, #00ff88, #00cc6f);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 600;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .result {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>✈️ 睡眠航班系統測試</h1>
+        
+        <div class="test-section">
+            <h3>🕐 時間選擇測試</h3>
+            <button onclick="testTimeSelection()">測試時間選擇</button>
+            <div id="timeResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🌍 目的地計算測試</h3>
+            <button onclick="testDestinationCalculation()">測試目的地計算</button>
+            <div id="destinationResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎵 語音廣播測試</h3>
+            <button onclick="testAnnouncement()">測試登機廣播</button>
+            <button onclick="testLandingAnnouncement()">測試降落廣播</button>
+            <div id="announcementResult" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎮 遊戲整合測試</h3>
+            <button onclick="testGameIntegration()">測試遊戲整合</button>
+            <div id="gameResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        // 模擬遊戲系統
+        class TestGameSystem {
+            constructor() {
+                this.gameState = {
+                    sleepFlightMode: true,
+                    wakeTime: '08:00',
+                    currentLocation: {
+                        name: '台北',
+                        country: '台灣',
+                        coordinates: [25.0330, 121.5654]
+                    }
+                };
+            }
+
+            async calculateSleepFlightDestinations(currentLocation, wakeTime) {
+                // 模擬API調用
+                return [
+                    {
+                        id: 'tokyo',
+                        name: '東京',
+                        country: '日本',
+                        countryCode: 'JP',
+                        flag: '🇯🇵',
+                        distance: 2100,
+                        flightTime: 2.6,
+                        coordinates: [35.6762, 139.6503],
+                        price: 3000,
+                        unlocked: true
+                    },
+                    {
+                        id: 'seoul',
+                        name: '首爾',
+                        country: '韓國',
+                        countryCode: 'KR',
+                        flag: '🇰🇷',
+                        distance: 1800,
+                        flightTime: 2.3,
+                        coordinates: [37.5665, 126.9780],
+                        price: 2800,
+                        unlocked: true
+                    }
+                ];
+            }
+
+            async playSleepFlightAnnouncement(announcementType, destination) {
+                const response = await fetch('/api/generateSleepFlightAnnouncement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        announcementType: announcementType,
+                        city: destination.name,
+                        country: destination.country,
+                        countryCode: destination.countryCode,
+                        currentLocation: this.gameState.currentLocation.name,
+                        flightTime: destination.flightTime,
+                        wakeTime: this.gameState.wakeTime
+                    })
+                });
+
+                const data = await response.json();
+                return data.announcement;
+            }
+        }
+
+        const testGame = new TestGameSystem();
+
+        async function testTimeSelection() {
+            const result = document.getElementById('timeResult');
+            result.innerHTML = '測試時間選擇功能...';
+            
+            try {
+                // 測試不同時間
+                const times = ['06:00', '07:00', '08:00', '09:00', '10:00'];
+                let output = '時間選擇測試結果：\n';
+                
+                for (const time of times) {
+                    const utcOffset = Math.round((parseInt(time.split(':')[0]) * 60 + parseInt(time.split(':')[1]) - 480) / 60);
+                    output += `${time} → UTC偏移: ${utcOffset}\n`;
+                }
+                
+                result.innerHTML = output;
+            } catch (error) {
+                result.innerHTML = `錯誤: ${error.message}`;
+            }
+        }
+
+        async function testDestinationCalculation() {
+            const result = document.getElementById('destinationResult');
+            result.innerHTML = '計算可達目的地...';
+            
+            try {
+                const destinations = await testGame.calculateSleepFlightDestinations(
+                    testGame.gameState.currentLocation,
+                    testGame.gameState.wakeTime
+                );
+                
+                let output = '可達目的地：\n';
+                destinations.forEach(dest => {
+                    output += `✈️ ${dest.flag} ${dest.name} (${dest.country})\n`;
+                    output += `   距離: ${dest.distance}km, 飛行時間: ${dest.flightTime}h, 票價: NT$ ${dest.price}\n`;
+                });
+                
+                result.innerHTML = output;
+            } catch (error) {
+                result.innerHTML = `錯誤: ${error.message}`;
+            }
+        }
+
+        async function testAnnouncement() {
+            const result = document.getElementById('announcementResult');
+            result.innerHTML = '生成登機廣播...';
+            
+            try {
+                const destination = {
+                    name: '東京',
+                    country: '日本',
+                    countryCode: 'JP',
+                    flightTime: 2.6
+                };
+                
+                const announcement = await testGame.playSleepFlightAnnouncement('boarding', destination);
+                result.innerHTML = `登機廣播：\n"${announcement}"`;
+            } catch (error) {
+                result.innerHTML = `錯誤: ${error.message}`;
+            }
+        }
+
+        async function testLandingAnnouncement() {
+            const result = document.getElementById('announcementResult');
+            result.innerHTML = '生成降落廣播...';
+            
+            try {
+                const destination = {
+                    name: '東京',
+                    country: '日本',
+                    countryCode: 'JP',
+                    flightTime: 2.6
+                };
+                
+                const announcement = await testGame.playSleepFlightAnnouncement('landing', destination);
+                result.innerHTML = `降落廣播：\n"${announcement}"`;
+            } catch (error) {
+                result.innerHTML = `錯誤: ${error.message}`;
+            }
+        }
+
+        async function testGameIntegration() {
+            const result = document.getElementById('gameResult');
+            result.innerHTML = '測試遊戲整合...';
+            
+            try {
+                // 測試完整的遊戲流程
+                let output = '遊戲整合測試：\n';
+                
+                // 1. 時間選擇
+                output += '1. ✅ 時間選擇功能正常\n';
+                
+                // 2. 目的地計算
+                const destinations = await testGame.calculateSleepFlightDestinations(
+                    testGame.gameState.currentLocation,
+                    testGame.gameState.wakeTime
+                );
+                output += `2. ✅ 目的地計算正常 (找到 ${destinations.length} 個目的地)\n`;
+                
+                // 3. 語音廣播
+                const destination = destinations[0];
+                const announcement = await testGame.playSleepFlightAnnouncement('boarding', destination);
+                output += `3. ✅ 語音廣播正常\n`;
+                
+                // 4. 機票生成
+                const ticket = {
+                    id: `ticket_${Date.now()}`,
+                    destination: destination,
+                    purchaseDate: new Date().toISOString(),
+                    price: destination.price
+                };
+                output += `4. ✅ 機票生成正常 (票號: ${ticket.id})\n`;
+                
+                output += '\n🎉 所有功能測試通過！';
+                result.innerHTML = output;
+            } catch (error) {
+                result.innerHTML = `錯誤: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

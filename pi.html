@@ -96,12 +96,53 @@
                         </div>
                     </div>
                     
-                    <!-- 開始旅程按鈕 -->
+                    <!-- 目前所在位置（台北）資訊區塊：機票會顯示在此下方 -->
+                    <div class="taipei-location-panel">
+                        <div class="location-header">
+                            <div class="location-icon">📍</div>
+                            <div class="location-info">
+                                <h2 id="currentCityName">當前位置：台北</h2>
+                                <p class="location-subtitle">Taipei, Taiwan 🇹🇼</p>
+                            </div>
+                            <div class="weather-info">
+                                <div class="weather-icon">☀️</div>
+                                <div class="weather-text">24°C</div>
+                            </div>
+                        </div>
+                        
+                        <div class="taipei-features">
+                            <div class="feature-item"><span class="feature-icon">🏮</span><span class="feature-text">夜市</span></div>
+                            <div class="feature-item"><span class="feature-icon">🏢</span><span class="feature-text">101</span></div>
+                            <div class="feature-item"><span class="feature-icon">🥟</span><span class="feature-text">小籠包</span></div>
+                            <div class="feature-item"><span class="feature-icon">🚇</span><span class="feature-text">捷運</span></div>
+                        </div>
+                        
+                        <!-- AI 生成的當前位置文字區域 -->
+                        <div class="ai-generated-content">
+                            <div class="ai-content-header">
+                                <span class="ai-icon">🤖</span>
+                                <span class="ai-title">AI 台北小知識</span>
+                                <button class="refresh-ai-btn" id="refreshAIButton">🔄</button>
+                            </div>
+                            <div class="ai-content-text" id="aiContentText">
+                                <div class="loading-ai">🔄 AI 正在生成內容...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 機票會由 game-system.js 的 showTicketInLocationPanel() 插入在此區塊末端 -->
+                    </div>
+                    
+                    <!-- 首頁操作按鈕：等寬雙按鈕 -->
                     <div class="start-journey-section">
-                        <button id="startJourneyBtn" class="start-journey-button">
+                        <button id="buyTicketBtn" class="start-journey-button">
+                            <div class="button-icon">🎫</div>
+                            <div class="button-text">購買機票</div>
+                            <div class="button-subtitle">選擇你的目的地</div>
+                        </button>
+                        <button id="beginJourneyBtn" class="start-journey-button">
                             <div class="button-icon">✈️</div>
                             <div class="button-text">開始旅程</div>
-                            <div class="button-subtitle">選擇你的目的地</div>
+                            <div class="button-subtitle">準備啟程</div>
                         </button>
                     </div>
                 </div>
@@ -145,8 +186,8 @@
                         </div>
                         <div class="time-controls-compact">
                             <div class="time-control-row">
-                                <input type="date" id="customDate" class="time-input-compact" value="${new Date().toISOString().split('T')[0]}">
-                                <input type="time" id="customTime" class="time-input-compact" value="${new Date().toTimeString().slice(0, 5)}">
+                                <input type="date" id="customDate" class="time-input-compact">
+                                <input type="time" id="customTime" class="time-input-compact">
                                 <button id="updateTime" class="time-update-btn-compact">更新</button>
                             </div>
                         </div>
@@ -185,6 +226,25 @@
                     <button class="modal-close" id="modalClose">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <!-- 起床時間選擇 -->
+                    <div class="wake-time-section">
+                        <h3>🕐 選擇起床時間</h3>
+                        <div class="time-selector">
+                            <input type="time" id="wakeTimeInput" class="time-input" value="08:00">
+                            <div class="time-presets">
+                                <button class="time-preset" data-time="06:00">6:00</button>
+                                <button class="time-preset" data-time="07:00">7:00</button>
+                                <button class="time-preset active" data-time="08:00">8:00</button>
+                                <button class="time-preset" data-time="09:00">9:00</button>
+                                <button class="time-preset" data-time="10:00">10:00</button>
+                            </div>
+                        </div>
+                        <div class="flight-info">
+                            <span class="flight-duration">⏱️ 飛行時間：8小時</span>
+                            <span class="flight-distance">📏 最大距離：6400公里</span>
+                        </div>
+                    </div>
+                    
                     <div class="destination-grid" id="destinationGrid">
                         <!-- 目的地選項將由 JavaScript 動態生成 -->
                     </div>
@@ -309,6 +369,14 @@
         </div>
     </div>
 
+    <!-- 固定右下角：準備起飛按鈕（全域） -->
+    <div class="fixed-action-button" id="fixedActionButton" style="display: none;">
+        <button class="action-btn" id="actionBtn" onclick="handleActionButton()">
+            <span class="btn-icon" id="btnIcon">✈️</span>
+            <span class="btn-text" id="btnText">準備起飛</span>
+        </button>
+    </div>
+
     <!-- 載入彈跳式日誌視窗 -->
     <div id="historyLogModal" class="modal" style="display:none;">
         <div class="modal-dialog">
@@ -382,6 +450,43 @@
         } else {
             initializeFirebase();
         }
+    </script>
+    <script>
+        // 綁定右上角日期/時間更新到測試時鐘
+        (function bindTestClockControls(){
+            const btn = document.getElementById('updateTime');
+            const d = document.getElementById('customDate');
+            const t = document.getElementById('customTime');
+            if (!btn || !d || !t) return;
+            
+            // 初始化：自動填入當前時間
+            const now = new Date();
+            d.value = now.toISOString().split('T')[0];
+            t.value = now.toTimeString().slice(0, 5);
+            console.log('🕐 已自動填入當前時間:', now.toLocaleString());
+            
+            btn.addEventListener('click', function(){
+                if (!d.value || !t.value) { alert('請選擇日期與時間'); return; }
+                const dt = new Date(`${d.value} ${t.value}`);
+                if (window.wakeUpMapGame && typeof window.wakeUpMapGame.enableTestClock === 'function') {
+                    window.wakeUpMapGame.enableTestClock(dt);
+                    console.log('🧪 已啟用測試時鐘：', dt.toLocaleString());
+                }
+            });
+            
+            // 提供全域方法切回真實時間
+            window.disableTestClock = function(){
+                if (window.wakeUpMapGame && typeof window.wakeUpMapGame.disableTestClock === 'function') {
+                    window.wakeUpMapGame.disableTestClock();
+                    console.log('🧪 已停用測試時鐘');
+                }
+                // 重新填入當前真實時間
+                const now = new Date();
+                d.value = now.toISOString().split('T')[0];
+                t.value = now.toTimeString().slice(0, 5);
+                console.log('🕐 已還原為真實時間:', now.toLocaleString());
+            }
+        })();
     </script>
 
     <!-- 3. 載入 Leaflet 地圖庫 -->
@@ -603,5 +708,71 @@
         // 在控制台顯示隱藏按鈕使用說明
         console.log('🔧 隱藏按鈕已初始化！輸入 hiddenButtonControl.help() 查看使用說明');
     </script>
+    <script>
+        // 固定右下角按鈕點擊 - 轉呼叫遊戲系統
+        function handleActionButton() {
+            try {
+                if (window.wakeUpMapGame && typeof window.wakeUpMapGame.handleActionButton === 'function') {
+                    window.wakeUpMapGame.handleActionButton();
+                } else if (window.game && typeof window.game.handleActionButton === 'function') {
+                    // 兼容舊版全域變數
+                    window.game.handleActionButton();
+                } else {
+                    alert('系統尚未準備好，請稍候再試');
+                }
+            } catch (e) {
+                console.error('固定按鈕呼叫失敗:', e);
+            }
+        }
+    </script>
+    <script>
+        // 產生台北位置的 AI 文字內容
+        function generateLocationAIContent() {
+            const aiText = document.getElementById('aiContentText');
+            if (!aiText) return;
+
+            const facts = [
+                '你知道嗎？台北101 曾是世界最高建築，今晚從台北出發，就像從雲端起飛。',
+                '台北夜市聞名世界，從士林到饒河，每個夜晚都像一場旅行的序曲。',
+                '台北捷運準時又乾淨，就像我們的睡眠航班，帶你穩穩抵達目的地。',
+                '小籠包是台北必吃，熱騰騰的湯汁，像剛起飛的熱氣流，滿滿元氣。',
+                '台北是一座融合傳統與科技的城市，從這裡出發，世界就成了你的夢境地圖。'
+            ];
+
+            const random = facts[Math.floor(Math.random() * facts.length)];
+            aiText.innerHTML = '<div class="ai-fact">\
+                <div class="fact-icon">💡</div>\
+                <div class="fact-text">' + random + '</div>\
+            </div>';
+        }
+
+        // 綁定刷新與初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            const refreshBtn = document.getElementById('refreshAIButton');
+            const aiText = document.getElementById('aiContentText');
+            if (aiText) {
+                aiText.innerHTML = '<div class="loading-ai">🔄 AI 正在生成內容...</div>';
+                setTimeout(generateLocationAIContent, 800);
+            }
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function () {
+                    if (aiText) aiText.innerHTML = '<div class="loading-ai">🔄 AI 正在生成內容...</div>';
+                    setTimeout(generateLocationAIContent, 500);
+                });
+            }
+        });
+    </script>
+    <!-- 降落結果彈窗 -->
+    <div id="landingModal" class="landing-modal" style="display:none;">
+      <div class="landing-modal-backdrop"></div>
+      <div class="landing-modal-content">
+        <div class="landing-modal-header">
+          <h3 id="landingTitle">降落結果</h3>
+          <button id="landingClose" class="landing-close-btn">×</button>
+        </div>
+        <div class="landing-modal-body" id="landingBody"></div>
+        <div class="landing-modal-actions" id="landingActions"></div>
+      </div>
+    </div>
 </body>
 </html> 

@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✈️ 睡眠航班系統 - 完整演示</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            font-size: 2.5rem;
+        }
+
+        /* 台北位置面板樣式 */
+        .taipei-location-panel {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .location-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .location-icon {
+            font-size: 32px;
+            margin-right: 15px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .location-info h2 {
+            margin: 0;
+            font-size: 24px;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .location-subtitle {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+
+        .weather-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .weather-icon {
+            font-size: 20px;
+        }
+
+        .weather-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .taipei-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .feature-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .feature-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .feature-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            text-align: center;
+        }
+
+        .ai-generated-content {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .ai-content-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .refresh-ai-btn {
+            margin-left: auto;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 5px 10px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-ai-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(180deg);
+        }
+
+        .ai-icon {
+            font-size: 20px;
+            animation: spin 3s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .ai-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .ai-content-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .loading-ai {
+            color: #00ff88;
+            font-style: italic;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .ai-fact {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fact-icon {
+            font-size: 18px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .fact-text {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 25px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .demo-section {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #00ff88;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        /* 起床時間選擇樣式 */
+        .wake-time-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .time-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .time-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 12px 15px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            width: 120px;
+        }
+
+        .time-presets {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .time-preset {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .time-preset:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .time-preset.active {
+            background: linear-gradient(45deg, #00ff88, #00cc6f);
+            border-color: #00ff88;
+            color: #000;
+        }
+
+        .flight-info {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .flight-info span {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #00ff88;
+        }
+
+        /* 目的地網格 */
+        .destination-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .destination-option {
+            background: linear-gradient(135deg, rgba(116, 185, 255, 0.9), rgba(9, 132, 227, 0.9));
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(116, 185, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .destination-option:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(116, 185, 255, 0.4);
+        }
+
+        .destination-option.selected {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.9), rgba(0, 204, 111, 0.9));
+            box-shadow: 0 15px 35px rgba(0, 255, 136, 0.4);
+            transform: scale(1.05);
+        }
+
+        .dest-flag-large {
+            font-size: 48px;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
+        }
+
+        .dest-info {
+            flex: 1;
+            margin-bottom: 12px;
+        }
+
+        .dest-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .dest-country {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .dest-phrase {
+            font-size: 12px;
+            opacity: 0.8;
+            font-style: italic;
+            line-height: 1.3;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .dest-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #00ff88;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px 12px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        /* 按鈕樣式 */
+        button {
+            padding: 12px 25px;
+            margin: 5px;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(45deg, #00ff88, #00cc6f);
+            color: #000;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+        }
+
+        button:disabled {
+            background: rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.5);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .secondary-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* 機票預覽 */
+        .ticket-preview {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 25px;
+            border: 2px solid #dee2e6;
+            color: #2c3e50;
+            margin-top: 20px;
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .airline-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .airline-icon {
+            font-size: 24px;
+        }
+
+        .airline-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .route-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .location-info {
+            text-align: center;
+        }
+
+        .location-code {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .location-name {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .flight-arrow {
+            font-size: 24px;
+            color: #667eea;
+            animation: fly 2s ease-in-out infinite;
+        }
+
+        @keyframes fly {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(10px); }
+        }
+
+        .flight-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        /* 日誌輸出 */
+        .log-output {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #00ff88;
+        }
+
+        .log-line {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 16px;
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 16px;
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        /* 計算步驟樣式 */
+        .calculation-step {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInUp 0.5s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .step-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .step-icon {
+            font-size: 24px;
+            min-width: 40px;
+            text-align: center;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .step-text {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .step-progress {
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #00ff88, #00cc6f);
+            border-radius: 3px;
+            transition: width 0.1s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            font-size: 12px;
+            font-weight: 700;
+            color: #00ff88;
+        }
+
+        .loading.success {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+            animation: successPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes successPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* 響應式設計 */
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .destination-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 12px;
+            }
+            
+            .destination-option {
+                padding: 20px;
+            }
+            
+            .dest-flag-large {
+                font-size: 48px;
+            }
+            
+            .dest-name {
+                font-size: 18px;
+            }
+            
+            .flight-details {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .destination-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dest-flag-large {
+                font-size: 40px;
+            }
+            
+            .dest-name {
+                font-size: 16px;
+            }
+            
+            .dest-phrase {
+                font-size: 12px;
+            }
+        }
+
+        /* 固定右下角起飛按鈕（恢復顯示） */
+        .fixed-action-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 9999999;
+        }
+
+        .action-btn {
+            background: linear-gradient(135deg, #00ff88, #00cc6f);
+            border: none;
+            border-radius: 20px;
+            padding: 14px 28px;
+            color: #000;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 150px;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>✈️ 睡眠航班系統 - 完整演示</h1>
+        
+        <!-- 台北位置顯示區域 -->
+        <div class="taipei-location-panel">
+            <div class="location-header">
+                <div class="location-icon">📍</div>
+                <div class="location-info">
+                    <h2>當前位置：台北</h2>
+                    <p class="location-subtitle">Taipei, Taiwan 🇹🇼</p>
+                </div>
+                <div class="weather-info">
+                    <div class="weather-icon">☀️</div>
+                    <div class="weather-text">25°C</div>
+                </div>
+            </div>
+            
+            <div class="taipei-features">
+                <div class="feature-item">
+                    <span class="feature-icon">🏮</span>
+                    <span class="feature-text">夜市文化</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🏢</span>
+                    <span class="feature-text">101大樓</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🍜</span>
+                    <span class="feature-text">小籠包</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🚇</span>
+                    <span class="feature-text">捷運系統</span>
+                </div>
+            </div>
+            
+            <div class="ai-generated-content">
+                <div class="ai-content-header">
+                    <span class="ai-icon">🤖</span>
+                    <span class="ai-title">AI 台北小知識</span>
+                    <button class="refresh-ai-btn" onclick="refreshAIContent()">🔄</button>
+                </div>
+                <div class="ai-content-text" id="aiContentText">
+                    <div class="loading-ai">🔄 AI正在生成台北小知識...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="layout">
+            <!-- 左側：控制面板 -->
+            <div class="control-panel">
+                <div class="demo-section">
+                    <h3>🕐 起床時間選擇</h3>
+                    
+                    <div class="wake-time-section">
+                        <div class="time-selector">
+                            <input type="time" id="wakeTimeInput" class="time-input" value="08:00">
+                            <div class="time-presets">
+                                <button class="time-preset" data-time="06:00">6:00</button>
+                                <button class="time-preset" data-time="07:00">7:00</button>
+                                <button class="time-preset active" data-time="08:00">8:00</button>
+                                <button class="time-preset" data-time="09:00">9:00</button>
+                                <button class="time-preset" data-time="10:00">10:00</button>
+                            </div>
+                        </div>
+                        <div class="flight-info">
+                            <span class="flight-duration">⏱️ 飛行時間：8小時</span>
+                            <span class="flight-distance">📏 最大距離：6400公里</span>
+                        </div>
+                    </div>
+                    
+                    <button onclick="loadDestinations()" class="secondary-btn">🔄 重新計算目的地</button>
+                    <button onclick="debugDestinations()" class="secondary-btn">🐛 調試目的地</button>
+                    <button onclick="testDestinations()" class="secondary-btn">🧪 測試目的地</button>
+                </div>
+                
+                <div class="demo-section">
+                    <h3>🌍 可達目的地</h3>
+                    <div class="destination-grid" id="destinationGrid">
+                        <div class="loading">🔄 正在計算可達目的地...</div>
+                    </div>
+                </div>
+                
+                <div class="demo-section">
+                    <h3>🎫 機票操作</h3>
+                    <button id="confirmTicket" onclick="confirmTicket()" disabled>✈️ 確認機票</button>
+                    <button onclick="clearSelection()" class="secondary-btn">🔄 重新選擇</button>
+                </div>
+                
+                <div class="demo-section">
+                    <h3>🎵 語音測試</h3>
+                    <button onclick="testBoardingAnnouncement()" class="secondary-btn">🎤 測試登機廣播</button>
+                    <button onclick="testLandingAnnouncement()" class="secondary-btn">🎤 測試降落廣播</button>
+                </div>
+                
+                <div class="demo-section">
+                    <h3>📊 系統日誌</h3>
+                    <div id="logOutput" class="log-output">
+                        <div class="log-line">系統已啟動，等待操作...</div>
+                    </div>
+                    <button onclick="clearLog()" class="secondary-btn">清除日誌</button>
+                </div>
+            </div>
+            
+            <!-- 右側：機票預覽 -->
+            <div class="control-panel">
+                <div class="demo-section">
+                    <h3>✈️ 機票預覽</h3>
+                    <div id="ticketPreview" class="ticket-preview" style="display: none;">
+                        <div class="ticket-header">
+                            <div class="airline-info">
+                                <span class="airline-icon">✈️</span>
+                                <span class="airline-name">WAKE UP AIRLINES</span>
+                            </div>
+                            <div style="font-size: 12px; color: #666;">BOARDING PASS</div>
+                        </div>
+                        
+                        <div class="route-info">
+                            <div class="location-info">
+                                <div class="location-code">TPE</div>
+                                <div class="location-name">台北</div>
+                            </div>
+                            <div class="flight-arrow">✈️</div>
+                            <div class="location-info">
+                                <div class="location-code" id="destinationCode">XXX</div>
+                                <div class="location-name" id="destinationName">目的地</div>
+                            </div>
+                        </div>
+                        
+                        <div class="flight-details">
+                            <div class="detail-item">
+                                <span class="detail-label">FLIGHT</span>
+                                <span class="detail-value" id="flightNumber">WU-0000</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">DATE</span>
+                                <span class="detail-value" id="departureDate">2024-01-01</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">DEPARTURE</span>
+                                <span class="detail-value">11:30</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">ARRIVAL</span>
+                                <span class="detail-value" id="arrivalTime">隔天 08:00</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">PRICE</span>
+                                <span class="detail-value" id="ticketPrice">NT$ 0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">DURATION</span>
+                                <span class="detail-value" id="flightDuration">8h</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="noTicketMessage" style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">
+                        請選擇目的地以預覽機票
+                    </div>
+                </div>
+                
+                <div class="demo-section">
+                    <h3>🎮 遊戲狀態</h3>
+                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 10px;">
+                        <div style="margin-bottom: 10px;">
+                            <span style="color: #00ff88;">💰 金錢:</span>
+                            <span id="gameMoney">NT$ 10,000</span>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <span style="color: #00ff88;">⛽ 燃料:</span>
+                            <span id="gameFuel">1000/1000</span>
+                        </div>
+                        <div>
+                            <span style="color: #00ff88;">🎫 已選擇:</span>
+                            <span id="selectedDestination">無</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 固定右下角：準備起飛按鈕（恢復） -->
+    <div class="fixed-action-button" id="fixedActionButton">
+        <button class="action-btn" onclick="handleActionButton()">
+            <span class="btn-icon">✈️</span>
+            <span class="btn-text">準備起飛</span>
+        </button>
+    </div>
+
+    <script>
+        // 睡眠航班系統
+        class SleepFlightDemo {
+            constructor() {
+                this.currentLocation = {
+                    name: '台北',
+                    country: '台灣',
+                    coordinates: [25.0330, 121.5654]
+                };
+                this.wakeTime = '08:00';
+                this.selectedDestination = null;
+                this.destinations = [];
+                this.gameState = {
+                    money: 10000,
+                    fuel: 1000
+                };
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.updateFlightInfo(); // 初始化飛行信息
+                this.loadDestinations();
+                this.generateAIContent(); // 生成AI內容
+                this.setupTaipeiFeatures(); // 設置台北特色功能
+                this.log('系統初始化完成');
+            }
+
+            setupEventListeners() {
+                // 時間輸入變化
+                document.getElementById('wakeTimeInput').addEventListener('change', (e) => {
+                    this.updateWakeTime(e.target.value);
+                });
+
+                // 時間預設按鈕
+                document.querySelectorAll('.time-preset').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        this.selectTimePreset(e.target.dataset.time);
+                    });
+                });
+            }
+
+            updateWakeTime(time) {
+                this.wakeTime = time;
+                this.log(`起床時間更新為: ${time}`);
+                
+                // 更新預設按鈕狀態
+                document.querySelectorAll('.time-preset').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.time === time) {
+                        btn.classList.add('active');
+                    }
+                });
+                
+                // 更新飛行信息顯示
+                this.updateFlightInfo();
+            }
+
+            updateFlightInfo() {
+                // 簡化邏輯 - 固定8小時飛行時間
+                const flightDuration = 8;
+                const maxDistance = flightDuration * 800;
+                
+                document.querySelector('.flight-duration').textContent = `⏱️ 飛行時間：${flightDuration}小時`;
+                document.querySelector('.flight-distance').textContent = `📏 最大距離：${maxDistance}公里`;
+            }
+
+            selectTimePreset(time) {
+                document.getElementById('wakeTimeInput').value = time;
+                this.updateWakeTime(time);
+            }
+
+            async loadDestinations() {
+                const grid = document.getElementById('destinationGrid');
+                
+                // 顯示計算過程
+                await this.showCalculationProcess(grid);
+                
+                try {
+                    this.destinations = this.calculateSleepFlightDestinations();
+                    await this.renderDestinations();
+                    this.log(`載入 ${this.destinations.length} 個可達目的地`);
+                } catch (error) {
+                    grid.innerHTML = '<div class="error">❌ 載入目的地失敗</div>';
+                    this.log(`載入目的地失敗: ${error.message}`);
+                }
+            }
+
+            async showCalculationProcess(grid) {
+                const steps = [
+                    { text: '📍 正在獲取當前位置...', duration: 800 },
+                    { text: '🌍 從全球城市API獲取數據...', duration: 1200 },
+                    { text: '📏 計算8小時航程距離範圍...', duration: 1000 },
+                    { text: '⏰ 根據起床時間篩選時區...', duration: 900 },
+                    { text: '🎯 選擇4個最佳目的地...', duration: 700 },
+                    { text: '💰 計算機票價格和飛行時間...', duration: 600 }
+                ];
+
+                for (let i = 0; i < steps.length; i++) {
+                    const step = steps[i];
+                    
+                    // 創建步驟容器
+                    const stepContainer = document.createElement('div');
+                    stepContainer.className = 'calculation-step';
+                    stepContainer.innerHTML = `
+                        <div class="step-content">
+                            <div class="step-icon">${this.getStepIcon(i)}</div>
+                            <div class="step-text">${step.text}</div>
+                            <div class="step-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-text">0%</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    grid.innerHTML = '';
+                    grid.appendChild(stepContainer);
+                    
+                    // 動畫進度條
+                    await this.animateProgress(stepContainer, step.duration);
+                    
+                    // 短暫停頓
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+                
+                // 最後顯示完成狀態
+                grid.innerHTML = '<div class="loading success">✅ 計算完成！正在載入目的地...</div>';
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            getStepIcon(stepIndex) {
+                const icons = ['📍', '🌍', '📏', '⏰', '🎯', '💰'];
+                return icons[stepIndex] || '🔄';
+            }
+
+            async animateProgress(container, duration) {
+                const progressFill = container.querySelector('.progress-fill');
+                const progressText = container.querySelector('.progress-text');
+                
+                return new Promise(resolve => {
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 2;
+                        if (progress > 100) {
+                            progress = 100;
+                            clearInterval(interval);
+                            resolve();
+                        }
+                        
+                        progressFill.style.width = `${progress}%`;
+                        progressText.textContent = `${progress}%`;
+                    }, duration / 50);
+                });
+            }
+
+            calculateSleepFlightDestinations() {
+                console.log('開始計算目的地，起床時間:', this.wakeTime);
+                
+                // 獲取當前位置
+                const currentLocation = this.getCurrentLocation();
+                console.log('當前位置:', currentLocation);
+                
+                // 獲取所有可用城市
+                const allCities = this.getAllCities();
+                console.log('可用城市數量:', allCities.length);
+                
+                // 過濾8小時航程內的城市
+                const reachableCities = this.filterByFlightRange(currentLocation, allCities);
+                console.log('8小時航程內城市數量:', reachableCities.length);
+                
+                // 選擇4個最佳目的地
+                const selectedDestinations = this.selectBestDestinations(reachableCities, currentLocation);
+                console.log('最終選擇的4個目的地:', selectedDestinations);
+                
+                return selectedDestinations;
+            }
+
+            // Haversine公式計算兩點間距離
+            calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // 地球半徑(公里)
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+
+            // 過濾8小時航程內的城市
+            filterByFlightRange(currentLocation, cities) {
+                const flightDuration = 8; // 小時
+                const flightSpeed = 800; // 公里/小時
+                const maxDistance = flightDuration * flightSpeed; // 6400公里
+                
+                return cities.filter(city => {
+                    const distance = this.calculateDistance(
+                        currentLocation.coordinates[0], currentLocation.coordinates[1],
+                        city.latitude, city.longitude
+                    );
+                    
+                    // 添加距離到城市對象
+                    city.distance = Math.round(distance);
+                    city.flightTime = Math.round((distance / flightSpeed) * 10) / 10;
+                    
+                    return distance <= maxDistance;
+                });
+            }
+
+            // 選擇4個最佳目的地
+            selectBestDestinations(cities, currentLocation) {
+                if (cities.length === 0) {
+                    // 如果沒有符合條件的城市，返回前4個城市
+                    const allCities = this.getAllCities();
+                    return allCities.slice(0, 4).map(city => ({
+                        id: city.id,
+                        name: city.name,
+                        country: city.country,
+                        countryCode: city.countryCode,
+                        flag: this.getCountryFlag(city.countryCode),
+                        distance: Math.round(this.calculateDistance(currentLocation.coordinates[0], currentLocation.coordinates[1], city.latitude, city.longitude)),
+                        flightTime: Math.round((this.calculateDistance(currentLocation.coordinates[0], currentLocation.coordinates[1], city.latitude, city.longitude) / 800) * 10) / 10,
+                        coordinates: [city.latitude, city.longitude],
+                        price: this.calculateFlightPrice(this.calculateDistance(currentLocation.coordinates[0], currentLocation.coordinates[1], city.latitude, city.longitude)),
+                        timezone: city.timezone
+                    }));
+                }
+                
+                // 按距離排序，選擇不同距離範圍的城市
+                const sortedCities = cities.sort((a, b) => a.distance - b.distance);
+                
+                // 選擇策略：近、中近、中遠、遠各一個
+                const selected = [];
+                const ranges = [
+                    { min: 0, max: 2000 },      // 近距離
+                    { min: 2000, max: 4000 },    // 中近距離
+                    { min: 4000, max: 6000 },    // 中遠距離
+                    { min: 6000, max: 6400 }     // 遠距離
+                ];
+                
+                ranges.forEach(range => {
+                    const citiesInRange = sortedCities.filter(city => 
+                        city.distance >= range.min && city.distance < range.max
+                    );
+                    
+                    if (citiesInRange.length > 0) {
+                        // 隨機選擇該範圍內的一個城市
+                        const randomIndex = Math.floor(Math.random() * citiesInRange.length);
+                        selected.push(citiesInRange[randomIndex]);
+                    }
+                });
+                
+                // 如果沒有選夠4個，從剩餘城市中隨機補充
+                while (selected.length < 4 && sortedCities.length > selected.length) {
+                    const remainingCities = sortedCities.filter(city => 
+                        !selected.some(selected => selected.id === city.id)
+                    );
+                    
+                    if (remainingCities.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * remainingCities.length);
+                        selected.push(remainingCities[randomIndex]);
+                    } else {
+                        break;
+                    }
+                }
+                
+                // 格式化為目的地對象
+                return selected.map(city => ({
+                    id: city.id || city.name.toLowerCase().replace(/\s+/g, ''),
+                    name: city.name,
+                    country: city.country,
+                    countryCode: city.countryCode,
+                    flag: this.getCountryFlag(city.countryCode),
+                    distance: city.distance,
+                    flightTime: city.flightTime,
+                    coordinates: [city.latitude, city.longitude],
+                    price: this.calculateFlightPrice(city.distance),
+                    timezone: city.timezone || this.getDestinationUTCOffset(city.countryCode)
+                }));
+            }
+
+
+
+            // 計算機票價格
+            calculateFlightPrice(distance) {
+                const basePrice = 1500;
+                const pricePerKm = 0.8;
+                return Math.round(basePrice + (distance * pricePerKm));
+            }
+
+            // 獲取國家國旗
+            getCountryFlag(countryCode) {
+                const flagMap = {
+                    'JP': '🇯🇵', 'KR': '🇰🇷', 'TH': '🇹🇭', 'SG': '🇸🇬', 'HK': '🇭🇰',
+                    'PH': '🇵🇭', 'MY': '🇲🇾', 'ID': '🇮🇩', 'VN': '🇻🇳', 'TW': '🇹🇼',
+                    'CN': '🇨🇳', 'AU': '🇦🇺', 'US': '🇺🇸', 'GB': '🇬🇧', 'FR': '🇫🇷',
+                    'DE': '🇩🇪', 'IT': '🇮🇹', 'ES': '🇪🇸', 'RU': '🇷🇺', 'IN': '🇮🇳'
+                };
+                return flagMap[countryCode] || '🌍';
+            }
+
+            getUTCOffsetFromWakeTime(wakeTime) {
+                const [hours, minutes] = wakeTime.split(':').map(Number);
+                const totalMinutes = hours * 60 + minutes;
+                return Math.round((totalMinutes - 480) / 60); // 480分鐘 = 8小時
+            }
+
+            getDestinationUTCOffset(countryCode) {
+                const offsetMap = {
+                    'JP': 9, 'KR': 9, 'TH': 7, 'SG': 8, 'HK': 8,
+                    'PH': 8, 'CN': 8, 'TW': 8, 'MY': 8, 'ID': 7
+                };
+                return offsetMap[countryCode] || 8;
+            }
+
+            async renderDestinations() {
+                const grid = document.getElementById('destinationGrid');
+                grid.innerHTML = '';
+
+                for (const dest of this.destinations) {
+                    const button = document.createElement('button');
+                    button.className = 'destination-option';
+                    button.dataset.destination = dest.id;
+                    
+                    // 生成吸引人的短句
+                    const attractivePhrase = await this.generateAttractivePhrase(dest);
+                    
+                    button.innerHTML = `
+                        <div class="dest-flag-large">${dest.flag}</div>
+                        <div class="dest-info">
+                            <div class="dest-name">${dest.name}</div>
+                            <div class="dest-country">${dest.country}</div>
+                            <div class="dest-phrase">${attractivePhrase}</div>
+                        </div>
+                        <div class="dest-price">NT$ ${dest.price.toLocaleString()}</div>
+                    `;
+
+                    button.addEventListener('click', () => {
+                        this.selectDestination(dest);
+                    });
+
+                    grid.appendChild(button);
+                }
+            }
+
+            async generateAttractivePhrase(destination) {
+                const phrases = {
+                    'tokyo': '暢遊京都，體驗和風之美',
+                    'seoul': '探索首爾，感受韓流魅力',
+                    'bangkok': '漫步曼谷，品味泰式風情',
+                    'singapore': '獅城之旅，現代與傳統交融',
+                    'hongkong': '東方之珠，璀璨夜景等你',
+                    'manila': '馬尼拉灣，熱帶海島風光',
+                    'kualalumpur': '雙子塔下，馬來西亞風情',
+                    'jakarta': '雅加達夜，印尼文化體驗',
+                    'hochiminh': '胡志明市，越南歷史與現代',
+                    'taipei': '台北101，台灣美食天堂'
+                };
+
+                // 如果有預設短句就使用，否則生成隨機的
+                if (phrases[destination.id]) {
+                    return phrases[destination.id];
+                }
+
+                // 根據國家生成通用短句
+                const countryPhrases = {
+                    '日本': '櫻花飛舞，和風雅韻',
+                    '韓國': '韓流魅力，時尚之都',
+                    '泰國': '微笑國度，熱帶天堂',
+                    '新加坡': '花園城市，多元文化',
+                    '香港': '東方明珠，購物天堂',
+                    '菲律賓': '千島之國，熱帶風情',
+                    '馬來西亞': '多元文化，熱帶雨林',
+                    '印尼': '萬島之國，火山與海灘',
+                    '越南': '歷史悠久，美食天堂'
+                };
+
+                return countryPhrases[destination.country] || '探索新世界，開啟新旅程';
+            }
+
+            selectDestination(destination) {
+                // 更新選中狀態
+                document.querySelectorAll('.destination-option').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                document.querySelector(`[data-destination="${destination.id}"]`).classList.add('selected');
+
+                this.selectedDestination = destination;
+                this.updateTicketPreview(destination);
+                this.updateGameState();
+                
+                document.getElementById('confirmTicket').disabled = false;
+                this.log(`選擇目的地: ${destination.flag} ${destination.name}`);
+            }
+
+            updateTicketPreview(destination) {
+                document.getElementById('destinationCode').textContent = destination.countryCode;
+                document.getElementById('destinationName').textContent = destination.name;
+                document.getElementById('arrivalTime').textContent = `隔天 ${this.wakeTime}`;
+                document.getElementById('ticketPrice').textContent = `NT$ ${destination.price.toLocaleString()}`;
+                document.getElementById('flightDuration').textContent = `${destination.flightTime}h`;
+                document.getElementById('departureDate').textContent = new Date().toISOString().split('T')[0];
+                document.getElementById('flightNumber').textContent = `WU-${Math.floor(Math.random() * 9000) + 1000}`;
+                
+                document.getElementById('ticketPreview').style.display = 'block';
+                document.getElementById('noTicketMessage').style.display = 'none';
+            }
+
+            updateGameState() {
+                document.getElementById('selectedDestination').textContent = 
+                    this.selectedDestination ? `${this.selectedDestination.flag} ${this.selectedDestination.name}` : '無';
+            }
+
+            async confirmTicket() {
+                if (!this.selectedDestination) return;
+
+                const destination = this.selectedDestination;
+                
+                // 檢查金錢
+                if (this.gameState.money < destination.price) {
+                    alert(`💰 金錢不足！需要 NT$ ${destination.price.toLocaleString()}，您只有 NT$ ${this.gameState.money.toLocaleString()}`);
+                    return;
+                }
+
+                // 扣除金錢
+                this.gameState.money -= destination.price;
+                
+                // 更新顯示
+                document.getElementById('gameMoney').textContent = `NT$ ${this.gameState.money.toLocaleString()}`;
+                
+                this.log(`機票確認成功: ${destination.flag} ${destination.name}`);
+                this.log(`花費: NT$ ${destination.price.toLocaleString()}`);
+                this.log(`剩餘金錢: NT$ ${this.gameState.money.toLocaleString()}`);
+                
+                // 播放登機廣播
+                await this.playBoardingAnnouncement(destination);
+                
+                alert(`✈️ 機票購買成功！\n\n🎫 目的地：${destination.flag} ${destination.name}\n💰 花費：NT$ ${destination.price.toLocaleString()}\n🕐 抵達時間：隔天 ${this.wakeTime}\n\n🌙 祝您有個美好的睡眠！`);
+            }
+
+            async playBoardingAnnouncement(destination) {
+                try {
+                    const announcement = `歡迎搭乘 Wake Up Airlines！我們即將從 ${this.currentLocation.name} 飛往 ${destination.name}，飛行時間 ${destination.flightTime} 小時。請準備好您的夢想，我們即將起飛！`;
+                    
+                    // 使用瀏覽器TTS
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(announcement);
+                        utterance.lang = 'zh-TW';
+                        utterance.rate = 0.9;
+                        utterance.pitch = 1;
+                        speechSynthesis.speak(utterance);
+                    }
+                    
+                    this.log(`播放登機廣播: ${announcement}`);
+                } catch (error) {
+                    this.log(`播放登機廣播失敗: ${error.message}`);
+                }
+            }
+
+            async playLandingAnnouncement() {
+                if (!this.selectedDestination) return;
+                
+                try {
+                    const destination = this.selectedDestination;
+                    const announcement = `各位旅客，飛機即將降落在 ${destination.name}。請繫好安全帶，準備降落。如果您準備好了，請按按鈕確認降落。`;
+                    
+                    // 使用瀏覽器TTS
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(announcement);
+                        utterance.lang = 'zh-TW';
+                        utterance.rate = 0.9;
+                        utterance.pitch = 1;
+                        speechSynthesis.speak(utterance);
+                    }
+                    
+                    this.log(`播放降落廣播: ${announcement}`);
+                } catch (error) {
+                    this.log(`播放降落廣播失敗: ${error.message}`);
+                }
+            }
+
+            clearSelection() {
+                this.selectedDestination = null;
+                document.querySelectorAll('.destination-option').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                document.getElementById('confirmTicket').disabled = true;
+                document.getElementById('ticketPreview').style.display = 'none';
+                document.getElementById('noTicketMessage').style.display = 'block';
+                this.updateGameState();
+                this.log('清除選擇');
+            }
+
+            log(message) {
+                const logDiv = document.getElementById('logOutput');
+                const timestamp = new Date().toLocaleTimeString();
+                const logLine = document.createElement('div');
+                logLine.className = 'log-line';
+                logLine.textContent = `[${timestamp}] ${message}`;
+                
+                logDiv.insertBefore(logLine, logDiv.firstChild);
+                
+                // 限制日誌數量
+                while (logDiv.children.length > 50) {
+                    logDiv.removeChild(logDiv.lastChild);
+                }
+            }
+
+            clearLog() {
+                document.getElementById('logOutput').innerHTML = '<div class="log-line">日誌已清除</div>';
+            }
+
+            async generateAIContent() {
+                try {
+                    // 模擬AI生成延遲
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const taipeiFacts = [
+                        "你知道嗎？台北101曾經是世界最高的建築物，現在仍然是台灣的象徵！從這裡出發的睡眠航班，就像從雲端開始你的夢境之旅。",
+                        "台北的夜市文化聞名世界，從士林夜市到饒河夜市，每個夜晚都充滿了美食的香氣。今晚的睡眠航班，或許會帶你到另一個美食天堂！",
+                        "台北的捷運系統被譽為亞洲最乾淨的地鐵之一，每天載送數百萬人。就像我們的睡眠航班，準時、舒適、帶你到達目的地。",
+                        "台北的小籠包是全世界最受歡迎的中式點心之一，薄薄的皮包裹著鮮美的湯汁。今晚的睡眠航班，或許會帶你品嚐其他國家的美食！",
+                        "台北的氣候四季如春，就像我們的睡眠航班系統一樣，總是為你提供最舒適的體驗。無論飛到哪裡，都帶著台北的溫暖。",
+                        "台北是亞洲的科技重鎮，從這裡出發的睡眠航班，就像搭載著最新的科技，帶你探索世界的每一個角落。",
+                        "台北的咖啡文化非常興盛，從傳統的泡沫紅茶到現代的精品咖啡。今晚的睡眠航班，或許會帶你到咖啡的故鄉！",
+                        "台北的書店密度是全世界最高的，這裡的人們熱愛閱讀。今晚的睡眠航班，就像一本打開的書，帶你探索新的故事。"
+                    ];
+                    
+                    const randomFact = taipeiFacts[Math.floor(Math.random() * taipeiFacts.length)];
+                    
+                    document.getElementById('aiContentText').innerHTML = `
+                        <div class="ai-fact">
+                            <div class="fact-icon">💡</div>
+                            <div class="fact-text">${randomFact}</div>
+                        </div>
+                    `;
+                    
+                    this.log('AI台北小知識生成完成');
+                    
+                } catch (error) {
+                    document.getElementById('aiContentText').innerHTML = `
+                        <div class="ai-fact">
+                            <div class="fact-icon">🏮</div>
+                            <div class="fact-text">台北是台灣的首都，擁有豐富的文化和美食。從這裡出發的睡眠航班，將帶你探索亞洲的精彩！</div>
+                        </div>
+                    `;
+                    this.log('AI內容生成失敗，使用預設內容');
+                }
+            }
+
+            setupTaipeiFeatures() {
+                const features = document.querySelectorAll('.feature-item');
+                features.forEach(feature => {
+                    feature.addEventListener('click', () => {
+                        const featureText = feature.querySelector('.feature-text').textContent;
+                        this.log(`點擊台北特色：${featureText}`);
+                        
+                        // 添加點擊效果
+                        feature.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            feature.style.transform = '';
+                        }, 150);
+                        
+                        // 生成相關的AI內容
+                        this.generateFeatureContent(featureText);
+                    });
+                });
+            }
+
+            async generateFeatureContent(feature) {
+                const featureContents = {
+                    '夜市文化': '台北的夜市是台灣文化的精髓！從蚵仔煎到珍珠奶茶，每個攤位都有著獨特的故事。今晚的睡眠航班，或許會帶你到其他國家的美食街！',
+                    '101大樓': '台北101不只是建築，更是台灣人的驕傲！從這裡俯瞰整個台北，就像從雲端開始你的睡眠航班之旅。',
+                    '小籠包': '台北的小籠包是全世界最受歡迎的中式點心！薄薄的皮包裹著鮮美的湯汁，就像我們的睡眠航班，精緻而溫暖。',
+                    '捷運系統': '台北捷運是亞洲最乾淨的地鐵之一！每天載送數百萬人，就像我們的睡眠航班，準時、舒適、帶你到達目的地。'
+                };
+                
+                const content = featureContents[feature] || '台北是一個充滿活力的城市，每個角落都有著獨特的故事！';
+                
+                document.getElementById('aiContentText').innerHTML = `
+                    <div class="ai-fact">
+                        <div class="fact-icon">🎯</div>
+                        <div class="fact-text">${content}</div>
+                    </div>
+                `;
+                
+                this.log(`生成${feature}相關內容`);
+            }
+
+            // 獲取所有50個國家的城市數據
+            getAllCities() {
+                return [
+                    // 亞洲
+                    { id: 'tokyo', name: '東京', country: '日本', countryCode: 'JP', latitude: 35.6762, longitude: 139.6503, timezone: 9 },
+                    { id: 'seoul', name: '首爾', country: '韓國', countryCode: 'KR', latitude: 37.5665, longitude: 126.9780, timezone: 9 },
+                    { id: 'bangkok', name: '曼谷', country: '泰國', countryCode: 'TH', latitude: 13.7563, longitude: 100.5018, timezone: 7 },
+                    { id: 'singapore', name: '新加坡', country: '新加坡', countryCode: 'SG', latitude: 1.3521, longitude: 103.8198, timezone: 8 },
+                    { id: 'hongkong', name: '香港', country: '香港', countryCode: 'HK', latitude: 22.3193, longitude: 114.1694, timezone: 8 },
+                    { id: 'manila', name: '馬尼拉', country: '菲律賓', countryCode: 'PH', latitude: 14.5995, longitude: 120.9842, timezone: 8 },
+                    { id: 'kualalumpur', name: '吉隆坡', country: '馬來西亞', countryCode: 'MY', latitude: 3.1390, longitude: 101.6869, timezone: 8 },
+                    { id: 'jakarta', name: '雅加達', country: '印尼', countryCode: 'ID', latitude: -6.2088, longitude: 106.8456, timezone: 7 },
+                    { id: 'hochiminh', name: '胡志明市', country: '越南', countryCode: 'VN', latitude: 10.8231, longitude: 106.6297, timezone: 7 },
+                    { id: 'hanoi', name: '河內', country: '越南', countryCode: 'VN', latitude: 21.0285, longitude: 105.8542, timezone: 7 },
+                    { id: 'yangon', name: '仰光', country: '緬甸', countryCode: 'MM', latitude: 16.8661, longitude: 96.1951, timezone: 6.5 },
+                    { id: 'phnompenh', name: '金邊', country: '柬埔寨', countryCode: 'KH', latitude: 11.5564, longitude: 104.9282, timezone: 7 },
+                    { id: 'vientiane', name: '永珍', country: '寮國', countryCode: 'LA', latitude: 17.9757, longitude: 102.6331, timezone: 7 },
+                    { id: 'kathmandu', name: '加德滿都', country: '尼泊爾', countryCode: 'NP', latitude: 27.7172, longitude: 85.3240, timezone: 5.75 },
+                    { id: 'dhaka', name: '達卡', country: '孟加拉', countryCode: 'BD', latitude: 23.8103, longitude: 90.4125, timezone: 6 },
+                    { id: 'colombo', name: '可倫坡', country: '斯里蘭卡', countryCode: 'LK', latitude: 6.9271, longitude: 79.8612, timezone: 5.5 },
+                    { id: 'maldives', name: '馬累', country: '馬爾地夫', countryCode: 'MV', latitude: 4.1755, longitude: 73.5093, timezone: 5 },
+                    { id: 'kabul', name: '喀布爾', country: '阿富汗', countryCode: 'AF', latitude: 34.5553, longitude: 69.2075, timezone: 4.5 },
+                    { id: 'islamabad', name: '伊斯蘭堡', country: '巴基斯坦', countryCode: 'PK', latitude: 33.6844, longitude: 73.0479, timezone: 5 },
+                    
+                    // 東亞
+                    { id: 'beijing', name: '北京', country: '中國', countryCode: 'CN', latitude: 39.9042, longitude: 116.4074, timezone: 8 },
+                    { id: 'shanghai', name: '上海', country: '中國', countryCode: 'CN', latitude: 31.2304, longitude: 121.4737, timezone: 8 },
+                    { id: 'guangzhou', name: '廣州', country: '中國', countryCode: 'CN', latitude: 23.1291, longitude: 113.2644, timezone: 8 },
+                    { id: 'shenzhen', name: '深圳', country: '中國', countryCode: 'CN', latitude: 22.5431, longitude: 114.0579, timezone: 8 },
+                    { id: 'macau', name: '澳門', country: '澳門', countryCode: 'MO', latitude: 22.1987, longitude: 113.5439, timezone: 8 },
+                    
+                    // 大洋洲
+                    { id: 'sydney', name: '雪梨', country: '澳洲', countryCode: 'AU', latitude: -33.8688, longitude: 151.2093, timezone: 10 },
+                    { id: 'melbourne', name: '墨爾本', country: '澳洲', countryCode: 'AU', latitude: -37.8136, longitude: 144.9631, timezone: 10 },
+                    { id: 'brisbane', name: '布里斯本', country: '澳洲', countryCode: 'AU', latitude: -27.4698, longitude: 153.0251, timezone: 10 },
+                    { id: 'perth', name: '伯斯', country: '澳洲', countryCode: 'AU', latitude: -31.9505, longitude: 115.8605, timezone: 8 },
+                    { id: 'auckland', name: '奧克蘭', country: '紐西蘭', countryCode: 'NZ', latitude: -36.8485, longitude: 174.7633, timezone: 12 },
+                    { id: 'wellington', name: '威靈頓', country: '紐西蘭', countryCode: 'NZ', latitude: -41.2924, longitude: 174.7787, timezone: 12 },
+                    { id: 'portmoresby', name: '莫爾茲比港', country: '巴布亞紐幾內亞', countryCode: 'PG', latitude: -9.4438, longitude: 147.1803, timezone: 10 },
+                    { id: 'suva', name: '蘇瓦', country: '斐濟', countryCode: 'FJ', latitude: -18.1248, longitude: 178.4501, timezone: 12 },
+                    
+                    // 歐洲
+                    { id: 'london', name: '倫敦', country: '英國', countryCode: 'GB', latitude: 51.5074, longitude: -0.1278, timezone: 0 },
+                    { id: 'paris', name: '巴黎', country: '法國', countryCode: 'FR', latitude: 48.8566, longitude: 2.3522, timezone: 1 },
+                    { id: 'berlin', name: '柏林', country: '德國', countryCode: 'DE', latitude: 52.5200, longitude: 13.4050, timezone: 1 },
+                    { id: 'rome', name: '羅馬', country: '義大利', countryCode: 'IT', latitude: 41.9028, longitude: 12.4964, timezone: 1 },
+                    { id: 'madrid', name: '馬德里', country: '西班牙', countryCode: 'ES', latitude: 40.4168, longitude: -3.7038, timezone: 1 },
+                    { id: 'amsterdam', name: '阿姆斯特丹', country: '荷蘭', countryCode: 'NL', latitude: 52.3676, longitude: 4.9041, timezone: 1 },
+                    { id: 'zurich', name: '蘇黎世', country: '瑞士', countryCode: 'CH', latitude: 47.3769, longitude: 8.5417, timezone: 1 },
+                    { id: 'vienna', name: '維也納', country: '奧地利', countryCode: 'AT', latitude: 48.2082, longitude: 16.3738, timezone: 1 },
+                    { id: 'moscow', name: '莫斯科', country: '俄羅斯', countryCode: 'RU', latitude: 55.7558, longitude: 37.6176, timezone: 3 },
+                    
+                    // 美洲
+                    { id: 'newyork', name: '紐約', country: '美國', countryCode: 'US', latitude: 40.7128, longitude: -74.0060, timezone: -5 },
+                    { id: 'losangeles', name: '洛杉磯', country: '美國', countryCode: 'US', latitude: 34.0522, longitude: -118.2437, timezone: -8 },
+                    { id: 'toronto', name: '多倫多', country: '加拿大', countryCode: 'CA', latitude: 43.6532, longitude: -79.3832, timezone: -5 },
+                    { id: 'vancouver', name: '溫哥華', country: '加拿大', countryCode: 'CA', latitude: 49.2827, longitude: -123.1207, timezone: -8 },
+                    { id: 'mexicocity', name: '墨西哥城', country: '墨西哥', countryCode: 'MX', latitude: 19.4326, longitude: -99.1332, timezone: -6 },
+                    { id: 'saopaulo', name: '聖保羅', country: '巴西', countryCode: 'BR', latitude: -23.5505, longitude: -46.6333, timezone: -3 },
+                    { id: 'riodejaneiro', name: '里約熱內盧', country: '巴西', countryCode: 'BR', latitude: -22.9068, longitude: -43.1729, timezone: -3 },
+                    { id: 'buenosaires', name: '布宜諾斯艾利斯', country: '阿根廷', countryCode: 'AR', latitude: -34.6118, longitude: -58.3960, timezone: -3 },
+                    { id: 'lima', name: '利馬', country: '秘魯', countryCode: 'PE', latitude: -12.0464, longitude: -77.0428, timezone: -5 },
+                    { id: 'santiago', name: '聖地牙哥', country: '智利', countryCode: 'CL', latitude: -33.4489, longitude: -70.6693, timezone: -3 }
+                ];
+            }
+
+            // 獲取當前位置
+            getCurrentLocation() {
+                // 可以從用戶設置、GPS或預設位置獲取
+                // 目前預設為台北，未來可以擴展支持多個起始位置
+                return {
+                    name: '台北',
+                    country: '台灣',
+                    coordinates: [25.0330, 121.5654],
+                    timezone: 8
+                };
+            }
+        }
+
+        // 全域函數
+        let sleepFlightDemo;
+
+        function loadDestinations() {
+            sleepFlightDemo.loadDestinations();
+        }
+
+        function confirmTicket() {
+            sleepFlightDemo.confirmTicket();
+        }
+
+        function clearSelection() {
+            sleepFlightDemo.clearSelection();
+        }
+
+        function testBoardingAnnouncement() {
+            if (sleepFlightDemo.selectedDestination) {
+                sleepFlightDemo.playBoardingAnnouncement(sleepFlightDemo.selectedDestination);
+            } else {
+                alert('請先選擇目的地');
+            }
+        }
+
+        function testLandingAnnouncement() {
+            sleepFlightDemo.playLandingAnnouncement();
+        }
+
+        function clearLog() {
+            sleepFlightDemo.clearLog();
+        }
+
+        function refreshAIContent() {
+            document.getElementById('aiContentText').innerHTML = '<div class="loading-ai">🔄 AI正在生成新的台北小知識...</div>';
+            sleepFlightDemo.generateAIContent();
+        }
+
+        // 固定右下角按鈕點擊
+        function handleActionButton() {
+            if (!sleepFlightDemo) {
+                alert('系統尚未初始化');
+                return;
+            }
+            if (sleepFlightDemo.selectedDestination) {
+                sleepFlightDemo.playBoardingAnnouncement(sleepFlightDemo.selectedDestination);
+                alert('✈️ 準備起飛！\n目的地：' + sleepFlightDemo.selectedDestination.name + '');
+            } else {
+                alert('請先選擇目的地再起飛');
+            }
+        }
+
+        async function debugDestinations() {
+            console.log('=== 調試目的地計算 ===');
+            console.log('當前起床時間:', sleepFlightDemo.wakeTime);
+            console.log('當前位置:', sleepFlightDemo.currentLocation);
+            
+            const destinations = sleepFlightDemo.calculateSleepFlightDestinations();
+            console.log('計算出的目的地:', destinations);
+            
+            // 直接在頁面上顯示調試信息
+            const grid = document.getElementById('destinationGrid');
+            grid.innerHTML = `
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; margin-bottom: 10px;">
+                    <h4 style="color: #00ff88; margin-bottom: 10px;">🐛 調試信息</h4>
+                    <p><strong>起床時間:</strong> ${sleepFlightDemo.wakeTime}</p>
+                    <p><strong>計算出的目的地數量:</strong> ${destinations.length}</p>
+                    <p><strong>目的地列表:</strong></p>
+                    <ul style="margin-left: 20px;">
+                        ${destinations.map(dest => `<li>${dest.flag} ${dest.name} (${dest.country}) - ${dest.distance}km - NT$${dest.price}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            
+            // 然後正常渲染目的地
+            await sleepFlightDemo.renderDestinations();
+        }
+
+        async function testDestinations() {
+            console.log('=== 測試目的地 ===');
+            
+            // 直接使用前4個城市作為測試
+            const allCities = sleepFlightDemo.getAllCities();
+            const currentLocation = sleepFlightDemo.getCurrentLocation();
+            
+            sleepFlightDemo.destinations = allCities.slice(0, 4).map(city => ({
+                id: city.id,
+                name: city.name,
+                country: city.country,
+                countryCode: city.countryCode,
+                flag: sleepFlightDemo.getCountryFlag(city.countryCode),
+                distance: Math.round(sleepFlightDemo.calculateDistance(currentLocation.coordinates[0], currentLocation.coordinates[1], city.latitude, city.longitude)),
+                flightTime: Math.round((sleepFlightDemo.calculateDistance(currentLocation.coordinates[0], currentLocation.coordinates[1], city.latitude, city.longitude) / 800) * 10) / 10,
+                coordinates: [city.latitude, city.longitude],
+                price: sleepFlightDemo.calculateFlightPrice(sleepFlightDemo.calculateDistance(currentLocation.coordinates[0], currentLocation.coordinates[1], city.latitude, city.longitude)),
+                timezone: city.timezone
+            }));
+            
+            await sleepFlightDemo.renderDestinations();
+            
+            console.log('測試目的地載入完成:', sleepFlightDemo.destinations);
+            sleepFlightDemo.log(`測試載入 ${sleepFlightDemo.destinations.length} 個目的地`);
+        }
+
+        // 初始化系統
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                sleepFlightDemo = new SleepFlightDemo();
+                console.log('睡眠航班系統已初始化');
+                
+                // 添加測試按鈕
+                const testBtn = document.createElement('button');
+                testBtn.textContent = '🔧 系統測試';
+                testBtn.onclick = function() {
+                    console.log('sleepFlightDemo:', sleepFlightDemo);
+                    console.log('destinations:', sleepFlightDemo.destinations);
+                    console.log('currentLocation:', sleepFlightDemo.currentLocation);
+                    alert('系統正常！請查看控制台');
+                };
+                testBtn.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 9999; background: red; color: white; padding: 10px;';
+                document.body.appendChild(testBtn);
+                
+                // 右下角按鈕預設顯示
+                const fab = document.getElementById('fixedActionButton');
+                if (fab) fab.style.display = 'block';
+
+            } catch (error) {
+                console.error('初始化失敗:', error);
+                alert('系統初始化失敗: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
