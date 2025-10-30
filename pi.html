@@ -774,5 +774,16 @@
         <div class="landing-modal-actions" id="landingActions"></div>
       </div>
     </div>
+    
+    <!-- 跨平台 Emoji 支援（確保樹莓派等裝置顯示正常） -->
+    <script src="https://twemoji.maxcdn.com/v/latest/twemoji.min.js" crossorigin="anonymous"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        try { twemoji.parse(document.body, { folder: 'svg', ext: '.svg' }); } catch(e) { console.warn('Twemoji 解析失敗', e); }
+      });
+    </script>
+    <style>
+      img.emoji { height: 1em; width: 1em; margin: 0 .05em; vertical-align: -0.1em; }
+    </style>
 </body>
 </html> 

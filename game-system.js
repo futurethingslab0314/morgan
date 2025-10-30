@@ -705,6 +705,21 @@ class WakeUpMapGame {
 
         // 立即顯示降落按鈕（測試用）
         this.showActionButton('landing');
+
+        // 保底：確保四個地圖面板可見
+        this._ensureMapPanelsVisible();
+    }
+
+    _ensureMapPanelsVisible() {
+        const ids = ['sleepTimePopup', 'flightStatusPopup', 'resourceDisplayPopup', 'simpleTicketPopup'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = 'block';
+                el.style.opacity = '1';
+                el.style.visibility = 'visible';
+            }
+        });
     }
 
     getDestinationCoords(destinationId) {
@@ -2234,13 +2249,21 @@ class WakeUpMapGame {
 
             const announcement = (data && data.announcement) ? data.announcement : null;
             if (announcement) {
+                // 優先嘗試呼叫本機樹莓派 TTS 服務（喇叭播放）
+                try {
+                    const ttsRes = await fetch('http://127.0.0.1:5005/tts/play', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: announcement, languageCode: 'zh-TW' })
+                    });
+                    if (ttsRes.ok) return true;
+                } catch (e) {
+                    console.warn('本機 TTS 服務不可用，改用瀏覽器或前端播放', e);
+                }
+
                 if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
-                    // 偏好：男聲、活潑
                     await window.audioManager.playTextWithLanguage(announcement, 'zh-TW', {
-                        voice: 'male_lively', // 若後端支援請對應到男性活潑音色
-                        rate: 1.05,
-                        pitch: 0.95,
-                        style: 'lively'
+                        voice: 'male_lively', rate: 1.05, pitch: 0.95, style: 'lively'
                     });
                 } else {
                     this.playTextWithBrowserTTS(announcement);
@@ -2253,6 +2276,17 @@ class WakeUpMapGame {
 
         // 備援：本地機長口吻文案
         const fallback = this.getCaptainStyleFallback(announcementType, destination);
+        // 優先送到本機 TTS 服務
+        try {
+            const ttsRes = await fetch('http://127.0.0.1:5005/tts/play', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: fallback, languageCode: 'zh-TW' })
+            });
+            if (ttsRes.ok) return true;
+        } catch (e) {
+            console.warn('本機 TTS 服務不可用（fallback）', e);
+        }
         try {
             if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
                 await window.audioManager.playTextWithLanguage(fallback, 'zh-TW', {

@@ -3965,6 +3965,21 @@ body {
     border-top: 1px solid rgba(255, 107, 53, 0.2);
 }
 
+/* === 樹莓派穩定性：確保地圖面板長駐顯示，避免被動畫/覆蓋隱藏 === */
+.sleep-time-popup,
+.flight-status-popup,
+.resource-display-popup,
+.simple-ticket-popup {
+    position: fixed !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    z-index: 10000 !important;
+    /* 高於 Leaflet 控制元件 */
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
 .time-control-item {
     display: flex;
     align-items: center;
