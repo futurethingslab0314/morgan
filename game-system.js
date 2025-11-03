@@ -26,6 +26,67 @@ class WakeUpMapGame {
         this.init();
     }
 
+    // 載入大型城市資料（根目錄 cities_data.json），快取於記憶體
+    async loadCitiesData() {
+        if (this.citiesData && Array.isArray(this.citiesData) && this.citiesData.length) return this.citiesData;
+        try {
+            const res = await fetch('/cities_data.json', { cache: 'force-cache' });
+            if (!res.ok) throw new Error('cities_data.json 載入失敗');
+            const json = await res.json();
+            this.citiesData = (Array.isArray(json) ? json : json.cities || [])
+                .filter(c => c && (c.latitude || c.lat) && (c.longitude || c.lng) && (c.countryCode || c.country_iso_code))
+                .map(c => ({
+                    id: `${(c.name || c.city || '').trim()}_${(c.country || c.countryName || '').trim()}_${(c.countryCode || c.country_iso_code || '').toUpperCase()}`,
+                    name: c.name || c.city || 'Unknown',
+                    country: c.country || c.countryName || '',
+                    countryCode: (c.countryCode || c.country_iso_code || '').toUpperCase(),
+                    latitude: Number(c.latitude ?? c.lat),
+                    longitude: Number(c.longitude ?? c.lng),
+                    population: Number(c.population || 0),
+                    isCapital: !!(c.capital || c.is_capital)
+                }));
+            // 建立每國候選清單（只保留每個國家最具代表或最熱門的1-2個）以加速後續計算
+            this.buildCountryCandidates();
+            return this.citiesData;
+        } catch (e) {
+            console.error('載入城市資料失敗:', e);
+            this.citiesData = [];
+            return this.citiesData;
+        }
+    }
+
+    buildCountryCandidates() {
+        if (!this.citiesData || !this.citiesData.length) { this.countryCandidates = []; return; }
+        const popular = new Set([
+            'Tokyo', 'Seoul', 'Singapore', 'Bangkok', 'Hong Kong', 'Manila', 'Kuala Lumpur', 'Jakarta', 'Ho Chi Minh City', 'Hanoi',
+            'Beijing', 'Shanghai', 'Osaka', 'Kyoto', 'Sydney', 'Melbourne', 'Perth', 'Auckland', 'Wellington',
+            'London', 'Paris', 'Berlin', 'Rome', 'Madrid', 'Amsterdam', 'Zurich', 'Vienna', 'Prague', 'Warsaw',
+            'New York', 'Los Angeles', 'Chicago', 'Toronto', 'Vancouver', 'Mexico City', 'Sao Paulo', 'Buenos Aires'
+        ]);
+        const byCountry = new Map();
+        for (const c of this.citiesData) {
+            const key = c.countryCode;
+            if (!byCountry.has(key)) byCountry.set(key, []);
+            byCountry.get(key).push(c);
+        }
+        const candidates = [];
+        byCountry.forEach((list) => {
+            // 先找熱門/首都，否則取人口最多
+            let chosen = list.find(x => popular.has((x.name || '').trim())) || list.find(x => x.isCapital);
+            if (!chosen) {
+                chosen = list.reduce((a, b) => (a.population > b.population ? a : b));
+            }
+            candidates.push(chosen);
+        });
+        this.countryCandidates = candidates;
+    }
+
+    countryCodeToEmoji(cc) {
+        if (!cc || cc.length !== 2) return '🌍';
+        const codePoints = cc.toUpperCase().split('').map(ch => 127397 + ch.charCodeAt());
+        return String.fromCodePoint(...codePoints);
+    }
+
     // === 測試時鐘（虛擬現在時間） ===
     now() {
         return (window.TEST_CLOCK && window.TEST_CLOCK.use)
@@ -324,6 +385,7 @@ class WakeUpMapGame {
         grid.innerHTML = '<div class="loading-destinations">🔄 正在計算可達目的地...</div>';
 
         try {
+            await this.loadCitiesData();
             // 獲取當前位置
             const currentLocation = await this.getCurrentLocation();
             this.gameState.currentLocation = currentLocation;
@@ -723,15 +785,10 @@ class WakeUpMapGame {
     }
 
     getDestinationCoords(destinationId) {
-        // 根據目的地ID返回座標，使用50個城市的數據
-        const allCities = this.getAllCities();
-        const city = allCities.find(c => c.id === destinationId);
-
-        if (city) {
-            return [city.latitude, city.longitude];
-        }
-
-        // 如果找不到，返回預設座標（曼谷）
+        // 改為從 JSON 取得
+        const data = (this.citiesData && this.citiesData.length) ? this.citiesData : [];
+        const city = data.find(c => c.id === destinationId);
+        if (city) return [city.latitude, city.longitude];
         return [13.7563, 100.5018];
     }
 
@@ -1246,26 +1303,90 @@ class WakeUpMapGame {
         }
     }
 
-    calculateSleepFlightDestinations(currentLocation, wakeTime) {
-        console.log('開始計算目的地，起床時間:', wakeTime);
+    async calculateSleepFlightDestinations(currentLocation, wakeTime) {
+        console.log('開始計算目的地（JSON資料） 起床時間:', wakeTime);
 
-        // 獲取當前位置
-        const currentLoc = currentLocation || this.getCurrentLocation();
-        console.log('當前位置:', currentLoc);
+        // 目前以台北為出發點（若無明確定位）
+        const currentLoc = (() => {
+            if (currentLocation) {
+                if (typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number') {
+                    return { latitude: currentLocation.latitude, longitude: currentLocation.longitude };
+                }
+                if (Array.isArray(currentLocation.coordinates) && currentLocation.coordinates.length === 2) {
+                    const [lat, lng] = currentLocation.coordinates;
+                    return { latitude: Number(lat), longitude: Number(lng) };
+                }
+            }
+            return { latitude: 25.0330, longitude: 121.5654 };
+        })();
+        const origin = { latitude: currentLoc.latitude, longitude: currentLoc.longitude };
+        const originCoords = [origin.latitude, origin.longitude];
 
-        // 獲取所有可用城市
-        const allCities = this.getAllCities();
-        console.log('可用城市數量:', allCities.length);
+        const cities = await this.loadCitiesData();
+        const pool = (this.countryCandidates && this.countryCandidates.length) ? this.countryCandidates : cities;
+        console.log('可用候選城市數量:', pool.length);
+        const maxDistanceKm = 8 * 800; // 6400km
 
-        // 過濾8小時航程內的城市
-        const reachableCities = this.filterByFlightRange(currentLoc, allCities);
-        console.log('8小時航程內城市數量:', reachableCities.length);
+        const withDistance = pool.map(c => ({
+            ...c,
+            distanceKm: this.calculateDistance(originCoords, [c.latitude, c.longitude])
+        })).filter(c => c.distanceKm > 0);
 
-        // 選擇4個最佳目的地
-        const selectedDestinations = this.selectBestDestinations(reachableCities, currentLoc);
-        console.log('最終選擇的4個目的地:', selectedDestinations);
+        let candidates = withDistance.filter(c => c.distanceKm <= maxDistanceKm)
+            .sort((a, b) => a.distanceKm - b.distanceKm);
 
-        return selectedDestinations;
+        // 依國家分組，挑「最近」或「更耳熟能詳」的城市
+        const nameBoost = new Set([
+            'Tokyo', 'Seoul', 'Singapore', 'Bangkok', 'Hong Kong', 'Manila', 'Kuala Lumpur', 'Jakarta', 'Ho Chi Minh City', 'Hanoi',
+            'Beijing', 'Shanghai', 'Osaka', 'Kyoto', 'Sydney', 'Melbourne', 'Perth', 'Auckland', 'Wellington',
+            'London', 'Paris', 'Berlin', 'Rome', 'Madrid', 'Amsterdam', 'Zurich', 'Vienna', 'Prague', 'Warsaw',
+            'New York', 'Los Angeles', 'Chicago', 'Toronto', 'Vancouver', 'Mexico City', 'Sao Paulo', 'Buenos Aires'
+        ]);
+        const cityScore = (c) => {
+            // 分數越低越好（主排序距離，副排序熱門度）
+            let bonus = 0;
+            if (nameBoost.has((c.name || '').trim())) bonus -= 200; // 熱門城市給負分讓它靠前
+            if (c.population) bonus -= Math.min(100, Math.floor(Number(c.population) / 1_000_000));
+            return c.distanceKm + bonus;
+        };
+
+        const countryBest = new Map();
+        for (const c of candidates) {
+            const key = c.countryCode;
+            const prev = countryBest.get(key);
+            if (!prev || cityScore(c) < cityScore(prev)) countryBest.set(key, c);
+        }
+        candidates = Array.from(countryBest.values()).sort((a, b) => a.distanceKm - b.distanceKm);
+
+        const pickUniqueCountries = (list) => {
+            const top = [];
+            const seen = new Set();
+            for (const c of list) {
+                if (seen.has(c.countryCode)) continue;
+                seen.add(c.countryCode);
+                top.push({
+                    ...c,
+                    flag: this.countryCodeToEmoji(c.countryCode),
+                    price: this.calculateFlightPrice(c.distanceKm),
+                    unlocked: true
+                });
+                if (top.length >= 4) break;
+            }
+            return top;
+        };
+
+        let top = pickUniqueCountries(candidates);
+        let expand = 7000;
+        while (top.length < 4 && expand <= 10000) {
+            const more = withDistance.filter(c => c.distanceKm <= expand).sort((a, b) => a.distanceKm - b.distanceKm);
+            top = pickUniqueCountries(more);
+            expand += 1000;
+        }
+        if (top.length < 4) {
+            top = pickUniqueCountries(withDistance.sort((a, b) => a.distanceKm - b.distanceKm));
+        }
+        console.log('最終選擇的4個目的地:', top);
+        return top;
     }
 
     // 計算兩點間距離（公里）

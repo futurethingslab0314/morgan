@@ -237,27 +237,29 @@
                     <button class="modal-close" id="modalClose">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <!-- 起床時間選擇 -->
-                    <div class="wake-time-section">
-                        <h3>🕐 選擇起床時間</h3>
-                        <div class="time-selector">
-                            <input type="time" id="wakeTimeInput" class="time-input" value="08:00">
-                            <div class="time-presets">
-                                <button class="time-preset" data-time="06:00">6:00</button>
-                                <button class="time-preset" data-time="07:00">7:00</button>
-                                <button class="time-preset active" data-time="08:00">8:00</button>
-                                <button class="time-preset" data-time="09:00">9:00</button>
-                                <button class="time-preset" data-time="10:00">10:00</button>
+                    <div class="destination-layout">
+                        <div class="left-settings">
+                            <!-- 起床時間選擇 -->
+                            <div class="wake-time-section">
+                                <h3>🕐 選擇起床時間</h3>
+                                <div class="time-selector">
+                                    <input type="time" id="wakeTimeInput" class="time-input" value="08:00">
+                                    <div class="time-presets">
+                                        <button class="time-preset" data-time="06:00">6:00</button>
+                                        <button class="time-preset" data-time="07:00">7:00</button>
+                                        <button class="time-preset active" data-time="08:00">8:00</button>
+                                        <button class="time-preset" data-time="09:00">9:00</button>
+                                        <button class="time-preset" data-time="10:00">10:00</button>
+                                    </div>
+                                </div>
+                                <!-- 已移除飛行時間/最大距離，保持左側簡潔大方 -->
                             </div>
                         </div>
-                        <div class="flight-info">
-                            <span class="flight-duration">⏱️ 飛行時間：8小時</span>
-                            <span class="flight-distance">📏 最大距離：6400公里</span>
+                        <div class="right-grid">
+                            <div class="destination-grid" id="destinationGrid">
+                                <!-- 目的地選項將由 JavaScript 動態生成 -->
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="destination-grid" id="destinationGrid">
-                        <!-- 目的地選項將由 JavaScript 動態生成 -->
                     </div>
                 </div>
             </div>
