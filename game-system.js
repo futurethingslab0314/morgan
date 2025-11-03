@@ -2350,7 +2350,7 @@ class WakeUpMapGame {
 
         // 組合請求內容（加入機長口吻、風趣、在地特色）
         const body = {
-            announcementType,
+            announcementType: (announcementType === 'takeoff') ? 'boarding' : announcementType,
             city: destination?.name,
             country: destination?.country,
             countryCode: destination?.countryCode,
@@ -2368,12 +2368,31 @@ class WakeUpMapGame {
         };
 
         try {
-            const res = await fetch('/api/generateSleepFlightAnnouncement', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            if (!res.ok) throw new Error(`API status ${res.status}`);
+            // 決定 API 基址：優先相對路徑，其次 local-env.js 指定，再者當前 origin，最後 Vercel 網域
+            const bases = [
+                '',
+                (window.env && window.env.API_BASE) ? window.env.API_BASE.replace(/\/$/, '') : '',
+                (location && location.origin) ? location.origin : '',
+                'https://morgan-orcin.vercel.app'
+            ].filter((v, i, arr) => v && arr.indexOf(v) === i);
+
+            let res;
+            let lastErr;
+            for (const base of [''].concat(bases)) {
+                const url = (base ? `${base}/api/generateSleepFlightAnnouncement` : '/api/generateSleepFlightAnnouncement');
+                try {
+                    res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (res.ok) break;
+                    lastErr = new Error(`API status ${res.status}`);
+                } catch (e) {
+                    lastErr = e;
+                }
+            }
+            if (!res || !res.ok) throw (lastErr || new Error('API request failed'));
             const data = await res.json();
 
             const announcement = (data && data.announcement) ? data.announcement : null;

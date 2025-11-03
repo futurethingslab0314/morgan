@@ -6,6 +6,9 @@
     // 將 USER_NAME 設為樹莓派本機使用者名稱
     // 部署到樹莓派時請覆寫下行的值
     window.env.USER_NAME = '';
+    // 若在樹莓派上要直接打雲端 API，可在此覆寫：
+    // 例如：window.env.API_BASE = 'https://morgan-orcin.vercel.app';
+    window.env.API_BASE = window.env.API_BASE || '';
   } catch (e) {
     // 靜默失敗，避免中斷頁面載入
   }
