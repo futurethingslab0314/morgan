@@ -2,8 +2,22 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=800, initial-scale=1.0">
+    <meta name="viewport" content="width=1280, initial-scale=1.0">
     <title>甦醒地圖 Raspberry Pi</title>
+    <script>
+        // 低功耗模式：在樹莓派或小螢幕時啟用，關閉重型特效以避免捲動卡頓/閃爍
+        (function () {
+            const isSmallScreen = Math.min(window.innerWidth, window.innerHeight) <= 1280;
+            const isPiUA = /raspberry|armv|aarch64/i.test(navigator.userAgent || '');
+            if (isSmallScreen || isPiUA) {
+                document.documentElement.classList.add('low-power');
+                // 如非除錯模式，關閉大量 console 輸出，降低主執行緒壓力
+                if (!location.search.includes('debug=1')) {
+                    try { console.log = function () {}; } catch (e) {}
+                }
+            }
+        })();
+    </script>
     
     <!-- 網頁圖標設定 -->
     <link rel="icon" href="favicon.ico">
@@ -61,10 +75,7 @@
             <div id="mainMapContainer" class="main-map-background"></div>
             
             <!-- 地圖縮放控制按鈕 - 統一位置 -->
-            <div class="map-zoom-controls">
-                <button id="zoomInButton" class="zoom-button" title="放大">+</button>
-                <button id="zoomOutButton" class="zoom-button" title="縮小">-</button>
-            </div>
+            
             
             <!-- 遊戲化開始畫面 -->
             <div id="gameStartState" class="state game-start-state active">
@@ -121,7 +132,7 @@
                         <div class="ai-generated-content">
                             <div class="ai-content-header">
                                 <span class="ai-icon">🤖</span>
-                                <span class="ai-title">AI 台北小知識</span>
+                                <span class="ai-title">今晚的城市小故事</span>
                                 <button class="refresh-ai-btn" id="refreshAIButton">🔄</button>
                             </div>
                             <div class="ai-content-text" id="aiContentText">

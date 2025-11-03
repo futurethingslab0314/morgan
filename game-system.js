@@ -1317,15 +1317,23 @@ class WakeUpMapGame {
         });
     }
 
-    // 在台北位置面板中顯示機票
+    // 在左側（當前位置區）顯示機票，並將台北面板縮成小圖示
     showTicketInLocationPanel() {
         const locationPanel = document.querySelector('.taipei-location-panel');
         if (!locationPanel || !this.gameState.selectedDestination) return;
 
         // 移除現有的機票顯示
         const existingTicket = locationPanel.querySelector('.location-ticket');
-        if (existingTicket) {
-            existingTicket.remove();
+        if (existingTicket) existingTicket.remove();
+
+        // 進入縮小狀態：僅顯示一個小圖示
+        locationPanel.classList.add('collapsed');
+        let mini = locationPanel.querySelector('.location-mini-icon');
+        if (!mini) {
+            mini = document.createElement('div');
+            mini.className = 'location-mini-icon';
+            mini.innerHTML = '📍 台北';
+            locationPanel.prepend(mini);
         }
 
         const destination = this.gameState.selectedDestination;
@@ -1372,7 +1380,7 @@ class WakeUpMapGame {
             </div>
         `;
 
-        // 將機票添加到位置面板底部
+        // 將機票添加至左側位置面板（小圖示下方）
         locationPanel.appendChild(ticketElement);
     }
 

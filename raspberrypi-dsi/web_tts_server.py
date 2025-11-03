@@ -12,6 +12,11 @@
 import argparse
 import logging
 from flask import Flask, request, jsonify
+try:
+    from flask_cors import CORS
+    CORS_AVAILABLE = True
+except Exception:
+    CORS_AVAILABLE = False
 from pathlib import Path
 
 from audio_manager import get_audio_manager
@@ -19,6 +24,9 @@ from audio_manager import get_audio_manager
 
 def create_app():
     app = Flask(__name__)
+    # 啟用 CORS，允許從 https 網站呼叫 http://127.0.0.1:5005
+    if CORS_AVAILABLE:
+        CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
     logger = logging.getLogger("pi-tts-server")
     audio = get_audio_manager()
 
@@ -45,11 +53,15 @@ def create_app():
             if not played:
                 return jsonify({"success": False, "error": "audio playback failed"}), 500
 
-            return jsonify({"success": True})
+            resp = jsonify({"success": True})
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            return resp
 
         except Exception as e:
             logger.exception("/tts/play error")
-            return jsonify({"success": False, "error": str(e)}), 500
+            resp = jsonify({"success": False, "error": str(e)})
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            return resp, 500
 
     return app
 

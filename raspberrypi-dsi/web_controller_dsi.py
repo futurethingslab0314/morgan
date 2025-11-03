@@ -97,8 +97,8 @@ class WebControllerDSI:
         options.add_argument('--memory-pressure-off')
         options.add_argument('--max_old_space_size=4096')
         
-        # 網頁顯示設定 (適合 800x480 螢幕)
-        options.add_argument('--window-size=800,480')
+        # 網頁顯示設定 (適合 1280x800 螢幕)
+        options.add_argument('--window-size=1280,800')
         options.add_argument('--window-position=0,0')
         
         # 全螢幕 kiosk 模式，隱藏瀏覽器分頁和工具列
