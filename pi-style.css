@@ -3444,6 +3444,30 @@ body {
     }
 }
 
+/* Leaflet 地圖層級與資訊面板強制可見（Raspberry Pi 保護） */
+.sleep-time-popup,
+.flight-status-popup,
+.resource-display-popup,
+.simple-ticket-popup {
+    position: fixed !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    z-index: 11000 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+.leaflet-control-container {
+    z-index: 5000 !important;
+}
+
+.leaflet-pane,
+.leaflet-map-pane {
+    z-index: 0 !important;
+}
+
 /* === 單頁無捲動版面（首頁 1280x800） === */
 .game-start-state {
     position: relative;

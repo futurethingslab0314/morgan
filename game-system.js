@@ -660,17 +660,31 @@ class WakeUpMapGame {
         // 目的地座標（根據目的地ID設定）
         const destinationCoords = this.getDestinationCoords(destination.id);
 
+        // 取得容器並防止重複初始化
+        let el = document.getElementById('flightMapContainer');
+        if (!el) return;
+        if (this.map && this.map.invalidateSize) {
+            this.map.invalidateSize();
+            this._ensureMapPanelsVisible && this._ensureMapPanelsVisible();
+            return;
+        }
+        if (el._leaflet_id) {
+            const fresh = el.cloneNode(false);
+            el.parentNode.replaceChild(fresh, el);
+            el = fresh;
+        }
+
         // 創建地圖
-        const map = L.map('flightMapContainer').setView(taipeiCoords, 3);
+        this.map = L.map(el).setView(taipeiCoords, 3);
 
         // 添加地圖瓦片
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+        }).addTo(this.map);
 
         // 添加台北標記
-        const taipeiMarker = L.marker(taipeiCoords).addTo(map);
+        const taipeiMarker = L.marker(taipeiCoords).addTo(this.map);
         taipeiMarker.bindPopup(`
             <div class="flight-popup">
                 <h3>✈️ 出發地</h3>
@@ -680,7 +694,7 @@ class WakeUpMapGame {
         `);
 
         // 添加目的地標記
-        const destinationMarker = L.marker(destinationCoords).addTo(map);
+        const destinationMarker = L.marker(destinationCoords).addTo(this.map);
         destinationMarker.bindPopup(`
             <div class="flight-popup">
                 <h3>🎯 目的地</h3>
@@ -709,7 +723,7 @@ class WakeUpMapGame {
         });
 
         // 2. 創建飛機標記（初始位置在台北）
-        const planeMarker = L.marker(taipeiCoords, { icon: planeIcon }).addTo(map);
+        const planeMarker = L.marker(taipeiCoords, { icon: planeIcon }).addTo(this.map);
         console.log('飛機已創建，位置:', taipeiCoords);
 
         // 3. 計算飛機應該在哪個位置
@@ -781,11 +795,11 @@ class WakeUpMapGame {
         const distance = this.calculateDistance(taipeiCoords, destinationCoords);
 
         // 添加飛行狀態懸浮視窗
-        this.addFlightStatusPopup(map, distance, destination);
+        this.addFlightStatusPopup(this.map, distance, destination);
 
         // 調整地圖視圖以包含兩個點
         const group = new L.featureGroup([taipeiMarker, destinationMarker]);
-        map.fitBounds(group.getBounds().pad(0.1));
+        this.map.fitBounds(group.getBounds().pad(0.1));
 
         // 立即顯示降落按鈕（測試用）
         this.showActionButton('landing');
