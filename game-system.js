@@ -308,6 +308,28 @@ class WakeUpMapGame {
         localStorage.setItem('wakeUpMapGame', JSON.stringify(this.gameState));
     }
 
+    // 將關鍵事件記錄到後端（Firebase 由 /api/save-record 寫入）
+    async saveGameRecord(payload = {}) {
+        try {
+            const body = {
+                userDisplayName: (window.env && window.env.USER_NAME) || 'raspi-user',
+                groupName: 'sleep_flight',
+                source: 'web_app',
+                deviceType: 'raspberry_pi',
+                ...payload
+            };
+            const base = (window.env && window.env.API_BASE) ? window.env.API_BASE.replace(/\/$/, '') : '';
+            const url = base ? `${base}/api/save-record` : '/api/save-record';
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            if (!res.ok) throw new Error(`save-record status ${res.status}`);
+            console.log('📌 記錄已寫入');
+            return true;
+        } catch (e) {
+            console.warn('⚠️ 記錄寫入失敗（不中斷流程）', e);
+            return false;
+        }
+    }
+
     setupEventListeners() {
         // 首頁：購買機票/開始旅程
         document.getElementById('buyTicketBtn')?.addEventListener('click', () => {
@@ -1562,7 +1584,7 @@ class WakeUpMapGame {
     }
 
     // 處理固定按鈕點擊
-    handleActionButton() {
+    async handleActionButton() {
         console.log('按鈕被點擊，當前狀態:', this.gameState.actionButtonState);
         alert('按鈕被點擊了！狀態: ' + this.gameState.actionButtonState);
 
@@ -1575,6 +1597,24 @@ class WakeUpMapGame {
                 break;
             case 'landing': {
                 console.log('執行降落流程');
+
+                // 記錄：使用者按下降落鍵（起床時間）
+                try {
+                    const dest = this.gameState.selectedDestination;
+                    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    await this.saveGameRecord({
+                        eventType: 'landing_press',
+                        city: dest?.name || '',
+                        country: dest?.country || '',
+                        latitude: dest?.latitude,
+                        longitude: dest?.longitude,
+                        timezone: tz,
+                        localTime: new Date(this.now()).toISOString(),
+                        plannedWakeTime: this.gameState.wakeTime || '08:00',
+                        originCity: this.gameState.currentLocation?.name || '台北',
+                        originCountry: this.gameState.currentLocation?.country || '台灣'
+                    });
+                } catch (e) { console.warn('寫入降落按鍵記錄失敗', e); }
 
                 // 先設置為降落中狀態
                 this.gameState.flightStatus = 'landing';
@@ -1607,6 +1647,26 @@ class WakeUpMapGame {
 
         // 隱藏按鈕
         this.hideActionButton();
+
+        // 記錄：睡覺開始（起飛前）
+        try {
+            const cur = this.gameState.currentLocation;
+            const dest = this.gameState.selectedDestination;
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            await this.saveGameRecord({
+                eventType: 'sleep_start',
+                city: cur?.name || '台北',
+                country: cur?.country || '台灣',
+                latitude: cur?.coordinates?.[0],
+                longitude: cur?.coordinates?.[1],
+                timezone: tz,
+                localTime: new Date(this.now()).toISOString(),
+                plannedWakeTime: this.gameState.wakeTime || '08:00',
+                plannedDestination: dest ? `${dest.country} ${dest.name}` : '',
+                targetCity: dest?.name,
+                targetCountry: dest?.country
+            });
+        } catch (e) { console.warn('寫入睡覺開始記錄失敗', e); }
 
         // 播放登機廣播
         if (this.gameState.sleepFlightMode && this.gameState.selectedDestination) {
