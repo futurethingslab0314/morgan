@@ -1,4 +1,3 @@
-
 {
   "version": 2,
   "rewrites": [
@@ -25,6 +24,10 @@
     {
       "source": "/api/save-record",
       "destination": "/api/save-record"
+    },
+    {
+      "source": "/api/generateSleepFlightAnnouncement",
+      "destination": "/api/generateSleepFlightAnnouncement"
     }
   ]
-} 
+}

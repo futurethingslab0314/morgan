@@ -1651,6 +1651,19 @@ class WakeUpMapGame {
                     });
                 } catch (e) { console.warn('寫入降落按鍵記錄失敗', e); }
 
+                // Firestore：更新為 landed，記錄 landingPressedAt 與準點狀態（稍後計算）
+                try {
+                    if (window.dbUpsertFlight) {
+                        const flightId = this.gameState.currentFlightId || `flight_${Date.now()}`;
+                        this.gameState.currentFlightId = flightId;
+                        await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, {
+                            landingPressedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
+                            status: 'landing'
+                        });
+                        window.dbAddClockEvent && window.dbAddClockEvent((window.env && window.env.USER_NAME) || 'morgan', { type: 'landing_press' });
+                    }
+                } catch (e) { console.warn('更新 Firestore 降落狀態失敗', e); }
+
                 // 先設置為降落中狀態
                 this.gameState.flightStatus = 'landing';
                 this.gameState.isLanding = true;
@@ -1708,6 +1721,24 @@ class WakeUpMapGame {
             console.log('準備播放登機廣播');
             await this.playSleepFlightAnnouncement('boarding', this.gameState.selectedDestination);
         }
+
+        // 寫入 Firestore：flight 狀態為 flying，記錄 sleepStartAt
+        try {
+            if (window.dbUpsertFlight) {
+                const origin = this.gameState.currentLocation;
+                const dest = this.gameState.selectedDestination;
+                const flightId = this.gameState.currentFlightId || `flight_${Date.now()}`;
+                this.gameState.currentFlightId = flightId;
+                await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, {
+                    origin: { city: origin?.name || '台北', country: origin?.country || '台灣', lat: origin?.coordinates?.[0], lng: origin?.coordinates?.[1] },
+                    destination: { city: dest?.name, country: dest?.country, lat: dest?.latitude, lng: dest?.longitude },
+                    plannedWakeTime: this.gameState.wakeTime || '08:00',
+                    sleepStartAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
+                    status: 'flying'
+                });
+                window.dbAddClockEvent && window.dbAddClockEvent((window.env && window.env.USER_NAME) || 'morgan', { type: 'sleep_start' });
+            }
+        } catch (e) { console.warn('寫入 Firestore 飛行狀態失敗', e); }
 
         console.log('準備開始遊戲');
         // 開始遊戲

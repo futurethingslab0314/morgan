@@ -464,6 +464,33 @@
             initializeFirebase();
         }
     </script>
+
+    <!-- 2.1 定義 Firestore 寫入工具：userProfiles/{user}/Flight 與 clockHistory -->
+    <script type="module">
+        function attachDbHelpers() {
+            try {
+                const sdk = window.firebaseSDK;
+                if (!sdk || !sdk.getFirestore) return;
+                const db = sdk.getFirestore();
+
+                window.dbUpsertFlight = async function(userName, flightId, payload) {
+                    const user = (userName || (window.env && window.env.USER_NAME) || 'morgan').toLowerCase();
+                    const ref = sdk.doc(db, 'userProfiles', user, 'Flight', flightId);
+                    await sdk.setDoc(ref, { ...payload, updatedAt: sdk.serverTimestamp() }, { merge: true });
+                    return ref.id;
+                };
+                window.dbAddClockEvent = async function(userName, event) {
+                    const user = (userName || (window.env && window.env.USER_NAME) || 'morgan').toLowerCase();
+                    const col = sdk.collection(db, 'userProfiles', user, 'clockHistory');
+                    const ref = await sdk.addDoc(col, { ...event, createdAt: sdk.serverTimestamp() });
+                    return ref.id;
+                };
+                console.log('✅ Firestore helpers 已掛載 (dbUpsertFlight / dbAddClockEvent)');
+            } catch (e) { console.warn('Firestore helpers 掛載失敗', e); }
+        }
+        if (window.firebaseSDK) attachDbHelpers();
+        else window.addEventListener('firebaseReady', attachDbHelpers);
+    </script>
     <script>
         // 綁定右上角日期/時間更新到測試時鐘
         (function bindTestClockControls(){

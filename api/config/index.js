@@ -18,11 +18,16 @@ export default function handler(req, res) {
     return;
   }
 
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const apiKey = process.env.FIREBASE_API_KEY || process.env.FIREBASE_WEB_API_KEY;
+  const authDomain = process.env.FIREBASE_AUTH_DOMAIN || (projectId ? `${projectId}.firebaseapp.com` : undefined);
+  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || (projectId ? `${projectId}.appspot.com` : undefined);
+
   const config = {
-    apiKey: process.env.FIREBASE_API_KEY,
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+    apiKey,
+    authDomain,
+    projectId,
+    storageBucket,
     messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.FIREBASE_APP_ID,
     measurementId: process.env.FIREBASE_MEASUREMENT_ID,
@@ -31,7 +36,7 @@ export default function handler(req, res) {
   };
 
   // 檢查必要的配置是否存在
-  const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'storageBucket'];
+  const requiredKeys = ['apiKey', 'authDomain', 'projectId'];
   const missingKeys = requiredKeys.filter(key => !config[key]);
 
   if (missingKeys.length > 0) {
@@ -43,13 +48,13 @@ export default function handler(req, res) {
   // 檢查請求頭，如果是來自樹莓派或API客戶端，返回JSON
   const userAgent = req.headers['user-agent'] || '';
   const acceptHeader = req.headers['accept'] || '';
-  
+
   // 如果是curl、python requests或其他API客戶端，返回JSON
-  if (userAgent.includes('curl') || 
-      userAgent.includes('python') || 
-      acceptHeader.includes('application/json') ||
-      req.query.format === 'json') {
-    
+  if (userAgent.includes('curl') ||
+    userAgent.includes('python') ||
+    acceptHeader.includes('application/json') ||
+    req.query.format === 'json') {
+
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -60,7 +65,7 @@ export default function handler(req, res) {
 
   // 預設為網頁使用，返回JavaScript
   const configScript = `window.firebaseConfig = ${JSON.stringify(config)};`;
-  
+
   res.setHeader('Content-Type', 'application/javascript');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
