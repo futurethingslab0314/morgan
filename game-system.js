@@ -318,11 +318,24 @@ class WakeUpMapGame {
                 deviceType: 'raspberry_pi',
                 ...payload
             };
-            const base = (window.env && window.env.API_BASE) ? window.env.API_BASE.replace(/\/$/, '') : '';
-            const url = base ? `${base}/api/save-record` : '/api/save-record';
-            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            const res = await fetch('/api/save-record', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             if (!res.ok) throw new Error(`save-record status ${res.status}`);
             console.log('📌 記錄已寫入');
+
+            // 快取「上一個位置」供下次當作起點
+            try {
+                if (typeof body.city === 'string' && typeof body.country === 'string') {
+                    const lat = (typeof body.latitude === 'number') ? body.latitude : undefined;
+                    const lng = (typeof body.longitude === 'number') ? body.longitude : undefined;
+                    if (lat != null && lng != null) {
+                        localStorage.setItem('lastKnownLocation', JSON.stringify({
+                            name: body.city,
+                            country: body.country,
+                            coordinates: [lat, lng]
+                        }));
+                    }
+                }
+            } catch (_) { }
             return true;
         } catch (e) {
             console.warn('⚠️ 記錄寫入失敗（不中斷流程）', e);
@@ -1302,6 +1315,14 @@ class WakeUpMapGame {
     // 睡眠航班相關方法
     async getCurrentLocation() {
         try {
+            // 優先使用本地快取的上一個位置
+            const cached = localStorage.getItem('lastKnownLocation');
+            if (cached) {
+                const loc = JSON.parse(cached);
+                if (loc && Array.isArray(loc.coordinates) && loc.coordinates.length === 2) {
+                    return loc;
+                }
+            }
             // 嘗試從最後的記錄獲取位置
             const latestRecord = await this.getLatestRecord();
             if (latestRecord) {
@@ -2423,13 +2444,17 @@ class WakeUpMapGame {
         console.log('播放睡眠航班廣播:', announcementType, destination);
 
         // 組合請求內容（加入機長口吻、風趣、在地特色）
+        const origin = this.gameState.currentLocation || { name: '台北', country: '台灣', coordinates: [25.0330, 121.5654] };
         const body = {
             announcementType: (announcementType === 'takeoff') ? 'boarding' : announcementType,
             city: destination?.name,
             country: destination?.country,
             countryCode: destination?.countryCode,
-            currentLocation: this.gameState.currentLocation?.name || '台北',
+            currentLocation: origin?.name || '台北',
             wakeTime: this.gameState.wakeTime,
+            // 新欄位（語意化）
+            origin: { city: origin?.name || '台北', country: origin?.country || '台灣' },
+            destination: { city: destination?.name, country: destination?.country },
             // 提示模型偏好
             style: 'captain_funny',
             toneHints: [
@@ -2442,47 +2467,17 @@ class WakeUpMapGame {
         };
 
         try {
-            // 決定 API 基址：優先相對路徑，其次 local-env.js 指定，再者當前 origin，最後 Vercel 網域
-            const bases = [
-                '',
-                (window.env && window.env.API_BASE) ? window.env.API_BASE.replace(/\/$/, '') : '',
-                (location && location.origin) ? location.origin : '',
-                'https://morgan-orcin.vercel.app'
-            ].filter((v, i, arr) => v && arr.indexOf(v) === i);
-
-            let res;
-            let lastErr;
-            for (const base of [''].concat(bases)) {
-                const url = (base ? `${base}/api/generateSleepFlightAnnouncement` : '/api/generateSleepFlightAnnouncement');
-                try {
-                    res = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
-                    if (res.ok) break;
-                    lastErr = new Error(`API status ${res.status}`);
-                } catch (e) {
-                    lastErr = e;
-                }
-            }
-            if (!res || !res.ok) throw (lastErr || new Error('API request failed'));
+            const res = await fetch('/api/generateSleepFlightAnnouncement', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error(`API status ${res.status}`);
             const data = await res.json();
 
             const announcement = (data && data.announcement) ? data.announcement : null;
             if (announcement) {
-                // 優先嘗試呼叫本機樹莓派 TTS 服務（喇叭播放）
-                try {
-                    const ttsRes = await fetch('http://127.0.0.1:5005/tts/play', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: announcement, languageCode: 'zh-TW' })
-                    });
-                    if (ttsRes.ok) return true;
-                } catch (e) {
-                    console.warn('本機 TTS 服務不可用，改用瀏覽器或前端播放', e);
-                }
-
+                // 直接使用前端播放（或你的 audioManager）
                 if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
                     await window.audioManager.playTextWithLanguage(announcement, 'zh-TW', {
                         voice: 'male_lively', rate: 1.05, pitch: 0.95, style: 'lively'
@@ -2498,17 +2493,6 @@ class WakeUpMapGame {
 
         // 備援：本地機長口吻文案
         const fallback = this.getCaptainStyleFallback(announcementType, destination);
-        // 優先送到本機 TTS 服務
-        try {
-            const ttsRes = await fetch('http://127.0.0.1:5005/tts/play', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: fallback, languageCode: 'zh-TW' })
-            });
-            if (ttsRes.ok) return true;
-        } catch (e) {
-            console.warn('本機 TTS 服務不可用（fallback）', e);
-        }
         try {
             if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
                 await window.audioManager.playTextWithLanguage(fallback, 'zh-TW', {
