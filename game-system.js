@@ -440,7 +440,6 @@ class WakeUpMapGame {
                     <div class="dest-info">
                         <div class="dest-name">${dest.name}</div>
                         <div class="dest-country">${dest.country}</div>
-                        <div class="dest-phrase">${this.generateAttractivePhrase(dest)}</div>
                     </div>
                     <div class="dest-price">NT$ ${dest.price.toLocaleString()}</div>
                 `;
@@ -1504,15 +1503,17 @@ class WakeUpMapGame {
         const existingTicket = locationPanel.querySelector('.location-ticket');
         if (existingTicket) existingTicket.remove();
 
-        // 進入縮小狀態：僅顯示一個小圖示
-        locationPanel.classList.add('collapsed');
-        let mini = locationPanel.querySelector('.location-mini-icon');
-        if (!mini) {
-            mini = document.createElement('div');
-            mini.className = 'location-mini-icon';
-            mini.innerHTML = '📍 台北';
-            locationPanel.prepend(mini);
-        }
+        // 移除縮小狀態與小圖示，改為專注展示機票
+        locationPanel.classList.remove('collapsed');
+        locationPanel.classList.add('ticket-only');
+        const miniIcon = locationPanel.querySelector('.location-mini-icon');
+        if (miniIcon) miniIcon.remove();
+
+        // 隱藏當前位置相關的原始內容
+        ['location-header', 'taipei-features', 'ai-generated-content'].forEach(cls => {
+            const section = locationPanel.querySelector(`.${cls}`);
+            if (section) section.style.display = 'none';
+        });
 
         const destination = this.gameState.selectedDestination;
 
@@ -1746,6 +1747,13 @@ class WakeUpMapGame {
 
         // 設置鬧鐘，在起床時間顯示降落按鈕
         this.setLandingAlarm();
+
+        // 隱藏等待覆蓋層
+        const waiting = document.getElementById('waitingState');
+        if (waiting) {
+            waiting.style.display = 'none';
+            waiting.classList.remove('active');
+        }
     }
 
     // 設置降落鬧鐘
