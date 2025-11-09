@@ -23,36 +23,91 @@ class WakeUpMapGame {
             isLanding: false
         };
 
+        this.usedCitiesFallback = false;
+        this.citiesDataSource = 'unknown';
+
         this.init();
     }
 
     // 載入大型城市資料（根目錄 cities_data.json），快取於記憶體
     async loadCitiesData() {
         if (this.citiesData && Array.isArray(this.citiesData) && this.citiesData.length) return this.citiesData;
-        try {
-            const res = await fetch('/cities_data.json', { cache: 'force-cache' });
-            if (!res.ok) throw new Error('cities_data.json 載入失敗');
-            const json = await res.json();
-            this.citiesData = (Array.isArray(json) ? json : json.cities || [])
-                .filter(c => c && (c.latitude || c.lat) && (c.longitude || c.lng) && (c.countryCode || c.country_iso_code))
-                .map(c => ({
-                    id: `${(c.name || c.city || '').trim()}_${(c.country || c.countryName || '').trim()}_${(c.countryCode || c.country_iso_code || '').toUpperCase()}`,
-                    name: c.name || c.city || 'Unknown',
-                    country: c.country || c.countryName || '',
-                    countryCode: (c.countryCode || c.country_iso_code || '').toUpperCase(),
-                    latitude: Number(c.latitude ?? c.lat),
-                    longitude: Number(c.longitude ?? c.lng),
-                    population: Number(c.population || 0),
-                    isCapital: !!(c.capital || c.is_capital)
-                }));
-            // 建立每國候選清單（只保留每個國家最具代表或最熱門的1-2個）以加速後續計算
-            this.buildCountryCandidates();
-            return this.citiesData;
-        } catch (e) {
-            console.error('載入城市資料失敗:', e);
-            this.citiesData = [];
-            return this.citiesData;
+
+        const fallbackCities = [
+            { id: 'Tokyo_JP', name: 'Tokyo', country: '日本', countryCode: 'JP', latitude: 35.6762, longitude: 139.6503, population: 13960000, isCapital: true },
+            { id: 'Osaka_JP', name: 'Osaka', country: '日本', countryCode: 'JP', latitude: 34.6937, longitude: 135.5023, population: 2700000, isCapital: false },
+            { id: 'Seoul_KR', name: 'Seoul', country: '韓國', countryCode: 'KR', latitude: 37.5665, longitude: 126.9780, population: 9776000, isCapital: true },
+            { id: 'Busan_KR', name: 'Busan', country: '韓國', countryCode: 'KR', latitude: 35.1796, longitude: 129.0756, population: 3414000, isCapital: false },
+            { id: 'HongKong_HK', name: 'Hong Kong', country: '香港', countryCode: 'HK', latitude: 22.3193, longitude: 114.1694, population: 7451000, isCapital: false },
+            { id: 'Macau_MO', name: 'Macau', country: '澳門', countryCode: 'MO', latitude: 22.1987, longitude: 113.5439, population: 700000, isCapital: false },
+            { id: 'Singapore_SG', name: 'Singapore', country: '新加坡', countryCode: 'SG', latitude: 1.3521, longitude: 103.8198, population: 5700000, isCapital: true },
+            { id: 'Bangkok_TH', name: 'Bangkok', country: '泰國', countryCode: 'TH', latitude: 13.7563, longitude: 100.5018, population: 10539000, isCapital: true },
+            { id: 'ChiangMai_TH', name: 'Chiang Mai', country: '泰國', countryCode: 'TH', latitude: 18.7061, longitude: 98.9817, population: 127200, isCapital: false },
+            { id: 'Manila_PH', name: 'Manila', country: '菲律賓', countryCode: 'PH', latitude: 14.5995, longitude: 120.9842, population: 1780000, isCapital: true },
+            { id: 'HoChiMinh_VN', name: 'Ho Chi Minh City', country: '越南', countryCode: 'VN', latitude: 10.8231, longitude: 106.6297, population: 9000000, isCapital: false },
+            { id: 'Hanoi_VN', name: 'Hanoi', country: '越南', countryCode: 'VN', latitude: 21.0278, longitude: 105.8342, population: 8000000, isCapital: true },
+            { id: 'KualaLumpur_MY', name: 'Kuala Lumpur', country: '馬來西亞', countryCode: 'MY', latitude: 3.1390, longitude: 101.6869, population: 1800000, isCapital: true },
+            { id: 'Jakarta_ID', name: 'Jakarta', country: '印尼', countryCode: 'ID', latitude: -6.2088, longitude: 106.8456, population: 10562000, isCapital: true },
+            { id: 'Bali_ID', name: 'Denpasar', country: '印尼', countryCode: 'ID', latitude: -8.6705, longitude: 115.2126, population: 914300, isCapital: false },
+            { id: 'Shanghai_CN', name: 'Shanghai', country: '中國', countryCode: 'CN', latitude: 31.2304, longitude: 121.4737, population: 24800000, isCapital: false },
+            { id: 'Beijing_CN', name: 'Beijing', country: '中國', countryCode: 'CN', latitude: 39.9042, longitude: 116.4074, population: 21540000, isCapital: true },
+            { id: 'Guangzhou_CN', name: 'Guangzhou', country: '中國', countryCode: 'CN', latitude: 23.1291, longitude: 113.2644, population: 15000000, isCapital: false },
+            { id: 'Taipei_TW', name: 'New Taipei', country: '台灣', countryCode: 'TW', latitude: 25.0169, longitude: 121.4628, population: 4010000, isCapital: false }
+        ];
+
+        const urlCandidates = [];
+        if (typeof window !== 'undefined') {
+            const origin = window.location ? window.location.origin : '';
+            urlCandidates.push('cities_data.json');
+            urlCandidates.push('/cities_data.json');
+            if (origin) urlCandidates.push(`${origin.replace(/\/$/, '')}/cities_data.json`);
+        } else {
+            urlCandidates.push('/cities_data.json');
         }
+
+        for (const url of [...new Set(urlCandidates)]) {
+            try {
+                const res = await fetch(url, { cache: 'no-store' });
+                if (!res.ok) {
+                    console.warn(`cities_data.json 載入失敗 (HTTP ${res.status})，來源: ${url}`);
+                    continue;
+                }
+                const json = await res.json();
+                const raw = Array.isArray(json) ? json : (json?.cities || []);
+                if (!raw.length) {
+                    console.warn(`cities_data.json 內容為空，來源: ${url}`);
+                    continue;
+                }
+                this.citiesData = raw
+                    .filter(c => c && (c.latitude || c.lat) && (c.longitude || c.lng) && (c.countryCode || c.country_iso_code))
+                    .map(c => ({
+                        id: `${(c.name || c.city || '').trim()}_${(c.country || c.countryName || '').trim()}_${(c.countryCode || c.country_iso_code || '').toUpperCase()}`,
+                        name: c.name || c.city || 'Unknown',
+                        country: c.country || c.countryName || '',
+                        countryCode: (c.countryCode || c.country_iso_code || '').toUpperCase(),
+                        latitude: Number(c.latitude ?? c.lat),
+                        longitude: Number(c.longitude ?? c.lng),
+                        population: Number(c.population || 0),
+                        isCapital: !!(c.capital || c.is_capital)
+                    }));
+                if (this.citiesData.length) {
+                    this.usedCitiesFallback = false;
+                    this.citiesDataSource = url;
+                    this.buildCountryCandidates();
+                    console.log(`✅ cities_data.json 載入成功：${url}，共 ${this.citiesData.length} 筆`);
+                    return this.citiesData;
+                }
+            } catch (error) {
+                console.warn(`載入城市資料失敗 (${url})`, error);
+            }
+        }
+
+        console.warn('⚠️ 無法載入 cities_data.json，改用內建候選清單。');
+        this.usedCitiesFallback = true;
+        this.citiesDataSource = 'fallback';
+        this.citiesData = fallbackCities;
+        this.buildCountryCandidates();
+        return this.citiesData;
     }
 
     buildCountryCandidates() {
@@ -431,6 +486,21 @@ class WakeUpMapGame {
 
             grid.innerHTML = '';
 
+            const gridWrapper = grid.parentElement;
+            if (gridWrapper) {
+                let notice = gridWrapper.querySelector('.destination-warning');
+                if (this.usedCitiesFallback) {
+                    if (!notice) {
+                        notice = document.createElement('div');
+                        notice.className = 'destination-warning';
+                        notice.innerHTML = '⚠️ 目前使用預設目的地資料。請確認 cities_data.json 是否成功載入，便可顯示更多城市。';
+                        gridWrapper.insertBefore(notice, gridWrapper.firstChild);
+                    }
+                } else if (notice) {
+                    notice.remove();
+                }
+            }
+
             destinations.forEach(dest => {
                 const button = document.createElement('button');
                 button.className = 'destination-option';
@@ -721,7 +791,7 @@ class WakeUpMapGame {
             weight: 3,
             opacity: 0.8,
             dashArray: '10, 10'
-        }).addTo(map);
+        }).addTo(this.map);
 
         // === 飛機動畫系統 ===
         console.log('初始化飛機動畫系統...');
