@@ -765,6 +765,9 @@ class WakeUpMapGame {
             attribution: '© OpenStreetMap contributors'
         }).addTo(this.map);
 
+        // 清理既有浮層，避免重複或被舊元素遮擋
+        this.cleanupMapOverlays();
+
         // 添加台北標記
         const taipeiMarker = L.marker(taipeiCoords).addTo(this.map);
         taipeiMarker.bindPopup(`
@@ -1012,14 +1015,11 @@ class WakeUpMapGame {
             </div>
         `;
 
-        // 添加到地圖容器
-        const mapContainer = document.getElementById('flightMapContainer');
-        if (mapContainer) {
-            mapContainer.appendChild(flightStatus);
-            mapContainer.appendChild(resourceDisplay);
-            mapContainer.appendChild(simpleTicket);
-        }
-
+        // 添加到結果畫面容器（確保在地圖上方）
+        const overlayContainer = document.getElementById('resultState') || document.body;
+        overlayContainer.appendChild(flightStatus);
+        overlayContainer.appendChild(resourceDisplay);
+        overlayContainer.appendChild(simpleTicket);
 
         // 計算並顯示預計到達時間
         this.updateEstimatedArrivalTime(destination);
@@ -2728,6 +2728,13 @@ class WakeUpMapGame {
         // 顯示遊戲開始畫面
         document.getElementById('gameStartState').classList.add('active');
         document.getElementById('waitingState').classList.remove('active');
+    }
+
+    cleanupMapOverlays() {
+        const classes = ['flight-status-popup', 'resource-display-popup', 'simple-ticket-popup'];
+        classes.forEach(cls => {
+            document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
+        });
     }
 }
 

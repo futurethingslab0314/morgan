@@ -1619,81 +1619,12 @@ window.addEventListener('firebaseReady', async (event) => {
 
     // 只允許樹莓派內容，generateAndDisplayStoryAndGreeting 只等待 piStoryReady，不再 fallback
     async function generateAndDisplayStoryAndGreeting(cityData) {
-        console.log('📖 等待樹莓派生成甦醒故事和問候語...');
-        console.log('🔍 重要：畫面將只顯示樹莓派傳來的故事，與語音播放保持一致');
-
-        try {
-            let receivedPiStory = false;
-            const waitForPiStory = new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    if (!receivedPiStory) {
-                        console.warn('⏱️ 等待樹莓派故事超時，但不使用備用方案');
-                        console.warn('🔍 畫面將等待樹莓派故事，確保與語音播放一致');
-                        reject(new Error('等待樹莓派故事超時'));
-                    }
-                }, 60000); // 延長到60秒，確保有足夠時間等待樹莓派
-
-                const handlePiStory = (event) => {
-                    receivedPiStory = true;
-                    clearTimeout(timeout);
-                    window.removeEventListener('piStoryReady', handlePiStory);
-                    console.log('✅ 收到樹莓派故事，這將與語音播放內容一致');
-                    resolve(event.detail);
-                };
-
-                window.addEventListener('piStoryReady', handlePiStory);
-
-                // 檢查是否已經有故事內容
-                if (window.piGeneratedStory) {
-                    receivedPiStory = true;
-                    clearTimeout(timeout);
-                    console.log('✅ 使用已存在的樹莓派故事');
-                    resolve(window.piGeneratedStory);
-                }
-            });
-
-            const storyResult = await waitForPiStory;
-            console.log('📖 收到樹莓派故事，與語音播放內容一致:', storyResult);
-
-            // 獲取當前的 day 計數
-            const q = query(
-                collection(db, 'wakeup_records'),
-                where('userId', '==', rawUserDisplayName)
-            );
-            const querySnapshot = await getDocs(q);
-            const currentDay = querySnapshot.size;
-
-            // 更新結果頁面數據 - 只使用樹莓派的故事
-            const resultData = {
-                city: cityData.name,
-                country: cityData.country,
-                countryCode: cityData.country_iso_code,
-                latitude: cityData.latitude,
-                longitude: cityData.longitude,
-                greeting: storyResult.greeting,
-                language: storyResult.language,
-                story: storyResult.story,
-                day: currentDay,
-                flag: cityData.country_iso_code ? `https://flagcdn.com/96x72/${cityData.country_iso_code.toLowerCase()}.png` : ''
-            };
-
-            // 🔧 標記語音故事已顯示，避免 updateResultData 重複生成故事
-            window.voiceStoryDisplayed = true;
-            window.voiceStoryContent = storyResult.story;
-            console.log('✅ [generateAndDisplayStoryAndGreeting] 標記語音故事已顯示');
-
-            // 使用新的結果數據更新函數
-            updateResultData(resultData);
-            console.log('✅ 畫面顯示樹莓派故事，與語音播放一致');
-
-        } catch (error) {
-            console.error('❌ 未收到樹莓派故事內容，畫面將顯示等待狀態:', error);
-            // 不再使用備用方案，保持與語音播放一致
-            const storyTextEl = document.getElementById('storyText');
-            if (storyTextEl) {
-                storyTextEl.textContent = '等待樹莓派故事內容...與語音播放保持同步';
-            }
-        }
+        console.log('📖 Flight 版本：樹莓派故事功能已停用，直接顯示預設文字');
+        return {
+            story: 'Wake Up Flight 模式啟動。',
+            greeting: '',
+            language: 'zh-TW'
+        };
     }
 
     // === 所有備用故事生成函數已刪除 ===
