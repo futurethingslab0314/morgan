@@ -2736,6 +2736,15 @@ class WakeUpMapGame {
             document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
         });
     }
+
+    hideLegacyResultPanels() {
+        const selectors = ['.result-info-panel', '.voice-loading-bar', '#resultInfoPanel', '#voiceLoadingBar'];
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                el.style.display = 'none';
+            });
+        });
+    }
 }
 
 // 初始化遊戲系統

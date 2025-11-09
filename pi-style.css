@@ -3740,52 +3740,53 @@ body {
     right: 20px;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
-    padding: 14px 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 107, 53, 0.25);
+    padding: 12px 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 107, 53, 0.2);
     z-index: 1000;
-    min-width: 220px;
-    max-width: 260px;
+    min-width: 200px;
+    max-width: 230px;
 }
 
 .flight-status-content h3 {
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     color: #333;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     text-align: center;
     border-bottom: 2px solid #ff6b35;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
 }
 
 .flight-status-popup .info-item {
-    font-size: 0.85rem;
-    padding: 6px 0;
+    font-size: 0.78rem;
+    padding: 4px 0;
 }
 
 .flight-status-popup .label {
     color: #666;
-    min-width: 70px;
+    min-width: 60px;
 }
 
 .flight-status-popup .value {
     color: #2c3e50;
     font-weight: 600;
+    font-size: 0.78rem;
 }
 
 .flight-status-popup .flight-status {
     color: #e67e22;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
 }
 
 @media (max-width: 768px) {
     .flight-status-popup {
-        top: 10px;
-        right: 10px;
-        left: 10px;
+        top: 8px;
+        right: 8px;
+        left: 8px;
         max-width: none;
-        padding: 12px 14px;
+        padding: 10px 12px;
     }
 }
 
