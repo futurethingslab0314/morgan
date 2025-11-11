@@ -1031,6 +1031,11 @@ window.addEventListener('firebaseReady', async (event) => {
 
     // 新增：狀態管理函數
     function setState(newState, message = '') {
+        if (window.wakeUpMapGame && window.wakeUpMapGame.gameState && window.wakeUpMapGame.gameState.gameStarted) {
+            console.log('[Flight] 已啟動，忽略舊狀態切換:', newState, message);
+            return;
+        }
+
         console.log(`🔄 狀態切換: ${currentState} -> ${newState}`);
 
         try {
@@ -1130,6 +1135,8 @@ window.addEventListener('firebaseReady', async (event) => {
         } catch (e) {
             console.error('❌ 狀態切換失敗:', e);
         }
+
+        console.log('🔄 重設按鈕狀態');
     }
 
     // 移除重複的 setState 定義
