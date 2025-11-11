@@ -3758,20 +3758,41 @@ body {
     padding-bottom: 6px;
 }
 
+.flight-status-popup .flight-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .flight-status-popup .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 0.78rem;
-    padding: 4px 0;
+    padding: 0;
+    background: none;
+    border: none;
+}
+
+.flight-status-popup .info-item span {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    color: inherit;
 }
 
 .flight-status-popup .label {
     color: #666;
-    min-width: 60px;
+    font-weight: 500;
+    min-width: 72px;
 }
 
 .flight-status-popup .value {
     color: #2c3e50;
     font-weight: 600;
     font-size: 0.78rem;
+    text-align: right;
 }
 
 .flight-status-popup .flight-status {
@@ -3807,10 +3828,10 @@ body {
 }
 
 .resource-display-content h3 {
-    margin: 0 0 12px 0;
+    margin: 0 0 8px 0;
     color: #111827;
-    font-size: 0.95rem;
-    font-weight: 800;
+    font-size: 0.82rem;
+    font-weight: 700;
     text-shadow: none;
 }
 
@@ -3836,8 +3857,8 @@ body {
 
 .resource-display-popup .resource-label {
     color: #374151;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 0.72rem;
+    font-weight: 600;
     text-shadow: none;
 }
 
@@ -3884,14 +3905,9 @@ body {
 }
 
 .resource-display-popup .resource-value {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #111827;
-    font-size: 12px;
-    font-weight: 800;
-    text-shadow: none;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.68rem;
 }
 
 .resource-display-popup .resource-item {
@@ -3904,13 +3920,13 @@ body {
 .resource-display-popup .resource-label {
     font-weight: 500;
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.72rem;
 }
 
 .resource-display-popup .resource-value {
-    font-weight: bold;
-    color: #333;
-    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.68rem;
 }
 
 /* 簡單機票（左下角） */
@@ -4957,4 +4973,15 @@ body {
         font-size: 14px;
         min-width: 140px;
     }
+}
+
+/* 舊版甦醒面板預設隱藏，避免遮擋地圖 */
+.result-info-panel,
+.voice-loading-bar,
+#resultInfoPanel,
+#voiceLoadingBar {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
