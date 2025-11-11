@@ -1189,87 +1189,10 @@ window.addEventListener('firebaseReady', async (event) => {
         }
     }
 
-    // 初始化今日甦醒地圖
+    // 初始化今日甦醒地圖（已停用，改用 Flight 版本地圖）
     function initClockMap(latitude, longitude, cityName, countryName) {
-        try {
-            console.log('🗺️ 初始化今日甦醒地圖:', cityName, countryName);
-
-            // 清理現有地圖
-            if (clockLeafletMap) {
-                clockLeafletMap.remove();
-                clockLeafletMap = null;
-            }
-
-            // 如果主地圖已存在，直接更新而不重新創建
-            if (mainInteractiveMap) {
-                console.log('🗺️ 使用現有主地圖實例更新位置');
-                mainInteractiveMap.setView([latitude, longitude - 3], 3);  // 增加偏移量到-3
-                clockLeafletMap = mainInteractiveMap; // 重用主地圖實例
-            } else {
-                // 創建新地圖（使用滿版容器）
-                clockLeafletMap = L.map('mainMapContainer', {
-                    zoomControl: false, // 禁用默認縮放控制，使用自定義按鈕
-                    scrollWheelZoom: true,
-                    doubleClickZoom: true,
-                    boxZoom: true,
-                    keyboard: true,
-                    dragging: true,
-                    attributionControl: true
-                }).setView([latitude, longitude - 3], 3); // 增加偏移量到-3，大區域視角
-
-                // 將時鐘地圖實例設為主地圖實例
-                mainInteractiveMap = clockLeafletMap;
-            }
-
-            // 添加地圖圖層
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 18,
-                minZoom: 2
-            }).addTo(clockLeafletMap);
-
-            // 添加甦醒位置標記
-            const marker = L.marker([latitude, longitude], {
-                title: `甦醒位置：${cityName}, ${countryName}`
-            }).addTo(clockLeafletMap);
-
-            // 自定義彈出窗口內容
-            const popupContent = `
-                <div style="text-align: center; font-family: 'ByteBounce', 'GB18030 Bitmap', 'VT323', 'Microsoft YaHei', '微軟雅黑', monospace; font-size: 14px;">
-                    <strong style="color: #000000;">🌅 甦醒位置</strong><br>
-                    <span style="color: #333333; font-size: 16px;">${cityName}</span><br>
-                    <span style="color: #666666; font-size: 14px;">${countryName}</span><br>
-                    <small style="color: #999999; font-size: 12px;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</small>
-                </div>
-            `;
-
-            marker.bindPopup(popupContent, {
-                maxWidth: 200,
-                className: 'wake-up-popup'
-            });
-
-            // 調整地圖大小（重要：確保地圖正確渲染）
-            setTimeout(() => {
-                if (clockLeafletMap) {
-                    clockLeafletMap.invalidateSize();
-
-                    // 添加載入完成動畫
-                    const mapContainer = document.getElementById('mapContainer');
-                    if (mapContainer) {
-                        mapContainer.classList.add('loaded');
-                    }
-
-                    // 初始化自定義縮放按鈕
-                    initCustomZoomControls();
-
-                    console.log('🗺️ 地圖大小已調整');
-                }
-            }, 200);
-
-            console.log('✅ 今日甦醒地圖初始化完成');
-        } catch (error) {
-            console.error('❌ 地圖初始化失敗:', error);
-        }
+        console.log('🗺️ initClockMap 已停用（使用 Flight 地圖）');
+        return;
     }
 
     // 初始化歷史地圖

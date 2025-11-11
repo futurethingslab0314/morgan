@@ -872,9 +872,9 @@ class WakeUpMapGame {
             console.log('飛機位置更新:', planePos, '進度:', Math.round(progress * 100) + '%');
         };
 
-        // 5. 啟動飛機動畫（每5秒更新一次）
+        // 5. 啟動飛機動畫（每10秒更新一次）
         updatePlanePosition(); // 立即更新一次
-        setInterval(updatePlanePosition, 5000); // 每5秒更新
+        setInterval(updatePlanePosition, 10000); // 每10秒更新
 
         // 計算距離
         const distance = this.calculateDistance(taipeiCoords, destinationCoords);
