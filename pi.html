@@ -516,6 +516,53 @@
       window.env = window.env || {};
       window.env.USER_NAME = 'morgan';
     </script>
+
+    <!-- 4.5 橋接本機音訊服務，供睡眠航班語音播放使用 -->
+    <script>
+      (function injectLocalAudioManager(){
+        if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
+          console.log('[WakeUpFlight] audioManager 已存在，跳過注入');
+          return;
+        }
+
+        const TTS_BASE = (window.env && window.env.TTS_BASE) || 'http://127.0.0.1:5005';
+
+        window.audioManager = {
+          async playTextWithLanguage(text, language = 'zh', options = {}) {
+            try {
+              if (!text || typeof text !== 'string') {
+                console.warn('[WakeUpFlight] playTextWithLanguage 收到空白文字');
+                return;
+              }
+
+              const payload = {
+                text,
+                languageCode: language && language.toLowerCase().startsWith('zh') ? 'zh' : language || 'zh',
+                voice: options.voice || (language && language.toLowerCase().startsWith('zh') ? 'nova' : 'alloy'),
+                rate: options.rate || 1,
+                pitch: options.pitch || 0,
+                style: options.style || 'default'
+              };
+
+              const res = await fetch(`${TTS_BASE}/tts/play`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                console.error('[WakeUpFlight] 本機 TTS 服務回報失敗', err);
+              }
+            } catch (error) {
+              console.error('[WakeUpFlight] 呼叫本機 TTS 失敗', error);
+            }
+          }
+        };
+
+        console.log('[WakeUpFlight] 已注入本機 audioManager (TTS_BASE=', TTS_BASE, ')');
+      })();
+    </script>
     
     <!-- 5. 載入主要應用程式腳本 -->
     <script src="pi-script.js"></script>
