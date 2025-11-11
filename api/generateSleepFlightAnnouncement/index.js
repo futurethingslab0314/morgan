@@ -1,5 +1,44 @@
 import OpenAI from 'openai';
 
+const LOCAL_GREETINGS = {
+    TH: 'สวัสดีครับ/ค่ะ', // 泰語 Sawasdee krub/ka
+    JP: 'こんにちは',
+    KR: '안녕하세요',
+    CN: '大家好',
+    HK: '大家好',
+    MO: '大家好',
+    SG: 'Hello everyone',
+    MY: 'Selamat sejahtera',
+    ID: 'Selamat datang',
+    PH: 'Magandang araw',
+    VN: 'Xin chào',
+    KH: 'ជំរាបសួរ',
+    LA: 'ສະບາຍດີ',
+    MM: 'မင်္ဂလာပါ',
+    IN: 'नमस्ते',
+    NP: 'नमस्ते',
+    BD: 'নমস্কার',
+    LK: 'ආයුබෝවන්',
+    MV: 'އަސްސަލާމު ޢަލައިކުމް',
+    AE: 'مرحباً بكم',
+    SA: 'أهلاً وسهلاً',
+    QA: 'مرحباً',
+    KW: 'مرحباً',
+    OM: 'أهلاً بكم',
+    BH: 'مرحباً',
+    US: 'Welcome aboard',
+    CA: 'Bonjour et bienvenue',
+    GB: 'Good day everyone',
+    FR: 'Bonjour à tous',
+    ES: '¡Hola a todos!',
+    IT: 'Ciao a tutti',
+    DE: 'Guten Tag zusammen',
+    AU: 'G’day mates',
+    NZ: 'Kia ora',
+    BR: 'Olá, pessoal',
+    MX: '¡Hola a todos!'
+};
+
 export default async function handler(req, res) {
     // 設置 CORS 標頭
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -39,6 +78,9 @@ export default async function handler(req, res) {
             apiKey: process.env.OPENAI_API_KEY
         });
 
+        const greeting = LOCAL_GREETINGS[(countryCode || '').toUpperCase()] || '';
+        const greetingHint = greeting ? `8. 在開頭加入一小句當地語言問候：「${greeting}」並立刻翻譯成中文。` : '8. 若知道當地語言問候，可簡短示意並翻成中文。';
+
         let prompt = '';
 
         if (announcementType === 'boarding') {
@@ -51,6 +93,7 @@ export default async function handler(req, res) {
 5. 當地特色或有趣的事實
 6. 溫馨的睡眠提醒
 7. 語氣要輕鬆有趣，像真正的航空廣播
+${greetingHint}
 
 請用繁體中文，控制在100字以內。`;
         } else if (announcementType === 'landing') {
@@ -62,6 +105,7 @@ export default async function handler(req, res) {
 4. 當地特色或有趣的事實
 5. 提醒乘客按按鈕確認降落
 6. 語氣要輕鬆有趣
+${greetingHint}
 
 請用繁體中文，控制在80字以內。`;
         } else {
@@ -84,6 +128,7 @@ export default async function handler(req, res) {
             city,
             country,
             countryCode,
+            greeting,
             timestamp: new Date().toISOString()
         });
 
