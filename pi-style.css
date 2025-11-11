@@ -4985,3 +4985,53 @@ body {
     opacity: 0 !important;
     pointer-events: none !important;
 }
+
+/* 航空地圖樣式調整 */
+.custom-zoom-controls {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 20000;
+    pointer-events: auto;
+}
+
+.custom-zoom-controls .zoom-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 240, 240, 0.95));
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    font-size: 28px;
+    font-weight: 700;
+    color: #374151;
+    cursor: pointer;
+    outline: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.custom-zoom-controls .zoom-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+}
+
+.custom-zoom-controls .zoom-btn:active {
+    transform: translateY(0) scale(0.97);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 1024px) {
+    .custom-zoom-controls {
+        right: 16px;
+    }
+
+    .custom-zoom-controls .zoom-btn {
+        width: 46px;
+        height: 46px;
+        font-size: 24px;
+    }
+}

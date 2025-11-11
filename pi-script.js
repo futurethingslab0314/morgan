@@ -2797,12 +2797,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 初始化背景地圖
     setTimeout(() => {
-        console.log('🗺️ 初始化背景地圖...');
-        try {
-            initMainInteractiveMap(); // 初始化世界地圖作為背景
-            console.log('✅ 背景地圖初始化成功');
-        } catch (error) {
-            console.error('❌ 背景地圖初始化失敗:', error);
+        const mainMapContainer = document.getElementById('mainMapContainer');
+        if (!mainMapContainer) {
+            console.log('🗺️ 未偵測到舊版背景地圖容器，略過初始化');
+        } else {
+            console.log('🗺️ 初始化背景地圖...');
+            try {
+                initMainInteractiveMap();
+                console.log('✅ 背景地圖初始化成功');
+            } catch (error) {
+                console.error('❌ 背景地圖初始化失敗:', error);
+            }
         }
     }, 500);
 
@@ -2829,15 +2834,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('gameStarted', (event) => {
         console.log('🎮 遊戲開始事件觸發:', event.detail);
         gameStarted = true;
+        if (window.wakeUpMapGame && window.wakeUpMapGame.gameState && window.wakeUpMapGame.gameState.gameStarted) {
+            console.log('[Flight] 已啟動，跳過舊等待畫面與自動 startTheDay');
+            return;
+        }
+
         showWaitingState();
 
-        // 自動開始這一天（不需要按鍵）
         setTimeout(() => {
             console.log('🎮 自動開始這一天...');
             if (typeof window.startTheDay === 'function') {
                 window.startTheDay();
             }
-        }, 2000); // 延遲 2 秒讓用戶看到遊戲開始畫面
+        }, 2000);
     });
 });
 

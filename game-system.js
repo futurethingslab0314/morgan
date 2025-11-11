@@ -796,6 +796,9 @@ class WakeUpMapGame {
             dashArray: '10, 10'
         }).addTo(this.map);
 
+        // 綁定自訂縮放控制
+        this._bindCustomZoomControls();
+
         // === 飛機動畫系統 ===
         console.log('初始化飛機動畫系統...');
 
@@ -903,6 +906,29 @@ class WakeUpMapGame {
                 el.style.visibility = 'visible';
             }
         });
+    }
+
+    _bindCustomZoomControls() {
+        if (!this.map) return;
+
+        const zoomInBtn = document.getElementById('mapZoomInBtn');
+        const zoomOutBtn = document.getElementById('mapZoomOutBtn');
+
+        if (zoomInBtn) {
+            zoomInBtn.onclick = () => {
+                if (this.map) {
+                    this.map.zoomIn();
+                }
+            };
+        }
+
+        if (zoomOutBtn) {
+            zoomOutBtn.onclick = () => {
+                if (this.map) {
+                    this.map.zoomOut();
+                }
+            };
+        }
     }
 
     getDestinationCoords(destinationId) {
