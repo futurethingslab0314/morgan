@@ -1476,68 +1476,10 @@ window.addEventListener('firebaseReady', async (event) => {
         }
     }
 
-    // 新增：顯示甦醒結果
+    // 新增：顯示甦醒結果（已停用，保持相容時僅記錄 Log）
     async function displayAwakeningResult(cityData) {
-        console.log('🎨 顯示甦醒結果:', cityData);
-
-        try {
-            // 設定城市名稱
-            if (cityNameEl) {
-                cityNameEl.textContent = cityData.name || cityData.city;
-            }
-
-            // 設定國家名稱
-            if (countryNameEl) {
-                countryNameEl.textContent = cityData.country;
-            }
-
-            // 設定國旗
-            if (countryFlagImg && cityData.country_iso_code) {
-                const flagUrl = `https://flagcdn.com/96x72/${cityData.country_iso_code.toLowerCase()}.png`;
-                countryFlagImg.src = flagUrl;
-                countryFlagImg.style.display = 'block';
-                console.log('🏁 國旗載入:', flagUrl);
-            }
-
-            // 獲取並設定故事和問候語
-            await generateAndDisplayStoryAndGreeting(cityData);
-
-            // 設定座標資訊
-            if (coordinatesEl) {
-                coordinatesEl.textContent =
-                    `${cityData.latitude.toFixed(4)}°, ${cityData.longitude.toFixed(4)}°`;
-            }
-
-            // 初始化地圖
-            initClockMap(
-                cityData.latitude,
-                cityData.longitude,
-                cityData.name,
-                cityData.country
-            );
-
-            // 🔧 移除這裡的軌跡載入 - 現在在 piStoryReady 事件中處理
-            // 確保軌跡載入在 result 狀態激活後進行
-
-            // 設定結果文字（保持相容性）
-            const resultText = `今天你在 ${cityData.name}, ${cityData.country} 甦醒！`;
-            if (resultTextDiv) resultTextDiv.textContent = resultText;
-
-            // 更新除錯資訊（保持相容性）
-            if (debugInfoSmall) {
-                debugInfoSmall.textContent = `緯度: ${cityData.latitude.toFixed(4)}, 經度: ${cityData.longitude.toFixed(4)}`;
-            }
-
-            // 🔧 修復：不立即切換到結果狀態，等待故事準備完成
-            // setState('result'); // 改為在 piStoryReady 事件中切換
-            console.log('🔄 城市資料已準備，等待語音和故事生成完成...');
-
-            console.log('✅ 結果顯示完成');
-
-        } catch (error) {
-            console.error('❌ 顯示結果失敗:', error);
-            setState('error', '顯示結果時發生錯誤');
-        }
+        console.log('🎨 displayAwakeningResult 已停用（Wake Up Flight 介面改為新地圖流程）', cityData);
+        return;
     }
 
     // 只允許樹莓派內容，generateAndDisplayStoryAndGreeting 只等待 piStoryReady，不再 fallback
