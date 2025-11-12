@@ -27,6 +27,7 @@ mkdir -p "$LOG_DIR"
 echo -e "${YELLOW}🔄 檢查並終止現有進程...${NC}"
 pkill -f "main_controller.py" 2>/dev/null || true
 pkill -f "main_web_dsi.py" 2>/dev/null || true
+pkill -f "web_tts_server.py" 2>/dev/null || true
 sleep 2
 
 # 智能版本選擇
@@ -77,6 +78,32 @@ fi
 echo ""
 echo -e "${BLUE}🚀 甦醒地圖啟動中...${NC}"
 echo -e "${BLUE}主控制程式: ${MAIN_SCRIPT}${NC}"
+echo ""
+
+# 啟動 TTS 伺服器（背景運行）
+echo -e "${BLUE}🔊 檢查 TTS 伺服器...${NC}"
+if ! pgrep -f "web_tts_server.py" > /dev/null; then
+    echo -e "${GREEN}🚀 啟動 TTS 伺服器...${NC}"
+    cd "$SCRIPT_DIR"
+    
+    # 嘗試使用虛擬環境
+    VENV_PATH="${SCRIPT_DIR}/../venv"
+    if [ -f "${VENV_PATH}/bin/activate" ]; then
+        source "${VENV_PATH}/bin/activate"
+        echo -e "${GREEN}✅ 已啟用虛擬環境${NC}"
+    else
+        echo -e "${YELLOW}⚠️ 未找到虛擬環境，使用系統 Python${NC}"
+    fi
+    
+    # 背景啟動 TTS 伺服器
+    nohup python3 web_tts_server.py > "${LOG_DIR}/tts-server.log" 2>&1 &
+    TTS_PID=$!
+    echo -e "${GREEN}✅ TTS 伺服器已啟動 (PID: $TTS_PID)${NC}"
+    sleep 2  # 等待伺服器啟動
+else
+    echo -e "${YELLOW}⚠️ TTS 伺服器已在運行${NC}"
+fi
+
 echo ""
 
 # 啟動主程式

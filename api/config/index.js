@@ -20,7 +20,16 @@ export default function handler(req, res) {
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const apiKey = process.env.FIREBASE_API_KEY || process.env.FIREBASE_WEB_API_KEY;
-  const authDomain = process.env.FIREBASE_AUTH_DOMAIN || (projectId ? `${projectId}.firebaseapp.com` : undefined);
+
+  const deriveAuthDomain = () => {
+    const raw = process.env.FIREBASE_AUTH_DOMAIN;
+    if (raw && !/accounts\.google\.com\/o\/oauth2\/auth/i.test(raw)) {
+      return raw;
+    }
+    return projectId ? `${projectId}.firebaseapp.com` : undefined;
+  };
+
+  const authDomain = deriveAuthDomain();
   const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || (projectId ? `${projectId}.appspot.com` : undefined);
 
   const config = {
