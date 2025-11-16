@@ -6,27 +6,202 @@
 class WakeUpMapGame {
     constructor() {
         this.gameState = {
-            money: 10000,
-            fuel: 1000,
             currentWeek: 1,
             currentDay: 1,
             selectedDestination: null,
-            destinations: [], // 將由睡眠航班系統動態生成
+            destinations: [], // 將由飛行計時器系統動態生成
             currentTicket: null,
             gameStarted: false,
-            // 新增睡眠航班相關狀態
-            sleepFlightMode: true,
-            wakeTime: '08:00',
+            // 飛行計時器相關狀態（從睡眠航班改為計時器模式）
+            flightTimerMode: true,
+            timerDuration: 30, // 計時長度（分鐘），最短30分鐘
+            timerStartTime: null, // 計時開始時間
+            timerEndTime: null, // 計時結束時間
             currentLocation: null,
             actionButtonState: 'hidden', // hidden, boarding, landing
             flightCompleted: false,
-            isLanding: false
+            isLanding: false,
+            // 任務類型：READING / EXERCISE / MEDITATION / REST / WORK
+            taskType: 'REST',
+            // 介面語言：'zh-TW' 或 'en'
+            language: 'zh-TW'
         };
 
         this.usedCitiesFallback = false;
         this.citiesDataSource = 'unknown';
 
         this.init();
+    }
+
+    // 將分鐘數轉成人類可讀的文字（依目前語言）
+    formatDuration(minutes, langOverride) {
+        const total = Math.max(1, Math.round(minutes || 0));
+        const hours = Math.floor(total / 60);
+        const mins = total % 60;
+        const lang = langOverride || this.gameState.language || 'zh-TW';
+
+        if (lang === 'en') {
+            const hPart = hours > 0 ? `${hours} hr${hours > 1 ? 's' : ''}` : '';
+            const mPart = mins > 0 ? `${mins} min${mins > 1 ? 's' : ''}` : '';
+            return [hPart, mPart].filter(Boolean).join(' ');
+        } else {
+            const hPart = hours > 0 ? `${hours} 小時` : '';
+            const mPart = mins > 0 ? `${mins} 分鐘` : '';
+            return [hPart, mPart].filter(Boolean).join('');
+        }
+    }
+
+    // 設定並套用語言
+    setLanguage(lang) {
+        const supported = ['zh-TW', 'en'];
+        const target = supported.includes(lang) ? lang : 'zh-TW';
+        this.gameState.language = target;
+        this.saveGameState();
+        this.applyLanguage(target);
+        console.log('🌐 語言已切換為:', target);
+    }
+
+    // 根據當前語言更新 UI 文字
+    applyLanguage(lang) {
+        const packs = {
+            'zh-TW': {
+                langCode: '中',
+                buyText: '購買機票',
+                buySub: '選擇你的目的地',
+                startText: '開始旅程',
+                startSub: '準備啟程',
+                flightInfoTitle: '飛行資訊',
+                totalFlights: '總飛行次數',
+                totalDistance: '總飛行距離',
+                visitedCities: '訪問城市',
+                timerTitle: '⏱️ 選擇計時長度',
+                confirmTimer: '確認計時長度',
+                minutesLabel: '分鐘',
+                taskTitle: '🎯 選擇任務',
+                taskSectionTitle: 'TASK 任務類型',
+                confirmTask: '確認任務',
+                destinationTitle: '✈️ 選擇目的地',
+                destinationHint: (m) => `根據您選擇的 <strong id="selectedTimerDisplay">${m}</strong> 分鐘計時，以下是您可以飛到的目的地：`,
+                statusPreparing: '準備起飛',
+                statusTakingOff: '起飛中',
+                statusCruising: '巡航中',
+                statusApproach: '準備降落',
+                statusLanding: '降落中',
+                statusLanded: '已降落'
+            },
+            'en': {
+                langCode: 'EN',
+                buyText: 'BUY TICKET',
+                buySub: 'Choose your destination',
+                startText: 'START JOURNEY',
+                startSub: 'Get ready to fly',
+                flightInfoTitle: 'FLIGHT STATUS',
+                totalFlights: 'Total flights',
+                totalDistance: 'Total distance',
+                visitedCities: 'Visited cities',
+                timerTitle: '⏱️ Set Focus Time',
+                confirmTimer: 'CONFIRM TIMER',
+                minutesLabel: 'min',
+                taskTitle: '🎯 Choose Task',
+                taskSectionTitle: 'TASK TYPE',
+                confirmTask: 'CONFIRM TASK',
+                destinationTitle: '✈️ Choose Destination',
+                destinationHint: (m) => `With <strong id="selectedTimerDisplay">${m}</strong> minutes, here are the places you can fly to:`,
+                statusPreparing: 'Ready for take-off',
+                statusTakingOff: 'Taking off',
+                statusCruising: 'Cruising',
+                statusApproach: 'Approach',
+                statusLanding: 'Landing',
+                statusLanded: 'Landed'
+            }
+        };
+
+        const dict = packs[lang] || packs['zh-TW'];
+
+        // 更新語系代碼顯示
+        const langCodeEl = document.getElementById('langCode');
+        if (langCodeEl) langCodeEl.textContent = dict.langCode;
+
+        // 更新首頁兩顆按鈕文字
+        const buyBtn = document.getElementById('buyTicketBtn');
+        if (buyBtn) {
+            const t = buyBtn.querySelector('.button-text');
+            const s = buyBtn.querySelector('.button-subtitle');
+            if (t) t.textContent = dict.buyText;
+            if (s) s.textContent = dict.buySub;
+        }
+
+        const startBtn = document.getElementById('beginJourneyBtn');
+        if (startBtn) {
+            const t = startBtn.querySelector('.button-text');
+            const s = startBtn.querySelector('.button-subtitle');
+            if (t) t.textContent = dict.startText;
+            if (s) s.textContent = dict.startSub;
+        }
+
+        // 更新右側飛行資訊標題與欄位
+        const infoTitle = document.querySelector('.flight-info-panel .info-title');
+        if (infoTitle) infoTitle.textContent = dict.flightInfoTitle;
+
+        const infoLabels = document.querySelectorAll('.flight-info-panel .info-label');
+        if (infoLabels[0]) infoLabels[0].textContent = dict.totalFlights;
+        if (infoLabels[1]) infoLabels[1].textContent = dict.totalDistance;
+        if (infoLabels[2]) infoLabels[2].textContent = dict.visitedCities;
+
+        // 更新「當前位置」標題與副標
+        const currentCityTitle = document.getElementById('currentCityName');
+        const currentCitySubtitle = document.querySelector('.location-subtitle');
+        const originName = this.gameState.currentLocation?.name || '台北';
+        const originCountry = this.gameState.currentLocation?.country || 'Taiwan';
+        if (currentCityTitle) {
+            currentCityTitle.textContent = (lang === 'en')
+                ? `Current location: ${originName}`
+                : `當前位置：${originName}`;
+        }
+        if (currentCitySubtitle) {
+            currentCitySubtitle.textContent = (lang === 'en')
+                ? `${originName}, ${originCountry} 🇹🇼`
+                : `${originName}, ${originCountry} 🇹🇼`;
+        }
+
+        // 計時視窗文字
+        const timerTitle = document.querySelector('#timerModal .modal-title');
+        if (timerTitle) timerTitle.textContent = dict.timerTitle;
+        const confirmTimerBtn = document.getElementById('confirmTimerBtn');
+        if (confirmTimerBtn) confirmTimerBtn.textContent = dict.confirmTimer;
+        const timerLabel = document.querySelector('#timerModal .timer-label');
+        if (timerLabel) timerLabel.textContent = dict.minutesLabel;
+
+        // Task 視窗文字
+        const taskTitle = document.querySelector('#taskModal .modal-title');
+        if (taskTitle) taskTitle.textContent = dict.taskTitle;
+        const taskSectionTitle = document.querySelector('#taskModal .task-title');
+        if (taskSectionTitle) taskSectionTitle.textContent = dict.taskSectionTitle;
+        const confirmTaskBtn = document.getElementById('confirmTaskBtn');
+        if (confirmTaskBtn) confirmTaskBtn.textContent = dict.confirmTask;
+        document.querySelectorAll('#taskModal .task-option').forEach(btn => {
+            const key = btn.dataset.task;
+            if (!key) return;
+            const mapZh = { READING: '📚 讀書', EXERCISE: '💪 運動', MEDITATION: '🧘 冥想', REST: '😴 休息', WORK: '💻 工作', GAME: '🎮 遊戲' };
+            const mapEn = { READING: '📚 READ', EXERCISE: '💪 WORKOUT', MEDITATION: '🧘 MEDITATE', REST: '😴 REST', WORK: '💻 WORK', GAME: '🎮 GAME' };
+            const tMap = (lang === 'en' ? mapEn : mapZh);
+            if (tMap[key]) btn.textContent = tMap[key];
+        });
+
+        // 目的地選擇視窗文字
+        const destTitle = document.querySelector('#destinationModal .modal-title');
+        if (destTitle) destTitle.textContent = dict.destinationTitle;
+        const hintEl = document.querySelector('.destination-hint');
+        const timerDisplay = document.getElementById('selectedTimerDisplay');
+        const minutes = timerDisplay ? timerDisplay.textContent : (this.gameState.timerDuration || 30);
+        if (hintEl && typeof dict.destinationHint === 'function') {
+            hintEl.innerHTML = dict.destinationHint(minutes);
+        }
+
+        // 更新 HTML 的 lang 屬性，方便未來擴充
+        if (document.documentElement) {
+            document.documentElement.lang = (lang === 'en' ? 'en' : 'zh-Hant');
+        }
     }
 
     // 載入大型城市資料（根目錄 cities_data.json），快取於記憶體
@@ -219,7 +394,28 @@ class WakeUpMapGame {
     updateFlightStatusDisplay(status) {
         const statusElement = document.querySelector('.flight-status-popup .status-text');
         if (statusElement) {
-            statusElement.textContent = status;
+            // 根據語言切換顯示文字
+            const lang = this.gameState.language || 'zh-TW';
+            const dict = {
+                'zh-TW': {
+                    '準備起飛': '準備起飛',
+                    '起飛中': '起飛中',
+                    '巡航中': '巡航中',
+                    '準備降落': '準備降落',
+                    '降落中': '降落中',
+                    '已降落': '已降落'
+                },
+                'en': {
+                    '準備起飛': 'Ready for take-off',
+                    '起飛中': 'Taking off',
+                    '巡航中': 'Cruising',
+                    '準備降落': 'Approach',
+                    '降落中': 'Landing',
+                    '已降落': 'Landed'
+                }
+            };
+            const map = dict[lang] || dict['zh-TW'];
+            statusElement.textContent = map[status] || status;
 
             // 移除所有狀態類別
             statusElement.classList.remove('status-preparing', 'status-taking-off', 'status-cruising', 'status-landing', 'status-landed', 'status-flying');
@@ -249,7 +445,7 @@ class WakeUpMapGame {
         }
     }
 
-    // 依現在時間推導飛行狀態（測試時鐘友善）
+    // 依現在時間推導飛行狀態（計時器模式）
     getCurrentFlightStatus() {
         // 如果正在降落中，顯示降落中
         if (this.gameState.isLanding) {
@@ -261,6 +457,46 @@ class WakeUpMapGame {
             return '已降落';
         }
 
+        // 飛行計時器模式：基於計時器進度
+        if (this.gameState.flightTimerMode) {
+            if (!this.gameState.timerStartTime || !this.gameState.timerEndTime) {
+                return '準備起飛';
+            }
+
+            const now = this.now();
+            const startTime = this.gameState.timerStartTime.getTime();
+            const endTime = this.gameState.timerEndTime.getTime();
+
+            if (now.getTime() < startTime) {
+                return '準備起飛';
+            }
+
+            if (now.getTime() >= endTime) {
+                // 時間到了，自動降落
+                if (!this.gameState.flightCompleted) {
+                    this.handleTimerComplete();
+                }
+                return '已降落';
+            }
+
+            // 計算飛行進度（0-1）
+            const totalTime = endTime - startTime;
+            const elapsedTime = now.getTime() - startTime;
+            const progress = elapsedTime / totalTime;
+
+            // 根據進度返回狀態
+            if (progress < 0.05) {
+                return '起飛中'; // 剛起飛
+            } else if (progress < 0.9) {
+                return '巡航中'; // 大部分時間在巡航
+            } else if (progress < 0.98) {
+                return '準備降落'; // 接近目的地
+            } else {
+                return '降落中'; // 正在降落
+            }
+        }
+
+        // 舊模式（保留向後兼容）
         const now = this.now();
         const wakeTime = this.gameState.wakeTime || '08:00';
         const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
@@ -318,8 +554,9 @@ class WakeUpMapGame {
 
         this.loadGameState();
         this.setupEventListeners();
+        // 套用當前語言設定到 UI
+        this.applyLanguage(this.gameState.language || 'zh-TW');
         this.renderDestinationGrid();
-        this.updateResourceDisplay();
         this.refreshHomeButtonsState();
         this.setInitialDate();
     }
@@ -402,16 +639,30 @@ class WakeUpMapGame {
         // 首頁：購買機票/開始旅程
         document.getElementById('buyTicketBtn')?.addEventListener('click', () => {
             if (this.gameState.currentTicket) return; // 已有機票，禁用
-            this.showDestinationModal();
+            this.showTimerModal(); // 先顯示計時長度選擇視窗
         });
         document.getElementById('beginJourneyBtn')?.addEventListener('click', async () => {
-            if (!this.gameState.currentTicket) return; // 尚未購票
+            console.log('🔄 開始旅程按鈕被點擊', {
+                hasTicket: !!this.gameState.currentTicket,
+                currentTicket: this.gameState.currentTicket,
+                selectedDestination: this.gameState.selectedDestination
+            });
+
+            if (!this.gameState.currentTicket) {
+                console.warn('⚠️ 尚未購票，無法開始旅程');
+                alert('請先購買機票！');
+                return; // 尚未購票
+            }
+
+            console.log('✅ 開始進入地圖頁面...');
+
             // 播放起飛廣播後再進入地圖
             try {
                 await this.playSleepFlightAnnouncement('takeoff', this.gameState.selectedDestination || this.gameState.currentTicket?.destination);
             } catch (e) {
                 console.warn('起飛語音播放失敗，改為直接進入地圖', e);
             }
+
             this.startGame();
         });
 
@@ -432,7 +683,41 @@ class WakeUpMapGame {
             this.changeDestination();
         });
 
-        // 懸浮視窗關閉事件
+        // 計時長度視窗關閉事件
+        document.getElementById('timerModalClose')?.addEventListener('click', () => {
+            this.hideTimerModal();
+        });
+
+        document.getElementById('timerModalOverlay')?.addEventListener('click', () => {
+            this.hideTimerModal();
+        });
+
+        // 確認計時長度按鈕
+        document.getElementById('confirmTimerBtn')?.addEventListener('click', () => {
+            this.confirmTimerDuration();
+        });
+
+        // 語言切換按鈕
+        document.getElementById('languageToggle')?.addEventListener('click', () => {
+            const next = (this.gameState.language === 'zh-TW') ? 'en' : 'zh-TW';
+            this.setLanguage(next);
+        });
+
+        // TASK 視窗關閉事件
+        document.getElementById('taskModalClose')?.addEventListener('click', () => {
+            this.hideTaskModal();
+        });
+
+        document.getElementById('taskModalOverlay')?.addEventListener('click', () => {
+            this.hideTaskModal();
+        });
+
+        // 確認任務按鈕
+        document.getElementById('confirmTaskBtn')?.addEventListener('click', () => {
+            this.confirmTaskSelection();
+        });
+
+        // 目的地視窗關閉事件
         document.getElementById('modalClose')?.addEventListener('click', () => {
             this.hideDestinationModal();
         });
@@ -455,17 +740,68 @@ class WakeUpMapGame {
             this.handleBattClick();
         });
 
-        // 睡眠航班時間選擇事件
-        document.getElementById('wakeTimeInput')?.addEventListener('change', (e) => {
-            this.updateWakeTime(e.target.value);
-        });
-
-        // 時間預設按鈕事件
-        document.querySelectorAll('.time-preset').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.selectTimePreset(e.target.dataset.time);
+        // 飛行計時器長度選擇事件（僅更新顯示，不重新計算目的地）
+        document.getElementById('timerDurationInput')?.addEventListener('change', (e) => {
+            const minutes = Number(e.target.value) || 30;
+            const validMinutes = Math.max(30, minutes);
+            const timerInput = document.getElementById('timerDurationInput');
+            if (timerInput) {
+                timerInput.value = validMinutes;
+            }
+            // 更新預設按鈕狀態
+            document.querySelectorAll('.time-preset').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.minutes && Number(btn.dataset.minutes) === validMinutes) {
+                    btn.classList.add('active');
+                }
             });
         });
+
+        // 時間預設按鈕事件（僅更新顯示，不重新計算目的地）
+        document.querySelectorAll('.time-preset').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const minutes = e.target.dataset.minutes || e.target.dataset.time;
+                if (minutes) {
+                    const validMinutes = Math.max(30, Number(minutes));
+                    const timerInput = document.getElementById('timerDurationInput');
+                    if (timerInput) {
+                        timerInput.value = validMinutes;
+                    }
+                    // 更新按鈕狀態
+                    document.querySelectorAll('.time-preset').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+                }
+            });
+        });
+
+        // 任務選擇按鈕事件（TASK）
+        document.querySelectorAll('.task-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.task-option').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const task = btn.dataset.task || 'REST';
+                this.gameState.taskType = task;
+                this.saveGameState();
+                console.log('🎯 任務已選擇:', task);
+            });
+        });
+    }
+
+    confirmTaskSelection() {
+        // 讀取目前選擇的 TASK（若無則維持原值）
+        const activeTaskBtn = document.querySelector('.task-option.active');
+        if (activeTaskBtn && activeTaskBtn.dataset.task) {
+            this.gameState.taskType = activeTaskBtn.dataset.task;
+            this.saveGameState();
+        }
+
+        console.log('✅ 任務已確認:', this.gameState.taskType);
+
+        // 關閉任務視窗，顯示目的地選擇視窗
+        this.hideTaskModal();
+        this.showDestinationModal();
     }
 
     async renderDestinationGrid() {
@@ -480,8 +816,9 @@ class WakeUpMapGame {
             const currentLocation = await this.getCurrentLocation();
             this.gameState.currentLocation = currentLocation;
 
-            // 計算可達目的地
-            const destinations = await this.calculateSleepFlightDestinations(currentLocation, this.gameState.wakeTime);
+            // 計算可達目的地（根據計時長度）
+            const timerMinutes = this.gameState.timerDuration || 30;
+            const destinations = await this.calculateFlightTimerDestinations(currentLocation, timerMinutes);
             this.gameState.destinations = destinations;
 
             grid.innerHTML = '';
@@ -508,10 +845,9 @@ class WakeUpMapGame {
                 button.innerHTML = `
                     <div class="dest-flag-large">${dest.flag}</div>
                     <div class="dest-info">
-                        <div class="dest-name">${dest.name}</div>
+                <div class="dest-name">${dest.name}</div>
                         <div class="dest-country">${dest.country}</div>
                     </div>
-                    <div class="dest-price">NT$ ${dest.price.toLocaleString()}</div>
                 `;
 
                 grid.appendChild(button);
@@ -523,10 +859,83 @@ class WakeUpMapGame {
         }
     }
 
+    // 顯示計時長度選擇視窗（第一階段）
+    showTimerModal() {
+        const modal = document.getElementById('timerModal');
+        if (modal) {
+            modal.classList.add('active');
+            // 確保使用預設值
+            const timerInput = document.getElementById('timerDurationInput');
+            if (timerInput) {
+                timerInput.value = this.gameState.timerDuration || 30;
+            }
+            // 更新預設按鈕狀態
+            document.querySelectorAll('.time-preset').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.minutes && Number(btn.dataset.minutes) === (this.gameState.timerDuration || 30)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+    }
+
+    showTaskModal() {
+        const modal = document.getElementById('taskModal');
+        if (modal) {
+            modal.classList.add('active');
+
+            // 更新任務按鈕狀態
+            document.querySelectorAll('.task-option').forEach(btn => {
+                btn.classList.remove('active');
+                const task = btn.dataset.task || 'REST';
+                if (task === (this.gameState.taskType || 'REST')) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+    }
+
+    hideTaskModal() {
+        const modal = document.getElementById('taskModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    hideTimerModal() {
+        const modal = document.getElementById('timerModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    // 確認計時長度，進入第二階段：顯示目的地選擇
+    async confirmTimerDuration() {
+        const timerInput = document.getElementById('timerDurationInput');
+        const timerMinutes = timerInput ? Number(timerInput.value) || 30 : 30;
+
+        // 確保最短30分鐘
+        const validMinutes = Math.max(30, timerMinutes);
+        this.gameState.timerDuration = validMinutes;
+        this.saveGameState();
+
+        console.log(`✅ 計時長度已確認：${validMinutes} 分鐘`);
+
+        // 關閉計時長度視窗，開啟 TASK 視窗
+        this.hideTimerModal();
+        this.showTaskModal();
+    }
+
     showDestinationModal() {
         const modal = document.getElementById('destinationModal');
         if (modal) {
             modal.classList.add('active');
+            // 更新顯示的計時長度
+            const timerDisplay = document.getElementById('selectedTimerDisplay');
+            if (timerDisplay) {
+                timerDisplay.textContent = this.gameState.timerDuration || 30;
+            }
+            // 根據計時長度計算並顯示目的地
             this.renderDestinationGrid();
         }
     }
@@ -556,12 +965,6 @@ class WakeUpMapGame {
         const destination = this.gameState.destinations.find(d => d.id === destinationId);
         if (!destination || !destination.unlocked) return;
 
-        // 檢查是否有足夠的錢
-        if (this.gameState.money < destination.price) {
-            alert(`💰 金錢不足！需要 NT$ ${destination.price.toLocaleString()}，您只有 NT$ ${this.gameState.money.toLocaleString()}`);
-            return;
-        }
-
         this.gameState.selectedDestination = destination;
 
         // 更新選中狀態
@@ -579,35 +982,17 @@ class WakeUpMapGame {
         // 更新機票資訊
         const selectedDestinationEl = document.getElementById('selectedDestination');
         const destinationCodeEl = document.getElementById('destinationCode');
-        const ticketPriceEl = document.getElementById('ticketPrice');
         const departureDateEl = document.getElementById('departureDate');
         const departureTimeEl = document.getElementById('departureTime');
         const arrivalTimeEl = document.getElementById('arrivalTime');
 
         if (selectedDestinationEl) selectedDestinationEl.textContent = destination.name;
         if (destinationCodeEl) destinationCodeEl.textContent = destination.countryCode || 'XXX';
-        if (ticketPriceEl) ticketPriceEl.textContent = `NT$ ${destination.price.toLocaleString()}`;
         if (departureDateEl) departureDateEl.textContent = this.getCurrentDate();
-        if (departureTimeEl) departureTimeEl.textContent = '11:30';
 
-        // 睡眠航班模式：根據起床時間計算到達時間
-        let arrivalTimeText;
-        if (this.gameState.sleepFlightMode) {
-            arrivalTimeText = `隔天 ${this.gameState.wakeTime}`;
-        } else {
-            // 原有的飛行天數計算
-            if (destination.daysToArrive === 1) {
-                arrivalTimeText = '隔天 08:00';
-            } else if (destination.daysToArrive === 2) {
-                arrivalTimeText = '後天 08:00';
-            } else if (destination.daysToArrive === 3) {
-                arrivalTimeText = '3天後 08:00';
-            } else {
-                arrivalTimeText = `${destination.daysToArrive}天後 08:00`;
-            }
-        }
-
-        if (arrivalTimeEl) arrivalTimeEl.textContent = arrivalTimeText;
+        // 確認機票視窗不再顯示任何時間點或時長，維持純「路線＋任務」的幻想感
+        if (departureTimeEl) departureTimeEl.textContent = '';
+        if (arrivalTimeEl) arrivalTimeEl.textContent = '';
 
         // 生成隨機的航班資訊
         const flightNumber = `WU-${Math.floor(Math.random() * 9000) + 1000}`;
@@ -619,23 +1004,40 @@ class WakeUpMapGame {
         const seatNumberEl = document.getElementById('seatNumber');
         const gateNumberEl = document.getElementById('gateNumber');
         const barcodeNumberEl = document.getElementById('barcodeNumber');
+        const ticketTaskTopEl = document.getElementById('ticketTaskTop');
+        const ticketTaskBottomEl = document.getElementById('ticketTaskBottom');
 
         if (flightNumberEl) flightNumberEl.textContent = flightNumber;
         if (seatNumberEl) seatNumberEl.textContent = seatNumber;
         if (gateNumberEl) gateNumberEl.textContent = gateNumber;
         if (barcodeNumberEl) barcodeNumberEl.textContent = ticketNumber;
 
+        // 更新 TASK 顯示（上下兩個 Banner）
+        const taskLabelMap = {
+            READING: '讀書',
+            EXERCISE: '運動',
+            MEDITATION: '冥想',
+            REST: '休息',
+            WORK: '工作',
+            GAME: '遊戲'
+        };
+        const task = this.gameState.taskType || 'REST';
+        const taskText = taskLabelMap[task] || '休息';
+        if (ticketTaskTopEl) ticketTaskTopEl.textContent = taskText;
+        if (ticketTaskBottomEl) ticketTaskBottomEl.textContent = taskText;
+
         // 顯示機票確認視窗
         this.showTicketModal();
     }
 
     async confirmTicket() {
-        if (!this.gameState.selectedDestination) return;
+        if (!this.gameState.selectedDestination) {
+            console.error('❌ confirmTicket: 沒有選中目的地');
+            return;
+        }
 
         const destination = this.gameState.selectedDestination;
-
-        // 扣除金錢
-        this.gameState.money -= destination.price;
+        console.log('🎫 確認購買機票', destination);
 
         // 生成機票
         this.gameState.currentTicket = {
@@ -646,11 +1048,10 @@ class WakeUpMapGame {
             price: destination.price
         };
 
+        console.log('✅ 機票已創建', this.gameState.currentTicket);
+
         // 保存狀態
         this.saveGameState();
-
-        // 更新資源顯示
-        this.updateResourceDisplay();
 
         // 隱藏機票確認視窗
         this.hideTicketModal();
@@ -660,6 +1061,7 @@ class WakeUpMapGame {
 
         // 更新首頁按鈕狀態（購票後：購買機票禁用、開始旅程可按）
         this.refreshHomeButtonsState();
+        console.log('✅ 按鈕狀態已更新，開始旅程按鈕應該已啟用');
 
         // 顯示成功訊息（票券資訊呈現在台北面板下方）
         this.showGameStartMessage();
@@ -677,8 +1079,8 @@ class WakeUpMapGame {
         this.gameState.selectedDestination = null;
         this.gameState.currentTicket = null;
 
-        // 重新顯示目的地選擇視窗
-        this.showDestinationModal();
+        // 重新顯示計時長度選擇視窗（第一階段）
+        this.showTimerModal();
         this.refreshHomeButtonsState();
     }
 
@@ -693,11 +1095,22 @@ class WakeUpMapGame {
     }
 
     startGame() {
+        console.log('🚀 startGame() 被調用', {
+            currentTicket: this.gameState.currentTicket,
+            selectedDestination: this.gameState.selectedDestination
+        });
+
         this.gameState.gameStarted = true;
         this.saveGameState();
 
         // 隱藏遊戲開始畫面
-        document.getElementById('gameStartState').classList.remove('active');
+        const gameStartState = document.getElementById('gameStartState');
+        if (gameStartState) {
+            gameStartState.classList.remove('active');
+            console.log('✅ 隱藏了 gameStartState');
+        } else {
+            console.error('❌ 找不到 gameStartState 元素');
+        }
 
         // 顯示飛行地圖
         this.showFlightMap();
@@ -714,22 +1127,37 @@ class WakeUpMapGame {
     }
 
     showFlightMap() {
-        // 創建飛行地圖容器
-        const flightMapContainer = document.createElement('div');
-        flightMapContainer.id = 'flightMapContainer';
-        flightMapContainer.className = 'flight-map-container';
+        console.log('🗺️ showFlightMap() 被調用');
 
-        // 添加到結果狀態中
+        // 創建飛行地圖容器（如果尚未存在）
+        let flightMapContainer = document.getElementById('flightMapContainer');
+        if (!flightMapContainer) {
+            flightMapContainer = document.createElement('div');
+            flightMapContainer.id = 'flightMapContainer';
+            flightMapContainer.className = 'flight-map-container';
+
+            // 添加到結果狀態中
+            const resultState = document.getElementById('resultState');
+            if (resultState) {
+                resultState.appendChild(flightMapContainer);
+                console.log('✅ 地圖容器已添加到 resultState');
+            } else {
+                console.error('❌ 找不到 resultState 元素');
+                return;
+            }
+        } else {
+            console.log('✅ 地圖容器已存在');
+        }
+
+        // 顯示結果狀態
         const resultState = document.getElementById('resultState');
         if (resultState) {
-            resultState.appendChild(flightMapContainer);
+            resultState.classList.add('active');
+            console.log('✅ resultState 已設為 active');
         }
 
         // 初始化飛行地圖
         this.initializeFlightMap();
-
-        // 顯示結果狀態
-        document.getElementById('resultState').classList.add('active');
     }
 
     initializeFlightMap() {
@@ -817,6 +1245,33 @@ class WakeUpMapGame {
         // 3. 計算飛機應該在哪個位置
         const getFlightProgress = () => {
             const now = this.now();
+
+            // ✈️ 計時器模式：依照計時時長決定飛行進度（0~1）
+            if (this.gameState.flightTimerMode && this.gameState.timerStartTime && this.gameState.timerEndTime) {
+                const startTime = this.gameState.timerStartTime.getTime();
+                const endTime = this.gameState.timerEndTime.getTime();
+                const current = now.getTime();
+
+                // 尚未起飛
+                if (current <= startTime) {
+                    return 0;
+                }
+
+                const total = endTime - startTime;
+                const elapsed = current - startTime;
+                const progress = Math.max(0, Math.min(1, elapsed / total));
+
+                console.log('⏱️ 計時器模式飛行進度:', {
+                    now: now.toLocaleString(),
+                    start: new Date(startTime).toLocaleString(),
+                    end: new Date(endTime).toLocaleString(),
+                    progress: Math.round(progress * 100) + '%'
+                });
+
+                return progress;
+            }
+
+            // 🕒 舊鬧鐘模式：依照起床時間（wakeTime）計算進度（保留向後相容）
             const wakeTime = this.gameState.wakeTime || '08:00';
             const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
 
@@ -838,7 +1293,7 @@ class WakeUpMapGame {
             const elapsedTime = now.getTime() - departureTime.getTime();
             const progress = Math.max(0, Math.min(1, elapsedTime / totalTime));
 
-            console.log('飛行進度計算:', {
+            console.log('🕒 鬧鐘模式飛行進度計算:', {
                 now: now.toLocaleString(),
                 departure: departureTime.toLocaleString(),
                 target: targetTime.toLocaleString(),
@@ -848,11 +1303,11 @@ class WakeUpMapGame {
             return progress;
         };
 
-        // 4. 更新飛機位置
+        // 4. 更新飛機位置（僅移動，不旋轉，以避免干擾 Leaflet 的 translate3d）
         const updatePlanePosition = () => {
             const progress = getFlightProgress();
 
-            // 計算飛機在航線上的位置
+            // 計算飛機在航線上的位置（依照進度線性插值）
             const planePos = [
                 taipeiCoords[0] + (destinationCoords[0] - taipeiCoords[0]) * progress,
                 taipeiCoords[1] + (destinationCoords[1] - taipeiCoords[1]) * progress
@@ -861,18 +1316,7 @@ class WakeUpMapGame {
             // 更新飛機位置
             planeMarker.setLatLng(planePos);
 
-            // 設置飛機角度（朝向目的地）
-            const angle = Math.atan2(
-                destinationCoords[1] - taipeiCoords[1],
-                destinationCoords[0] - taipeiCoords[0]
-            ) * 180 / Math.PI;
-
-            const planeElement = planeMarker.getElement();
-            if (planeElement) {
-                planeElement.style.transform = `rotate(${angle + 45}deg)`;
-            }
-
-            console.log('飛機位置更新:', planePos, '進度:', Math.round(progress * 100) + '%');
+            console.log('✈️ 飛機位置更新:', planePos, '進度:', Math.round(progress * 100) + '%');
         };
 
         // 5. 啟動飛機動畫（每10秒更新一次）
@@ -951,62 +1395,79 @@ class WakeUpMapGame {
     }
 
     addFlightStatusPopup(map, distance, destination) {
+        // 只關心飛行「時長」與倒數，不再顯示實際時間點
+        const timerMinutes = this.gameState.timerDuration || 30;
+        const durationText = this.formatDuration(timerMinutes);
+
+        // 國際化文案
+        const lang = this.gameState.language || 'zh-TW';
+        const i18n = {
+            'zh-TW': {
+                title: '飛行狀態',
+                dest: '目的地：',
+                remaining: '剩餘時間：',
+                progress: '飛行進度：',
+                duration: '旅程長度：',
+                status: '狀態：',
+                minute: '分',
+                second: '秒'
+            },
+            'en': {
+                title: 'Flight Status',
+                dest: 'Destination:',
+                remaining: 'Time left:',
+                progress: 'Progress:',
+                duration: 'Duration:',
+                status: 'Status:',
+                minute: 'min',
+                second: 's'
+            }
+        }[lang] || i18n?.['zh-TW'];
+
         // 創建飛行狀態懸浮視窗（右上角）
         const flightStatus = document.createElement('div');
         flightStatus.className = 'flight-status-popup';
+        flightStatus.classList.add(lang === 'en' ? 'lang-en' : 'lang-zh');
         flightStatus.innerHTML = `
             <div class="flight-status-content">
-                <h3>✈️ 飛行狀態</h3>
+                <h3>✈️ ${i18n.title}</h3>
                 <div class="flight-info">
                     <div class="info-item">
-                        <span class="label">目的地：</span>
+                        <span class="label">${i18n.dest}</span>
                         <span class="value">${destination.flag} ${destination.name}</span>
                     </div>
+                    <div class="info-item timer-item">
+                        <span class="label">⏱️ ${i18n.remaining}</span>
+                        <span class="value" id="remainingTime">${timerMinutes} ${i18n.minute} 00 ${i18n.second}</span>
+                    </div>
+                    <div class="info-item progress-item">
+                        <span class="label">📊 ${i18n.progress}</span>
+                        <div class="progress-container">
+                            <div class="progress-bar" id="flightProgressBar">
+                                <div class="progress-fill" id="flightProgressFill" style="width: 0%"></div>
+                    </div>
+                            <span class="progress-text" id="flightProgressText">0%</span>
+                    </div>
+                </div>
                     <div class="info-item">
-                        <span class="label">距離：</span>
-                        <span class="value">${distance.toLocaleString()} 公里</span>
+                        <span class="label">🕐 ${i18n.duration}</span>
+                        <span class="value">${durationText}</span>
                     </div>
                     <div class="info-item">
-                        <span class="label">狀態：</span>
+                        <span class="label">${i18n.status}</span>
                         <span class="value flight-status">準備起飛</span>
                     </div>
-                    <div class="info-item">
-                        <span class="label">預計到達時間：</span>
-                        <span class="value" id="estimatedArrivalTime">計算中...</span>
-                    </div>
                 </div>
             </div>
         `;
 
-        // 創建資源顯示（右下角）
-        const resourceDisplay = document.createElement('div');
-        resourceDisplay.className = 'resource-display-popup';
-        const moneyPct = Math.min(100, Math.round((this.gameState.money / 10000) * 100));
-        const fuelPct = Math.min(100, Math.round((this.gameState.fuel / 1000) * 100));
-
-        resourceDisplay.innerHTML = `
-            <div class="resource-display-content">
-                <h3>💰 資源</h3>
-                <div class="resource-bars">
-                    <div class="resource-bar">
-                        <div class="resource-label">💰 Money</div>
-                        <div class="resource-bar-fill">
-                            <div class="resource-fill money-fill" style="width: ${moneyPct}%"></div>
-                        </div>
-                        <span class="resource-value" id="flightMoney">${this.gameState.money.toLocaleString()}</span>
-                    </div>
-                    <div class="resource-bar">
-                        <div class="resource-label">⛽ Fuel</div>
-                        <div class="resource-bar-fill">
-                            <div class="resource-fill fuel-fill" style="width: ${fuelPct}%"></div>
-                        </div>
-                        <span class="resource-value" id="flightFuel">${this.gameState.fuel}/1000</span>
-                    </div>
-                </div>
-            </div>
-        `;
 
         // 創建簡單機票（左下角）
+        const flightNumber = `WU-${Math.floor(Math.random() * 9000) + 1000}`;
+        const gateNumber = String(Math.floor(Math.random() * 20) + 1).padStart(2, '0');
+        const seatNumber = `${Math.floor(Math.random() * 30) + 1}${String.fromCharCode(65 + Math.floor(Math.random() * 6))}`;
+        const today = new Date().toISOString().split('T')[0];
+
         const simpleTicket = document.createElement('div');
         simpleTicket.className = 'simple-ticket-popup';
         simpleTicket.innerHTML = `
@@ -1016,26 +1477,30 @@ class WakeUpMapGame {
                     <span class="airline-name">WAKE UP</span>
                 </div>
                 <div class="ticket-route">
-                    <div class="from">TPE</div>
-                    <div class="arrow">→</div>
-                    <div class="to">${destination.code || 'XXX'}</div>
+                    <span class="from">TPE</span>
+                    <span class="arrow">→</span>
+                    <span class="to">${destination.countryCode || 'XXX'}</span>
                 </div>
                 <div class="ticket-details">
+                    <div class="detail-row">
                     <div class="detail-item">
                         <span class="detail-label">FLIGHT</span>
-                        <span class="detail-value">WU-${Math.floor(Math.random() * 9000) + 1000}</span>
+                            <span class="detail-value">${flightNumber}</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">DATE</span>
-                        <span class="detail-value">${new Date().toISOString().split('T')[0]}</span>
+                            <span class="detail-value">${today}</span>
                     </div>
+                    </div>
+                    <div class="detail-row">
                     <div class="detail-item">
                         <span class="detail-label">GATE</span>
-                        <span class="detail-value">${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}</span>
+                            <span class="detail-value">${gateNumber}</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">SEAT</span>
-                        <span class="detail-value">${Math.floor(Math.random() * 30) + 1}${String.fromCharCode(65 + Math.floor(Math.random() * 6))}</span>
+                            <span class="detail-value">${seatNumber}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1044,24 +1509,126 @@ class WakeUpMapGame {
         // 添加到結果畫面容器（確保在地圖上方）
         const overlayContainer = document.getElementById('resultState') || document.body;
         overlayContainer.appendChild(flightStatus);
-        overlayContainer.appendChild(resourceDisplay);
         overlayContainer.appendChild(simpleTicket);
 
-        // 計算並顯示預計到達時間
-        this.updateEstimatedArrivalTime(destination);
+        // 如果計時器還沒開始，立即開始計時器（進入地圖時自動開始）
+        if (!this.gameState.timerStartTime || !this.gameState.timerEndTime) {
+            console.log('🚀 地圖初始化時自動啟動計時器');
+            const timerMinutes = this.gameState.timerDuration || 30;
+            const now = this.now();
+            this.gameState.timerStartTime = now;
+            this.gameState.timerEndTime = new Date(now.getTime() + timerMinutes * 60 * 1000);
+            this.saveGameState();
+            console.log(`⏱️ 計時器已自動啟動：${timerMinutes}分鐘`);
+        }
+
+        // 開始實時更新計時器和進度（包含到達時間的實時更新）
+        this.startFlightTimerUpdates(flightStatus, destination);
 
         // 模擬飛行狀態更新
         this.simulateFlightStatus(flightStatus, distance);
+    }
+
+    // 開始實時更新飛行計時器和進度
+    startFlightTimerUpdates(flightStatusElement, destination) {
+        // 保存計時器 ID，以便後續可以清除
+        if (this.flightTimerUpdateInterval) {
+            clearInterval(this.flightTimerUpdateInterval);
+        }
+
+        const updateTimer = () => {
+            // 如果計時器還沒開始，繼續等待
+            if (!this.gameState.timerStartTime || !this.gameState.timerEndTime) {
+                // 顯示預設值
+                const timerMinutes = this.gameState.timerDuration || 30;
+                const remainingTimeEl = document.getElementById('remainingTime');
+                if (remainingTimeEl) {
+                    remainingTimeEl.textContent = `${timerMinutes} 分 00 秒`;
+                }
+                const progressFillEl = document.getElementById('flightProgressFill');
+                const progressTextEl = document.getElementById('flightProgressText');
+                if (progressFillEl) progressFillEl.style.width = '0%';
+                if (progressTextEl) progressTextEl.textContent = '0%';
+                return; // 繼續檢查，不停止
+            }
+
+            const now = this.now();
+            const startTime = this.gameState.timerStartTime.getTime();
+            const endTime = this.gameState.timerEndTime.getTime();
+            const currentTime = now.getTime();
+
+            // 計算剩餘時間
+            const remainingMs = Math.max(0, endTime - currentTime);
+            const remainingMinutes = Math.floor(remainingMs / 60000);
+            const remainingSeconds = Math.floor((remainingMs % 60000) / 1000);
+
+            // 更新剩餘時間顯示
+            const remainingTimeEl = document.getElementById('remainingTime');
+            if (remainingTimeEl) {
+                remainingTimeEl.textContent = `${remainingMinutes} 分 ${String(remainingSeconds).padStart(2, '0')} 秒`;
+            }
+
+            // 計算進度百分比
+            const totalTime = endTime - startTime;
+            const elapsedTime = currentTime - startTime;
+            const progress = Math.min(100, Math.max(0, (elapsedTime / totalTime) * 100));
+
+            // 更新進度條
+            const progressFillEl = document.getElementById('flightProgressFill');
+            const progressTextEl = document.getElementById('flightProgressText');
+            if (progressFillEl) {
+                progressFillEl.style.width = `${progress}%`;
+            }
+            if (progressTextEl) {
+                progressTextEl.textContent = `${Math.round(progress)}%`;
+            }
+
+            // 更新預計到達時間（目的地當地時間）
+            if (destination) {
+                this.updateEstimatedArrivalTime(destination);
+            }
+
+            // 如果時間到了，停止更新
+            if (remainingMs <= 0) {
+                if (remainingTimeEl) remainingTimeEl.textContent = '00 分 00 秒';
+                if (progressFillEl) progressFillEl.style.width = '100%';
+                if (progressTextEl) progressTextEl.textContent = '100%';
+                return;
+            }
+        };
+
+        // 立即執行一次
+        updateTimer();
+
+        // 每秒更新一次（使用 setInterval 而不是 setTimeout，這樣即使計時器還沒開始也會持續檢查）
+        this.flightTimerUpdateInterval = setInterval(updateTimer, 1000);
     }
 
     updateEstimatedArrivalTime(destination) {
         const arrivalTimeElement = document.getElementById('estimatedArrivalTime');
         if (!arrivalTimeElement) return;
 
-        // 睡眠航班模式：根據起床時間計算到達時間
+        // 飛行計時器模式：根據計時長度計算到達時間（轉換為目的地當地時間）
         let arrivalTimeText;
-        if (this.gameState.sleepFlightMode) {
-            arrivalTimeText = `明天 ${this.gameState.wakeTime}`;
+        if (this.gameState.flightTimerMode) {
+            const timerMinutes = this.gameState.timerDuration || 30;
+            const now = this.now();
+
+            // 當前位置時區（起點時區）
+            const currentTimezone = this.getCurrentLocationTimezone();
+            // 目的地時區（如果沒有則使用當前位置時區）
+            const destinationTimezone = destination?.timezone || currentTimezone;
+            // 時區差異（小時）
+            const timezoneDiff = destinationTimezone - currentTimezone;
+
+            // 先計算當前位置時間的到達時間
+            const endTimeAtCurrentLocation = new Date(now.getTime() + timerMinutes * 60 * 1000);
+            // 轉換為目的地當地時間（加上時區差異）
+            const localEndTime = new Date(endTimeAtCurrentLocation.getTime() + timezoneDiff * 60 * 60 * 1000);
+
+            const hours = String(localEndTime.getHours()).padStart(2, '0');
+            const minutes = String(localEndTime.getMinutes()).padStart(2, '0');
+            arrivalTimeText = `${hours}:${minutes}`;
         } else {
             // 原有的飛行天數計算
             if (destination.daysToArrive === 1) {
@@ -1165,13 +1732,11 @@ class WakeUpMapGame {
         const destination = this.gameState.selectedDestination;
         const now = this.now();
 
-        // 睡眠航班模式：使用設定的起床時間
-        if (this.gameState.sleepFlightMode) {
-            const [hours, minutes] = this.gameState.wakeTime.split(':').map(Number);
-            const tomorrow = new Date(now);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(hours, minutes, 0, 0);
-            return tomorrow;
+        // 飛行計時器模式：使用設定的計時長度
+        if (this.gameState.flightTimerMode) {
+            const timerMinutes = this.gameState.timerDuration || 30;
+            const endTime = new Date(now.getTime() + timerMinutes * 60 * 1000);
+            return endTime;
         }
 
         // 原有的飛行天數計算
@@ -1220,9 +1785,10 @@ class WakeUpMapGame {
             statusElement.className = 'value flight-status on-time';
             console.log('✅ 準時降落！');
 
-            // 播放降落廣播
-            if (this.gameState.sleepFlightMode && this.gameState.selectedDestination) {
-                await this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination);
+            // 播放降落廣播（計算準時性狀態）
+            if (this.gameState.flightTimerMode && this.gameState.selectedDestination) {
+                const punctuality = this.getPunctualityStatus();
+                await this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
             }
 
             // 顯示成功訊息
@@ -1305,12 +1871,29 @@ class WakeUpMapGame {
     showGameStartMessage() {
         const destination = this.gameState.selectedDestination;
 
-        // 睡眠航班模式：根據起床時間計算到達時間
+        // 飛行計時器模式：根據計時長度計算到達時間（轉換為目的地當地時間）
         let arrivalTimeText;
-        if (this.gameState.sleepFlightMode) {
-            arrivalTimeText = `隔天 ${this.gameState.wakeTime}`;
+        if (this.gameState.flightTimerMode) {
+            const timerMinutes = this.gameState.timerDuration || 30;
+            const now = this.now();
+
+            // 當前位置時區（起點時區）
+            const currentTimezone = this.getCurrentLocationTimezone();
+            // 目的地時區（如果沒有則使用當前位置時區）
+            const destinationTimezone = destination?.timezone || currentTimezone;
+            // 時區差異（小時）
+            const timezoneDiff = destinationTimezone - currentTimezone;
+
+            // 先計算當前位置時間的到達時間
+            const endTimeAtCurrentLocation = new Date(now.getTime() + timerMinutes * 60 * 1000);
+            // 轉換為目的地當地時間（加上時區差異）
+            const localEndTime = new Date(endTimeAtCurrentLocation.getTime() + timezoneDiff * 60 * 60 * 1000);
+
+            const hours = String(localEndTime.getHours()).padStart(2, '0');
+            const minutes = String(localEndTime.getMinutes()).padStart(2, '0');
+            arrivalTimeText = `${hours}:${minutes}`;
         } else {
-            // 原有的飛行天數計算
+            // 舊模式保留原本邏輯
             if (destination.daysToArrive === 1) {
                 arrivalTimeText = '隔天 08:00';
             } else if (destination.daysToArrive === 2) {
@@ -1322,15 +1905,16 @@ class WakeUpMapGame {
             }
         }
 
+        const durationText = this.formatDuration(this.gameState.timerDuration || 30);
+
         const message = `
             ✈️ 機票購買成功！
             
             🎫 目的地：${destination.flag} ${destination.name}
-            💰 花費：NT$ ${destination.price.toLocaleString()}
-            🕐 抵達時間：${arrivalTimeText}
-            📍 區域：${destination.country} (${this.calculateArrivalTime(destination)}到達)
+            🕐 旅程長度：${durationText}
+            📍 區域：${destination.country}
             
-            🎮 本週旅程即將開始！
+            🎮 旅程即將開始！
         `;
 
         alert(message);
@@ -1363,29 +1947,6 @@ class WakeUpMapGame {
         }
     }
 
-    updateResourceDisplay() {
-        // 更新金錢顯示
-        const moneyEl = document.getElementById('gameMoney');
-        const moneyFill = document.getElementById('moneyFill');
-        if (moneyEl) {
-            moneyEl.textContent = this.gameState.money.toLocaleString();
-        }
-        if (moneyFill) {
-            const percentage = (this.gameState.money / 10000) * 100;
-            moneyFill.style.width = `${Math.max(percentage, 5)}%`;
-        }
-
-        // 更新油耗顯示
-        const fuelEl = document.getElementById('gameFuel');
-        const fuelFill = document.getElementById('fuelFill');
-        if (fuelEl) {
-            fuelEl.textContent = this.gameState.fuel;
-        }
-        if (fuelFill) {
-            const percentage = (this.gameState.fuel / 1000) * 100;
-            fuelFill.style.width = `${Math.max(percentage, 5)}%`;
-        }
-    }
 
     setInitialDate() {
         const today = new Date();
@@ -1407,56 +1968,214 @@ class WakeUpMapGame {
         }).replace(/\//g, '-');
     }
 
+    // 獲取當前位置的時區（UTC偏移小時數）
+    getCurrentLocationTimezone() {
+        const currentLocation = this.gameState.currentLocation;
+        if (currentLocation && currentLocation.timezone !== undefined) {
+            return currentLocation.timezone;
+        }
+        // 如果沒有當前位置，嘗試從快取獲取
+        try {
+            const cached = localStorage.getItem('lastKnownLocation');
+            if (cached) {
+                const loc = JSON.parse(cached);
+                if (loc && loc.timezone !== undefined) {
+                    return loc.timezone;
+                }
+            }
+        } catch (e) {
+            console.warn('讀取快取位置時區失敗:', e);
+        }
+        // 預設台灣時區（UTC+8）
+        return 8;
+    }
+
     // 睡眠航班相關方法
     async getCurrentLocation() {
         try {
-            // 優先使用本地快取的上一個位置
+            // 優先使用 gameState 中的當前位置
+            if (this.gameState.currentLocation && this.gameState.currentLocation.coordinates) {
+                return this.gameState.currentLocation;
+            }
+
+            // 其次使用本地快取的上一個位置
             const cached = localStorage.getItem('lastKnownLocation');
             if (cached) {
                 const loc = JSON.parse(cached);
                 if (loc && Array.isArray(loc.coordinates) && loc.coordinates.length === 2) {
+                    // 確保有時區資訊
+                    if (!loc.timezone) {
+                        loc.timezone = 8; // 預設台灣時區
+                    }
+                    this.gameState.currentLocation = loc;
                     return loc;
                 }
             }
-            // 嘗試從最後的記錄獲取位置
+            // 嘗試從最後的記錄獲取位置（從 Firebase 查詢上次降落位置）
             const latestRecord = await this.getLatestRecord();
             if (latestRecord) {
-                return {
-                    name: latestRecord.city,
-                    country: latestRecord.country,
-                    coordinates: [latestRecord.latitude, latestRecord.longitude]
+                // 從 Firebase 記錄獲取時區（如果有的話）
+                const timezone = latestRecord.timezone || 8;
+
+                const location = {
+                    name: latestRecord.city_zh || latestRecord.city,
+                    country: latestRecord.country_zh || latestRecord.country,
+                    coordinates: [latestRecord.latitude, latestRecord.longitude],
+                    timezone: timezone,
+                    latitude: latestRecord.latitude,
+                    longitude: latestRecord.longitude
                 };
+                this.gameState.currentLocation = location;
+                // 同時保存到 localStorage
+                localStorage.setItem('lastKnownLocation', JSON.stringify(location));
+                console.log('📍 已從 Firebase 載入上次降落位置:', location.name, '時區:', timezone);
+                return location;
             }
 
             // 如果沒有記錄，使用預設位置（台北）
-            return {
+            const defaultLocation = {
                 name: '台北',
                 country: '台灣',
-                coordinates: [25.0330, 121.5654]
+                coordinates: [25.0330, 121.5654],
+                timezone: 8
             };
+            this.gameState.currentLocation = defaultLocation;
+            return defaultLocation;
         } catch (error) {
             console.error('獲取當前位置失敗:', error);
-            return {
+            const defaultLocation = {
                 name: '台北',
                 country: '台灣',
-                coordinates: [25.0330, 121.5654]
+                coordinates: [25.0330, 121.5654],
+                timezone: 8
             };
+            this.gameState.currentLocation = defaultLocation;
+            return defaultLocation;
         }
     }
 
     async getLatestRecord() {
         try {
-            // 這裡可以從Firebase或其他數據源獲取最新記錄
-            // 暫時返回null，使用預設位置
+            // 檢查 Firebase 是否可用
+            if (!window.firebaseSDK || !window.firebaseSDK.getFirestore) {
+                console.log('📍 Firebase 未初始化，使用預設位置');
+                return null;
+            }
+
+            const db = window.firebaseSDK.getFirestore();
+            if (!db) {
+                console.log('📍 Firebase 資料庫未初始化，使用預設位置');
+                return null;
+            }
+
+            const userName = (window.env && window.env.USER_NAME) || 'morgan';
+            const user = userName.toLowerCase();
+
+            // 首先嘗試從 Flight 記錄中獲取最新降落記錄
+            try {
+                const { collection, query, where, orderBy, limit, getDocs } = window.firebaseSDK;
+                const flightCollection = collection(db, 'userProfiles', user, 'Flight');
+
+                // 查詢狀態為 'completed' 或 'landing' 的記錄（已降落的飛行）
+                const flightQuery = query(
+                    flightCollection,
+                    where('status', 'in', ['completed', 'landing', 'landed']),
+                    orderBy('updatedAt', 'desc'),
+                    limit(1)
+                );
+
+                const flightSnapshot = await getDocs(flightQuery);
+
+                if (!flightSnapshot.empty) {
+                    const latestFlight = flightSnapshot.docs[0].data();
+                    const destination = latestFlight.destination;
+
+                    if (destination && destination.city && destination.lat && destination.lng) {
+                        console.log('📍 從 Flight 記錄獲取上次降落位置:', destination.city);
+
+                        // 嘗試從城市資料中獲取時區
+                        let timezone = 8; // 預設台灣時區
+                        if (destination.lat && destination.lng) {
+                            // 可以嘗試從城市資料庫匹配時區，暫時使用預設值
+                            // 或從 matchedCityUTCOffset 獲取（如果有的話）
+                            if (latestFlight.matchedCityUTCOffset !== undefined) {
+                                timezone = latestFlight.matchedCityUTCOffset;
+                            } else if (latestFlight.targetUTCOffset !== undefined) {
+                                timezone = latestFlight.targetUTCOffset;
+                            }
+                        }
+
+                        return {
+                            city: destination.city,
+                            city_zh: destination.city_zh || destination.city,
+                            country: destination.country,
+                            country_zh: destination.country_zh || destination.country,
+                            latitude: destination.lat,
+                            longitude: destination.lng,
+                            timezone: timezone
+                        };
+                    }
+                }
+            } catch (flightError) {
+                console.warn('⚠️ 查詢 Flight 記錄失敗，嘗試查詢 wakeup_records:', flightError);
+            }
+
+            // 如果 Flight 記錄查詢失敗，嘗試從 wakeup_records 獲取最新記錄
+            try {
+                const { collection, query, where, orderBy, limit, getDocs } = window.firebaseSDK;
+                const wakeupRecordsCollection = collection(db, 'wakeup_records');
+
+                // 查詢該用戶的最新記錄
+                const recordsQuery = query(
+                    wakeupRecordsCollection,
+                    where('userDisplayName', '==', userName),
+                    orderBy('recordedAt', 'desc'),
+                    limit(1)
+                );
+
+                const recordsSnapshot = await getDocs(recordsQuery);
+
+                if (!recordsSnapshot.empty) {
+                    const latestRecord = recordsSnapshot.docs[0].data();
+
+                    if (latestRecord.city && latestRecord.latitude && latestRecord.longitude) {
+                        console.log('📍 從 wakeup_records 獲取上次位置:', latestRecord.city);
+
+                        // 獲取時區資訊
+                        let timezone = 8; // 預設台灣時區
+                        if (latestRecord.matchedCityUTCOffset !== undefined) {
+                            timezone = latestRecord.matchedCityUTCOffset;
+                        } else if (latestRecord.targetUTCOffset !== undefined) {
+                            timezone = latestRecord.targetUTCOffset;
+                        }
+
+                        return {
+                            city: latestRecord.city,
+                            city_zh: latestRecord.city_zh || latestRecord.city,
+                            country: latestRecord.country,
+                            country_zh: latestRecord.country_zh || latestRecord.country,
+                            latitude: latestRecord.latitude,
+                            longitude: latestRecord.longitude,
+                            timezone: timezone
+                        };
+                    }
+                }
+            } catch (recordsError) {
+                console.warn('⚠️ 查詢 wakeup_records 失敗:', recordsError);
+            }
+
+            console.log('📍 沒有找到 Firebase 記錄，使用預設位置（台北）');
             return null;
         } catch (error) {
-            console.error('獲取最新記錄失敗:', error);
+            console.error('❌ 獲取最新記錄失敗:', error);
             return null;
         }
     }
 
-    async calculateSleepFlightDestinations(currentLocation, wakeTime) {
-        console.log('開始計算目的地（JSON資料） 起床時間:', wakeTime);
+    async calculateFlightTimerDestinations(currentLocation, timerMinutes) {
+        // 確保最短30分鐘
+        const validTimerMinutes = Math.max(30, timerMinutes || 30);
+        console.log('開始計算目的地（計時器模式）計時長度:', validTimerMinutes, '分鐘');
 
         // 目前以台北為出發點（若無明確定位）
         const currentLoc = (() => {
@@ -1469,7 +2188,7 @@ class WakeUpMapGame {
                     return { latitude: Number(lat), longitude: Number(lng) };
                 }
             }
-            return { latitude: 25.0330, longitude: 121.5654 };
+            return { latitude: 25.0330, longitude: 121.5654 }; // 台北
         })();
         const origin = { latitude: currentLoc.latitude, longitude: currentLoc.longitude };
         const originCoords = [origin.latitude, origin.longitude];
@@ -1477,15 +2196,32 @@ class WakeUpMapGame {
         const cities = await this.loadCitiesData();
         const pool = (this.countryCandidates && this.countryCandidates.length) ? this.countryCandidates : cities;
         console.log('可用候選城市數量:', pool.length);
-        const maxDistanceKm = 8 * 800; // 6400km
+
+        // 根據計時長度計算最大飛行距離
+        // 假設飛機速度 800km/h，30分鐘 = 0.5小時 * 800 = 400km
+        const FLIGHT_SPEED_KMH = 800; // 飛機時速
+        const maxDistanceKm = (validTimerMinutes / 60) * FLIGHT_SPEED_KMH;
+        console.log(`計時 ${validTimerMinutes} 分鐘，最大飛行距離: ${maxDistanceKm.toFixed(0)}km`);
 
         const withDistance = pool.map(c => ({
             ...c,
             distanceKm: this.calculateDistance(originCoords, [c.latitude, c.longitude])
         })).filter(c => c.distanceKm > 0);
 
-        let candidates = withDistance.filter(c => c.distanceKm <= maxDistanceKm)
+        // 篩選距離範圍內的城市（至少100km，避免太近）
+        const minDistanceKm = 100; // 最小距離，避免選擇太近的區域
+        let candidates = withDistance
+            .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= maxDistanceKm)
             .sort((a, b) => a.distanceKm - b.distanceKm);
+
+        // 如果候選城市太少，稍微放寬距離範圍（最多+20%）
+        if (candidates.length < 10) {
+            const expandedMax = maxDistanceKm * 1.2;
+            candidates = withDistance
+                .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= expandedMax)
+                .sort((a, b) => a.distanceKm - b.distanceKm);
+            console.log(`候選城市較少，放寬距離範圍至 ${expandedMax.toFixed(0)}km`);
+        }
 
         // 依國家分組，挑「最近」或「更耳熟能詳」的城市
         const nameBoost = new Set([
@@ -1528,16 +2264,25 @@ class WakeUpMapGame {
         };
 
         let top = pickUniqueCountries(candidates);
-        let expand = 7000;
-        while (top.length < 4 && expand <= 10000) {
-            const more = withDistance.filter(c => c.distanceKm <= expand).sort((a, b) => a.distanceKm - b.distanceKm);
+
+        // 如果不足4個國家，逐步擴大搜尋範圍（最多到2倍距離）
+        let expand = maxDistanceKm * 1.2;
+        while (top.length < 4 && expand <= maxDistanceKm * 2) {
+            const more = withDistance
+                .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= expand)
+                .sort((a, b) => a.distanceKm - b.distanceKm);
             top = pickUniqueCountries(more);
-            expand += 1000;
+            expand += maxDistanceKm * 0.2; // 每次增加20%
         }
+
+        // 最後保底：如果還是不到4個，從所有候選中選
         if (top.length < 4) {
-            top = pickUniqueCountries(withDistance.sort((a, b) => a.distanceKm - b.distanceKm));
+            top = pickUniqueCountries(withDistance
+                .filter(c => c.distanceKm >= minDistanceKm)
+                .sort((a, b) => a.distanceKm - b.distanceKm));
         }
-        console.log('最終選擇的4個目的地:', top);
+
+        console.log(`最終選擇的 ${top.length} 個目的地（計時 ${validTimerMinutes} 分鐘，距離 ≤ ${maxDistanceKm.toFixed(0)}km）:`, top);
         return top;
     }
 
@@ -1551,6 +2296,215 @@ class WakeUpMapGame {
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return Math.round(R * c);
+    }
+
+    // 計算提早降落的中途城市
+    async calculateEarlyLandingCity(punctuality) {
+        const origin = this.gameState.currentLocation;
+        const destination = this.gameState.selectedDestination;
+
+        if (!origin || !destination) {
+            console.warn('⚠️ 無法計算中途降落城市：缺少起點或目的地');
+            return destination; // 如果沒有起點或目的地，降落在目的地
+        }
+
+        // 計算實際飛行時間（分鐘）
+        if (!this.gameState.timerStartTime) {
+            console.warn('⚠️ 無法計算中途降落城市：計時器未啟動');
+            return destination;
+        }
+
+        const now = this.now();
+        const actualFlightTimeMs = now.getTime() - this.gameState.timerStartTime.getTime();
+        const actualFlightTimeMinutes = actualFlightTimeMs / (1000 * 60);
+
+        // 計算實際飛行距離（公里）
+        const FLIGHT_SPEED_KMH = 800; // 飛機時速
+        const actualFlightDistance = actualFlightTimeMinutes * (FLIGHT_SPEED_KMH / 60);
+
+        // 計算起點到目的地的總距離
+        const originCoords = origin.coordinates || (origin.latitude && origin.longitude ? [origin.latitude, origin.longitude] : [25.0330, 121.5654]);
+        const destCoords = [destination.latitude, destination.longitude];
+        const totalDistance = this.calculateDistance(originCoords, destCoords);
+
+        console.log('📍 計算中途降落城市:', {
+            origin: {
+                name: origin.name || '未知',
+                coords: originCoords,
+                hasCoordinates: !!origin.coordinates,
+                hasLatLon: !!(origin.latitude && origin.longitude)
+            },
+            destination: {
+                name: destination.name || '未知',
+                coords: destCoords
+            },
+            actualFlightTime: `${actualFlightTimeMinutes.toFixed(1)} 分鐘`,
+            actualFlightDistance: `${actualFlightDistance.toFixed(0)} km`,
+            totalDistance: `${totalDistance} km`,
+            progress: totalDistance > 0 ? `${((actualFlightDistance / totalDistance) * 100).toFixed(1)}%` : 'N/A'
+        });
+
+        // 檢查總距離是否有效
+        if (totalDistance === 0 || !isFinite(totalDistance)) {
+            console.warn('⚠️ 總距離無效或為 0，降落在目的地');
+            return destination;
+        }
+
+        // 如果實際飛行距離已經超過總距離的85%，還是降落在目的地
+        if (actualFlightDistance >= totalDistance * 0.85) {
+            console.log(`✅ 已接近目的地（${((actualFlightDistance / totalDistance) * 100).toFixed(1)}% >= 85%），降落在目的地`);
+            return destination;
+        }
+
+        // 如果實際飛行距離太短（少於總距離的20%），降落在目的地（避免降落在起點附近）
+        if (actualFlightDistance < totalDistance * 0.2) {
+            console.log(`⚠️ 飛行距離太短（${((actualFlightDistance / totalDistance) * 100).toFixed(1)}% < 20%），降落在目的地`);
+            return destination;
+        }
+
+        // 計算飛行進度（0-1）
+        const flightProgress = actualFlightDistance / totalDistance;
+
+        // 計算中途點的理論位置
+        const originLat = originCoords[0];
+        const originLon = originCoords[1];
+        const destLat = destCoords[0];
+        const destLon = destCoords[1];
+
+        const latDiff = destLat - originLat;
+        const lonDiff = destLon - originLon;
+
+        const intermediateLat = originLat + latDiff * flightProgress;
+        const intermediateLon = originLon + lonDiff * flightProgress;
+
+        // 載入所有城市資料
+        const cities = await this.loadCitiesData();
+        console.log(`📍 載入了 ${cities.length} 個城市用於搜索中途降落城市`);
+
+        // 找出距離理論中途點最近的城市
+        let bestCity = null;
+        let minScore = Infinity;
+        const searchRadius = 600; // 搜索半徑 600km（擴大搜索範圍以提高找到城市的機率）
+        let citiesChecked = 0;
+        let citiesInRadius = 0;
+
+        for (const city of cities) {
+            citiesChecked++;
+
+            // 計算城市到理論中途點的距離
+            const cityDistanceToIntermediate = this.calculateDistance(
+                [intermediateLat, intermediateLon],
+                [city.latitude, city.longitude]
+            );
+
+            // 計算城市距離起點的距離
+            const cityDistanceFromOrigin = this.calculateDistance(
+                originCoords,
+                [city.latitude, city.longitude]
+            );
+
+            // 計算城市到目的地的距離
+            const cityDistanceToDest = this.calculateDistance(
+                [city.latitude, city.longitude],
+                destCoords
+            );
+
+            // 檢查是否在搜索範圍內
+            if (cityDistanceToIntermediate <= searchRadius) {
+                citiesInRadius++;
+
+                // 檢查該城市是否在前往目的地的方向上（避免往回飛）
+                // 城市距離起點 < 城市距離目的地（確保在正確方向）
+                if (cityDistanceFromOrigin < cityDistanceToDest) {
+                    // 避免選擇起點或目的地本身（放寬條件：至少距離 30km）
+                    if (cityDistanceFromOrigin > 30 && cityDistanceToDest > 30) {
+                        // 計算評分：距離理論中途點越近越好，距離實際飛行距離越接近越好
+                        const distanceFromIntermediate = cityDistanceToIntermediate;
+                        const distanceFromActual = Math.abs(cityDistanceFromOrigin - actualFlightDistance);
+
+                        // 綜合評分（權重：距離中途點 60%，距離實際飛行距離 40%）
+                        const score = distanceFromIntermediate * 0.6 + distanceFromActual * 0.4;
+
+                        if (score < minScore) {
+                            minScore = score;
+                            bestCity = city;
+                            console.log(`  🎯 找到更好的候選城市: ${city.name} (評分: ${score.toFixed(1)}, 距離中途點: ${cityDistanceToIntermediate}km, 距離起點: ${cityDistanceFromOrigin}km)`);
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log(`📍 搜索完成：檢查了 ${citiesChecked} 個城市，${citiesInRadius} 個在搜索半徑內`);
+
+        // 如果找到合適的城市，返回它
+        if (bestCity) {
+            console.log(`📍 提早降落：從 ${origin.name || '起點'} 飛往 ${destination.name}，實際飛行 ${actualFlightTimeMinutes.toFixed(1)} 分鐘（${actualFlightDistance.toFixed(0)}km / ${totalDistance}km），降落在中途城市 ${bestCity.name}`);
+
+            return {
+                ...bestCity,
+                flag: this.countryCodeToEmoji(bestCity.countryCode),
+                isEarlyLanding: true,
+                originalDestination: destination.name,
+                originalDestinationCountry: destination.country,
+                actualFlightDistance: Math.round(actualFlightDistance),
+                plannedDistance: totalDistance,
+                flightProgress: Math.round(flightProgress * 100)
+            };
+        }
+
+        // 如果找不到合適的中途城市，嘗試第二種策略：找距離起點約等於實際飛行距離的城市
+        console.log('⚠️ 找不到理論中途點附近的城市，改用距離策略');
+        let bestCityByDistance = null;
+        let minDistanceDiff = Infinity;
+        let distanceStrategyChecked = 0;
+
+        for (const city of cities) {
+            const cityDistanceFromOrigin = this.calculateDistance(
+                originCoords,
+                [city.latitude, city.longitude]
+            );
+
+            const cityDistanceToDest = this.calculateDistance(
+                [city.latitude, city.longitude],
+                destCoords
+            );
+
+            // 確保城市在正確方向且距離合理（放寬條件）
+            if (cityDistanceFromOrigin > 30 &&
+                cityDistanceFromOrigin < cityDistanceToDest &&
+                cityDistanceFromOrigin <= actualFlightDistance * 2.0) { // 放寬到 2 倍實際飛行距離
+
+                distanceStrategyChecked++;
+                const distanceDiff = Math.abs(cityDistanceFromOrigin - actualFlightDistance);
+
+                if (distanceDiff < minDistanceDiff) {
+                    minDistanceDiff = distanceDiff;
+                    bestCityByDistance = city;
+                    console.log(`  🎯 距離策略找到候選: ${city.name} (距離起點: ${cityDistanceFromOrigin}km, 誤差: ${distanceDiff.toFixed(0)}km)`);
+                }
+            }
+        }
+
+        console.log(`📍 距離策略搜索完成：檢查了 ${distanceStrategyChecked} 個符合條件的城市`);
+
+        if (bestCityByDistance) {
+            console.log(`📍 提早降落（距離策略）：降落在 ${bestCityByDistance.name}`);
+            return {
+                ...bestCityByDistance,
+                flag: this.countryCodeToEmoji(bestCityByDistance.countryCode),
+                isEarlyLanding: true,
+                originalDestination: destination.name,
+                originalDestinationCountry: destination.country,
+                actualFlightDistance: Math.round(actualFlightDistance),
+                plannedDistance: totalDistance,
+                flightProgress: Math.round(flightProgress * 100)
+            };
+        }
+
+        // 如果還是找不到，返回目的地（但有警告）
+        console.warn(`⚠️ 找不到合適的中途降落城市，降落在目的地 ${destination.name}`);
+        return destination;
     }
 
     // 根據起床時間計算UTC偏移
@@ -1572,22 +2526,10 @@ class WakeUpMapGame {
         return price;
     }
 
-    // 計算到達時間
+    // 計算「旅程長度」的文字描述（不再回傳實際時間點）
     calculateArrivalTime(destination) {
-        const now = this.now();
-        const wakeTime = this.gameState.wakeTime || '08:00';
-        const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
-
-        // 計算目標到達時間（明天早上）
-        const arrivalTime = new Date(now);
-        arrivalTime.setDate(arrivalTime.getDate() + 1);
-        arrivalTime.setHours(wakeHour, wakeMinute, 0, 0);
-
-        return arrivalTime.toLocaleTimeString('zh-TW', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
+        const minutes = this.gameState.timerDuration || 30;
+        return this.formatDuration(minutes);
     }
 
     // 在左側（當前位置區）顯示機票，並將台北面板縮成小圖示
@@ -1612,15 +2554,48 @@ class WakeUpMapGame {
         });
 
         const destination = this.gameState.selectedDestination;
+        const lang = this.gameState.language || 'zh-TW';
 
-        // 創建機票UI
+        const labelPack = (lang === 'en') ? {
+            duration: 'Duration',
+            gate: 'Gate',
+            task: 'TASK'
+        } : {
+            duration: '飛行時長',
+            gate: '登機門',
+            task: 'TASK'
+        };
+
+        const taskText = (() => {
+            const mapZh = {
+                READING: '讀書',
+                EXERCISE: '運動',
+                MEDITATION: '冥想',
+                REST: '休息',
+                WORK: '工作',
+                GAME: '遊戲'
+            };
+            const mapEn = {
+                READING: 'READ',
+                EXERCISE: 'WORKOUT',
+                MEDITATION: 'MEDITATE',
+                REST: 'REST',
+                WORK: 'WORK',
+                GAME: 'GAME'
+            };
+            const key = this.gameState.taskType || 'REST';
+            const map = (lang === 'en') ? mapEn : mapZh;
+            return map[key] || (lang === 'en' ? 'REST' : '休息');
+        })();
+
+        // 創建機票UI（首頁左側：僅顯示路線＋時長＋任務＋登機門）
         const ticketElement = document.createElement('div');
         ticketElement.className = 'location-ticket';
         ticketElement.innerHTML = `
             <div class="ticket-header">
                 <div class="airline-info">
                     <span class="airline-icon">✈️</span>
-                    <span class="airline-name">WAKE UP AIRLINES</span>
+                    <span class="airline-name">FOCUS AIRLINES</span>
                 </div>
                 <div class="ticket-status">已購買</div>
             </div>
@@ -1641,16 +2616,16 @@ class WakeUpMapGame {
             
             <div class="ticket-details">
                 <div class="detail-item">
-                    <span class="detail-label">出發時間</span>
-                    <span class="detail-value">今晚 23:30</span>
+                    <span class="detail-label">${labelPack.duration}</span>
+                    <span class="detail-value">${this.formatDuration(this.gameState.timerDuration || 30)}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">到達時間</span>
-                    <span class="detail-value">明天 ${this.gameState.wakeTime}</span>
+                    <span class="detail-label">${labelPack.gate}</span>
+                    <span class="detail-value">${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">票價</span>
-                    <span class="detail-value">NT$ ${destination.price.toLocaleString()}</span>
+                    <span class="detail-label">${labelPack.task}</span>
+                    <span class="detail-value">${taskText}</span>
                 </div>
             </div>
         `;
@@ -1742,7 +2717,7 @@ class WakeUpMapGame {
                         longitude: dest?.longitude,
                         timezone: tz,
                         localTime: new Date(this.now()).toISOString(),
-                        plannedWakeTime: this.gameState.wakeTime || '08:00',
+                        timerDuration: this.gameState.timerDuration || 30, // 計時長度（分鐘）
                         originCity: this.gameState.currentLocation?.name || '台北',
                         originCountry: this.gameState.currentLocation?.country || '台灣'
                     });
@@ -1769,9 +2744,9 @@ class WakeUpMapGame {
                 this.updateFlightStatusDisplay('降落中');
 
                 // 2秒後顯示降落結果彈窗
-                setTimeout(() => {
+                setTimeout(async () => {
                     const p = this.getPunctualityStatus();
-                    this.showLandingOutcomeModal(p);
+                    await this.showLandingOutcomeModal(p);
                 }, 2000);
 
                 break;
@@ -1782,13 +2757,32 @@ class WakeUpMapGame {
         }
     }
 
-    // 開始飛行
+    // 開始飛行（計時器模式）
     async startFlight() {
-        console.log('開始飛行，狀態:', this.gameState.actionButtonState);
+        console.log('開始飛行計時器，狀態:', this.gameState.actionButtonState);
         console.log('選中的目的地:', this.gameState.selectedDestination);
 
         this.gameState.flightStarted = true;
         this.gameState.flightStatus = 'flying';
+
+        // 設定計時器（飛行計時器模式）
+        if (this.gameState.flightTimerMode) {
+            const timerMinutes = this.gameState.timerDuration || 30;
+            const now = this.now();
+            this.gameState.timerStartTime = now;
+            this.gameState.timerEndTime = new Date(now.getTime() + timerMinutes * 60 * 1000);
+            console.log(`⏱️ 計時器啟動：${timerMinutes}分鐘，將於 ${this.gameState.timerEndTime.toLocaleTimeString()} 降落`);
+
+            // 設定計時結束回調
+            this.setTimerCompletionCallback();
+
+            // 確保計時器更新已啟動（重新觸發更新）
+            const flightStatusElement = document.querySelector('.flight-status-popup');
+            if (flightStatusElement) {
+                const destination = this.gameState.selectedDestination;
+                this.startFlightTimerUpdates(flightStatusElement, destination);
+            }
+        }
 
         // 隱藏按鈕
         this.hideActionButton();
@@ -1806,7 +2800,7 @@ class WakeUpMapGame {
                 longitude: cur?.coordinates?.[1],
                 timezone: tz,
                 localTime: new Date(this.now()).toISOString(),
-                plannedWakeTime: this.gameState.wakeTime || '08:00',
+                timerDuration: this.gameState.timerDuration || 30, // 計時長度（分鐘）
                 plannedDestination: dest ? `${dest.country} ${dest.name}` : '',
                 targetCity: dest?.name,
                 targetCountry: dest?.country
@@ -1814,7 +2808,7 @@ class WakeUpMapGame {
         } catch (e) { console.warn('寫入睡覺開始記錄失敗', e); }
 
         // 播放登機廣播
-        if (this.gameState.sleepFlightMode && this.gameState.selectedDestination) {
+        if (this.gameState.flightTimerMode && this.gameState.selectedDestination) {
             console.log('準備播放登機廣播');
             await this.playSleepFlightAnnouncement('boarding', this.gameState.selectedDestination);
         }
@@ -1829,7 +2823,8 @@ class WakeUpMapGame {
                 await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, {
                     origin: { city: origin?.name || '台北', country: origin?.country || '台灣', lat: origin?.coordinates?.[0], lng: origin?.coordinates?.[1] },
                     destination: { city: dest?.name, country: dest?.country, lat: dest?.latitude, lng: dest?.longitude },
-                    plannedWakeTime: this.gameState.wakeTime || '08:00',
+                    timerDuration: this.gameState.timerDuration || 30, // 計時長度（分鐘）
+                    taskType: this.gameState.taskType || 'REST',
                     sleepStartAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
                     status: 'flying'
                 });
@@ -1841,8 +2836,11 @@ class WakeUpMapGame {
         // 開始遊戲
         this.startGame();
 
-        // 設置鬧鐘，在起床時間顯示降落按鈕
-        this.setLandingAlarm();
+        // 飛行計時器模式：不再需要設定鬧鐘，計時結束會自動處理
+        // 舊模式保留 setLandingAlarm
+        if (!this.gameState.flightTimerMode) {
+            this.setLandingAlarm();
+        }
 
         // 隱藏等待覆蓋層
         const waiting = document.getElementById('waitingState');
@@ -1889,13 +2887,85 @@ class WakeUpMapGame {
         console.log(`降落鬧鐘已設置，將在 ${landingTime.toLocaleString()} 顯示降落按鈕`);
     }
 
+    // 設定計時結束回調（飛行計時器模式）
+    setTimerCompletionCallback() {
+        if (!this.gameState.flightTimerMode || !this.gameState.timerEndTime) return;
+
+        const endTime = this.gameState.timerEndTime.getTime();
+        const now = this.now().getTime();
+        const delay = endTime - now;
+
+        if (delay > 0) {
+            setTimeout(() => {
+                this.handleTimerComplete();
+            }, delay);
+            console.log(`⏱️ 計時結束回調已設定，將在 ${delay / 1000} 秒後自動降落`);
+        } else {
+            // 時間已經到了，立即處理
+            this.handleTimerComplete();
+        }
+    }
+
+    // 計時完成處理（飛行計時器模式）
+    handleTimerComplete() {
+        if (this.gameState.flightCompleted) return; // 已經處理過
+
+        console.log('⏱️ 計時完成！飛機降落');
+
+        // 更新狀態
+        this.gameState.flightCompleted = true;
+        this.gameState.isLanding = true;
+        this.gameState.flightStatus = 'completed';
+        this.updateFlightStatusDisplay('已降落');
+
+        // 更新當前位置為目的地（下次飛行從這裡開始）
+        if (this.gameState.selectedDestination) {
+            const destination = this.gameState.selectedDestination;
+            this.gameState.currentLocation = {
+                name: destination.name,
+                country: destination.country,
+                coordinates: [destination.latitude, destination.longitude],
+                timezone: destination.timezone || 8, // 預設UTC+8
+                latitude: destination.latitude,
+                longitude: destination.longitude
+            };
+
+            // 保存到 localStorage 以便下次使用
+            localStorage.setItem('lastKnownLocation', JSON.stringify(this.gameState.currentLocation));
+            console.log('📍 當前位置已更新為:', destination.name, '時區:', destination.timezone);
+        }
+
+        // 計算準時性狀態並播放降落廣播
+        if (this.gameState.selectedDestination) {
+            const punctuality = this.getPunctualityStatus();
+            this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
+        }
+
+        // 顯示完成畫面
+        this.showFlightCompletionModal();
+    }
+
+    // 顯示飛行完成畫面
+    showFlightCompletionModal() {
+        // 這裡可以顯示完成動畫或彈窗
+        const destination = this.gameState.selectedDestination;
+        if (destination) {
+            alert(`✈️ 飛行完成！\n\n恭喜抵達 ${destination.flag} ${destination.name}！`);
+        }
+
+        // 顯示降落結果
+        const p = this.getPunctualityStatus();
+        this.showLandingOutcomeModal(p).catch(err => console.error('顯示降落結果彈窗失敗:', err));
+    }
+
     // 顯示降落按鈕
     showLandingButton() {
         this.showActionButton('landing');
 
-        // 播放降落廣播
+        // 播放降落廣播（計算準時性狀態）
         if (this.gameState.selectedDestination) {
-            this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination);
+            const punctuality = this.getPunctualityStatus();
+            this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
         }
     }
 
@@ -1922,12 +2992,9 @@ class WakeUpMapGame {
     calculatePunctuality() {
         const p = this.getPunctualityStatus();
         if (p.status === 'LATE') {
-            // 依遲到幅度扣款（備用）；主要懲罰已在 applyLateLanding
+            // 遲到提醒
             const minutesDiff = p.minutesDiff;
-            const penalty = minutesDiff <= 30 ? 100 : 500;
-            this.gameState.money = Math.max(0, this.gameState.money - penalty);
-            this.updateResourceDisplay();
-            console.log(`遲到 ${minutesDiff} 分鐘，扣除 NT$ ${penalty}`);
+            console.log(`遲到 ${minutesDiff} 分鐘`);
         } else {
             console.log('準時/提早降落');
         }
@@ -1935,6 +3002,45 @@ class WakeUpMapGame {
 
     // 獲取準時性狀態
     getPunctualityStatus() {
+        // 飛行計時器模式：使用計時器結束時間作為目標時間
+        if (this.gameState.flightTimerMode) {
+            if (!this.gameState.timerEndTime) {
+                return { status: 'ON_TIME', minutesDiff: 0, actualTime: '', targetTime: '' };
+            }
+
+            const now = this.now();
+            const targetTime = this.gameState.timerEndTime.getTime();
+            const actualTime = now.getTime();
+            const timeDiff = actualTime - targetTime;
+            const minutesDiff = Math.round(timeDiff / (1000 * 60));
+
+            // 保存實際時間和目標時間
+            const result = {
+                status: '',
+                minutesDiff: Math.abs(minutesDiff),
+                actualTime: now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+                targetTime: new Date(targetTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+            };
+
+            // 更細緻的分級
+            if (minutesDiff < -10) {
+                result.status = 'EARLY'; // 超早（提前 10 分鐘以上）
+            } else if (minutesDiff < -5) {
+                result.status = 'EARLY'; // 提早（提前 5-9 分鐘）
+            } else if (Math.abs(minutesDiff) <= 1) {
+                result.status = 'PERFECT'; // 完美準時（±1分鐘內）
+            } else if (Math.abs(minutesDiff) <= 5) {
+                result.status = 'ON_TIME'; // 準時（±2-5分鐘）
+            } else if (minutesDiff <= 10) {
+                result.status = 'LATE'; // 輕微遲到（5-10分鐘）
+            } else {
+                result.status = 'LATE'; // 嚴重誤點（超過 10 分鐘）
+            }
+
+            return result;
+        }
+
+        // 舊模式（保留向後兼容）
         const wakeTime = this.gameState.wakeTime || '08:00';
         const now = this.now();
         const [wakeHour, wakeMinute] = wakeTime.split(':').map(Number);
@@ -1945,20 +3051,33 @@ class WakeUpMapGame {
         const timeDiff = now.getTime() - targetTime.getTime();
         const minutesDiff = Math.round(timeDiff / (1000 * 60));
 
-        // 早於目標時間 5 分鐘以上 → 提早
-        if (minutesDiff < -5) {
-            return { status: 'EARLY', minutesDiff: Math.abs(minutesDiff) };
+        const result = {
+            status: '',
+            minutesDiff: Math.abs(minutesDiff),
+            actualTime: now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+            targetTime: targetTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+        };
+
+        // 更細緻的分級
+        if (minutesDiff < -10) {
+            result.status = 'EARLY';
+        } else if (minutesDiff < -5) {
+            result.status = 'EARLY';
+        } else if (Math.abs(minutesDiff) <= 1) {
+            result.status = 'PERFECT';
+        } else if (Math.abs(minutesDiff) <= 5) {
+            result.status = 'ON_TIME';
+        } else if (minutesDiff <= 10) {
+            result.status = 'LATE';
+        } else {
+            result.status = 'LATE';
         }
-        // 目標前後 5 分鐘內 → 準時
-        if (Math.abs(minutesDiff) <= 5) {
-            return { status: 'ON_TIME', minutesDiff };
-        }
-        // 晚超過 5 分鐘 → 遲到
-        return { status: 'LATE', minutesDiff };
+
+        return result;
     }
 
     // 顯示降落結果彈窗
-    showLandingOutcomeModal(punctuality) {
+    async showLandingOutcomeModal(punctuality) {
         const modal = document.getElementById('landingModal');
         const title = document.getElementById('landingTitle');
         const body = document.getElementById('landingBody');
@@ -1969,23 +3088,87 @@ class WakeUpMapGame {
             return;
         }
 
+        const destination = this.gameState.selectedDestination;
+        const cityName = destination?.name || '目的地';
+        const countryName = destination?.country || '';
+
+        // 如果是提早降落，先計算中途降落城市資訊（僅用於顯示，不修改 gameState）
+        if (punctuality.status === 'EARLY' && !punctuality.isEarlyLanding) {
+            try {
+                const landingCity = await this.calculateEarlyLandingCity(punctuality);
+                if (landingCity.isEarlyLanding) {
+                    // 僅更新 punctuality 物件以供顯示使用，不修改 gameState
+                    punctuality.landingCity = landingCity.name;
+                    punctuality.landingCityCountry = landingCity.country;
+                    punctuality.originalDestination = destination.name;
+                    punctuality.originalDestinationCountry = destination.country;
+                    punctuality.isEarlyLanding = true;
+                    punctuality.actualFlightDistance = landingCity.actualFlightDistance;
+                    punctuality.plannedDistance = landingCity.plannedDistance;
+                    punctuality.flightProgress = landingCity.flightProgress;
+                }
+            } catch (error) {
+                console.error('計算中途降落城市失敗:', error);
+            }
+        }
+
         // 根據狀態設置內容
         if (punctuality.status === 'EARLY') {
-            title.innerHTML = '🛬 提早降落 <span class="badge badge-early">提早</span>';
-            body.innerHTML = `
-                <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
-                <p>機長決定提前降落，節省了燃料消耗。</p>
-                <p><strong>獎勵：</strong>燃料 +10</p>
-            `;
+            const isSuperEarly = punctuality.minutesDiff >= 10;
+            const isMidwayLanding = punctuality.isEarlyLanding && punctuality.landingCity;
+            const landingCityName = punctuality.landingCity || cityName;
+            const originalDestName = punctuality.originalDestination || cityName;
+
+            title.innerHTML = isSuperEarly
+                ? '🛬 提早降落 <span class="badge badge-early">超早抵達</span>'
+                : '🛬 提早降落 <span class="badge badge-early">提早抵達</span>';
+
+            let bodyContent = '';
+            if (isMidwayLanding && landingCityName !== originalDestName) {
+                // 中途降落情況
+                const progressPercent = punctuality.flightProgress || 0;
+                bodyContent = `
+                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>${isSuperEarly ? '哇！時間管理大師！' : '呃…我們好像提早到太多了。'}</p>
+                    <p>因為還沒到終點，飛機已在【${landingCityName}】提前降落。</p>
+                    <p>原定目的地【${originalDestName}】尚未到達（已飛行約 ${progressPercent}% 的距離）。</p>
+                    <p>沒事的，機組人員會處理後續。下次我們一起飛完全程吧！</p>
+                    <p>雖然還沒到終點，但這段飛行仍然很棒。歡迎來到【${landingCityName}】！</p>
+                `;
+            } else {
+                // 直接降落在目的地（但提早了）
+                bodyContent = `
+                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>${isSuperEarly ? '哇！時間管理大師！飛機提前完成任務，已經降落在' : '呃…我們好像提早到太多了。飛機已在'}【${cityName}】提前降落。</p>
+                    <p>沒事的，機組人員會處理後續。下次我們一起飛完全程吧！</p>
+                    <p>雖然還沒到終點，但這段飛行仍然很棒。歡迎來到【${cityName}】！</p>
+                `;
+            }
+
+            body.innerHTML = bodyContent;
             actions.innerHTML = `
                 <button class="landing-btn landing-btn-primary" onclick="window.wakeUpMapGame.applyEarlyLanding(${JSON.stringify(punctuality).replace(/"/g, '&quot;')})">確認降落</button>
                 <button class="landing-btn landing-btn-secondary" onclick="window.wakeUpMapGame.hideLandingModal()">取消</button>
             `;
+        } else if (punctuality.status === 'PERFECT') {
+            title.innerHTML = '🛬 完美準時降落 <span class="badge badge-perfect">完美準時 ⭐</span>';
+            body.innerHTML = `
+                <p>完美準時！時間掌控的精準藝術 🎯</p>
+                <p>乘客您好，本次航班順利準時降落於【${cityName}】。</p>
+                <p>感謝你堅持完成這段旅程，你的時間管理很漂亮。</p>
+                <p id="surpriseText">正在準備驚喜...</p>
+            `;
+            actions.innerHTML = `
+                <button class="landing-btn landing-btn-primary" onclick="window.wakeUpMapGame.applyOnTimeLanding(${JSON.stringify(punctuality).replace(/"/g, '&quot;')})">確認降落</button>
+                <button class="landing-btn landing-btn-secondary" onclick="window.wakeUpMapGame.hideLandingModal()">取消</button>
+            `;
         } else if (punctuality.status === 'ON_TIME') {
-            title.innerHTML = '🛬 準時降落 <span class="badge badge-ontime">準時</span>';
+            title.innerHTML = '🛬 準時降落 <span class="badge badge-ontime">準時抵達</span>';
             body.innerHTML = `
                 <p>恭喜！您準時降落了！</p>
+                <p>乘客您好，本次航班順利準時降落於【${cityName}】。</p>
                 <p>機長對您的時間管理表示讚賞。</p>
+                <p>歡迎來到【${cityName}】，祝你今天有個順心的旅程。</p>
                 <p id="surpriseText">正在準備驚喜...</p>
             `;
             actions.innerHTML = `
@@ -1993,11 +3176,29 @@ class WakeUpMapGame {
                 <button class="landing-btn landing-btn-secondary" onclick="window.wakeUpMapGame.hideLandingModal()">取消</button>
             `;
         } else {
-            title.innerHTML = '🛬 遲到降落 <span class="badge badge-late">遲到</span>';
+            // LATE
+            const isSevereLate = punctuality.minutesDiff > 10;
+            const hasDiversion = punctuality.originalDestination && punctuality.divertedCity;
+            const originalCityName = punctuality.originalDestination || cityName;
+
+            title.innerHTML = isSevereLate
+                ? '🛬 誤點降落 <span class="badge badge-late">嚴重誤點</span>'
+                : '🛬 誤點降落 <span class="badge badge-late">輕微遲到</span>';
+
+            let destinationNote = '';
+            if (hasDiversion && punctuality.divertedCity !== originalCityName) {
+                destinationNote = `<p>原定降落於【${originalCityName}】，但因時間超過，我們轉降至【${punctuality.divertedCity}】。</p>`;
+            } else if (isSevereLate) {
+                destinationNote = `<p>原定降落於【${cityName}】，但因時間超過，可能轉降至其他城市。</p>`;
+            } else {
+                destinationNote = `<p>雖有延誤，但仍順利降落在【${cityName}】。</p>`;
+            }
+
             body.innerHTML = `
-                <p>您遲到了 ${punctuality.minutesDiff} 分鐘！</p>
+                <p>抱歉，我們在空中繞了幾圈…本次航班延誤了 ${punctuality.minutesDiff} 分鐘。</p>
+                ${destinationNote}
                 <p>飛機需要在空中盤旋等待降落許可。</p>
-                <p><strong>懲罰：</strong>燃料 -20</p>
+                <p>下次一起看看能不能準時降落吧，我相信你可以。</p>
             `;
             actions.innerHTML = `
                 <button class="landing-btn landing-btn-primary" onclick="window.wakeUpMapGame.applyLateLanding(${JSON.stringify(punctuality).replace(/"/g, '&quot;')})">確認降落</button>
@@ -2030,13 +3231,38 @@ class WakeUpMapGame {
     }
 
     // 處理提早降落
-    applyEarlyLanding(punctuality) {
-        console.log('執行提早降落');
-        this.gameState.fuel = Math.min(100, this.gameState.fuel + 10);
-        this.updateResourceDisplay();
+    async applyEarlyLanding(punctuality) {
+        console.log('執行提早降落', punctuality);
+        console.log('📍 當前位置:', this.gameState.currentLocation);
+        console.log('📍 目的地:', this.gameState.selectedDestination);
+        console.log('📍 計時器開始時間:', this.gameState.timerStartTime);
 
-        // 播放降落廣播
-        this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination);
+        // 計算中途降落城市
+        const landingCity = await this.calculateEarlyLandingCity(punctuality);
+        console.log('📍 計算結果 - landingCity:', landingCity);
+        console.log('📍 是否中途降落:', landingCity.isEarlyLanding);
+
+        // 如果降落在中途城市，更新目的地資訊
+        if (landingCity.isEarlyLanding) {
+            // 更新準時性資訊
+            punctuality.landingCity = landingCity.name;
+            punctuality.landingCityCountry = landingCity.country;
+            punctuality.originalDestination = this.gameState.selectedDestination.name;
+            punctuality.originalDestinationCountry = this.gameState.selectedDestination.country;
+            punctuality.isEarlyLanding = true;
+            punctuality.actualFlightDistance = landingCity.actualFlightDistance;
+            punctuality.plannedDistance = landingCity.plannedDistance;
+            punctuality.flightProgress = landingCity.flightProgress;
+
+            // 更新選中的目的地為降落城市（保存原始目的地以供顯示）
+            this.gameState.originalDestination = this.gameState.selectedDestination;
+            this.gameState.selectedDestination = landingCity;
+
+            console.log(`✅ 提早降落在中途城市：${landingCity.name}（原定目的地：${punctuality.originalDestination}）`);
+        }
+
+        // 播放降落廣播（傳入準時性狀態和降落城市）
+        await this.playSleepFlightAnnouncement('landing', landingCity, punctuality);
 
         this.hideLandingModal();
         this.completeFlight();
@@ -2044,7 +3270,12 @@ class WakeUpMapGame {
 
     // 處理準時降落
     applyOnTimeLanding(punctuality) {
-        console.log('執行準時降落');
+        console.log('執行準時降落', punctuality);
+
+        // 如果是完美準時，確保狀態正確
+        if (Math.abs(punctuality.minutesDiff) <= 1 && punctuality.status !== 'PERFECT') {
+            punctuality.status = 'PERFECT';
+        }
 
         // 顯示隨機驚喜
         const surprise = this.randomOnTimeSurprise();
@@ -2053,16 +3284,8 @@ class WakeUpMapGame {
             surpriseText.innerHTML = `<p><strong>驚喜：</strong>${surprise.message}</p>`;
         }
 
-        // 應用驚喜效果
-        if (surprise.type === 'money') {
-            this.gameState.money += surprise.amount;
-        } else if (surprise.type === 'fuel') {
-            this.gameState.fuel = Math.min(100, this.gameState.fuel + surprise.amount);
-        }
-        this.updateResourceDisplay();
-
-        // 播放降落廣播
-        this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination);
+        // 播放降落廣播（傳入準時性狀態）
+        this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
 
         this.hideLandingModal();
         this.completeFlight();
@@ -2070,22 +3293,26 @@ class WakeUpMapGame {
 
     // 處理遲到降落
     applyLateLanding(punctuality) {
-        console.log('執行遲到降落');
+        console.log('執行遲到降落', punctuality);
 
-        // 扣除燃料
-        this.gameState.fuel = Math.max(0, this.gameState.fuel - 20);
+        // 記錄原始目的地
+        const originalDestination = this.gameState.selectedDestination;
 
-        // 30% 機率改降其他城市
-        if (Math.random() < 0.3) {
-            const diversion = this.pickDiversion(this.gameState.selectedDestination);
+        // 嚴重誤點（超過10分鐘）時，30% 機率改降其他城市
+        let divertedCity = null;
+        if (punctuality.minutesDiff > 10 && Math.random() < 0.3) {
+            const diversion = this.pickDiversion(originalDestination);
             console.log(`飛機改降 ${diversion.name}`);
+            divertedCity = diversion;
             this.gameState.selectedDestination = diversion;
+
+            // 更新準時性資訊中的改降城市
+            punctuality.originalDestination = originalDestination?.name;
+            punctuality.divertedCity = divertedCity.name;
         }
 
-        this.updateResourceDisplay();
-
-        // 播放降落廣播
-        this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination);
+        // 播放降落廣播（傳入準時性狀態和改降城市）
+        this.playSleepFlightAnnouncement('landing', divertedCity || this.gameState.selectedDestination, punctuality);
 
         this.hideLandingModal();
         this.completeFlight();
@@ -2094,11 +3321,9 @@ class WakeUpMapGame {
     // 隨機準時驚喜
     randomOnTimeSurprise() {
         const surprises = [
-            { type: 'money', amount: 200, message: '機長給您小費 NT$ 200！' },
-            { type: 'fuel', amount: 15, message: '節能飛行，燃料 +15！' },
             { type: 'none', amount: 0, message: '享受了美味的飛機餐！' },
-            { type: 'money', amount: 100, message: '獲得里程獎勵 NT$ 100！' },
-            { type: 'fuel', amount: 10, message: '順風飛行，燃料 +10！' }
+            { type: 'none', amount: 0, message: '窗外的風景真美！' },
+            { type: 'none', amount: 0, message: '完美的飛行體驗！' }
         ];
 
         return surprises[Math.floor(Math.random() * surprises.length)];
@@ -2552,53 +3777,143 @@ class WakeUpMapGame {
         ];
     }
 
-    // 更新起床時間
-    updateWakeTime(time) {
-        this.gameState.wakeTime = time;
+    // 更新計時長度（分鐘）
+    updateTimerDuration(minutes) {
+        // 確保最短30分鐘
+        const validMinutes = Math.max(30, Number(minutes) || 30);
+        this.gameState.timerDuration = validMinutes;
 
         // 更新預設按鈕狀態
         document.querySelectorAll('.time-preset').forEach(btn => {
             btn.classList.remove('active');
-            if (btn.dataset.time === time) {
+            if (btn.dataset.minutes && Number(btn.dataset.minutes) === validMinutes) {
                 btn.classList.add('active');
             }
         });
+
+        // 更新輸入框
+        const timerInput = document.getElementById('timerDurationInput');
+        if (timerInput) {
+            timerInput.value = validMinutes;
+        }
 
         // 重新載入目的地
         this.renderDestinationGrid();
     }
 
-    // 選擇時間預設
-    selectTimePreset(time) {
-        document.getElementById('wakeTimeInput').value = time;
-        this.updateWakeTime(time);
-    }
-
     // 播放睡眠航班語音（優先呼叫後端 OpenAI 生成；失敗時使用備用）
-    async playSleepFlightAnnouncement(announcementType, destination) {
-        console.log('播放睡眠航班廣播:', announcementType, destination);
+    async playSleepFlightAnnouncement(announcementType, destination, punctuality = null) {
+        console.log('播放睡眠航班廣播:', announcementType, destination, punctuality);
 
         // 組合請求內容（加入機長口吻、風趣、在地特色）
         const origin = this.gameState.currentLocation || { name: '台北', country: '台灣', coordinates: [25.0330, 121.5654] };
+
+        // 計算目的地的當地時間和時段
+        let localTimeInfo = null;
+        if (destination && announcementType === 'landing') {
+            try {
+                const now = this.now();
+                const currentTimezone = this.getCurrentLocationTimezone();
+                const destinationTimezone = destination?.timezone || currentTimezone;
+                const timezoneDiff = destinationTimezone - currentTimezone;
+
+                // 計算到達時間（目的地當地時間）
+                let arrivalTimeAtDestination;
+                if (this.gameState.flightTimerMode) {
+                    const timerMinutes = this.gameState.timerDuration || 30;
+                    const endTimeAtCurrentLocation = new Date(now.getTime() + timerMinutes * 60 * 1000);
+                    arrivalTimeAtDestination = new Date(endTimeAtCurrentLocation.getTime() + timezoneDiff * 60 * 60 * 1000);
+                } else {
+                    // 舊模式：假設明天 08:00 到達
+                    arrivalTimeAtDestination = new Date(now);
+                    arrivalTimeAtDestination.setDate(arrivalTimeAtDestination.getDate() + 1);
+                    arrivalTimeAtDestination.setHours(8, 0, 0, 0);
+                    arrivalTimeAtDestination = new Date(arrivalTimeAtDestination.getTime() + timezoneDiff * 60 * 60 * 1000);
+                }
+
+                const localHour = arrivalTimeAtDestination.getHours();
+                const localMinute = arrivalTimeAtDestination.getMinutes();
+
+                // 判斷時段
+                let timeOfDay = '';
+                let timeContext = '';
+                if (localHour >= 6 && localHour < 11) {
+                    timeOfDay = 'morning';
+                    timeContext = '早上';
+                } else if (localHour >= 11 && localHour < 14) {
+                    timeOfDay = 'noon';
+                    timeContext = '中午';
+                } else if (localHour >= 14 && localHour < 18) {
+                    timeOfDay = 'afternoon';
+                    timeContext = '下午';
+                } else if (localHour >= 18 && localHour < 22) {
+                    timeOfDay = 'evening';
+                    timeContext = '晚上';
+                } else {
+                    timeOfDay = 'night';
+                    timeContext = '深夜';
+                }
+
+                localTimeInfo = {
+                    localHour: localHour,
+                    localMinute: localMinute,
+                    localTimeString: `${String(localHour).padStart(2, '0')}:${String(localMinute).padStart(2, '0')}`,
+                    timeOfDay: timeOfDay,
+                    timeContext: timeContext
+                };
+
+                console.log('📍 目的地當地時間資訊:', localTimeInfo);
+            } catch (e) {
+                console.warn('計算目的地當地時間失敗:', e);
+            }
+        }
+
+        // 根據準時性狀態調整語氣提示
+        let toneHints = [
+            '以機長第一人稱開場：各位乘客大家好，我是本次航班的機長',
+            '口吻輕鬆風趣但專業，簡短有力，10–30秒',
+            '提到目的地的1–2個在地特色（文化/美食/地標/氣候/景點）',
+            '降落廣播請報時：預計到達/當地時間（若未知可略過）',
+            '避免冗長旅遊指南，避免過多數字，避免重複',
+        ];
+
+        // 根據準時性狀態調整語氣
+        if (punctuality && punctuality.status) {
+            if (punctuality.status === 'PERFECT') {
+                toneHints.push('語氣：專業、溫柔、有點儀式感，可搭配輕微跑道聲＋塔台音效');
+            } else if (punctuality.status === 'EARLY') {
+                toneHints.push('語氣：輕鬆、安慰、有點吐槽但不傷人');
+            } else if (punctuality.status === 'LATE') {
+                toneHints.push('語氣：幽默、帶歉意、有故事性');
+            }
+        }
+
         const body = {
             announcementType: (announcementType === 'takeoff') ? 'boarding' : announcementType,
             city: destination?.name,
             country: destination?.country,
             countryCode: destination?.countryCode,
             currentLocation: origin?.name || '台北',
-            wakeTime: this.gameState.wakeTime,
+            timerDuration: this.gameState.timerDuration || 30, // 計時長度（分鐘）
             // 新欄位（語意化）
             origin: { city: origin?.name || '台北', country: origin?.country || '台灣' },
             destination: { city: destination?.name, country: destination?.country },
+            // 新增：準時性狀態
+            punctuality: punctuality ? {
+                status: punctuality.status, // 'EARLY', 'ON_TIME', 'LATE', 'PERFECT'
+                minutesDiff: punctuality.minutesDiff,
+                actualTime: punctuality.actualTime,
+                targetTime: punctuality.targetTime,
+                originalDestination: punctuality.originalDestination,
+                divertedCity: punctuality.divertedCity
+            } : null,
+            // 新增：目的地當地時間資訊
+            localTimeInfo: localTimeInfo,
+            // 介面語言（用來決定中文/英文廣播）
+            uiLanguage: this.gameState.language || 'zh-TW',
             // 提示模型偏好
             style: 'captain_funny',
-            toneHints: [
-                '以機長第一人稱開場：各位乘客大家好，我是本次航班的機長',
-                '口吻輕鬆風趣但專業，簡短有力，10–30秒',
-                '提到目的地的1–2個在地特色（文化/美食/地標/氣候）',
-                '降落廣播請報時：預計到達/當地時間（若未知可略過）',
-                '避免冗長旅遊指南，避免過多數字，避免重複',
-            ]
+            toneHints: toneHints
         };
 
         try {
@@ -2613,8 +3928,9 @@ class WakeUpMapGame {
             const announcement = (data && data.announcement) ? data.announcement : null;
             if (announcement) {
                 // 直接使用前端播放（或你的 audioManager）
+                const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
                 if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
-                    await window.audioManager.playTextWithLanguage(announcement, 'zh-TW', {
+                    await window.audioManager.playTextWithLanguage(announcement, lang, {
                         voice: 'male_lively', rate: 1.05, pitch: 0.95, style: 'lively'
                     });
                 } else {
@@ -2629,8 +3945,9 @@ class WakeUpMapGame {
         // 備援：本地機長口吻文案
         const fallback = this.getCaptainStyleFallback(announcementType, destination);
         try {
+            const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
             if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
-                await window.audioManager.playTextWithLanguage(fallback, 'zh-TW', {
+                await window.audioManager.playTextWithLanguage(fallback, lang, {
                     voice: 'male_lively',
                     rate: 1.05,
                     pitch: 0.95,
@@ -2703,52 +4020,26 @@ class WakeUpMapGame {
         return this.gameState.currentTicket;
     }
 
-    addMoney(amount) {
-        this.gameState.money += amount;
-        this.updateResourceDisplay();
-        this.saveGameState();
-    }
-
-    spendMoney(amount) {
-        if (this.gameState.money >= amount) {
-            this.gameState.money -= amount;
-            this.updateResourceDisplay();
-            this.saveGameState();
-            return true;
-        }
-        return false;
-    }
-
-    addFuel(amount) {
-        this.gameState.fuel = Math.min(this.gameState.fuel + amount, 1000);
-        this.updateResourceDisplay();
-        this.saveGameState();
-    }
-
-    useFuel(amount) {
-        if (this.gameState.fuel >= amount) {
-            this.gameState.fuel -= amount;
-            this.updateResourceDisplay();
-            this.saveGameState();
-            return true;
-        }
-        return false;
-    }
 
     resetGame() {
         this.gameState = {
-            money: 10000,
-            fuel: 1000,
             currentWeek: 1,
             currentDay: 1,
             selectedDestination: null,
             destinations: this.gameState.destinations,
             currentTicket: null,
-            gameStarted: false
+            gameStarted: false,
+            flightTimerMode: true,
+            timerDuration: 30,
+            timerStartTime: null,
+            timerEndTime: null,
+            currentLocation: null,
+            actionButtonState: 'hidden',
+            flightCompleted: false,
+            isLanding: false
         };
 
         localStorage.removeItem('wakeUpMapGame');
-        this.updateResourceDisplay();
         this.renderDestinationGrid();
 
         // 顯示遊戲開始畫面

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1280, initial-scale=1.0">
-    <title>甦醒地圖 Raspberry Pi</title>
+    <title>Focus Flight Raspberry Pi</title>
     <script>
         // 低功耗模式：在樹莓派或小螢幕時啟用，關閉重型特效以避免捲動卡頓/閃爍
         (function () {
@@ -28,9 +28,9 @@
     <meta name="theme-color" content="#4d714f">
     
     <!-- Google Fonts - Pixel/Digital 風格字體 -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=VT323&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com"> -->
+    <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=VT323&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet"> -->
     
     <!-- 自定義像素字體 -->
     <style>
@@ -80,31 +80,16 @@
             <!-- 遊戲化開始畫面 -->
             <div id="gameStartState" class="state game-start-state active">
                 <div class="game-start-container">
+                    <!-- 語言切換按鈕 -->
+                    <button id="languageToggle" class="language-toggle" aria-label="切換語言">
+                        <span class="lang-icon">🌏</span>
+                        <span class="lang-code" id="langCode">中</span>
+                    </button>
+
                     <!-- 遊戲標題 -->
                     <div class="game-title-section">
-                        <h1 class="game-main-title">✈️ WAKE UP FLIGHT</h1>
+                        <h1 class="game-main-title">✈️ FOCUS FLIGHT</h1>
                         <!-- <p class="game-subtitle">每週旅程模式 - 選擇你的目的地</p> -->
-                    </div>
-                    
-                    <!-- 資源顯示 -->
-                    <div class="game-resources">
-                        <div class="resource-bar money-bar">
-                            <div class="resource-icon">💰</div>
-                            <div class="resource-label">Money</div>
-                            <div class="resource-value" id="gameMoney">10000</div>
-                            <div class="resource-bar-fill">
-                                <div class="resource-fill" id="moneyFill" style="width: 100%"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="resource-bar fuel-bar">
-                            <div class="resource-icon">⛽</div>
-                            <div class="resource-label">Fuel</div>
-                            <div class="resource-value" id="gameFuel">1000</div>
-                            <div class="resource-bar-fill">
-                                <div class="resource-fill" id="fuelFill" style="width: 100%"></div>
-                            </div>
-                        </div>
                     </div>
                     
                     <!-- 目前所在位置（台北）資訊區塊：機票會顯示在此下方 -->
@@ -123,10 +108,32 @@
                         
                         
                         
-                        <!-- AI 生成的當前位置文字區域 -->
+                       
                         
                         
                         <!-- 機票會由 game-system.js 的 showTicketInLocationPanel() 插入在此區塊末端 -->
+                    </div>
+                    
+                    <!-- 飛行資訊面板 -->
+                    <div class="flight-info-panel">
+                        <div class="info-panel-header">
+                            <div class="info-icon">📊</div>
+                            <h3 class="info-title">飛行資訊</h3>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <span class="info-label">總飛行次數</span>
+                                <span class="info-value" id="totalFlights">0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">總飛行距離</span>
+                                <span class="info-value" id="totalDistance">0 km</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">訪問城市</span>
+                                <span class="info-value" id="visitedCities">0</span>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- 首頁操作按鈕：等寬雙按鈕 -->
@@ -173,7 +180,68 @@
             </div>
         </main>
 
-        <!-- 目的地選擇懸浮視窗 -->
+        <!-- 第一階段：選擇計時長度視窗 -->
+        <div id="timerModal" class="timer-modal">
+            <div class="modal-overlay" id="timerModalOverlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">⏱️ 選擇計時長度</h2>
+                    <button class="modal-close" id="timerModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="timer-selection-layout">
+                        <div class="timer-selector-container">
+                            <div class="timer-input-wrapper">
+                                <input type="number" id="timerDurationInput" class="time-input" 
+                                       min="30" max="180" step="5" value="30" placeholder="分鐘">
+                                <span class="timer-label">分鐘</span>
+                            </div>
+                            <div class="time-presets">
+                                <button class="time-preset" data-minutes="30">30分鐘</button>
+                                <button class="time-preset active" data-minutes="45">45分鐘</button>
+                                <button class="time-preset" data-minutes="60">1小時</button>
+                                <button class="time-preset" data-minutes="90">1.5小時</button>
+                                <button class="time-preset" data-minutes="120">2小時</button>
+                            </div>
+                        </div>
+                        <div class="timer-confirm-section">
+                            <button id="confirmTimerBtn" class="confirm-timer-btn">確認計時長度</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TASK 任務選擇視窗 -->
+        <div id="taskModal" class="timer-modal task-modal">
+            <div class="modal-overlay" id="taskModalOverlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🎯 選擇任務</h2>
+                    <button class="modal-close" id="taskModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="timer-selection-layout">
+                        <div class="task-selector">
+                            <div class="task-title">TASK 任務類型</div>
+                            <div class="task-buttons">
+                                <button class="task-option active" data-task="READING">📚 讀書</button>
+                                <button class="task-option" data-task="EXERCISE">💪 運動</button>
+                                <button class="task-option" data-task="MEDITATION">🧘 冥想</button>
+                                <button class="task-option" data-task="REST">😴 休息</button>
+                                <button class="task-option" data-task="GAME">🎮 遊戲</button>
+                                <button class="task-option" data-task="WORK">💻 工作</button>
+                            </div>
+                        </div>
+                        <div class="timer-confirm-section">
+                            <button id="confirmTaskBtn" class="confirm-timer-btn">確認任務</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二階段：目的地選擇懸浮視窗 -->
         <div id="destinationModal" class="destination-modal">
             <div class="modal-overlay" id="modalOverlay"></div>
             <div class="modal-content">
@@ -183,25 +251,8 @@
                 </div>
                 <div class="modal-body">
                     <div class="destination-layout">
-                        <div class="left-settings">
-                            <!-- 起床時間選擇 -->
-                            <div class="wake-time-section">
-                                <h3>🕐 選擇起床時間</h3>
-                                <div class="time-selector">
-                                    <input type="time" id="wakeTimeInput" class="time-input" value="08:00">
-                                    <div class="time-presets">
-                                        <button class="time-preset" data-time="06:30">6:30</button>
-                                        <button class="time-preset" data-time="07:00">7:00</button>
-                                        <button class="time-preset" data-time="07:30">7:30</button>
-                                        <button class="time-preset active" data-time="08:00">8:00</button>
-                                        <button class="time-preset" data-time="08:30">8:30</button>
-                                        <button class="time-preset" data-time="09:00">9:00</button>
-                                        <button class="time-preset" data-time="09:30">9:30</button>
-                                        <button class="time-preset" data-time="10:00">10:00</button>
-                                    </div>
-                                </div>
-                                <!-- 已移除飛行時間/最大距離，保持左側簡潔大方 -->
-                            </div>
+                        <div class="destination-info-section">
+                            <p class="destination-hint">根據您選擇的 <strong id="selectedTimerDisplay">30</strong> 分鐘計時，以下是您可以飛到的目的地：</p>
                         </div>
                         <div class="right-grid">
                             <div class="destination-grid" id="destinationGrid">
@@ -227,7 +278,7 @@
                         <div class="boarding-header">
                             <div class="airline-section">
                                 <span class="airline-icon">✈️</span>
-                                <span class="airline-name">WAKE UP AIRLINES</span>
+                                <span class="airline-name">FOCUS AIRLINES</span>
                             </div>
                             <div class="boarding-text">BOARDING PASS</div>
                         </div>
@@ -289,9 +340,6 @@
                     </div>
                     
                     <div class="ticket-actions">
-                        <div class="price-section">
-                            <span class="ticket-price" id="ticketPrice">NT$ 0</span>
-                        </div>
                         <div class="button-section">
                             <button id="confirmTicket" class="confirm-button">確認購買機票</button>
                             <button id="changeDestination" class="change-button">重新選擇</button>
