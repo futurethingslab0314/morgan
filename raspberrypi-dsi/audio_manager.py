@@ -1222,15 +1222,24 @@ class AudioManager:
                 except FileNotFoundError:
                     pass
             
-            # 使用 aplay 播放 WAV（或作為最後嘗試）
-            result = subprocess.run(['aplay', str(audio_file)], 
+            # 使用 aplay 播放 WAV（明確指定 USB 音訊設備 card 3）
+            # 先嘗試 USB 設備（card 3），如果失敗則嘗試預設設備
+            result = subprocess.run(['aplay', '-D', 'hw:3,0', str(audio_file)], 
                                   capture_output=True, timeout=30)
             if result.returncode == 0:
-                self.logger.info("音頻播放完成（aplay）")
+                self.logger.info("音頻播放完成（aplay - USB 設備）")
                 return True
             else:
-                self.logger.error(f"aplay 播放失敗: {result.stderr}")
-                return False
+                # 如果 USB 設備失敗，嘗試預設設備
+                self.logger.warning(f"USB 音訊設備播放失敗，嘗試預設設備: {result.stderr}")
+                result = subprocess.run(['aplay', str(audio_file)], 
+                                      capture_output=True, timeout=30)
+                if result.returncode == 0:
+                    self.logger.info("音頻播放完成（aplay - 預設設備）")
+                    return True
+                else:
+                    self.logger.error(f"aplay 播放失敗: {result.stderr}")
+                    return False
                     
         except Exception as e:
             self.logger.error(f"替代播放器失敗: {e}")
