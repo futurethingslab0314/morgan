@@ -270,6 +270,13 @@ class WakeUpMapGame {
                     this.citiesDataSource = url;
                     this.buildCountryCandidates();
                     console.log(`✅ cities_data.json 載入成功：${url}，共 ${this.citiesData.length} 筆`);
+                    console.log('📊 前 5 個城市範例:', this.citiesData.slice(0, 5).map(c => ({
+                        name: c.name,
+                        country: c.country,
+                        countryCode: c.countryCode,
+                        lat: c.latitude,
+                        lng: c.longitude
+                    })));
                     return this.citiesData;
                 }
             } catch (error) {
@@ -2176,52 +2183,77 @@ class WakeUpMapGame {
     async calculateFlightTimerDestinations(currentLocation, timerMinutes) {
         // 確保最短30分鐘
         const validTimerMinutes = Math.max(30, timerMinutes || 30);
-        console.log('開始計算目的地（計時器模式）計時長度:', validTimerMinutes, '分鐘');
+        console.log('🚀 開始計算目的地（計時器模式）計時長度:', validTimerMinutes, '分鐘');
+        console.log('📍 接收到的 currentLocation:', currentLocation);
 
-        // 目前以台北為出發點（若無明確定位）
+        // 提取當前位置座標
         const currentLoc = (() => {
             if (currentLocation) {
                 if (typeof currentLocation.latitude === 'number' && typeof currentLocation.longitude === 'number') {
+                    console.log('✅ 使用 currentLocation.latitude/longitude:', currentLocation.latitude, currentLocation.longitude);
                     return { latitude: currentLocation.latitude, longitude: currentLocation.longitude };
                 }
                 if (Array.isArray(currentLocation.coordinates) && currentLocation.coordinates.length === 2) {
                     const [lat, lng] = currentLocation.coordinates;
+                    console.log('✅ 使用 currentLocation.coordinates:', lat, lng);
                     return { latitude: Number(lat), longitude: Number(lng) };
                 }
             }
+            console.warn('⚠️ 無法從 currentLocation 提取座標，使用預設位置（台北）');
             return { latitude: 25.0330, longitude: 121.5654 }; // 台北
         })();
+
         const origin = { latitude: currentLoc.latitude, longitude: currentLoc.longitude };
         const originCoords = [origin.latitude, origin.longitude];
+        console.log('📍 最終使用的起點座標:', originCoords);
 
+        // 載入城市資料
         const cities = await this.loadCitiesData();
-        const pool = (this.countryCandidates && this.countryCandidates.length) ? this.countryCandidates : cities;
-        console.log('可用候選城市數量:', pool.length);
+        console.log('📊 載入的城市資料總數:', cities.length);
+        console.log('📊 是否使用 fallback:', this.usedCitiesFallback);
+        console.log('📊 countryCandidates 數量:', this.countryCandidates ? this.countryCandidates.length : 0);
+
+        // 如果 countryCandidates 太少（少於 100 個），改用全部城市列表以獲得更多選項
+        const pool = (this.countryCandidates && this.countryCandidates.length > 100)
+            ? this.countryCandidates
+            : cities;
+        console.log('📊 使用的候選城市池大小:', pool.length);
+        if (this.countryCandidates && this.countryCandidates.length <= 100) {
+            console.log('⚠️ countryCandidates 數量過少，改用全部城市列表以獲得更多選項');
+        }
 
         // 根據計時長度計算最大飛行距離
         // 假設飛機速度 800km/h，30分鐘 = 0.5小時 * 800 = 400km
         const FLIGHT_SPEED_KMH = 800; // 飛機時速
         const maxDistanceKm = (validTimerMinutes / 60) * FLIGHT_SPEED_KMH;
-        console.log(`計時 ${validTimerMinutes} 分鐘，最大飛行距離: ${maxDistanceKm.toFixed(0)}km`);
+        console.log(`✈️ 計時 ${validTimerMinutes} 分鐘，最大飛行距離: ${maxDistanceKm.toFixed(0)}km`);
 
+        // 計算所有城市到起點的距離
         const withDistance = pool.map(c => ({
             ...c,
             distanceKm: this.calculateDistance(originCoords, [c.latitude, c.longitude])
         })).filter(c => c.distanceKm > 0);
+        console.log('📊 計算距離後的城市數量:', withDistance.length);
+        if (withDistance.length > 0) {
+            const minDist = Math.min(...withDistance.map(c => c.distanceKm));
+            const maxDist = Math.max(...withDistance.map(c => c.distanceKm));
+            console.log(`📊 距離範圍: ${minDist.toFixed(0)}km - ${maxDist.toFixed(0)}km`);
+        }
 
-        // 篩選距離範圍內的城市（至少100km，避免太近）
-        const minDistanceKm = 100; // 最小距離，避免選擇太近的區域
+        // 篩選距離範圍內的城市（降低最小距離到 50km，讓選項更多元）
+        const minDistanceKm = 50; // 最小距離，降低以獲得更多選項
         let candidates = withDistance
             .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= maxDistanceKm)
             .sort((a, b) => a.distanceKm - b.distanceKm);
+        console.log(`📊 在 ${minDistanceKm}-${maxDistanceKm.toFixed(0)}km 範圍內的城市數量:`, candidates.length);
 
-        // 如果候選城市太少，稍微放寬距離範圍（最多+20%）
-        if (candidates.length < 10) {
-            const expandedMax = maxDistanceKm * 1.2;
+        // 如果候選城市太少，積極放寬距離範圍（最多到 1.5 倍）
+        if (candidates.length < 20) {
+            const expandedMax = maxDistanceKm * 1.5;
             candidates = withDistance
                 .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= expandedMax)
                 .sort((a, b) => a.distanceKm - b.distanceKm);
-            console.log(`候選城市較少，放寬距離範圍至 ${expandedMax.toFixed(0)}km`);
+            console.log(`⚠️ 候選城市較少，放寬距離範圍至 ${expandedMax.toFixed(0)}km，現在有 ${candidates.length} 個候選城市`);
         }
 
         // 依國家分組，挑「最近」或「更耳熟能詳」的城市
@@ -2234,11 +2266,13 @@ class WakeUpMapGame {
         const cityScore = (c) => {
             // 分數越低越好（主排序距離，副排序熱門度）
             let bonus = 0;
-            if (nameBoost.has((c.name || '').trim())) bonus -= 200; // 熱門城市給負分讓它靠前
+            const cityName = (c.name || '').trim();
+            if (nameBoost.has(cityName)) bonus -= 200; // 熱門城市給負分讓它靠前
             if (c.population) bonus -= Math.min(100, Math.floor(Number(c.population) / 1_000_000));
             return c.distanceKm + bonus;
         };
 
+        // 按國家分組，每個國家選最佳城市
         const countryBest = new Map();
         for (const c of candidates) {
             const key = c.countryCode;
@@ -2246,6 +2280,7 @@ class WakeUpMapGame {
             if (!prev || cityScore(c) < cityScore(prev)) countryBest.set(key, c);
         }
         candidates = Array.from(countryBest.values()).sort((a, b) => a.distanceKm - b.distanceKm);
+        console.log(`📊 按國家分組後，有 ${candidates.length} 個不同國家的候選城市`);
 
         const pickUniqueCountries = (list) => {
             const top = [];
@@ -2265,25 +2300,39 @@ class WakeUpMapGame {
         };
 
         let top = pickUniqueCountries(candidates);
+        console.log(`📊 初步選擇了 ${top.length} 個目的地`);
 
-        // 如果不足4個國家，逐步擴大搜尋範圍（最多到2倍距離）
-        let expand = maxDistanceKm * 1.2;
-        while (top.length < 4 && expand <= maxDistanceKm * 2) {
+        // 如果不足4個國家，逐步擴大搜尋範圍（最多到2.5倍距離，讓選項更多元）
+        let expand = maxDistanceKm * 1.5;
+        const maxExpand = maxDistanceKm * 2.5;
+        while (top.length < 4 && expand <= maxExpand) {
             const more = withDistance
                 .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= expand)
                 .sort((a, b) => a.distanceKm - b.distanceKm);
-            top = pickUniqueCountries(more);
-            expand += maxDistanceKm * 0.2; // 每次增加20%
+            const newTop = pickUniqueCountries(more);
+            if (newTop.length > top.length) {
+                top = newTop;
+                console.log(`📊 擴大搜尋範圍至 ${expand.toFixed(0)}km，找到 ${top.length} 個目的地`);
+            }
+            expand += maxDistanceKm * 0.3; // 每次增加30%
         }
 
-        // 最後保底：如果還是不到4個，從所有候選中選
+        // 最後保底：如果還是不到4個，從所有候選中選（不限制距離上限）
         if (top.length < 4) {
-            top = pickUniqueCountries(withDistance
+            console.log('⚠️ 候選城市仍不足，從所有城市中選擇（不限制距離上限）');
+            const allCandidates = withDistance
                 .filter(c => c.distanceKm >= minDistanceKm)
-                .sort((a, b) => a.distanceKm - b.distanceKm));
+                .sort((a, b) => a.distanceKm - b.distanceKm);
+            const finalTop = pickUniqueCountries(allCandidates);
+            if (finalTop.length > top.length) {
+                top = finalTop;
+            }
         }
 
-        console.log(`最終選擇的 ${top.length} 個目的地（計時 ${validTimerMinutes} 分鐘，距離 ≤ ${maxDistanceKm.toFixed(0)}km）:`, top);
+        console.log(`✅ 最終選擇的 ${top.length} 個目的地（計時 ${validTimerMinutes} 分鐘）:`);
+        top.forEach((dest, idx) => {
+            console.log(`  ${idx + 1}. ${dest.flag} ${dest.name}, ${dest.country} (${dest.distanceKm.toFixed(0)}km)`);
+        });
         return top;
     }
 
