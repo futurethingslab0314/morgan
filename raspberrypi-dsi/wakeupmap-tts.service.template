@@ -1,0 +1,21 @@
+[Unit]
+Description=WakeUpMap TTS Server
+After=network.target sound.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=morgan
+WorkingDirectory=/home/morgan/morgan/raspberrypi-dsi
+Environment="PATH=/home/morgan/morgan/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+Environment="PULSE_RUNTIME_PATH=/run/user/1000/pulse"
+ExecStart=/home/morgan/morgan/venv/bin/python3 /home/morgan/morgan/raspberrypi-dsi/web_tts_server.py --port 5005
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/morgan/morgan/logs/tts-server.log
+StandardError=append:/home/morgan/morgan/logs/tts-server-error.log
+
+[Install]
+WantedBy=multi-user.target
+
