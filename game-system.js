@@ -2070,11 +2070,12 @@ class WakeUpMapGame {
 
             const userName = (window.env && window.env.USER_NAME) || 'morgan';
             const user = userName.toLowerCase();
+            const APP_ID = 'default-app-id-worldclock-history';
 
             // 首先嘗試從 Flight 記錄中獲取最新降落記錄
             try {
                 const { collection, query, where, orderBy, limit, getDocs } = window.firebaseSDK;
-                const flightCollection = collection(db, 'userProfiles', user, 'Flight');
+                const flightCollection = collection(db, 'artifacts', APP_ID, 'userProfiles', user, 'Flight');
 
                 // 查詢狀態為 'completed' 或 'landing' 的記錄（已降落的飛行）
                 const flightQuery = query(
@@ -2970,7 +2971,7 @@ class WakeUpMapGame {
     }
 
     // 完成飛行
-    completeFlight() {
+    async completeFlight() {
         this.gameState.flightCompleted = true;
         this.gameState.flightStatus = 'completed';
         this.gameState.isLanding = false; // 結束降落中狀態
@@ -2983,6 +2984,73 @@ class WakeUpMapGame {
 
         // 計算準時性並扣除資源
         this.calculatePunctuality();
+
+        // 獲取準時性狀態（優先使用 gameState 中保存的完整資訊）
+        const punctuality = this.gameState.punctuality || this.getPunctualityStatus();
+
+        // 獲取實際降落位置（可能是中途城市或改降城市）
+        const actualDestination = this.gameState.selectedDestination;
+        const originalDestination = this.gameState.originalDestination || this.gameState.selectedDestination;
+
+        // 更新當前位置為實際降落位置（下次飛行從這裡開始）
+        if (actualDestination) {
+            this.gameState.currentLocation = {
+                name: actualDestination.name,
+                country: actualDestination.country,
+                coordinates: [actualDestination.latitude, actualDestination.longitude],
+                timezone: actualDestination.timezone || 8, // 預設UTC+8
+                latitude: actualDestination.latitude,
+                longitude: actualDestination.longitude
+            };
+
+            // 保存到 localStorage 以便下次使用
+            localStorage.setItem('lastKnownLocation', JSON.stringify(this.gameState.currentLocation));
+            console.log('📍 當前位置已更新為:', actualDestination.name, '時區:', actualDestination.timezone);
+        }
+
+        // 寫入 Firestore：記錄完整的降落資料
+        try {
+            if (window.dbUpsertFlight) {
+                const origin = this.gameState.currentLocation; // 起飛時的位置（在 startFlight 時已記錄）
+                const flightId = this.gameState.currentFlightId || `flight_${Date.now()}`;
+
+                // 準備降落資料
+                const landingData = {
+                    status: 'completed',
+                    destination: {
+                        city: actualDestination?.name,
+                        city_zh: actualDestination?.name, // 可以後續加入中文翻譯
+                        country: actualDestination?.country,
+                        country_zh: actualDestination?.country,
+                        lat: actualDestination?.latitude,
+                        lng: actualDestination?.longitude
+                    },
+                    // 準時性資訊
+                    punctuality: {
+                        status: punctuality.status, // 'EARLY', 'ON_TIME', 'LATE', 'PERFECT'
+                        minutesDiff: punctuality.minutesDiff,
+                        actualTime: punctuality.actualTime,
+                        targetTime: punctuality.targetTime
+                    },
+                    // 如果是提早降落，記錄中途降落資訊
+                    isEarlyLanding: punctuality.isEarlyLanding || false,
+                    landingCity: punctuality.landingCity || null,
+                    originalDestination: punctuality.originalDestination || originalDestination?.name || null,
+                    // 如果是誤點改降，記錄改降資訊
+                    divertedCity: punctuality.divertedCity || null,
+                    // 降落時間
+                    landedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
+                    // 時區資訊（用於下次載入）
+                    matchedCityUTCOffset: actualDestination?.timezone || 8,
+                    targetUTCOffset: actualDestination?.timezone || 8
+                };
+
+                await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, landingData);
+                console.log('✅ 飛行降落資料已寫入 Firebase:', landingData);
+            }
+        } catch (e) {
+            console.error('❌ 寫入 Firestore 降落資料失敗', e);
+        }
 
         // 顯示結果
         this.showFlightMap();
@@ -3261,21 +3329,27 @@ class WakeUpMapGame {
             console.log(`✅ 提早降落在中途城市：${landingCity.name}（原定目的地：${punctuality.originalDestination}）`);
         }
 
+        // 保存 punctuality 到 gameState，供 completeFlight 使用
+        this.gameState.punctuality = punctuality;
+
         // 播放降落廣播（傳入準時性狀態和降落城市）
         await this.playSleepFlightAnnouncement('landing', landingCity, punctuality);
 
         this.hideLandingModal();
-        this.completeFlight();
+        await this.completeFlight();
     }
 
     // 處理準時降落
-    applyOnTimeLanding(punctuality) {
+    async applyOnTimeLanding(punctuality) {
         console.log('執行準時降落', punctuality);
 
         // 如果是完美準時，確保狀態正確
         if (Math.abs(punctuality.minutesDiff) <= 1 && punctuality.status !== 'PERFECT') {
             punctuality.status = 'PERFECT';
         }
+
+        // 保存 punctuality 到 gameState，供 completeFlight 使用
+        this.gameState.punctuality = punctuality;
 
         // 顯示隨機驚喜
         const surprise = this.randomOnTimeSurprise();
@@ -3285,14 +3359,14 @@ class WakeUpMapGame {
         }
 
         // 播放降落廣播（傳入準時性狀態）
-        this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
+        await this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
 
         this.hideLandingModal();
-        this.completeFlight();
+        await this.completeFlight();
     }
 
     // 處理遲到降落
-    applyLateLanding(punctuality) {
+    async applyLateLanding(punctuality) {
         console.log('執行遲到降落', punctuality);
 
         // 記錄原始目的地
@@ -3305,17 +3379,21 @@ class WakeUpMapGame {
             console.log(`飛機改降 ${diversion.name}`);
             divertedCity = diversion;
             this.gameState.selectedDestination = diversion;
+            this.gameState.originalDestination = originalDestination;
 
             // 更新準時性資訊中的改降城市
             punctuality.originalDestination = originalDestination?.name;
             punctuality.divertedCity = divertedCity.name;
         }
 
+        // 保存 punctuality 到 gameState，供 completeFlight 使用
+        this.gameState.punctuality = punctuality;
+
         // 播放降落廣播（傳入準時性狀態和改降城市）
-        this.playSleepFlightAnnouncement('landing', divertedCity || this.gameState.selectedDestination, punctuality);
+        await this.playSleepFlightAnnouncement('landing', divertedCity || this.gameState.selectedDestination, punctuality);
 
         this.hideLandingModal();
-        this.completeFlight();
+        await this.completeFlight();
     }
 
     // 隨機準時驚喜

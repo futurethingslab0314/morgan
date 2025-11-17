@@ -461,23 +461,24 @@
         }
     </script>
 
-    <!-- 2.1 定義 Firestore 寫入工具：userProfiles/{user}/Flight 與 clockHistory -->
+    <!-- 2.1 定義 Firestore 寫入工具：artifacts/default-app-id-worldclock-history/userProfiles/{user}/Flight 與 clockHistory -->
     <script type="module">
         function attachDbHelpers() {
             try {
                 const sdk = window.firebaseSDK;
                 if (!sdk || !sdk.getFirestore) return;
                 const db = sdk.getFirestore();
+                const APP_ID = 'default-app-id-worldclock-history';
 
                 window.dbUpsertFlight = async function(userName, flightId, payload) {
                     const user = (userName || (window.env && window.env.USER_NAME) || 'morgan').toLowerCase();
-                    const ref = sdk.doc(db, 'userProfiles', user, 'Flight', flightId);
+                    const ref = sdk.doc(db, 'artifacts', APP_ID, 'userProfiles', user, 'Flight', flightId);
                     await sdk.setDoc(ref, { ...payload, updatedAt: sdk.serverTimestamp() }, { merge: true });
                     return ref.id;
                 };
                 window.dbAddClockEvent = async function(userName, event) {
                     const user = (userName || (window.env && window.env.USER_NAME) || 'morgan').toLowerCase();
-                    const col = sdk.collection(db, 'userProfiles', user, 'clockHistory');
+                    const col = sdk.collection(db, 'artifacts', APP_ID, 'userProfiles', user, 'clockHistory');
                     const ref = await sdk.addDoc(col, { ...event, createdAt: sdk.serverTimestamp() });
                     return ref.id;
                 };
