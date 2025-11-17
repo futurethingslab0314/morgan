@@ -233,20 +233,50 @@ class WakeUpMapGame {
         const urlCandidates = [];
         if (typeof window !== 'undefined') {
             const origin = window.location ? window.location.origin : '';
+            // 優先使用 API 端點（更可靠）
+            urlCandidates.push('/api/cities-data');
+            if (origin) {
+                urlCandidates.push(`${origin.replace(/\/$/, '')}/api/cities-data`);
+            }
+            // 備用：直接訪問 JSON 檔案
             urlCandidates.push('cities_data.json');
             urlCandidates.push('/cities_data.json');
-            if (origin) urlCandidates.push(`${origin.replace(/\/$/, '')}/cities_data.json`);
+            if (origin) {
+                urlCandidates.push(`${origin.replace(/\/$/, '')}/cities_data.json`);
+            }
         } else {
+            urlCandidates.push('/api/cities-data');
             urlCandidates.push('/cities_data.json');
         }
 
         for (const url of [...new Set(urlCandidates)]) {
             try {
-                const res = await fetch(url, { cache: 'no-store' });
+                console.log(`🔄 嘗試載入城市資料: ${url}`);
+
+                // 使用 AbortController 設定超時（60秒）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+                const res = await fetch(url, {
+                    cache: 'no-store',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
                 if (!res.ok) {
                     console.warn(`cities_data.json 載入失敗 (HTTP ${res.status})，來源: ${url}`);
                     continue;
                 }
+
+                // 檢查 Content-Type
+                const contentType = res.headers.get('content-type');
+                if (contentType && !contentType.includes('application/json')) {
+                    console.warn(`cities_data.json 不是 JSON 格式 (${contentType})，來源: ${url}`);
+                    continue;
+                }
+
+                console.log(`📥 開始解析 JSON 資料...`);
                 const json = await res.json();
                 const raw = Array.isArray(json) ? json : (json?.cities || []);
                 if (!raw.length) {
