@@ -1222,16 +1222,19 @@ class AudioManager:
                 except FileNotFoundError:
                     pass
             
-            # 使用 aplay 播放 WAV（通過 pulseaudio，讓系統自動管理音訊設備）
-            # 先嘗試 pulse，如果失敗則嘗試預設設備
-            result = subprocess.run(['aplay', '-D', 'pulse', str(audio_file)], 
-                                  capture_output=True, timeout=30)
-            if result.returncode == 0:
-                self.logger.info("音頻播放完成（aplay - pulse）")
-                return True
-            else:
-                # 如果 pulse 失敗，嘗試預設設備
-                self.logger.warning(f"pulse 播放失敗，嘗試預設設備: {result.stderr}")
+            # 使用 paplay 播放 WAV（pulseaudio 原生工具，比 aplay 更可靠）
+            try:
+                result = subprocess.run(['paplay', str(audio_file)], 
+                                      capture_output=True, timeout=30)
+                if result.returncode == 0:
+                    self.logger.info("音頻播放完成（paplay）")
+                    return True
+                else:
+                    self.logger.error(f"paplay 播放失敗: {result.stderr}")
+                    return False
+            except FileNotFoundError:
+                # 如果 paplay 不存在，嘗試 aplay
+                self.logger.warning("paplay 不存在，嘗試 aplay")
                 result = subprocess.run(['aplay', str(audio_file)], 
                                       capture_output=True, timeout=30)
                 if result.returncode == 0:
