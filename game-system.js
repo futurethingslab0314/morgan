@@ -593,6 +593,8 @@ class WakeUpMapGame {
         this.setupEventListeners();
         // 套用當前語言設定到 UI
         this.applyLanguage(this.gameState.language || 'zh-TW');
+        // 載入當前位置和統計資料
+        this.loadCurrentLocationAndStats();
         this.renderDestinationGrid();
         this.refreshHomeButtonsState();
         this.setInitialDate();
@@ -2057,6 +2059,7 @@ class WakeUpMapGame {
                 const location = {
                     name: latestRecord.city_zh || latestRecord.city,
                     country: latestRecord.country_zh || latestRecord.country,
+                    countryCode: latestRecord.countryCode || 'TW',
                     coordinates: [latestRecord.latitude, latestRecord.longitude],
                     timezone: timezone,
                     latitude: latestRecord.latitude,
@@ -2089,6 +2092,122 @@ class WakeUpMapGame {
             this.gameState.currentLocation = defaultLocation;
             return defaultLocation;
         }
+    }
+
+    // 載入當前位置和統計資料
+    async loadCurrentLocationAndStats() {
+        try {
+            // 載入當前位置
+            const currentLocation = await this.getCurrentLocation();
+            if (currentLocation) {
+                this.gameState.currentLocation = currentLocation;
+                this.updateCurrentLocationDisplay();
+            }
+
+            // 載入統計資料
+            await this.loadFlightStatistics();
+        } catch (e) {
+            console.error('載入當前位置和統計資料失敗:', e);
+        }
+    }
+
+    // 更新當前位置顯示
+    updateCurrentLocationDisplay() {
+        const currentCityName = document.getElementById('currentCityName');
+        const currentCitySubtitle = document.querySelector('.location-subtitle');
+        const location = this.gameState.currentLocation;
+
+        if (!location) return;
+
+        const lang = this.gameState.language || 'zh-TW';
+        const cityName = location.name || '台北';
+        const countryName = location.country || 'Taiwan';
+        const flag = this.getCountryFlag(location.countryCode || 'TW');
+
+        if (currentCityName) {
+            currentCityName.textContent = (lang === 'en')
+                ? `Current location: ${cityName}`
+                : `當前位置：${cityName}`;
+        }
+        if (currentCitySubtitle) {
+            currentCitySubtitle.textContent = `${cityName}, ${countryName} ${flag}`;
+        }
+    }
+
+    // 載入飛行統計資料
+    async loadFlightStatistics() {
+        try {
+            if (!window.firebaseSDK || !window.firebaseSDK.getFirestore) {
+                console.log('📍 Firebase 未初始化，無法載入統計資料');
+                this.updateFlightStatisticsDisplay({ totalFlights: 0, totalDistance: 0, visitedCities: 0 });
+                return;
+            }
+
+            const db = window.firebaseSDK.getFirestore();
+            const APP_ID = 'default-app-id-worldclock-history';
+            const user = (window.env && window.env.USER_NAME) || 'morgan';
+            const flightCollectionPath = ['artifacts', APP_ID, 'userProfiles', user, 'Flight'];
+
+            const flightRef = db.collection(flightCollectionPath[0])
+                .doc(flightCollectionPath[1])
+                .collection(flightCollectionPath[2])
+                .doc(flightCollectionPath[3])
+                .collection(flightCollectionPath[4]);
+
+            // 查詢所有已完成的飛行
+            const snapshot = await flightRef
+                .where('status', '==', 'completed')
+                .orderBy('updatedAt', 'desc')
+                .get();
+
+            let totalFlights = 0;
+            let totalDistance = 0;
+            const visitedCitiesSet = new Set();
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                totalFlights++;
+
+                // 累加飛行距離
+                if (data.flightDistance && typeof data.flightDistance === 'number') {
+                    totalDistance += data.flightDistance;
+                }
+
+                // 記錄訪問的城市
+                if (data.destination) {
+                    const cityKey = `${data.destination.city || ''}_${data.destination.country || ''}`;
+                    if (cityKey && cityKey !== '_') {
+                        visitedCitiesSet.add(cityKey);
+                    }
+                }
+            });
+
+            const stats = {
+                totalFlights,
+                totalDistance: Math.round(totalDistance),
+                visitedCities: visitedCitiesSet.size
+            };
+
+            console.log('📊 飛行統計資料:', stats);
+            this.updateFlightStatisticsDisplay(stats);
+        } catch (e) {
+            console.error('載入飛行統計資料失敗:', e);
+            this.updateFlightStatisticsDisplay({ totalFlights: 0, totalDistance: 0, visitedCities: 0 });
+        }
+    }
+
+    // 更新飛行統計資料顯示
+    updateFlightStatisticsDisplay(stats) {
+        const totalFlightsEl = document.getElementById('totalFlights');
+        const totalDistanceEl = document.getElementById('totalDistance');
+        const visitedCitiesEl = document.getElementById('visitedCities');
+
+        if (totalFlightsEl) totalFlightsEl.textContent = stats.totalFlights || 0;
+        if (totalDistanceEl) {
+            const lang = this.gameState.language || 'zh-TW';
+            totalDistanceEl.textContent = `${stats.totalDistance || 0} ${lang === 'en' ? 'km' : '公里'}`;
+        }
+        if (visitedCitiesEl) visitedCitiesEl.textContent = stats.visitedCities || 0;
     }
 
     async getLatestRecord() {
@@ -2148,6 +2267,7 @@ class WakeUpMapGame {
                             city_zh: destination.city_zh || destination.city,
                             country: destination.country,
                             country_zh: destination.country_zh || destination.country,
+                            countryCode: destination.countryCode,
                             latitude: destination.lat,
                             longitude: destination.lng,
                             timezone: timezone
@@ -2906,7 +3026,8 @@ class WakeUpMapGame {
                     timerDuration: this.gameState.timerDuration || 30, // 計時長度（分鐘）
                     taskType: this.gameState.taskType || 'REST',
                     sleepStartAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
-                    status: 'flying'
+                    status: 'flying',
+                    updatedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null
                 });
                 window.dbAddClockEvent && window.dbAddClockEvent((window.env && window.env.USER_NAME) || 'morgan', { type: 'sleep_start' });
             }
@@ -3076,6 +3197,7 @@ class WakeUpMapGame {
             this.gameState.currentLocation = {
                 name: actualDestination.name,
                 country: actualDestination.country,
+                countryCode: actualDestination.countryCode || 'TW',
                 coordinates: [actualDestination.latitude, actualDestination.longitude],
                 timezone: actualDestination.timezone || 8, // 預設UTC+8
                 latitude: actualDestination.latitude,
@@ -3090,8 +3212,16 @@ class WakeUpMapGame {
         // 寫入 Firestore：記錄完整的降落資料
         try {
             if (window.dbUpsertFlight) {
-                const origin = this.gameState.currentLocation; // 起飛時的位置（在 startFlight 時已記錄）
                 const flightId = this.gameState.currentFlightId || `flight_${Date.now()}`;
+
+                // 計算飛行距離（使用起飛時的原始位置）
+                const flightOrigin = this.gameState.originalOrigin || this.gameState.currentLocation;
+                let flightDistance = 0;
+                if (flightOrigin && actualDestination) {
+                    const originCoords = flightOrigin.coordinates || [flightOrigin.latitude, flightOrigin.longitude];
+                    const destCoords = [actualDestination.latitude, actualDestination.longitude];
+                    flightDistance = this.calculateDistance(originCoords, destCoords);
+                }
 
                 // 準備降落資料
                 const landingData = {
@@ -3101,6 +3231,7 @@ class WakeUpMapGame {
                         city_zh: actualDestination?.name, // 可以後續加入中文翻譯
                         country: actualDestination?.country,
                         country_zh: actualDestination?.country,
+                        countryCode: actualDestination?.countryCode,
                         lat: actualDestination?.latitude,
                         lng: actualDestination?.longitude
                     },
@@ -3117,19 +3248,33 @@ class WakeUpMapGame {
                     originalDestination: punctuality.originalDestination || originalDestination?.name || null,
                     // 如果是誤點改降，記錄改降資訊
                     divertedCity: punctuality.divertedCity || null,
+                    // 任務類型
+                    taskType: this.gameState.taskType || 'REST',
+                    // 飛行距離（公里）
+                    flightDistance: Math.round(flightDistance),
+                    // 計時長度（分鐘）
+                    timerDuration: this.gameState.timerDuration || 30,
                     // 降落時間
                     landedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
                     // 時區資訊（用於下次載入）
                     matchedCityUTCOffset: actualDestination?.timezone || 8,
-                    targetUTCOffset: actualDestination?.timezone || 8
+                    targetUTCOffset: actualDestination?.timezone || 8,
+                    // 更新時間
+                    updatedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null
                 };
 
                 await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, landingData);
                 console.log('✅ 飛行降落資料已寫入 Firebase:', landingData);
+
+                // 重新載入統計資料
+                await this.loadFlightStatistics();
             }
         } catch (e) {
             console.error('❌ 寫入 Firestore 降落資料失敗', e);
         }
+
+        // 更新當前位置顯示
+        this.updateCurrentLocationDisplay();
 
         // 顯示結果
         this.showFlightMap();
@@ -4066,6 +4211,8 @@ class WakeUpMapGame {
             } : null,
             // 新增：目的地當地時間資訊
             localTimeInfo: localTimeInfo,
+            // 新增：任務類型
+            taskType: this.gameState.taskType || 'REST',
             // 介面語言（用來決定中文/英文廣播）
             uiLanguage: this.gameState.language || 'zh-TW',
             // 提示模型偏好

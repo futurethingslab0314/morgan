@@ -81,6 +81,62 @@ const COUNTRY_MENTAL_STATE = {
     'DEFAULT': { state: '平靜', stateEn: 'Calm', description: '這趟旅程，會帶你回到內心的平靜。讓接下來的時間，成為你重新對齊自己的機會。', culturalMood: '平靜、安穩' }
 };
 
+// 任務類型指引
+const TASK_GUIDANCE = {
+    boarding: {
+        'READING': {
+            zh: '這次飛行任務是「讀書」。請在廣播中強調：認真、專注、準備進入深度學習狀態。可以提到目的地能幫助專注的氛圍，例如：日本的安靜秩序可以幫助你專注閱讀。',
+            en: 'The flight task is "Reading". Emphasize: seriousness, focus, preparing for deep learning. Mention how the destination\'s atmosphere can help with concentration, e.g., Japan\'s quiet order can help you focus on reading.'
+        },
+        'EXERCISE': {
+            zh: '這次飛行任務是「運動」。請在廣播中強調：活力、動能、準備身體活動。可以提到目的地能帶來活力的氛圍。',
+            en: 'The flight task is "Exercise". Emphasize: vitality, energy, preparing for physical activity. Mention how the destination\'s atmosphere can bring vitality.'
+        },
+        'MEDITATION': {
+            zh: '這次飛行任務是「冥想」。請在廣播中強調：平靜、內觀、準備進入冥想狀態。可以提到目的地能帶來平靜的氛圍。',
+            en: 'The flight task is "Meditation". Emphasize: calm, introspection, preparing for meditation. Mention how the destination\'s atmosphere can bring calm.'
+        },
+        'REST': {
+            zh: '這次飛行任務是「休息」。請在廣播中強調：放鬆、恢復、準備好好休息。可以提到目的地能帶來放鬆的氛圍。',
+            en: 'The flight task is "Rest". Emphasize: relaxation, recovery, preparing to rest well. Mention how the destination\'s atmosphere can bring relaxation.'
+        },
+        'GAME': {
+            zh: '這次飛行任務是「遊戲」。請在廣播中強調：愉快、享受當下、專注在飛行過程本身。讓乘客感覺這是一段輕鬆愉快的旅程，可以好好享受遊戲時光。',
+            en: 'The flight task is "Game". Emphasize: joy, enjoying the moment, focusing on the flight journey itself. Make passengers feel this is a relaxed and enjoyable journey to enjoy gaming time.'
+        },
+        'WORK': {
+            zh: '這次飛行任務是「工作」。請在廣播中強調：效率、專注、準備進入工作狀態。可以提到目的地能帶來效率的氛圍。',
+            en: 'The flight task is "Work". Emphasize: efficiency, focus, preparing for work mode. Mention how the destination\'s atmosphere can bring efficiency.'
+        }
+    },
+    landing: {
+        'READING': {
+            zh: '乘客剛完成「讀書」任務。請提醒：可以休息一下眼睛，做個簡單的放鬆，搭配【國家文化特色】的放鬆方式。例如：日本的安靜可以幫助你放鬆眼睛；泰國的柔軟可以讓你的眼睛得到休息。讓乘客感覺完成了深度學習後，需要適當的放鬆。',
+            en: 'The passenger just completed a "Reading" task. Remind them: rest your eyes, do some simple relaxation, combined with the country\'s cultural relaxation style. Make them feel that after deep learning, they need proper relaxation.'
+        },
+        'EXERCISE': {
+            zh: '乘客剛完成「運動」任務。請提醒：補充水分、做拉伸放鬆，搭配【國家文化特色】的恢復方式。例如：日本的安靜可以幫助你恢復；泰國的柔軟可以讓你的肌肉得到放鬆。',
+            en: 'The passenger just completed an "Exercise" task. Remind them: hydrate, do stretching, combined with the country\'s cultural recovery style.'
+        },
+        'MEDITATION': {
+            zh: '乘客剛完成「冥想」任務。請提醒：保持平靜，搭配【國家文化特色】的平靜氛圍。例如：日本的安靜可以延續你的平靜；泰國的柔軟可以讓你的心保持放鬆。',
+            en: 'The passenger just completed a "Meditation" task. Remind them: maintain calm, combined with the country\'s cultural calm atmosphere.'
+        },
+        'REST': {
+            zh: '乘客剛完成「休息」任務。請提醒：好好休息，搭配【國家文化特色】的休息氛圍。例如：日本的安靜可以幫助你深度休息；泰國的柔軟可以讓你的身心得到放鬆。',
+            en: 'The passenger just completed a "Rest" task. Remind them: rest well, combined with the country\'s cultural rest atmosphere.'
+        },
+        'GAME': {
+            zh: '乘客剛完成「遊戲」任務。請根據【目的地當地時間和天氣狀況】，提醒進入工作狀態或開始專注。例如：現在是紐約的早晨，是時候開始專注工作了；現在是日本的下午，可以開始專注下一個任務。搭配【國家文化特色】的轉換氛圍，幫助乘客從遊戲模式轉換到工作/專注模式。',
+            en: 'The passenger just completed a "Game" task. Based on the destination\'s local time and weather, remind them to enter work mode or start focusing. Combine with the country\'s cultural transition atmosphere to help transition from gaming to work/focus mode.'
+        },
+        'WORK': {
+            zh: '乘客剛完成「工作」任務。請提醒：可以放鬆一下，搭配【國家文化特色】的放鬆方式。例如：日本的安靜可以幫助你放鬆；泰國的柔軟可以讓你的身心得到休息。讓乘客感覺完成了工作後，需要適當的放鬆。',
+            en: 'The passenger just completed a "Work" task. Remind them: relax a bit, combined with the country\'s cultural relaxation style. Make them feel that after work, they need proper relaxation.'
+        }
+    }
+};
+
 export default async function handler(req, res) {
     // 設置 CORS 標頭
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -112,6 +168,7 @@ export default async function handler(req, res) {
             timerDuration, // 計時器模式（分鐘）
             punctuality, // 準時性狀態（新增）
             localTimeInfo, // 目的地當地時間資訊（新增）
+            taskType, // 任務類型（新增）
             uiLanguage // 介面語言：'zh-TW' 或 'en'
         } = req.body;
 
@@ -129,6 +186,11 @@ export default async function handler(req, res) {
 
         // 獲取對應的心理狀態
         const mentalState = COUNTRY_MENTAL_STATE[(countryCode || '').toUpperCase()] || COUNTRY_MENTAL_STATE['DEFAULT'];
+
+        // 獲取任務類型指引
+        const task = (taskType || 'REST').toUpperCase();
+        const taskGuidance = TASK_GUIDANCE[announcementType]?.[task] || null;
+        const taskGuidanceText = taskGuidance ? (isEnglish ? taskGuidance.en : taskGuidance.zh) : '';
 
         const greetingHint = greeting
             ? (isEnglish
@@ -171,9 +233,10 @@ Requirements:
 4. Flight time: ${flightTimeDesc}
 5. Inner state theme: The destination represents "${mentalState.stateEn}" - ${mentalState.description}
 6. Cultural mood (NOT tourist attractions): Describe the country's "${mentalState.culturalMood}" - this is about emotional atmosphere, not physical places/activities
-7. DO NOT mention: beaches, food, specific landmarks, shopping, tourist activities
-8. DO mention: the country's emotional quality, cultural mood, inner atmosphere (e.g., "Japan's quiet order", "Thailand's soft relaxation", "New York's decisive rhythm")
-9. Tone: natural, conversational, warm, positive - like a friendly captain + meditation guide
+${taskGuidanceText ? `7. Task guidance: ${taskGuidanceText}` : ''}
+${taskGuidanceText ? '8. ' : '7. '}DO NOT mention: beaches, food, specific landmarks, shopping, tourist activities
+${taskGuidanceText ? '9. ' : '8. '}DO mention: the country's emotional quality, cultural mood, inner atmosphere (e.g., "Japan's quiet order", "Thailand's soft relaxation", "New York's decisive rhythm")
+${taskGuidanceText ? '10. ' : '9. '}Tone: natural, conversational, warm, positive - like a friendly captain + meditation guide
 ${greetingHint}
 
 Write in natural English, within 80 words. Make it feel immersive and warm, without creating a sense of loss or missing out.`;
@@ -190,9 +253,10 @@ Write in natural English, within 80 words. Make it feel immersive and warm, with
 4. 飛行時間：${flightTimeDesc}
 5. 內在狀態主題：目的地象徵「${mentalState.state}」- ${mentalState.description}
 6. 文化情緒特色（非旅遊景點）：描述這個國家的「${mentalState.culturalMood}」- 這是關於情緒氛圍，不是具體地點或活動
-7. 禁止提到：海灘、美食、具體景點、購物、觀光活動
-8. 可以提到：國家的情緒質感、文化氛圍、內在氣氛（例如：「日本的安靜秩序」、「泰國的柔軟鬆弛」、「紐約的決斷節奏」）
-9. 語氣：自然、口語、溫暖、積極，像輕鬆的機長＋冥想導師
+${taskGuidanceText ? `7. 任務指引：${taskGuidanceText}` : ''}
+${taskGuidanceText ? '8. ' : '7. '}禁止提到：海灘、美食、具體景點、購物、觀光活動
+${taskGuidanceText ? '9. ' : '8. '}可以提到：國家的情緒質感、文化氛圍、內在氣氛（例如：「日本的安靜秩序」、「泰國的柔軟鬆弛」、「紐約的決斷節奏」）
+${taskGuidanceText ? '10. ' : '9. '}語氣：自然、口語、溫暖、積極，像輕鬆的機長＋冥想導師
 ${greetingHint}
 
 請用繁體中文，控制在100字以內。讓乘客感覺有沉浸感、溫暖，但不會產生失落感或「沒去過」的空虛感。`;
@@ -200,6 +264,13 @@ ${greetingHint}
         } else if (announcementType === 'landing') {
             // 降落廣播 - 專注於內在狀態和心理豐收
             const timeDesc = timerDuration ? '飛行完成' : `當地時間：${wakeTime || '08:00'}`;
+
+            // 如果是 GAME 任務，需要特別處理當地時間資訊
+            let gameTimeGuidance = '';
+            if (task === 'GAME' && localTimeInfo) {
+                const { localTimeString, timeContext, timeOfDay } = localTimeInfo;
+                gameTimeGuidance = `\n\n特別注意（GAME 任務）：\n- 目的地當地時間：${timeContext} ${localTimeString}\n- 請根據這個時間和時段（${timeOfDay}），提醒乘客進入工作狀態或開始專注\n- 例如：如果是早晨，提醒「是時候開始專注工作了」；如果是下午，提醒「可以開始專注下一個任務」\n- 搭配【國家文化特色】的轉換氛圍，幫助乘客從遊戲模式轉換到工作/專注模式`;
+            }
 
             // 內在狀態提示（文化情緒特色，非旅遊特色）
             const innerStatePrompt = `內在狀態主題：
@@ -212,6 +283,7 @@ ${mentalState.description}
 - 這是關於「情緒質感」和「文化氛圍」，不是具體的景點、美食、活動
 - 禁止提到：海灘很美、東西很好吃、景點很棒、人很多很熱鬧等會造成「沒去過」失落感的內容
 - 可以提到：國家的情緒質感、文化氛圍、內在氣氛，讓乘客自然「降落」到那個情緒
+${taskGuidanceText ? `- 任務完成後指引：${taskGuidanceText}` : ''}${gameTimeGuidance}
 - 結尾要讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
 - 語氣：自然、口語、溫暖、積極，20% 機長 + 40% 溫柔導引 + 40% 內在敘事`;
 
@@ -281,6 +353,14 @@ ${isMidwayLanding ? '4. 安慰語句：輕鬆、溫暖地說明情況' : '3. 安
                         const finalMentalState = hasDiversion
                             ? (COUNTRY_MENTAL_STATE[(countryCode || '').toUpperCase()] || COUNTRY_MENTAL_STATE['DEFAULT'])
                             : mentalState;
+
+                        // 如果是 GAME 任務，需要特別處理當地時間資訊
+                        let finalGameTimeGuidance = '';
+                        if (task === 'GAME' && localTimeInfo) {
+                            const { localTimeString, timeContext, timeOfDay } = localTimeInfo;
+                            finalGameTimeGuidance = `\n\n特別注意（GAME 任務）：\n- 目的地當地時間：${timeContext} ${localTimeString}\n- 請根據這個時間和時段（${timeOfDay}），提醒乘客進入工作狀態或開始專注\n- 例如：如果是早晨，提醒「是時候開始專注工作了」；如果是下午，提醒「可以開始專注下一個任務」\n- 搭配【國家文化特色】的轉換氛圍，幫助乘客從遊戲模式轉換到工作/專注模式`;
+                        }
+
                         const finalInnerStatePrompt = `內在狀態主題：
 目的地【${finalCity}, ${country}】象徵「${finalMentalState.state}」。
 ${finalMentalState.description}
@@ -290,6 +370,7 @@ ${finalMentalState.description}
 - 這是關於「情緒質感」和「文化氛圍」，不是具體的景點、美食、活動
 - 禁止提到：海灘很美、東西很好吃、景點很棒等會造成「沒去過」失落感的內容
 - 可以提到：國家的情緒質感、文化氛圍、內在氣氛，讓乘客自然「降落」到那個情緒
+${taskGuidanceText ? `- 任務完成後指引：${taskGuidanceText}` : ''}${finalGameTimeGuidance}
 - 結尾要讓乘客感覺「抵達了自己」同時也「抵達了【${finalCity}】的情緒氛圍」
 - 語氣：自然、口語、溫暖、積極，20% 機長 + 40% 溫柔導引 + 40% 內在敘事`;
 
