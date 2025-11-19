@@ -1214,8 +1214,21 @@ class WakeUpMapGame {
         const destination = this.gameState.selectedDestination;
         if (!destination) return;
 
-        // 台北座標
-        const taipeiCoords = [25.0330, 121.5654];
+        // 獲取當前位置（上次降落位置）作為出發地
+        const currentLocation = this.gameState.currentLocation || {
+            name: '台北',
+            countryCode: 'TPE',
+            country: '台灣',
+            coordinates: [25.0330, 121.5654],
+            latitude: 25.0330,
+            longitude: 121.5654
+        };
+
+        // 獲取出發地座標（優先使用 coordinates，其次使用 latitude/longitude）
+        const originCoords = currentLocation.coordinates ||
+            (currentLocation.latitude && currentLocation.longitude
+                ? [currentLocation.latitude, currentLocation.longitude]
+                : [25.0330, 121.5654]);
 
         // 目的地座標（根據目的地ID設定）
         const destinationCoords = this.getDestinationCoords(destination.id);
@@ -1235,7 +1248,7 @@ class WakeUpMapGame {
         }
 
         // 創建地圖
-        this.map = L.map(el).setView(taipeiCoords, 3);
+        this.map = L.map(el).setView(originCoords, 3);
 
         // 添加地圖瓦片
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1246,13 +1259,16 @@ class WakeUpMapGame {
         // 清理既有浮層，避免重複或被舊元素遮擋
         this.cleanupMapOverlays();
 
-        // 添加台北標記
-        const taipeiMarker = L.marker(taipeiCoords).addTo(this.map);
-        taipeiMarker.bindPopup(`
+        // 添加出發地標記（使用當前位置）
+        const originCode = currentLocation.countryCode || 'TPE';
+        const originName = currentLocation.name || '台北';
+        const originCountry = currentLocation.country || '台灣';
+        const originMarker = L.marker(originCoords).addTo(this.map);
+        originMarker.bindPopup(`
             <div class="flight-popup">
                 <h3>✈️ 出發地</h3>
-                <p><strong>台北 TPE</strong></p>
-                <p>台灣</p>
+                <p><strong>${originName} ${originCode}</strong></p>
+                <p>${originCountry}</p>
             </div>
         `);
 
@@ -1267,7 +1283,7 @@ class WakeUpMapGame {
         `);
 
         // 添加航線
-        const flightPath = L.polyline([taipeiCoords, destinationCoords], {
+        const flightPath = L.polyline([originCoords, destinationCoords], {
             color: '#ff6b35',
             weight: 3,
             opacity: 0.8,
@@ -1288,9 +1304,9 @@ class WakeUpMapGame {
             iconAnchor: [20, 20]
         });
 
-        // 2. 創建飛機標記（初始位置在台北）
-        const planeMarker = L.marker(taipeiCoords, { icon: planeIcon }).addTo(this.map);
-        console.log('飛機已創建，位置:', taipeiCoords);
+        // 2. 創建飛機標記（初始位置在出發地）
+        const planeMarker = L.marker(originCoords, { icon: planeIcon }).addTo(this.map);
+        console.log('飛機已創建，位置:', originCoords);
 
         // 3. 計算飛機應該在哪個位置
         const getFlightProgress = () => {
@@ -1359,8 +1375,8 @@ class WakeUpMapGame {
 
             // 計算飛機在航線上的位置（依照進度線性插值）
             const planePos = [
-                taipeiCoords[0] + (destinationCoords[0] - taipeiCoords[0]) * progress,
-                taipeiCoords[1] + (destinationCoords[1] - taipeiCoords[1]) * progress
+                originCoords[0] + (destinationCoords[0] - originCoords[0]) * progress,
+                originCoords[1] + (destinationCoords[1] - originCoords[1]) * progress
             ];
 
             // 更新飛機位置
@@ -1374,13 +1390,13 @@ class WakeUpMapGame {
         setInterval(updatePlanePosition, 10000); // 每10秒更新
 
         // 計算距離
-        const distance = this.calculateDistance(taipeiCoords, destinationCoords);
+        const distance = this.calculateDistance(originCoords, destinationCoords);
 
         // 添加飛行狀態懸浮視窗
         this.addFlightStatusPopup(this.map, distance, destination);
 
         // 調整地圖視圖以包含兩個點
-        const group = new L.featureGroup([taipeiMarker, destinationMarker]);
+        const group = new L.featureGroup([originMarker, destinationMarker]);
         this.map.fitBounds(group.getBounds().pad(0.1));
 
         // 立即顯示降落按鈕（測試用）
