@@ -1208,6 +1208,9 @@ class WakeUpMapGame {
 
         // 初始化飛行地圖
         this.initializeFlightMap();
+
+        // 更新左下角機票顯示（確保使用最新的當前位置）
+        this.showTicketInLocationPanel();
     }
 
     initializeFlightMap() {
@@ -2103,8 +2106,11 @@ class WakeUpMapGame {
             const defaultLocation = {
                 name: '台北',
                 country: '台灣',
+                countryCode: 'TPE',
                 coordinates: [25.0330, 121.5654],
-                timezone: 8
+                timezone: 8,
+                latitude: 25.0330,
+                longitude: 121.5654
             };
             this.gameState.currentLocation = defaultLocation;
             return defaultLocation;
@@ -2113,8 +2119,11 @@ class WakeUpMapGame {
             const defaultLocation = {
                 name: '台北',
                 country: '台灣',
+                countryCode: 'TPE',
                 coordinates: [25.0330, 121.5654],
-                timezone: 8
+                timezone: 8,
+                latitude: 25.0330,
+                longitude: 121.5654
             };
             this.gameState.currentLocation = defaultLocation;
             return defaultLocation;
