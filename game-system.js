@@ -1018,6 +1018,17 @@ class WakeUpMapGame {
     }
 
     showTicketPreview(destination) {
+        // 獲取當前位置（上次降落位置）作為出發地
+        const currentLocation = this.gameState.currentLocation || { name: '台北', countryCode: 'TPE', country: '台灣' };
+        const originCode = currentLocation.countryCode || 'TPE';
+        const originName = currentLocation.name || '台北';
+
+        // 更新出發地資訊
+        const originCityCodeEl = document.getElementById('originCityCode');
+        const originCityNameEl = document.getElementById('originCityName');
+        if (originCityCodeEl) originCityCodeEl.textContent = originCode;
+        if (originCityNameEl) originCityNameEl.textContent = originName;
+
         // 更新機票資訊
         const selectedDestinationEl = document.getElementById('selectedDestination');
         const destinationCodeEl = document.getElementById('destinationCode');
