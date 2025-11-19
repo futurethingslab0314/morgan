@@ -2102,6 +2102,10 @@ class WakeUpMapGame {
             if (currentLocation) {
                 this.gameState.currentLocation = currentLocation;
                 this.updateCurrentLocationDisplay();
+
+                // 如果有當前位置（上次降落位置），顯示機票（即使沒有選中目的地）
+                // 這樣可以顯示「從上次降落位置出發」的狀態
+                this.showTicketInLocationPanel();
             }
 
             // 載入統計資料
@@ -2735,7 +2739,11 @@ class WakeUpMapGame {
     // 在左側（當前位置區）顯示機票，並將台北面板縮成小圖示
     showTicketInLocationPanel() {
         const locationPanel = document.querySelector('.taipei-location-panel');
-        if (!locationPanel || !this.gameState.selectedDestination) return;
+        if (!locationPanel) return;
+
+        // 如果沒有選中的目的地，但有當前位置（上次降落位置），也顯示機票
+        // 但只顯示出發地，不顯示目的地
+        if (!this.gameState.selectedDestination && !this.gameState.currentLocation) return;
 
         // 移除現有的機票顯示
         const existingTicket = locationPanel.querySelector('.location-ticket');
@@ -2754,7 +2762,15 @@ class WakeUpMapGame {
         });
 
         const destination = this.gameState.selectedDestination;
+        const currentLocation = this.gameState.currentLocation || { name: '台北', countryCode: 'TPE', country: '台灣' };
         const lang = this.gameState.language || 'zh-TW';
+
+        // 獲取出發地資訊（使用當前位置，即上次降落位置）
+        const originCode = currentLocation.countryCode || 'TPE';
+        const originName = currentLocation.name || '台北';
+
+        // 如果沒有選中目的地，只顯示出發地
+        const hasDestination = !!destination;
 
         const labelPack = (lang === 'en') ? {
             duration: 'Duration',
@@ -2797,23 +2813,26 @@ class WakeUpMapGame {
                     <span class="airline-icon">✈️</span>
                     <span class="airline-name">FOCUS AIRLINES</span>
                 </div>
-                <div class="ticket-status">已購買</div>
+                <div class="ticket-status">${hasDestination ? '已購買' : ''}</div>
             </div>
             
             <div class="ticket-route">
                 <div class="route-info">
                     <div class="location-info">
-                        <div class="location-code">TPE</div>
-                        <div class="location-name">台北</div>
+                        <div class="location-code">${originCode}</div>
+                        <div class="location-name">${originName}</div>
                     </div>
+                    ${hasDestination ? `
                     <div class="flight-arrow">✈️</div>
                     <div class="location-info">
-                        <div class="location-code">${destination.countryCode}</div>
+                        <div class="location-code">${destination.countryCode || 'XXX'}</div>
                         <div class="location-name">${destination.name}</div>
                     </div>
+                    ` : ''}
                 </div>
             </div>
             
+            ${hasDestination ? `
             <div class="ticket-details">
                 <div class="detail-item">
                     <span class="detail-label">${labelPack.duration}</span>
@@ -2828,6 +2847,7 @@ class WakeUpMapGame {
                     <span class="detail-value">${taskText}</span>
                 </div>
             </div>
+            ` : ''}
         `;
 
         // 將機票添加至左側位置面板（小圖示下方）
@@ -3275,6 +3295,9 @@ class WakeUpMapGame {
 
         // 更新當前位置顯示
         this.updateCurrentLocationDisplay();
+
+        // 更新機票顯示（顯示新的當前位置作為出發地）
+        this.showTicketInLocationPanel();
 
         // 顯示結果
         this.showFlightMap();
