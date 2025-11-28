@@ -699,6 +699,11 @@ class WakeUpMapGame {
 
             console.log('✅ 開始進入地圖頁面...');
 
+            // 先切換到地圖頁面（在背景準備）
+            this.gameState.flightStarted = true;
+            this.gameState.flightStatus = 'flying';
+            this.startGame();
+
             // 顯示起飛資訊大視窗（同時播放機長聲音，播放完成後自動跳轉）
             const destination = this.gameState.selectedDestination || this.gameState.currentTicket?.destination;
             console.log('📍 目的地資訊:', destination);
@@ -712,10 +717,6 @@ class WakeUpMapGame {
                 await this.showBoardingInfoScreen();
             } else {
                 console.warn('⚠️ 沒有目的地，直接開始遊戲');
-                // 如果沒有目的地，直接開始遊戲
-                this.gameState.flightStarted = true;
-                this.gameState.flightStatus = 'flying';
-                this.startGame();
             }
         });
 
@@ -2198,21 +2199,27 @@ class WakeUpMapGame {
             }
 
             const db = window.firebaseSDK.getFirestore();
+            if (!db) {
+                console.log('📍 Firebase 資料庫未初始化，無法載入統計資料');
+                this.updateFlightStatisticsDisplay({ totalFlights: 0, totalDistance: 0, visitedCities: 0 });
+                return;
+            }
+
             const APP_ID = 'default-app-id-worldclock-history';
             const user = (window.env && window.env.USER_NAME) || 'morgan';
-            const flightCollectionPath = ['artifacts', APP_ID, 'userProfiles', user, 'Flight'];
 
-            const flightRef = db.collection(flightCollectionPath[0])
-                .doc(flightCollectionPath[1])
-                .collection(flightCollectionPath[2])
-                .doc(flightCollectionPath[3])
-                .collection(flightCollectionPath[4]);
+            // 使用模組化的 Firebase SDK 語法（與 getLatestRecord 一致）
+            const { collection, query, where, orderBy, getDocs } = window.firebaseSDK;
+            const flightCollection = collection(db, 'artifacts', APP_ID, 'userProfiles', user, 'Flight');
 
             // 查詢所有已完成的飛行
-            const snapshot = await flightRef
-                .where('status', '==', 'completed')
-                .orderBy('updatedAt', 'desc')
-                .get();
+            const flightQuery = query(
+                flightCollection,
+                where('status', '==', 'completed'),
+                orderBy('updatedAt', 'desc')
+            );
+
+            const snapshot = await getDocs(flightQuery);
 
             let totalFlights = 0;
             let totalDistance = 0;
@@ -3705,16 +3712,17 @@ class WakeUpMapGame {
 
         const statusEl = document.getElementById('boardingInfoStatus');
 
-        // 強制顯示視窗
+        // 強制顯示視窗（確保在最上層）
         console.log('🛫 [showBoardingInfoScreen] 設置視窗顯示');
         infoScreen.style.display = 'flex';
-        infoScreen.style.zIndex = '10000';
+        infoScreen.style.zIndex = '99999'; // 提高 z-index 確保在最上層
         infoScreen.style.position = 'fixed';
         infoScreen.style.top = '0';
         infoScreen.style.left = '0';
         infoScreen.style.width = '100%';
         infoScreen.style.height = '100%';
         infoScreen.style.backgroundColor = 'rgba(30, 60, 114, 0.95)';
+        infoScreen.style.pointerEvents = 'auto'; // 確保可以接收點擊事件
 
         // 檢查視窗是否真的顯示了
         const computedStyle = window.getComputedStyle(infoScreen);
@@ -3752,14 +3760,9 @@ class WakeUpMapGame {
         await playPromise;
         console.log('🛫 [showBoardingInfoScreen] 廣播播放完成');
 
-        // 播放完成後，隱藏視窗並直接跳轉到地圖
+        // 播放完成後，隱藏視窗（地圖已經在背景準備好了）
         infoScreen.style.display = 'none';
-        console.log('🛫 [showBoardingInfoScreen] 視窗已隱藏，準備跳轉到地圖');
-
-        // 設置飛行狀態並開始遊戲
-        this.gameState.flightStarted = true;
-        this.gameState.flightStatus = 'flying';
-        this.startGame();
+        console.log('🛫 [showBoardingInfoScreen] 視窗已隱藏，地圖已顯示');
 
         // 重置處理標誌
         this.isProcessingAction = false;
@@ -3944,16 +3947,141 @@ class WakeUpMapGame {
         infoScreen.style.display = 'flex';
 
         // 同時播放機長聲音
-        const actualDestination = punctuality.isEarlyLanding && punctuality.landingCity
+        const announcementDestination = punctuality.isEarlyLanding && punctuality.landingCity
             ? { name: punctuality.landingCity, country: punctuality.landingCityCountry }
             : destination;
 
-        await this.playSleepFlightAnnouncement('landing', actualDestination, punctuality);
+        await this.playSleepFlightAnnouncement('landing', announcementDestination, punctuality);
 
-        // 播放完成後顯示確認按鈕
-        if (actionsEl) {
-            actionsEl.style.display = 'block';
+        // 播放完成後，自動處理降落並回到首頁
+        console.log('🛬 降落語音播放完成，準備回到首頁');
+
+        // 隱藏降落資訊視窗
+        infoScreen.style.display = 'none';
+
+        // 根據類型處理降落
+        if (punctuality.status === 'EARLY') {
+            await this.applyEarlyLanding(punctuality);
+        } else if (punctuality.status === 'PERFECT' || punctuality.status === 'ON_TIME') {
+            await this.applyOnTimeLanding(punctuality);
+        } else {
+            await this.applyLateLanding(punctuality);
         }
+
+        // 完成降落處理（但不顯示地圖）
+        this.gameState.flightCompleted = true;
+        this.gameState.flightStatus = 'completed';
+        this.gameState.isLanding = false;
+
+        // 更新狀態顯示為已降落
+        this.updateFlightStatusDisplay('已降落');
+
+        // 隱藏按鈕
+        this.hideActionButton();
+
+        // 獲取實際降落位置
+        const actualDestination = this.gameState.selectedDestination;
+        const originalDestination = this.gameState.originalDestination || this.gameState.selectedDestination;
+
+        // 更新當前位置為實際降落位置（下次飛行從這裡開始）
+        if (actualDestination) {
+            this.gameState.currentLocation = {
+                name: actualDestination.name,
+                country: actualDestination.country,
+                countryCode: actualDestination.countryCode || 'TW',
+                coordinates: [actualDestination.latitude, actualDestination.longitude],
+                timezone: actualDestination.timezone || 8,
+                latitude: actualDestination.latitude,
+                longitude: actualDestination.longitude
+            };
+
+            // 保存到 localStorage
+            localStorage.setItem('lastKnownLocation', JSON.stringify(this.gameState.currentLocation));
+            console.log('📍 當前位置已更新為:', actualDestination.name);
+        }
+
+        // 寫入 Firestore：記錄完整的降落資料
+        try {
+            if (window.dbUpsertFlight) {
+                const flightId = this.gameState.currentFlightId || `flight_${Date.now()}`;
+                const flightOrigin = this.gameState.originalOrigin || this.gameState.currentLocation;
+                let flightDistance = 0;
+                if (flightOrigin && actualDestination) {
+                    const originCoords = flightOrigin.coordinates || [flightOrigin.latitude, flightOrigin.longitude];
+                    const destCoords = [actualDestination.latitude, actualDestination.longitude];
+                    flightDistance = this.calculateDistance(originCoords, destCoords);
+                }
+
+                const landingData = {
+                    status: 'completed',
+                    destination: {
+                        city: actualDestination?.name,
+                        city_zh: actualDestination?.name,
+                        country: actualDestination?.country,
+                        country_zh: actualDestination?.country,
+                        countryCode: actualDestination?.countryCode,
+                        lat: actualDestination?.latitude,
+                        lng: actualDestination?.longitude
+                    },
+                    punctuality: {
+                        status: punctuality.status,
+                        minutesDiff: punctuality.minutesDiff,
+                        actualTime: punctuality.actualTime,
+                        targetTime: punctuality.targetTime
+                    },
+                    isEarlyLanding: punctuality.isEarlyLanding || false,
+                    landingCity: punctuality.landingCity || null,
+                    originalDestination: punctuality.originalDestination || originalDestination?.name || null,
+                    divertedCity: punctuality.divertedCity || null,
+                    taskType: this.gameState.taskType || 'REST',
+                    flightDistance: Math.round(flightDistance),
+                    timerDuration: this.gameState.timerDuration || 30,
+                    landedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
+                    matchedCityUTCOffset: actualDestination?.timezone || 8,
+                    targetUTCOffset: actualDestination?.timezone || 8,
+                    updatedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null
+                };
+
+                await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, landingData);
+                console.log('✅ 飛行降落資料已寫入 Firebase');
+
+                // 重新載入統計資料
+                await this.loadFlightStatistics();
+            }
+        } catch (e) {
+            console.error('❌ 寫入 Firestore 降落資料失敗', e);
+        }
+
+        // 更新當前位置顯示和機票顯示
+        this.updateCurrentLocationDisplay();
+        this.showTicketInLocationPanel();
+
+        // 切換到首頁（gameStartState）- FOCUS AIRLINES
+        const gameStartState = document.getElementById('gameStartState');
+        const resultState = document.getElementById('resultState');
+        const waitingState = document.getElementById('waitingState');
+
+        if (gameStartState) {
+            gameStartState.classList.add('active');
+        }
+        if (resultState) {
+            resultState.classList.remove('active');
+        }
+        if (waitingState) {
+            waitingState.classList.remove('active');
+        }
+
+        // 重置遊戲狀態（準備下一次飛行）
+        this.gameState.gameStarted = false;
+        this.gameState.flightStarted = false;
+        this.gameState.selectedDestination = null;
+        this.gameState.currentTicket = null;
+        this.gameState.actionButtonState = 'hidden';
+
+        console.log('✅ 已切換到首頁（FOCUS AIRLINES）');
+
+        // 重置處理標誌
+        this.isProcessingAction = false;
     }
 
     // 確認降落資訊（整合原本的 applyEarlyLanding, applyOnTimeLanding, applyLateLanding）
