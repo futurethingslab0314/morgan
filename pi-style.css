@@ -4435,11 +4435,12 @@ body {
 /* 簡單機票（左下角） */
 .simple-ticket-popup {
     position: fixed;
-    top: 240px;
+    top: 280px;
     left: 20px;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
     padding: 12px 14px;
+    padding-top: 8px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 107, 53, 0.2);
@@ -4449,6 +4450,30 @@ body {
     overflow: hidden;
     transition: all 0.3s ease;
     transform-origin: top;
+    margin-top: 10px;
+}
+
+/* 收起按鈕（在下方面板頂部） */
+.collapse-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 4px 0;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 107, 53, 0.2);
+    transition: all 0.3s ease;
+}
+
+.collapse-toggle:hover {
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.collapse-arrow {
+    color: #ff6b35;
+    font-size: 16px;
+    font-weight: bold;
+    transition: transform 0.3s ease;
 }
 
 /* 收起狀態 */
@@ -4932,15 +4957,35 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 20px;
     position: relative;
     overflow: hidden;
-    width: 100%;
-    box-sizing: border-box;
+}
+
+/* 地圖效果背景 */
+.taipei-location-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(100, 149, 237, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(100, 149, 237, 0.1) 0%, transparent 50%),
+        linear-gradient(135deg, rgba(100, 149, 237, 0.05) 0%, rgba(100, 149, 237, 0.15) 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.taipei-location-panel>* {
+    position: relative;
+    z-index: 1;
 }
 
 /* 玻璃面板光澤效果 */
-.taipei-location-panel::before {
+.taipei-location-panel::after {
     content: '';
     position: absolute;
     top: 0;
@@ -4951,6 +4996,7 @@ body {
             transparent 0%,
             rgba(255, 255, 255, 0.4) 50%,
             transparent 100%);
+    z-index: 2;
 }
 
 /* 當前位置面板縮小為圖示（購票後） */
@@ -5513,4 +5559,279 @@ body {
         height: 46px;
         font-size: 24px;
     }
+}
+
+/* 地圖風格的機票樣式 */
+.location-ticket-map-style {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(100, 149, 237, 0.3);
+}
+
+.ticket-map-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(100, 149, 237, 0.2);
+}
+
+.ticket-map-header .airline-icon {
+    font-size: 20px;
+    margin-right: 8px;
+}
+
+.ticket-map-header .airline-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2c3e50;
+    flex: 1;
+}
+
+.ticket-map-header .ticket-status {
+    font-size: 12px;
+    color: #4caf50;
+    font-weight: 600;
+}
+
+.ticket-map-route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 12px;
+    background: rgba(100, 149, 237, 0.1);
+    border-radius: 8px;
+}
+
+.map-route-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.map-location-code {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+    letter-spacing: 1px;
+}
+
+.map-location-name {
+    font-size: 12px;
+    color: #666;
+}
+
+.map-route-arrow {
+    font-size: 20px;
+    color: #6495ed;
+    font-weight: bold;
+}
+
+.ticket-map-details {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.map-detail-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    background: rgba(100, 149, 237, 0.05);
+    border-radius: 6px;
+}
+
+.map-detail-label {
+    display: block;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.map-detail-value {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* 飛行歷史視窗樣式 */
+.flight-history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20000;
+    backdrop-filter: blur(4px);
+}
+
+.history-modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.history-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid rgba(100, 149, 237, 0.3);
+}
+
+.history-modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.history-modal-close {
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.history-modal-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.history-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.history-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    font-size: 16px;
+}
+
+.history-item {
+    background: rgba(100, 149, 237, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(100, 149, 237, 0.2);
+    transition: all 0.3s ease;
+}
+
+.history-item:hover {
+    background: rgba(100, 149, 237, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.history-route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+}
+
+.history-origin,
+.history-destination {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.history-city-code {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+    letter-spacing: 1px;
+}
+
+.history-city-name {
+    font-size: 12px;
+    color: #666;
+}
+
+.history-arrow {
+    font-size: 18px;
+    color: #6495ed;
+    font-weight: bold;
+}
+
+.history-details {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.history-detail-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+}
+
+.history-label {
+    display: block;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.history-value {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.history-value.status-perfect {
+    color: #ffd700;
+}
+
+.history-value.status-early {
+    color: #ffa500;
+}
+
+.history-value.status-ontime {
+    color: #4caf50;
+}
+
+.history-value.status-late {
+    color: #f44336;
 }

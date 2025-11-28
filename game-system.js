@@ -683,6 +683,11 @@ class WakeUpMapGame {
             if (this.gameState.currentTicket) return; // 已有機票，禁用
             this.showTaskModal(); // 先顯示任務選擇視窗
         });
+
+        // 點擊飛行資訊面板顯示歷史機票
+        document.getElementById('flightInfoPanel')?.addEventListener('click', () => {
+            this.showFlightHistoryModal();
+        });
         document.getElementById('beginJourneyBtn')?.addEventListener('click', async () => {
             console.log('🔄 開始旅程按鈕被點擊', {
                 hasTicket: !!this.gameState.currentTicket,
@@ -1154,8 +1159,12 @@ class WakeUpMapGame {
         const buyBtn = document.getElementById('buyTicketBtn');
         const beginBtn = document.getElementById('beginJourneyBtn');
         const hasTicket = !!this.gameState.currentTicket;
+        const hasDestination = !!this.gameState.selectedDestination;
 
+        // 規劃旅程按鈕：如果已經有機票則禁用，否則可用
         if (buyBtn) buyBtn.disabled = hasTicket;
+
+        // 開始旅程按鈕：必須有機票才能開始
         if (beginBtn) beginBtn.disabled = !hasTicket;
     }
 
@@ -1567,6 +1576,9 @@ class WakeUpMapGame {
         simpleTicket.className = 'simple-ticket-popup collapsed';
         simpleTicket.innerHTML = `
             <div class="simple-ticket-content">
+                <div class="collapse-toggle" id="collapseToggle">
+                    <span class="collapse-arrow">▲</span>
+                </div>
                 <div class="ticket-header">
                     <span class="airline-icon">✈️</span>
                     <span class="airline-name">WAKE UP</span>
@@ -1614,6 +1626,18 @@ class WakeUpMapGame {
                 const arrow = expandToggle.querySelector('.expand-arrow');
                 if (arrow) {
                     arrow.textContent = simpleTicket.classList.contains('collapsed') ? '▼' : '▲';
+                }
+            });
+        }
+
+        // 設置收起功能（從下方面板）
+        const collapseToggle = simpleTicket.querySelector('#collapseToggle');
+        if (collapseToggle) {
+            collapseToggle.addEventListener('click', () => {
+                simpleTicket.classList.add('collapsed');
+                const expandArrow = flightStatus.querySelector('.expand-arrow');
+                if (expandArrow) {
+                    expandArrow.textContent = '▼';
                 }
             });
         }
@@ -2292,6 +2316,210 @@ class WakeUpMapGame {
             totalDistanceEl.textContent = `${stats.totalDistance || 0} ${lang === 'en' ? 'km' : '公里'}`;
         }
         if (visitedCitiesEl) visitedCitiesEl.textContent = stats.visitedCities || 0;
+
+        // 保存統計資料供歷史視窗使用
+        this.flightStatistics = stats;
+    }
+
+    // 顯示歷史機票視窗
+    async showFlightHistoryModal() {
+        try {
+            if (!window.firebaseSDK || !window.firebaseSDK.getFirestore) {
+                alert('無法載入歷史記錄：Firebase 未初始化');
+                return;
+            }
+
+            const db = window.firebaseSDK.getFirestore();
+            if (!db) {
+                alert('無法載入歷史記錄：資料庫未初始化');
+                return;
+            }
+
+            const APP_ID = 'default-app-id-worldclock-history';
+            const user = (window.env && window.env.USER_NAME) || 'morgan';
+            const { collection, query, where, orderBy, getDocs } = window.firebaseSDK;
+            const flightCollection = collection(db, 'artifacts', APP_ID, 'userProfiles', user, 'Flight');
+
+            // 查詢所有已完成的飛行（按時間倒序）
+            const flightQuery = query(
+                flightCollection,
+                where('status', '==', 'completed'),
+                orderBy('updatedAt', 'desc')
+            );
+
+            const snapshot = await getDocs(flightQuery);
+            const flights = [];
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                flights.push({
+                    id: doc.id,
+                    ...data
+                });
+            });
+
+            // 創建或獲取歷史視窗
+            let historyModal = document.getElementById('flightHistoryModal');
+            if (!historyModal) {
+                historyModal = document.createElement('div');
+                historyModal.id = 'flightHistoryModal';
+                historyModal.className = 'flight-history-modal';
+                document.body.appendChild(historyModal);
+            }
+
+            const lang = this.gameState.language || 'zh-TW';
+            const i18n = {
+                'zh-TW': {
+                    title: '飛行歷史',
+                    noFlights: '尚無飛行記錄',
+                    origin: '出發地',
+                    destination: '目的地',
+                    date: '日期',
+                    status: '狀態',
+                    distance: '距離',
+                    success: '成功',
+                    early: '提早',
+                    ontime: '準時',
+                    late: '誤點',
+                    perfect: '完美',
+                    close: '關閉'
+                },
+                'en': {
+                    title: 'Flight History',
+                    noFlights: 'No flight records yet',
+                    origin: 'Origin',
+                    destination: 'Destination',
+                    date: 'Date',
+                    status: 'Status',
+                    distance: 'Distance',
+                    success: 'Success',
+                    early: 'Early',
+                    ontime: 'On Time',
+                    late: 'Late',
+                    perfect: 'Perfect',
+                    close: 'Close'
+                }
+            }[lang] || {
+                title: '飛行歷史',
+                noFlights: '尚無飛行記錄',
+                origin: '出發地',
+                destination: '目的地',
+                date: '日期',
+                status: '狀態',
+                distance: '距離',
+                success: '成功',
+                early: '提早',
+                ontime: '準時',
+                late: '誤點',
+                perfect: '完美',
+                close: '關閉'
+            };
+
+            // 生成歷史記錄列表
+            let historyContent = '';
+            if (flights.length === 0) {
+                historyContent = `<div class="history-empty">${i18n.noFlights}</div>`;
+            } else {
+                historyContent = flights.map(flight => {
+                    const origin = flight.origin || {};
+                    const dest = flight.destination || {};
+                    const punctuality = flight.punctuality || {};
+                    const status = punctuality.status || 'ON_TIME';
+
+                    // 格式化日期
+                    let dateStr = '';
+                    if (flight.updatedAt) {
+                        try {
+                            const date = flight.updatedAt.toDate ? flight.updatedAt.toDate() : new Date(flight.updatedAt);
+                            dateStr = date.toLocaleDateString(lang === 'en' ? 'en-US' : 'zh-TW');
+                        } catch (e) {
+                            dateStr = 'N/A';
+                        }
+                    }
+
+                    // 狀態標籤
+                    let statusLabel = '';
+                    let statusClass = '';
+                    if (status === 'PERFECT') {
+                        statusLabel = i18n.perfect;
+                        statusClass = 'status-perfect';
+                    } else if (status === 'EARLY') {
+                        statusLabel = i18n.early;
+                        statusClass = 'status-early';
+                    } else if (status === 'ON_TIME') {
+                        statusLabel = i18n.ontime;
+                        statusClass = 'status-ontime';
+                    } else {
+                        statusLabel = i18n.late;
+                        statusClass = 'status-late';
+                    }
+
+                    return `
+                        <div class="history-item">
+                            <div class="history-route">
+                                <div class="history-origin">
+                                    <div class="history-city-code">${origin.countryCode || 'XXX'}</div>
+                                    <div class="history-city-name">${origin.city || 'Unknown'}</div>
+                                </div>
+                                <div class="history-arrow">→</div>
+                                <div class="history-destination">
+                                    <div class="history-city-code">${dest.countryCode || 'XXX'}</div>
+                                    <div class="history-city-name">${dest.city || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            <div class="history-details">
+                                <div class="history-detail-item">
+                                    <span class="history-label">${i18n.date}</span>
+                                    <span class="history-value">${dateStr}</span>
+                                </div>
+                                <div class="history-detail-item">
+                                    <span class="history-label">${i18n.status}</span>
+                                    <span class="history-value ${statusClass}">${statusLabel}</span>
+                                </div>
+                                <div class="history-detail-item">
+                                    <span class="history-label">${i18n.distance}</span>
+                                    <span class="history-value">${flight.flightDistance || 0} km</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            historyModal.innerHTML = `
+                <div class="history-modal-content">
+                    <div class="history-modal-header">
+                        <h2 class="history-modal-title">${i18n.title}</h2>
+                        <button class="history-modal-close" id="closeHistoryModal">&times;</button>
+                    </div>
+                    <div class="history-modal-body">
+                        ${historyContent}
+                    </div>
+                </div>
+            `;
+
+            // 顯示視窗
+            historyModal.style.display = 'flex';
+
+            // 關閉按鈕事件
+            const closeBtn = document.getElementById('closeHistoryModal');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    historyModal.style.display = 'none';
+                };
+            }
+
+            // 點擊背景關閉
+            historyModal.onclick = (e) => {
+                if (e.target === historyModal) {
+                    historyModal.style.display = 'none';
+                }
+            };
+
+        } catch (e) {
+            console.error('載入飛行歷史失敗:', e);
+            alert('載入飛行歷史失敗，請稍後再試');
+        }
     }
 
     async getLatestRecord() {
@@ -2867,122 +3095,106 @@ class WakeUpMapGame {
         return this.formatDuration(minutes);
     }
 
-    // 在左側（當前位置區）顯示機票，並將台北面板縮成小圖示
+    // 在左側（當前位置區）顯示地圖效果的位置面板
     showTicketInLocationPanel() {
         const locationPanel = document.querySelector('.taipei-location-panel');
         if (!locationPanel) return;
-
-        // 如果沒有選中的目的地，但有當前位置（上次降落位置），也顯示機票
-        // 但只顯示出發地，不顯示目的地
-        if (!this.gameState.selectedDestination && !this.gameState.currentLocation) return;
 
         // 移除現有的機票顯示
         const existingTicket = locationPanel.querySelector('.location-ticket');
         if (existingTicket) existingTicket.remove();
 
-        // 移除縮小狀態與小圖示，改為專注展示機票
-        locationPanel.classList.remove('collapsed');
-        locationPanel.classList.add('ticket-only');
-        const miniIcon = locationPanel.querySelector('.location-mini-icon');
-        if (miniIcon) miniIcon.remove();
+        // 移除機票樣式類別
+        locationPanel.classList.remove('ticket-only', 'collapsed');
 
-        // 隱藏當前位置相關的原始內容
-        ['location-header', 'taipei-features', 'ai-generated-content'].forEach(cls => {
+        // 顯示當前位置相關的原始內容
+        ['location-header'].forEach(cls => {
             const section = locationPanel.querySelector(`.${cls}`);
-            if (section) section.style.display = 'none';
+            if (section) section.style.display = 'flex';
         });
 
+        // 如果有選中目的地，顯示機票（但不在位置面板中，而是單獨顯示）
         const destination = this.gameState.selectedDestination;
         const currentLocation = this.gameState.currentLocation || { name: '台北', countryCode: 'TPE', country: '台灣' };
-        const lang = this.gameState.language || 'zh-TW';
 
-        // 獲取出發地資訊（使用當前位置，即上次降落位置）
-        const originCode = currentLocation.countryCode || 'TPE';
-        const originName = currentLocation.name || '台北';
+        // 更新當前位置顯示
+        this.updateCurrentLocationDisplay();
 
-        // 如果沒有選中目的地，只顯示出發地
-        const hasDestination = !!destination;
+        // 如果有目的地，在位置面板下方顯示機票資訊（但使用地圖風格）
+        if (destination) {
+            const lang = this.gameState.language || 'zh-TW';
+            const originCode = currentLocation.countryCode || 'TPE';
+            const originName = currentLocation.name || '台北';
 
-        const labelPack = (lang === 'en') ? {
-            duration: 'Duration',
-            gate: 'Gate',
-            task: 'TASK'
-        } : {
-            duration: '飛行時長',
-            gate: '登機門',
-            task: 'TASK'
-        };
-
-        const taskText = (() => {
-            const mapZh = {
-                READING: '讀書',
-                EXERCISE: '運動',
-                MEDITATION: '冥想',
-                REST: '休息',
-                WORK: '工作',
-                GAME: '遊戲'
+            const labelPack = (lang === 'en') ? {
+                duration: 'Duration',
+                gate: 'Gate',
+                task: 'TASK'
+            } : {
+                duration: '飛行時長',
+                gate: '登機門',
+                task: 'TASK'
             };
-            const mapEn = {
-                READING: 'READ',
-                EXERCISE: 'WORKOUT',
-                MEDITATION: 'MEDITATE',
-                REST: 'REST',
-                WORK: 'WORK',
-                GAME: 'GAME'
-            };
-            const key = this.gameState.taskType || 'REST';
-            const map = (lang === 'en') ? mapEn : mapZh;
-            return map[key] || (lang === 'en' ? 'REST' : '休息');
-        })();
 
-        // 創建機票UI（首頁左側：僅顯示路線＋時長＋任務＋登機門）
-        const ticketElement = document.createElement('div');
-        ticketElement.className = 'location-ticket';
-        ticketElement.innerHTML = `
-            <div class="ticket-header">
-                <div class="airline-info">
+            const taskText = (() => {
+                const mapZh = {
+                    READING: '讀書',
+                    EXERCISE: '運動',
+                    MEDITATION: '冥想',
+                    REST: '休息',
+                    WORK: '工作',
+                    GAME: '遊戲'
+                };
+                const mapEn = {
+                    READING: 'READ',
+                    EXERCISE: 'WORKOUT',
+                    MEDITATION: 'MEDITATE',
+                    REST: 'REST',
+                    WORK: 'WORK',
+                    GAME: 'GAME'
+                };
+                const key = this.gameState.taskType || 'REST';
+                const map = (lang === 'en') ? mapEn : mapZh;
+                return map[key] || (lang === 'en' ? 'REST' : '休息');
+            })();
+
+            // 創建地圖風格的機票資訊（顯示在位置面板下方）
+            const ticketElement = document.createElement('div');
+            ticketElement.className = 'location-ticket-map-style';
+            ticketElement.innerHTML = `
+                <div class="ticket-map-header">
                     <span class="airline-icon">✈️</span>
                     <span class="airline-name">FOCUS AIRLINES</span>
+                    <span class="ticket-status">已購買</span>
                 </div>
-                <div class="ticket-status">${hasDestination ? '已購買' : ''}</div>
+                <div class="ticket-map-route">
+                    <div class="map-route-item">
+                        <div class="map-location-code">${originCode}</div>
+                        <div class="map-location-name">${originName}</div>
             </div>
-            
-            <div class="ticket-route">
-                <div class="route-info">
-                    <div class="location-info">
-                        <div class="location-code">${originCode}</div>
-                        <div class="location-name">${originName}</div>
+                    <div class="map-route-arrow">→</div>
+                    <div class="map-route-item">
+                        <div class="map-location-code">${destination.countryCode || 'XXX'}</div>
+                        <div class="map-location-name">${destination.name}</div>
                     </div>
-                    ${hasDestination ? `
-                    <div class="flight-arrow">✈️</div>
-                    <div class="location-info">
-                        <div class="location-code">${destination.countryCode || 'XXX'}</div>
-                        <div class="location-name">${destination.name}</div>
                     </div>
-                    ` : ''}
+                <div class="ticket-map-details">
+                    <div class="map-detail-item">
+                        <span class="map-detail-label">${labelPack.duration}</span>
+                        <span class="map-detail-value">${this.formatDuration(this.gameState.timerDuration || 30)}</span>
                 </div>
+                    <div class="map-detail-item">
+                        <span class="map-detail-label">${labelPack.gate}</span>
+                        <span class="map-detail-value">${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}</span>
             </div>
-            
-            ${hasDestination ? `
-            <div class="ticket-details">
-                <div class="detail-item">
-                    <span class="detail-label">${labelPack.duration}</span>
-                    <span class="detail-value">${this.formatDuration(this.gameState.timerDuration || 30)}</span>
+                    <div class="map-detail-item">
+                        <span class="map-detail-label">${labelPack.task}</span>
+                        <span class="map-detail-value">${taskText}</span>
                 </div>
-                <div class="detail-item">
-                    <span class="detail-label">${labelPack.gate}</span>
-                    <span class="detail-value">${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}</span>
                 </div>
-                <div class="detail-item">
-                    <span class="detail-label">${labelPack.task}</span>
-                    <span class="detail-value">${taskText}</span>
-                </div>
-            </div>
-            ` : ''}
-        `;
-
-        // 將機票添加至左側位置面板（小圖示下方）
-        locationPanel.appendChild(ticketElement);
+            `;
+            locationPanel.appendChild(ticketElement);
+        }
     }
 
     // 隱藏位置面板中的機票
@@ -4072,11 +4284,22 @@ class WakeUpMapGame {
         }
 
         // 重置遊戲狀態（準備下一次飛行）
+        // 注意：保留 currentLocation（已更新為降落位置），但清除 selectedDestination
         this.gameState.gameStarted = false;
         this.gameState.flightStarted = false;
         this.gameState.selectedDestination = null;
         this.gameState.currentTicket = null;
         this.gameState.actionButtonState = 'hidden';
+
+        // 更新首頁顯示（顯示當前位置，不顯示機票）
+        this.updateCurrentLocationDisplay();
+        this.showTicketInLocationPanel();
+
+        // 重新載入統計資料
+        await this.loadFlightStatistics();
+
+        // 更新按鈕狀態：可以規劃旅程，但不能開始旅程
+        this.refreshHomeButtonsState();
 
         console.log('✅ 已切換到首頁（FOCUS AIRLINES）');
 
