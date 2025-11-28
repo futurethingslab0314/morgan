@@ -698,7 +698,7 @@ class WakeUpMapGame {
 
             console.log('✅ 開始進入地圖頁面...');
 
-            // 顯示起飛資訊大視窗（同時播放機長聲音）
+            // 顯示起飛資訊大視窗（同時播放機長聲音，播放完成後自動跳轉）
             const destination = this.gameState.selectedDestination || this.gameState.currentTicket?.destination;
             if (destination) {
                 // 臨時設置目的地以便顯示資訊
@@ -3215,8 +3215,7 @@ class WakeUpMapGame {
         console.log('開始飛行計時器，狀態:', this.gameState.actionButtonState);
         console.log('選中的目的地:', this.gameState.selectedDestination);
 
-        this.gameState.flightStarted = true;
-        this.gameState.flightStatus = 'flying';
+        // 狀態會在 showBoardingInfoScreen() 播放完成後自動設置
 
         // 設定計時器（飛行計時器模式）
         if (this.gameState.flightTimerMode) {
@@ -3260,11 +3259,14 @@ class WakeUpMapGame {
         // 隱藏等待視窗
         this.hideWaitingModal();
 
-        // 顯示起飛資訊大視窗（同時播放機長聲音）
+        // 顯示起飛資訊大視窗（同時播放機長聲音，播放完成後自動跳轉到地圖）
         if (this.gameState.flightTimerMode && this.gameState.selectedDestination) {
             await this.showBoardingInfoScreen();
+            // showBoardingInfoScreen() 會自動設置 flightStarted、flightStatus 並調用 startGame()
         } else {
             // 如果沒有目的地，直接顯示地圖
+            this.gameState.flightStarted = true;
+            this.gameState.flightStatus = 'flying';
             this.showMapScreen();
         }
 
@@ -3288,10 +3290,6 @@ class WakeUpMapGame {
             }
         } catch (e) { console.warn('寫入 Firestore 飛行狀態失敗', e); }
 
-        console.log('準備開始遊戲');
-        // 開始遊戲
-        this.startGame();
-
         // 飛行計時器模式：不再需要設定鬧鐘，計時結束會自動處理
         // 舊模式保留 setLandingAlarm
         if (!this.gameState.flightTimerMode) {
@@ -3305,8 +3303,7 @@ class WakeUpMapGame {
             waiting.classList.remove('active');
         }
 
-        // 重置處理標誌
-        this.isProcessingAction = false;
+        // 處理標誌會在 showBoardingInfoScreen() 播放完成後自動重置
     }
 
     // 設置降落鬧鐘
@@ -3625,8 +3622,9 @@ class WakeUpMapGame {
         return result;
     }
 
-    // 顯示起飛資訊大視窗（整合顯示資訊和播放聲音）
+    // 顯示起飛資訊大視窗（整合顯示資訊和播放聲音，播放完成後自動跳轉）
     async showBoardingInfoScreen() {
+        console.log('🛫 顯示起飛資訊大視窗');
         const destination = this.gameState.selectedDestination;
         const origin = this.gameState.currentLocation;
         const cityName = destination?.name || '目的地';
@@ -3640,94 +3638,103 @@ class WakeUpMapGame {
             infoScreen = document.createElement('div');
             infoScreen.id = 'boardingInfoScreen';
             infoScreen.className = 'boarding-info-screen';
-            infoScreen.innerHTML = `
-                <div class="boarding-info-content">
-                    <div class="boarding-info-header">
-                        <div class="boarding-info-icon">✈️</div>
-                        <h1 class="boarding-info-title" id="boardingInfoTitle">準備起飛</h1>
-                    </div>
-                    <div class="boarding-info-body" id="boardingInfoBody"></div>
-                    <div class="boarding-info-status" id="boardingInfoStatus">機長準備廣播...</div>
-                    <div class="boarding-info-actions" id="boardingInfoActions" style="display: none;">
-                        <button class="boarding-info-btn boarding-info-btn-primary" onclick="window.wakeUpMapGame.confirmBoardingInfo()">開始旅程</button>
-                    </div>
-                </div>
-            `;
             document.body.appendChild(infoScreen);
         }
 
         // 更新視窗內容
-        const titleEl = document.getElementById('boardingInfoTitle');
-        const bodyEl = document.getElementById('boardingInfoBody');
-        const statusEl = document.getElementById('boardingInfoStatus');
-        const actionsEl = document.getElementById('boardingInfoActions');
+        infoScreen.innerHTML = `
+            <div class="boarding-info-content">
+                <div class="boarding-info-header">
+                    <div class="boarding-info-icon">✈️</div>
+                    <h1 class="boarding-info-title" id="boardingInfoTitle">準備起飛</h1>
+                </div>
+                <div class="boarding-info-body" id="boardingInfoBody">
+                    <div class="boarding-route">
+                        <div class="route-item">
+                            <span class="route-label">出發地</span>
+                            <span class="route-value">${originName}</span>
+                        </div>
+                        <div class="route-arrow">→</div>
+                        <div class="route-item">
+                            <span class="route-label">目的地</span>
+                            <span class="route-value">${cityName}, ${countryName}</span>
+                        </div>
+                    </div>
+                    <div class="boarding-details">
+                        <div class="detail-item">
+                            <span class="detail-label">⏱️ 飛行時間</span>
+                            <span class="detail-value">${timerMinutes} 分鐘</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">🎯 任務</span>
+                            <span class="detail-value">${this.getTaskTypeName(this.gameState.taskType || 'REST')}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="boarding-info-status" id="boardingInfoStatus">準備中...</div>
+            </div>
+        `;
 
-        if (titleEl) titleEl.textContent = '✈️ 準備起飛';
-        if (bodyEl) {
-            bodyEl.innerHTML = `
-                <div class="boarding-route">
-                    <div class="route-item">
-                        <span class="route-label">出發地</span>
-                        <span class="route-value">${originName}</span>
-                    </div>
-                    <div class="route-arrow">→</div>
-                    <div class="route-item">
-                        <span class="route-label">目的地</span>
-                        <span class="route-value">${cityName}, ${countryName}</span>
-                    </div>
-                </div>
-                <div class="boarding-details">
-                    <div class="detail-item">
-                        <span class="detail-label">⏱️ 飛行時間</span>
-                        <span class="detail-value">${timerMinutes} 分鐘</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">🎯 任務</span>
-                        <span class="detail-value">${this.getTaskTypeName(this.gameState.taskType || 'REST')}</span>
-                    </div>
-                </div>
-            `;
-        }
-        if (statusEl) statusEl.textContent = '機長準備廣播...';
+        const statusEl = document.getElementById('boardingInfoStatus');
 
         // 顯示視窗
         infoScreen.style.display = 'flex';
+        infoScreen.style.zIndex = '10000';
 
-        // 更新狀態：正在播放廣播
+        // 稍微延遲一下，讓視窗先顯示
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // 更新狀態：等待語音生成
         if (statusEl) {
-            statusEl.textContent = '機長正在廣播...';
-            statusEl.classList.add('status-playing');
+            statusEl.textContent = '準備起飛...機長準備廣播...';
         }
 
-        // 播放登機廣播
-        await this.playSleepFlightAnnouncement('boarding', destination);
+        // 播放登機廣播（包含語音生成和播放）
+        // 在開始播放時更新狀態
+        const playPromise = this.playSleepFlightAnnouncement('boarding', destination);
 
-        // 播放完成後更新狀態並顯示確認按鈕
-        if (statusEl) {
-            statusEl.textContent = '廣播完成，準備起飛';
-            statusEl.classList.remove('status-playing');
-            statusEl.classList.add('status-complete');
-        }
-        if (actionsEl) {
-            actionsEl.style.display = 'flex';
-        }
+        // 稍微延遲後更新狀態為「正在廣播中」（給 API 調用一點時間）
+        setTimeout(() => {
+            if (statusEl) {
+                statusEl.textContent = '機長正在廣播中...';
+                statusEl.classList.add('status-playing');
+            }
+        }, 500);
+
+        // 等待播放完成
+        await playPromise;
+
+        // 播放完成後，隱藏視窗並直接跳轉到地圖
+        infoScreen.style.display = 'none';
+
+        // 設置飛行狀態並開始遊戲
+        this.gameState.flightStarted = true;
+        this.gameState.flightStatus = 'flying';
+        this.startGame();
+
+        // 重置處理標誌
+        this.isProcessingAction = false;
     }
 
     // 確認起飛資訊
     async confirmBoardingInfo() {
+        console.log('✅ 確認起飛資訊，準備開始遊戲');
+
         // 隱藏起飛資訊視窗
         const infoScreen = document.getElementById('boardingInfoScreen');
         if (infoScreen) {
             infoScreen.style.display = 'none';
         }
 
-        // 如果遊戲還沒開始，先開始遊戲
-        if (!this.gameState.gameStarted) {
-            this.startGame();
-        } else {
-            // 如果已經開始，直接切換到地圖
-            this.showMapScreen();
-        }
+        // 設置飛行狀態
+        this.gameState.flightStarted = true;
+        this.gameState.flightStatus = 'flying';
+
+        // 開始遊戲（切換到地圖）
+        this.startGame();
+
+        // 重置處理標誌
+        this.isProcessingAction = false;
     }
 
     // 獲取任務類型名稱
