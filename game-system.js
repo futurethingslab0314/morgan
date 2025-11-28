@@ -1642,7 +1642,9 @@ class WakeUpMapGame {
             });
         }
 
-        // 如果計時器還沒開始，立即開始計時器（進入地圖時自動開始）
+        // 每次進入地圖時，如果計時器還沒開始，立即開始計時器
+        // 注意：這裡不檢查是否已存在，因為 startFlight() 已經設定了計時器
+        // 但如果直接進入地圖（例如從其他地方），則需要自動啟動
         if (!this.gameState.timerStartTime || !this.gameState.timerEndTime) {
             console.log('🚀 地圖初始化時自動啟動計時器');
             const timerMinutes = this.gameState.timerDuration || 30;
@@ -1651,6 +1653,10 @@ class WakeUpMapGame {
             this.gameState.timerEndTime = new Date(now.getTime() + timerMinutes * 60 * 1000);
             this.saveGameState();
             console.log(`⏱️ 計時器已自動啟動：${timerMinutes}分鐘`);
+        } else {
+            // 如果計時器已經存在，檢查是否應該重新開始（例如從上次飛行繼續）
+            // 但為了確保每次新飛行都從頭開始，我們應該在 startFlight() 中強制重新設定
+            console.log('⏱️ 計時器已存在，使用現有計時器');
         }
 
         // 開始實時更新計時器和進度（包含到達時間的實時更新）
@@ -2259,14 +2265,39 @@ class WakeUpMapGame {
             const { collection, query, where, orderBy, getDocs } = window.firebaseSDK;
             const flightCollection = collection(db, 'artifacts', APP_ID, 'userProfiles', user, 'Flight');
 
-            // 查詢所有已完成的飛行
-            const flightQuery = query(
-                flightCollection,
-                where('status', '==', 'completed'),
-                orderBy('updatedAt', 'desc')
-            );
+            let snapshot;
 
-            const snapshot = await getDocs(flightQuery);
+            // 先嘗試使用 orderBy 的查詢（需要索引）
+            try {
+                const flightQuery = query(
+                    flightCollection,
+                    where('status', '==', 'completed'),
+                    orderBy('updatedAt', 'desc')
+                );
+                snapshot = await getDocs(flightQuery);
+                console.log('✅ 使用索引查詢成功');
+            } catch (indexError) {
+                console.warn('⚠️ 索引查詢失敗，嘗試不使用 orderBy:', indexError);
+                // 如果索引查詢失敗，嘗試不使用 orderBy（只需要 where）
+                try {
+                    const flightQuery = query(
+                        flightCollection,
+                        where('status', '==', 'completed')
+                    );
+                    snapshot = await getDocs(flightQuery);
+                    console.log('✅ 使用簡單查詢成功');
+                } catch (simpleError) {
+                    console.error('❌ 簡單查詢也失敗:', simpleError);
+                    // 如果都失敗，嘗試獲取所有文檔（不篩選）
+                    try {
+                        snapshot = await getDocs(flightCollection);
+                        console.log('✅ 使用無篩選查詢成功');
+                    } catch (allError) {
+                        console.error('❌ 所有查詢方式都失敗:', allError);
+                        throw allError;
+                    }
+                }
+            }
 
             let totalFlights = 0;
             let totalDistance = 0;
@@ -2274,6 +2305,12 @@ class WakeUpMapGame {
 
             snapshot.forEach(doc => {
                 const data = doc.data();
+
+                // 如果使用了無篩選查詢，需要手動過濾 status
+                if (!data.status || data.status !== 'completed') {
+                    return;
+                }
+
                 totalFlights++;
 
                 // 累加飛行距離
@@ -2299,7 +2336,13 @@ class WakeUpMapGame {
             console.log('📊 飛行統計資料:', stats);
             this.updateFlightStatisticsDisplay(stats);
         } catch (e) {
-            console.error('載入飛行統計資料失敗:', e);
+            console.error('❌ 載入飛行統計資料失敗:', e);
+            console.error('錯誤詳情:', {
+                message: e.message,
+                code: e.code,
+                stack: e.stack
+            });
+            // 即使失敗也顯示 0，避免界面顯示錯誤
             this.updateFlightStatisticsDisplay({ totalFlights: 0, totalDistance: 0, visitedCities: 0 });
         }
     }
@@ -3101,27 +3144,22 @@ class WakeUpMapGame {
         if (!locationPanel) return;
 
         // 移除現有的機票顯示
-        const existingTicket = locationPanel.querySelector('.location-ticket');
+        const existingTicket = locationPanel.querySelector('.location-ticket-map-style');
         if (existingTicket) existingTicket.remove();
 
-        // 移除機票樣式類別
-        locationPanel.classList.remove('ticket-only', 'collapsed');
-
-        // 顯示當前位置相關的原始內容
-        ['location-header'].forEach(cls => {
-            const section = locationPanel.querySelector(`.${cls}`);
-            if (section) section.style.display = 'flex';
-        });
-
-        // 如果有選中目的地，顯示機票（但不在位置面板中，而是單獨顯示）
         const destination = this.gameState.selectedDestination;
         const currentLocation = this.gameState.currentLocation || { name: '台北', countryCode: 'TPE', country: '台灣' };
 
-        // 更新當前位置顯示
-        this.updateCurrentLocationDisplay();
-
-        // 如果有目的地，在位置面板下方顯示機票資訊（但使用地圖風格）
+        // 如果有目的地（已買機票），隱藏當前位置資訊，只顯示機票
         if (destination) {
+            // 隱藏當前位置相關的原始內容
+            ['location-header', 'taipei-features', 'ai-generated-content'].forEach(cls => {
+                const section = locationPanel.querySelector(`.${cls}`);
+                if (section) section.style.display = 'none';
+            });
+
+            // 添加機票專用樣式類別
+            locationPanel.classList.add('ticket-only');
             const lang = this.gameState.language || 'zh-TW';
             const originCode = currentLocation.countryCode || 'TPE';
             const originName = currentLocation.name || '台北';
@@ -3158,7 +3196,7 @@ class WakeUpMapGame {
                 return map[key] || (lang === 'en' ? 'REST' : '休息');
             })();
 
-            // 創建地圖風格的機票資訊（顯示在位置面板下方）
+            // 創建地圖風格的機票資訊（對準左上角）
             const ticketElement = document.createElement('div');
             ticketElement.className = 'location-ticket-map-style';
             ticketElement.innerHTML = `
@@ -3171,29 +3209,38 @@ class WakeUpMapGame {
                     <div class="map-route-item">
                         <div class="map-location-code">${originCode}</div>
                         <div class="map-location-name">${originName}</div>
-            </div>
+                    </div>
                     <div class="map-route-arrow">→</div>
                     <div class="map-route-item">
                         <div class="map-location-code">${destination.countryCode || 'XXX'}</div>
                         <div class="map-location-name">${destination.name}</div>
                     </div>
-                    </div>
+                </div>
                 <div class="ticket-map-details">
                     <div class="map-detail-item">
                         <span class="map-detail-label">${labelPack.duration}</span>
                         <span class="map-detail-value">${this.formatDuration(this.gameState.timerDuration || 30)}</span>
-                </div>
+                    </div>
                     <div class="map-detail-item">
                         <span class="map-detail-label">${labelPack.gate}</span>
                         <span class="map-detail-value">${String(Math.floor(Math.random() * 20) + 1).padStart(2, '0')}</span>
-            </div>
+                    </div>
                     <div class="map-detail-item">
                         <span class="map-detail-label">${labelPack.task}</span>
                         <span class="map-detail-value">${taskText}</span>
-                </div>
+                    </div>
                 </div>
             `;
             locationPanel.appendChild(ticketElement);
+        } else {
+            // 如果沒有目的地，顯示當前位置資訊
+            locationPanel.classList.remove('ticket-only');
+            ['location-header'].forEach(cls => {
+                const section = locationPanel.querySelector(`.${cls}`);
+                if (section) section.style.display = 'flex';
+            });
+            // 更新當前位置顯示
+            this.updateCurrentLocationDisplay();
         }
     }
 
@@ -3475,12 +3522,24 @@ class WakeUpMapGame {
         // 狀態會在 showBoardingInfoScreen() 播放完成後自動設置
 
         // 設定計時器（飛行計時器模式）
+        // 每次新飛行都強制重新設定計時器，確保從頭開始
         if (this.gameState.flightTimerMode) {
             const timerMinutes = this.gameState.timerDuration || 30;
             const now = this.now();
+
+            // 強制重新設定計時器（清除舊的計時器狀態）
             this.gameState.timerStartTime = now;
             this.gameState.timerEndTime = new Date(now.getTime() + timerMinutes * 60 * 1000);
-            console.log(`⏱️ 計時器啟動：${timerMinutes}分鐘，將於 ${this.gameState.timerEndTime.toLocaleTimeString()} 降落`);
+            this.gameState.flightCompleted = false;
+            this.gameState.isLanding = false;
+
+            console.log(`⏱️ 計時器重新啟動：${timerMinutes}分鐘，將於 ${this.gameState.timerEndTime.toLocaleTimeString()} 降落`);
+
+            // 清除舊的計時器回調
+            if (this._timerCompletionTimeout) {
+                clearTimeout(this._timerCompletionTimeout);
+                this._timerCompletionTimeout = null;
+            }
 
             // 設定計時結束回調
             this.setTimerCompletionCallback();
@@ -3604,15 +3663,22 @@ class WakeUpMapGame {
     setTimerCompletionCallback() {
         if (!this.gameState.flightTimerMode || !this.gameState.timerEndTime) return;
 
+        // 清除舊的回調
+        if (this._timerCompletionTimeout) {
+            clearTimeout(this._timerCompletionTimeout);
+            this._timerCompletionTimeout = null;
+        }
+
         const endTime = this.gameState.timerEndTime.getTime();
         const now = this.now().getTime();
         const delay = endTime - now;
 
         if (delay > 0) {
-            setTimeout(() => {
+            this._timerCompletionTimeout = setTimeout(() => {
                 this.handleTimerComplete();
+                this._timerCompletionTimeout = null;
             }, delay);
-            console.log(`⏱️ 計時結束回調已設定，將在 ${delay / 1000} 秒後自動降落`);
+            console.log(`⏱️ 計時結束回調已設定，將在 ${delay / 1000} 秒後顯示降落按鈕`);
         } else {
             // 時間已經到了，立即處理
             this.handleTimerComplete();
@@ -3623,13 +3689,11 @@ class WakeUpMapGame {
     async handleTimerComplete() {
         if (this.gameState.flightCompleted) return; // 已經處理過
 
-        console.log('⏱️ 計時完成！飛機降落');
+        console.log('⏱️ 計時完成！顯示降落按鈕');
 
-        // 更新狀態
-        this.gameState.flightCompleted = true;
-        this.gameState.isLanding = true;
-        this.gameState.flightStatus = 'completed';
-        this.updateFlightStatusDisplay('已降落');
+        // 不要直接處理降落，而是顯示降落按鈕讓用戶點擊
+        // 這樣可以保持流程的一致性
+        this.showLandingButton();
 
         // 更新當前位置為目的地（下次飛行從這裡開始）
         if (this.gameState.selectedDestination) {
@@ -3668,11 +3732,12 @@ class WakeUpMapGame {
     }
 
     // 顯示降落按鈕
-    showLandingButton() {
+    showLandingButton(playAnnouncement = false) {
         this.showActionButton('landing');
 
-        // 播放降落廣播（計算準時性狀態）
-        if (this.gameState.selectedDestination) {
+        // 只有在明確要求時才播放降落廣播（例如用戶點擊降落按鈕時）
+        // 計時結束時只顯示按鈕，不自動播放語音
+        if (playAnnouncement && this.gameState.selectedDestination) {
             const punctuality = this.getPunctualityStatus();
             this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
         }
@@ -3955,18 +4020,20 @@ class WakeUpMapGame {
             console.log('🛫 [showBoardingInfoScreen] 狀態更新為: 機長準備廣播...');
         }
 
-        // 播放登機廣播（包含語音生成和播放）
-        console.log('🛫 [showBoardingInfoScreen] 開始播放登機廣播');
-        const playPromise = this.playSleepFlightAnnouncement('boarding', destination);
-
-        // 稍微延遲後更新狀態為「正在廣播中」（給 API 調用一點時間）
-        setTimeout(() => {
+        // 監聽語音開始播放事件
+        const handleAnnouncementStart = () => {
             if (statusEl) {
                 statusEl.textContent = '機長正在廣播中...';
                 statusEl.classList.add('status-playing');
                 console.log('🛫 [showBoardingInfoScreen] 狀態更新為: 機長正在廣播中...');
             }
-        }, 1000);
+            window.removeEventListener('announcementStarted', handleAnnouncementStart);
+        };
+        window.addEventListener('announcementStarted', handleAnnouncementStart);
+
+        // 播放登機廣播（包含語音生成和播放）
+        console.log('🛫 [showBoardingInfoScreen] 開始播放登機廣播');
+        const playPromise = this.playSleepFlightAnnouncement('boarding', destination);
 
         // 等待播放完成
         await playPromise;
@@ -4052,6 +4119,7 @@ class WakeUpMapGame {
                         <div class="landing-info-icon">🛬</div>
                         <h1 class="landing-info-title" id="landingInfoTitle">準備降落</h1>
                     </div>
+                    <div class="landing-info-status" id="landingInfoStatus">準備中...</div>
                     <div class="landing-info-body" id="landingInfoBody"></div>
                     <div class="landing-info-actions" id="landingInfoActions"></div>
                 </div>
@@ -4144,11 +4212,19 @@ class WakeUpMapGame {
 
         // 更新視窗內容
         const titleEl = document.getElementById('landingInfoTitle');
+        const statusEl = document.getElementById('landingInfoStatus');
         const bodyEl = document.getElementById('landingInfoBody');
         const actionsEl = document.getElementById('landingInfoActions');
 
         if (titleEl) titleEl.innerHTML = titleText;
-        if (bodyEl) bodyEl.innerHTML = bodyContent;
+        if (statusEl) {
+            statusEl.textContent = '機長準備廣播...';
+            statusEl.style.display = 'block';
+        }
+        if (bodyEl) {
+            bodyEl.innerHTML = bodyContent;
+            bodyEl.style.display = 'none'; // 初始隱藏內容，等語音開始播放後再顯示
+        }
         if (actionsEl) {
             actionsEl.innerHTML = actionButtons;
             // 初始隱藏按鈕，等聲音播放完後再顯示
@@ -4157,6 +4233,20 @@ class WakeUpMapGame {
 
         // 顯示視窗
         infoScreen.style.display = 'flex';
+
+        // 監聽語音開始播放事件
+        const handleAnnouncementStart = () => {
+            if (statusEl) {
+                statusEl.textContent = '機長正在廣播中...';
+                statusEl.classList.add('status-playing');
+                console.log('🛬 [showLandingInfoScreen] 狀態更新為: 機長正在廣播中...');
+            }
+            if (bodyEl) {
+                bodyEl.style.display = 'block'; // 顯示內容
+            }
+            window.removeEventListener('announcementStarted', handleAnnouncementStart);
+        };
+        window.addEventListener('announcementStarted', handleAnnouncementStart);
 
         // 同時播放機長聲音
         const announcementDestination = punctuality.isEarlyLanding && punctuality.landingCity
@@ -4290,6 +4380,18 @@ class WakeUpMapGame {
         this.gameState.selectedDestination = null;
         this.gameState.currentTicket = null;
         this.gameState.actionButtonState = 'hidden';
+
+        // 清除計時器相關狀態，確保下次飛行從頭開始
+        this.gameState.timerStartTime = null;
+        this.gameState.timerEndTime = null;
+        this.gameState.flightCompleted = false;
+        this.gameState.isLanding = false;
+
+        // 清除計時器更新間隔
+        if (this.flightTimerUpdateInterval) {
+            clearInterval(this.flightTimerUpdateInterval);
+            this.flightTimerUpdateInterval = null;
+        }
 
         // 更新首頁顯示（顯示當前位置，不顯示機票）
         this.updateCurrentLocationDisplay();
@@ -5177,6 +5279,17 @@ class WakeUpMapGame {
             if (announcement) {
                 // 使用 Promise 包裝播放，以便等待播放完成
                 return new Promise((resolve) => {
+                    let hasStarted = false;
+                    const onStartCallback = () => {
+                        if (!hasStarted) {
+                            hasStarted = true;
+                            // 觸發語音開始播放事件
+                            window.dispatchEvent(new CustomEvent('announcementStarted', {
+                                detail: { type: announcementType }
+                            }));
+                        }
+                    };
+
                     const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
                     if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
                         window.audioManager.playTextWithLanguage(announcement, lang, {
@@ -5186,9 +5299,11 @@ class WakeUpMapGame {
                         }).catch(() => {
                             resolve(false);
                         });
+                        // audioManager 可能沒有 onStart，所以立即觸發
+                        setTimeout(onStartCallback, 100);
                     } else {
-                        // 使用瀏覽器 TTS，監聽播放完成事件
-                        this.playTextWithBrowserTTS(announcement, resolve);
+                        // 使用瀏覽器 TTS，監聽播放開始和完成事件
+                        this.playTextWithBrowserTTS(announcement, resolve, onStartCallback);
                     }
                 });
             }
@@ -5200,6 +5315,17 @@ class WakeUpMapGame {
         const fallback = this.getCaptainStyleFallback(announcementType, destination);
         return new Promise((resolve) => {
             try {
+                let hasStarted = false;
+                const onStartCallback = () => {
+                    if (!hasStarted) {
+                        hasStarted = true;
+                        // 觸發語音開始播放事件
+                        window.dispatchEvent(new CustomEvent('announcementStarted', {
+                            detail: { type: announcementType }
+                        }));
+                    }
+                };
+
                 const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
                 if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
                     window.audioManager.playTextWithLanguage(fallback, lang, {
@@ -5212,8 +5338,10 @@ class WakeUpMapGame {
                     }).catch(() => {
                         resolve(false);
                     });
+                    // audioManager 可能沒有 onStart，所以立即觸發
+                    setTimeout(onStartCallback, 100);
                 } else {
-                    this.playTextWithBrowserTTS(fallback, resolve);
+                    this.playTextWithBrowserTTS(fallback, resolve, onStartCallback);
                 }
             } catch (e) {
                 console.warn('播放備援語音失敗，改以 alert 顯示文案');
@@ -5258,7 +5386,7 @@ class WakeUpMapGame {
     }
 
     // 使用瀏覽器TTS播放文字
-    playTextWithBrowserTTS(text, onComplete = null) {
+    playTextWithBrowserTTS(text, onComplete = null, onStart = null) {
         if ('speechSynthesis' in window) {
             const voices = speechSynthesis.getVoices();
             const preferred = voices.find(v => /zh-TW/i.test(v.lang) && /male|Google|Android/i.test(v.name));
@@ -5267,6 +5395,13 @@ class WakeUpMapGame {
             utterance.lang = 'zh-TW';
             utterance.rate = 1.05; // 活潑一點
             utterance.pitch = 0.95;
+
+            // 監聽播放開始事件
+            if (onStart) {
+                utterance.onstart = () => {
+                    onStart();
+                };
+            }
 
             // 監聽播放完成事件
             if (onComplete) {

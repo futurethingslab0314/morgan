@@ -4446,8 +4446,10 @@ body {
     border: 1px solid rgba(255, 107, 53, 0.2);
     z-index: 1000;
     width: 280px;
-    max-height: 300px;
-    overflow: hidden;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
     transition: all 0.3s ease;
     transform-origin: top;
     margin-top: 10px;
@@ -5017,13 +5019,17 @@ body {
 .taipei-location-panel.ticket-only {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 25px 22px;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 0;
+    padding: 0;
     overflow: visible;
 }
 
-.taipei-location-panel.ticket-only .location-ticket {
+.taipei-location-panel.ticket-only .location-ticket-map-style {
     margin: 0;
+    width: 100%;
+    border-radius: 20px;
 }
 
 .location-mini-icon {
@@ -5566,9 +5572,16 @@ body {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 12px;
     padding: 16px;
-    margin-top: 16px;
+    margin-top: 0;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(100, 149, 237, 0.3);
+}
+
+.taipei-location-panel.ticket-only .location-ticket-map-style {
+    border-radius: 20px;
+    padding: 25px 24px;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .ticket-map-header {
