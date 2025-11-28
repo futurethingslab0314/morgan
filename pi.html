@@ -195,6 +195,355 @@
                 opacity: 0;
             }
         }
+
+        /* 降落畫面樣式 */
+        .landing-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2d5016 0%, #3d6b1f 100%);
+            z-index: 9999;
+        }
+
+        .landing-content {
+            text-align: center;
+            color: white;
+        }
+
+        .landing-icon {
+            font-size: 120px;
+            margin-bottom: 30px;
+            animation: landing 2s infinite;
+        }
+
+        .landing-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 0 0 40px 0;
+        }
+
+        .landing-animation {
+            margin-top: 40px;
+        }
+
+        .plane-landing-animation {
+            font-size: 80px;
+            animation: planeLanding 3s infinite;
+        }
+
+        @keyframes landing {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(10px) rotate(-2deg);
+            }
+        }
+
+        @keyframes planeLanding {
+            0% {
+                transform: translateX(0) translateY(-200px) scale(1.2);
+                opacity: 0.5;
+            }
+            50% {
+                transform: translateX(0) translateY(-50px) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(0) translateY(0) scale(0.8);
+                opacity: 1;
+            }
+        }
+
+        /* 降落資訊大視窗樣式 */
+        .landing-info-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a3d1a 0%, #2d5a2d 100%);
+            z-index: 10000;
+        }
+
+        .landing-info-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            padding: 60px 80px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeInScale 0.5s ease-out;
+            text-align: center;
+        }
+
+        .landing-info-header {
+            margin-bottom: 40px;
+        }
+
+        .landing-info-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            animation: landing 2s infinite;
+        }
+
+        .landing-info-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #2d5a2d;
+            margin: 0;
+        }
+
+        .landing-info-body {
+            font-size: 20px;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 40px;
+            text-align: left;
+        }
+
+        .landing-info-body p {
+            margin: 15px 0;
+        }
+
+        .landing-info-actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .landing-info-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .landing-info-btn-primary {
+            background: linear-gradient(135deg, #2d5a2d 0%, #3d7a3d 100%);
+            color: white;
+        }
+
+        .landing-info-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(45, 90, 45, 0.4);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .badge-early {
+            background: #ffa500;
+            color: white;
+        }
+
+        .badge-perfect {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .badge-ontime {
+            background: #4caf50;
+            color: white;
+        }
+
+        .badge-late {
+            background: #f44336;
+            color: white;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* 起飛資訊大視窗樣式 */
+        .boarding-info-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            z-index: 10000;
+        }
+
+        .boarding-info-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            padding: 60px 80px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeInScale 0.5s ease-out;
+            text-align: center;
+        }
+
+        .boarding-info-header {
+            margin-bottom: 40px;
+        }
+
+        .boarding-info-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            animation: fly 2s infinite;
+        }
+
+        .boarding-info-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin: 0;
+        }
+
+        .boarding-info-body {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .boarding-route {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(30, 60, 114, 0.1);
+            border-radius: 15px;
+        }
+
+        .route-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .route-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .route-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .route-arrow {
+            font-size: 32px;
+            color: #1e3c72;
+        }
+
+        .boarding-details {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .detail-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .detail-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .boarding-info-status {
+            font-size: 20px;
+            color: #1e3c72;
+            margin: 30px 0;
+            padding: 15px;
+            background: rgba(30, 60, 114, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .boarding-info-status.status-playing {
+            color: #2a5298;
+            background: rgba(42, 82, 152, 0.2);
+            animation: pulse 1.5s infinite;
+        }
+
+        .boarding-info-status.status-complete {
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .boarding-info-actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .boarding-info-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .boarding-info-btn-primary {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .boarding-info-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(30, 60, 114, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
     </style>
     
     <link rel="stylesheet" href="pi-style.css">

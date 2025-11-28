@@ -698,14 +698,21 @@ class WakeUpMapGame {
 
             console.log('✅ 開始進入地圖頁面...');
 
-            // 播放起飛廣播後再進入地圖
-            try {
-                await this.playSleepFlightAnnouncement('takeoff', this.gameState.selectedDestination || this.gameState.currentTicket?.destination);
-            } catch (e) {
-                console.warn('起飛語音播放失敗，改為直接進入地圖', e);
+            // 顯示起飛資訊大視窗（同時播放機長聲音）
+            const destination = this.gameState.selectedDestination || this.gameState.currentTicket?.destination;
+            if (destination) {
+                // 臨時設置目的地以便顯示資訊
+                const originalDestination = this.gameState.selectedDestination;
+                this.gameState.selectedDestination = destination;
+                await this.showBoardingInfoScreen();
+                // 恢復原始目的地（如果有的話）
+                if (originalDestination) {
+                    this.gameState.selectedDestination = originalDestination;
+                }
+            } else {
+                // 如果沒有目的地，直接開始遊戲
+                this.startGame();
             }
-
-            this.startGame();
         });
 
         // 目的地選擇事件
@@ -2478,17 +2485,57 @@ class WakeUpMapGame {
         const pickUniqueCountries = (list) => {
             const top = [];
             const seen = new Set();
-            for (const c of list) {
-                if (seen.has(c.countryCode)) continue;
-                seen.add(c.countryCode);
-                top.push({
-                    ...c,
-                    flag: this.countryCodeToEmoji(c.countryCode),
-                    price: this.calculateFlightPrice(c.distanceKm),
-                    unlocked: true
-                });
+
+            // 先按距離排序
+            const sorted = [...list].sort((a, b) => a.distanceKm - b.distanceKm);
+            const total = sorted.length;
+
+            // 將候選城市分成幾個距離範圍，增加多樣性
+            const ranges = [
+                { min: 0, max: Math.max(1, Math.floor(total * 0.3)) },      // 前 30%（最近）
+                { min: Math.floor(total * 0.3), max: Math.floor(total * 0.6) },   // 30%-60%
+                { min: Math.floor(total * 0.6), max: Math.floor(total * 0.9) },   // 60%-90%
+                { min: Math.floor(total * 0.9), max: total }                      // 90%-100%（較遠）
+            ];
+
+            // 從每個範圍中隨機選擇一個不同國家的城市
+            for (const range of ranges) {
                 if (top.length >= 4) break;
+
+                const inRange = sorted.slice(range.min, range.max);
+                // 過濾掉已經選過的國家
+                const available = inRange.filter(c => !seen.has(c.countryCode));
+
+                if (available.length > 0) {
+                    // 隨機選擇一個
+                    const randomIndex = Math.floor(Math.random() * available.length);
+                    const chosen = available[randomIndex];
+                    seen.add(chosen.countryCode);
+                    top.push({
+                        ...chosen,
+                        flag: this.countryCodeToEmoji(chosen.countryCode),
+                        price: this.calculateFlightPrice(chosen.distanceKm),
+                        unlocked: true
+                    });
+                }
             }
+
+            // 如果還沒選夠4個，從剩餘候選中隨機補充
+            if (top.length < 4) {
+                const remaining = sorted.filter(c => !seen.has(c.countryCode));
+                while (top.length < 4 && remaining.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * remaining.length);
+                    const chosen = remaining.splice(randomIndex, 1)[0];
+                    seen.add(chosen.countryCode);
+                    top.push({
+                        ...chosen,
+                        flag: this.countryCodeToEmoji(chosen.countryCode),
+                        price: this.calculateFlightPrice(chosen.distanceKm),
+                        unlocked: true
+                    });
+                }
+            }
+
             return top;
         };
 
@@ -3066,6 +3113,36 @@ class WakeUpMapGame {
         }
     }
 
+    // 顯示降落畫面
+    showLandingScreen() {
+        // 創建或獲取降落畫面
+        let landingScreen = document.getElementById('landingScreen');
+        if (!landingScreen) {
+            landingScreen = document.createElement('div');
+            landingScreen.id = 'landingScreen';
+            landingScreen.className = 'landing-screen';
+            landingScreen.innerHTML = `
+                <div class="landing-content">
+                    <div class="landing-icon">🛬</div>
+                    <h1 class="landing-title">準備降落</h1>
+                    <div class="landing-animation">
+                        <div class="plane-landing-animation">✈️</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(landingScreen);
+        }
+        landingScreen.style.display = 'flex';
+    }
+
+    // 隱藏降落畫面
+    hideLandingScreen() {
+        const landingScreen = document.getElementById('landingScreen');
+        if (landingScreen) {
+            landingScreen.style.display = 'none';
+        }
+    }
+
     // 顯示地圖畫面
     showMapScreen() {
         // 切換到 resultState（地圖頁面）
@@ -3120,22 +3197,14 @@ class WakeUpMapGame {
         // 顯示降落中狀態
         this.updateFlightStatusDisplay('降落中');
 
-        // 隱藏等待視窗，顯示起飛畫面
+        // 隱藏等待視窗
         this.hideWaitingModal();
-        this.showTakeOffScreen();
 
-        // 播放降落廣播
+        // 計算準時性狀態
         const punctuality = this.getPunctualityStatus();
-        await this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
 
-        // 播放完成後，隱藏起飛畫面，顯示地圖
-        this.hideTakeOffScreen();
-        this.showMapScreen();
-
-        // 2秒後顯示降落結果彈窗
-        setTimeout(async () => {
-            await this.showLandingOutcomeModal(punctuality);
-        }, 2000);
+        // 顯示降落資訊大視窗（同時播放機長聲音）
+        await this.showLandingInfoScreen(punctuality);
 
         // 重置處理標誌
         this.isProcessingAction = false;
@@ -3188,19 +3257,16 @@ class WakeUpMapGame {
             });
         } catch (e) { console.warn('寫入睡覺開始記錄失敗', e); }
 
-        // 隱藏等待視窗，顯示起飛畫面
+        // 隱藏等待視窗
         this.hideWaitingModal();
-        this.showTakeOffScreen();
 
-        // 播放登機廣播
+        // 顯示起飛資訊大視窗（同時播放機長聲音）
         if (this.gameState.flightTimerMode && this.gameState.selectedDestination) {
-            console.log('準備播放登機廣播');
-            await this.playSleepFlightAnnouncement('boarding', this.gameState.selectedDestination);
+            await this.showBoardingInfoScreen();
+        } else {
+            // 如果沒有目的地，直接顯示地圖
+            this.showMapScreen();
         }
-
-        // 播放完成後，隱藏起飛畫面，顯示地圖
-        this.hideTakeOffScreen();
-        this.showMapScreen();
 
         // 寫入 Firestore：flight 狀態為 flying，記錄 sleepStartAt
         try {
@@ -3300,7 +3366,7 @@ class WakeUpMapGame {
     }
 
     // 計時完成處理（飛行計時器模式）
-    handleTimerComplete() {
+    async handleTimerComplete() {
         if (this.gameState.flightCompleted) return; // 已經處理過
 
         console.log('⏱️ 計時完成！飛機降落');
@@ -3328,27 +3394,23 @@ class WakeUpMapGame {
             console.log('📍 當前位置已更新為:', destination.name, '時區:', destination.timezone);
         }
 
-        // 計算準時性狀態並播放降落廣播
+        // 計算準時性狀態並顯示降落資訊大視窗（同時播放聲音）
         if (this.gameState.selectedDestination) {
             const punctuality = this.getPunctualityStatus();
-            this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
+            await this.showLandingInfoScreen(punctuality);
+        } else {
+            // 如果沒有目的地，直接顯示完成畫面
+            this.showFlightCompletionModal();
         }
-
-        // 顯示完成畫面
-        this.showFlightCompletionModal();
     }
 
-    // 顯示飛行完成畫面
+    // 顯示飛行完成畫面（備用方法，當沒有目的地時使用）
     showFlightCompletionModal() {
         // 這裡可以顯示完成動畫或彈窗
         const destination = this.gameState.selectedDestination;
         if (destination) {
             alert(`✈️ 飛行完成！\n\n恭喜抵達 ${destination.flag} ${destination.name}！`);
         }
-
-        // 顯示降落結果
-        const p = this.getPunctualityStatus();
-        this.showLandingOutcomeModal(p).catch(err => console.error('顯示降落結果彈窗失敗:', err));
     }
 
     // 顯示降落按鈕
@@ -3563,7 +3625,299 @@ class WakeUpMapGame {
         return result;
     }
 
-    // 顯示降落結果彈窗
+    // 顯示起飛資訊大視窗（整合顯示資訊和播放聲音）
+    async showBoardingInfoScreen() {
+        const destination = this.gameState.selectedDestination;
+        const origin = this.gameState.currentLocation;
+        const cityName = destination?.name || '目的地';
+        const countryName = destination?.country || '';
+        const originName = origin?.name || '台北';
+        const timerMinutes = this.gameState.timerDuration || 30;
+
+        // 創建或獲取起飛資訊大視窗
+        let infoScreen = document.getElementById('boardingInfoScreen');
+        if (!infoScreen) {
+            infoScreen = document.createElement('div');
+            infoScreen.id = 'boardingInfoScreen';
+            infoScreen.className = 'boarding-info-screen';
+            infoScreen.innerHTML = `
+                <div class="boarding-info-content">
+                    <div class="boarding-info-header">
+                        <div class="boarding-info-icon">✈️</div>
+                        <h1 class="boarding-info-title" id="boardingInfoTitle">準備起飛</h1>
+                    </div>
+                    <div class="boarding-info-body" id="boardingInfoBody"></div>
+                    <div class="boarding-info-status" id="boardingInfoStatus">機長準備廣播...</div>
+                    <div class="boarding-info-actions" id="boardingInfoActions" style="display: none;">
+                        <button class="boarding-info-btn boarding-info-btn-primary" onclick="window.wakeUpMapGame.confirmBoardingInfo()">開始旅程</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(infoScreen);
+        }
+
+        // 更新視窗內容
+        const titleEl = document.getElementById('boardingInfoTitle');
+        const bodyEl = document.getElementById('boardingInfoBody');
+        const statusEl = document.getElementById('boardingInfoStatus');
+        const actionsEl = document.getElementById('boardingInfoActions');
+
+        if (titleEl) titleEl.textContent = '✈️ 準備起飛';
+        if (bodyEl) {
+            bodyEl.innerHTML = `
+                <div class="boarding-route">
+                    <div class="route-item">
+                        <span class="route-label">出發地</span>
+                        <span class="route-value">${originName}</span>
+                    </div>
+                    <div class="route-arrow">→</div>
+                    <div class="route-item">
+                        <span class="route-label">目的地</span>
+                        <span class="route-value">${cityName}, ${countryName}</span>
+                    </div>
+                </div>
+                <div class="boarding-details">
+                    <div class="detail-item">
+                        <span class="detail-label">⏱️ 飛行時間</span>
+                        <span class="detail-value">${timerMinutes} 分鐘</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">🎯 任務</span>
+                        <span class="detail-value">${this.getTaskTypeName(this.gameState.taskType || 'REST')}</span>
+                    </div>
+                </div>
+            `;
+        }
+        if (statusEl) statusEl.textContent = '機長準備廣播...';
+
+        // 顯示視窗
+        infoScreen.style.display = 'flex';
+
+        // 更新狀態：正在播放廣播
+        if (statusEl) {
+            statusEl.textContent = '機長正在廣播...';
+            statusEl.classList.add('status-playing');
+        }
+
+        // 播放登機廣播
+        await this.playSleepFlightAnnouncement('boarding', destination);
+
+        // 播放完成後更新狀態並顯示確認按鈕
+        if (statusEl) {
+            statusEl.textContent = '廣播完成，準備起飛';
+            statusEl.classList.remove('status-playing');
+            statusEl.classList.add('status-complete');
+        }
+        if (actionsEl) {
+            actionsEl.style.display = 'flex';
+        }
+    }
+
+    // 確認起飛資訊
+    async confirmBoardingInfo() {
+        // 隱藏起飛資訊視窗
+        const infoScreen = document.getElementById('boardingInfoScreen');
+        if (infoScreen) {
+            infoScreen.style.display = 'none';
+        }
+
+        // 如果遊戲還沒開始，先開始遊戲
+        if (!this.gameState.gameStarted) {
+            this.startGame();
+        } else {
+            // 如果已經開始，直接切換到地圖
+            this.showMapScreen();
+        }
+    }
+
+    // 獲取任務類型名稱
+    getTaskTypeName(taskType) {
+        const taskNames = {
+            'READING': '📚 讀書',
+            'EXERCISE': '💪 運動',
+            'MEDITATION': '🧘 冥想',
+            'REST': '😴 休息',
+            'WORK': '💻 工作',
+            'GAME': '🎮 遊戲'
+        };
+        return taskNames[taskType] || '😴 休息';
+    }
+
+    // 顯示降落資訊大視窗（整合顯示資訊和播放聲音）
+    async showLandingInfoScreen(punctuality) {
+        // 如果是提早降落，先計算中途降落城市資訊
+        if (punctuality.status === 'EARLY' && !punctuality.isEarlyLanding) {
+            try {
+                const landingCity = await this.calculateEarlyLandingCity(punctuality);
+                if (landingCity.isEarlyLanding) {
+                    punctuality.landingCity = landingCity.name;
+                    punctuality.landingCityCountry = landingCity.country;
+                    punctuality.originalDestination = this.gameState.selectedDestination.name;
+                    punctuality.originalDestinationCountry = this.gameState.selectedDestination.country;
+                    punctuality.isEarlyLanding = true;
+                    punctuality.actualFlightDistance = landingCity.actualFlightDistance;
+                    punctuality.plannedDistance = landingCity.plannedDistance;
+                    punctuality.flightProgress = landingCity.flightProgress;
+                }
+            } catch (error) {
+                console.error('計算中途降落城市失敗:', error);
+            }
+        }
+
+        const destination = this.gameState.selectedDestination;
+        const cityName = destination?.name || '目的地';
+        const countryName = destination?.country || '';
+
+        // 創建或獲取降落資訊大視窗
+        let infoScreen = document.getElementById('landingInfoScreen');
+        if (!infoScreen) {
+            infoScreen = document.createElement('div');
+            infoScreen.id = 'landingInfoScreen';
+            infoScreen.className = 'landing-info-screen';
+            infoScreen.innerHTML = `
+                <div class="landing-info-content">
+                    <div class="landing-info-header">
+                        <div class="landing-info-icon">🛬</div>
+                        <h1 class="landing-info-title" id="landingInfoTitle">準備降落</h1>
+                    </div>
+                    <div class="landing-info-body" id="landingInfoBody"></div>
+                    <div class="landing-info-actions" id="landingInfoActions"></div>
+                </div>
+            `;
+            document.body.appendChild(infoScreen);
+        }
+
+        // 根據狀態設置內容
+        let titleText = '';
+        let bodyContent = '';
+        let actionButtons = '';
+
+        if (punctuality.status === 'EARLY') {
+            const isSuperEarly = punctuality.minutesDiff >= 10;
+            const isMidwayLanding = punctuality.isEarlyLanding && punctuality.landingCity;
+            const landingCityName = punctuality.landingCity || cityName;
+            const originalDestName = punctuality.originalDestination || cityName;
+
+            titleText = isSuperEarly
+                ? '🛬 提早降落 <span class="badge badge-early">超早抵達</span>'
+                : '🛬 提早降落 <span class="badge badge-early">提早抵達</span>';
+
+            if (isMidwayLanding && landingCityName !== originalDestName) {
+                const progressPercent = punctuality.flightProgress || 0;
+                bodyContent = `
+                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>${isSuperEarly ? '哇！時間管理大師！' : '呃…我們好像提早到太多了。'}</p>
+                    <p>因為還沒到終點，飛機已在【${landingCityName}】提前降落。</p>
+                    <p>原定目的地【${originalDestName}】尚未到達（已飛行約 ${progressPercent}% 的距離）。</p>
+                `;
+            } else {
+                bodyContent = `
+                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>${isSuperEarly ? '哇！時間管理大師！飛機提前完成任務，已經降落在' : '呃…我們好像提早到太多了。飛機已在'}【${cityName}】提前降落。</p>
+                `;
+            }
+
+            actionButtons = `
+                <button class="landing-info-btn landing-info-btn-primary" onclick="window.wakeUpMapGame.confirmLandingInfo('early', ${JSON.stringify(punctuality).replace(/"/g, '&quot;')})">確認降落</button>
+            `;
+        } else if (punctuality.status === 'PERFECT') {
+            titleText = '🛬 完美準時降落 <span class="badge badge-perfect">完美準時 ⭐</span>';
+            bodyContent = `
+                <p>完美準時！時間掌控的精準藝術 🎯</p>
+                <p>乘客您好，本次航班順利準時降落於【${cityName}】。</p>
+                <p>感謝你堅持完成這段旅程，你的時間管理很漂亮。</p>
+            `;
+            actionButtons = `
+                <button class="landing-info-btn landing-info-btn-primary" onclick="window.wakeUpMapGame.confirmLandingInfo('perfect', ${JSON.stringify(punctuality).replace(/"/g, '&quot;')})">確認降落</button>
+            `;
+        } else if (punctuality.status === 'ON_TIME') {
+            titleText = '🛬 準時降落 <span class="badge badge-ontime">準時抵達</span>';
+            bodyContent = `
+                <p>恭喜！您準時降落了！</p>
+                <p>乘客您好，本次航班順利準時降落於【${cityName}】。</p>
+                <p>機長對您的時間管理表示讚賞。</p>
+                <p>歡迎來到【${cityName}】，祝你今天有個順心的旅程。</p>
+            `;
+            actionButtons = `
+                <button class="landing-info-btn landing-info-btn-primary" onclick="window.wakeUpMapGame.confirmLandingInfo('ontime', ${JSON.stringify(punctuality).replace(/"/g, '&quot;')})">確認降落</button>
+            `;
+        } else {
+            // LATE
+            const isSevereLate = punctuality.minutesDiff > 10;
+            const hasDiversion = punctuality.originalDestination && punctuality.divertedCity;
+            const originalCityName = punctuality.originalDestination || cityName;
+
+            titleText = isSevereLate
+                ? '🛬 誤點降落 <span class="badge badge-late">嚴重誤點</span>'
+                : '🛬 誤點降落 <span class="badge badge-late">輕微遲到</span>';
+
+            let destinationNote = '';
+            if (hasDiversion && punctuality.divertedCity !== originalCityName) {
+                destinationNote = `<p>原定降落於【${originalCityName}】，但因時間超過，我們轉降至【${punctuality.divertedCity}】。</p>`;
+            } else if (isSevereLate) {
+                destinationNote = `<p>原定降落於【${cityName}】，但因時間超過，可能轉降至其他城市。</p>`;
+            } else {
+                destinationNote = `<p>雖有延誤，但仍順利降落在【${cityName}】。</p>`;
+            }
+
+            bodyContent = `
+                <p>抱歉，我們在空中繞了幾圈…本次航班延誤了 ${punctuality.minutesDiff} 分鐘。</p>
+                ${destinationNote}
+                <p>飛機需要在空中盤旋等待降落許可。</p>
+            `;
+            actionButtons = `
+                <button class="landing-info-btn landing-info-btn-primary" onclick="window.wakeUpMapGame.confirmLandingInfo('late', ${JSON.stringify(punctuality).replace(/"/g, '&quot;')})">確認降落</button>
+            `;
+        }
+
+        // 更新視窗內容
+        const titleEl = document.getElementById('landingInfoTitle');
+        const bodyEl = document.getElementById('landingInfoBody');
+        const actionsEl = document.getElementById('landingInfoActions');
+
+        if (titleEl) titleEl.innerHTML = titleText;
+        if (bodyEl) bodyEl.innerHTML = bodyContent;
+        if (actionsEl) {
+            actionsEl.innerHTML = actionButtons;
+            // 初始隱藏按鈕，等聲音播放完後再顯示
+            actionsEl.style.display = 'none';
+        }
+
+        // 顯示視窗
+        infoScreen.style.display = 'flex';
+
+        // 同時播放機長聲音
+        const actualDestination = punctuality.isEarlyLanding && punctuality.landingCity
+            ? { name: punctuality.landingCity, country: punctuality.landingCityCountry }
+            : destination;
+
+        await this.playSleepFlightAnnouncement('landing', actualDestination, punctuality);
+
+        // 播放完成後顯示確認按鈕
+        if (actionsEl) {
+            actionsEl.style.display = 'block';
+        }
+    }
+
+    // 確認降落資訊（整合原本的 applyEarlyLanding, applyOnTimeLanding, applyLateLanding）
+    async confirmLandingInfo(type, punctuality) {
+        // 隱藏降落資訊視窗
+        const infoScreen = document.getElementById('landingInfoScreen');
+        if (infoScreen) {
+            infoScreen.style.display = 'none';
+        }
+
+        // 根據類型處理降落
+        if (type === 'early') {
+            await this.applyEarlyLanding(punctuality);
+        } else if (type === 'perfect' || type === 'ontime') {
+            await this.applyOnTimeLanding(punctuality);
+        } else if (type === 'late') {
+            await this.applyLateLanding(punctuality);
+        }
+    }
+
+    // 顯示降落結果彈窗（保留作為備用，但不再使用）
     async showLandingOutcomeModal(punctuality) {
         const modal = document.getElementById('landingModal');
         const title = document.getElementById('landingTitle');
@@ -3751,9 +4105,7 @@ class WakeUpMapGame {
         // 保存 punctuality 到 gameState，供 completeFlight 使用
         this.gameState.punctuality = punctuality;
 
-        // 播放降落廣播（傳入準時性狀態和降落城市）
-        await this.playSleepFlightAnnouncement('landing', landingCity, punctuality);
-
+        // 不再播放聲音（已在 showLandingInfoScreen 中播放）
         this.hideLandingModal();
         await this.completeFlight();
     }
@@ -3770,16 +4122,7 @@ class WakeUpMapGame {
         // 保存 punctuality 到 gameState，供 completeFlight 使用
         this.gameState.punctuality = punctuality;
 
-        // 顯示隨機驚喜
-        const surprise = this.randomOnTimeSurprise();
-        const surpriseText = document.getElementById('surpriseText');
-        if (surpriseText) {
-            surpriseText.innerHTML = `<p><strong>驚喜：</strong>${surprise.message}</p>`;
-        }
-
-        // 播放降落廣播（傳入準時性狀態）
-        await this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
-
+        // 不再播放聲音（已在 showLandingInfoScreen 中播放）
         this.hideLandingModal();
         await this.completeFlight();
     }
@@ -3808,9 +4151,7 @@ class WakeUpMapGame {
         // 保存 punctuality 到 gameState，供 completeFlight 使用
         this.gameState.punctuality = punctuality;
 
-        // 播放降落廣播（傳入準時性狀態和改降城市）
-        await this.playSleepFlightAnnouncement('landing', divertedCity || this.gameState.selectedDestination, punctuality);
-
+        // 不再播放聲音（已在 showLandingInfoScreen 中播放）
         this.hideLandingModal();
         await this.completeFlight();
     }
