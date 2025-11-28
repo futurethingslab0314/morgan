@@ -1508,6 +1508,14 @@ class WakeUpMapGame {
             }
         }[lang] || i18n?.['zh-TW'];
 
+        // 獲取當前位置（上次降落位置）作為出發地
+        const currentLocation = this.gameState.currentLocation || {
+            name: '台北',
+            countryCode: 'TPE',
+            country: '台灣'
+        };
+        const originCode = currentLocation.countryCode || 'TPE';
+
         // 創建飛行狀態懸浮視窗（右上角）
         const flightStatus = document.createElement('div');
         flightStatus.className = 'flight-status-popup';
@@ -1542,6 +1550,9 @@ class WakeUpMapGame {
                         <span class="value flight-status">準備起飛</span>
                     </div>
                 </div>
+                <div class="expand-toggle" id="expandToggle">
+                    <span class="expand-arrow">▼</span>
+                </div>
             </div>
         `;
 
@@ -1553,7 +1564,7 @@ class WakeUpMapGame {
         const today = new Date().toISOString().split('T')[0];
 
         const simpleTicket = document.createElement('div');
-        simpleTicket.className = 'simple-ticket-popup';
+        simpleTicket.className = 'simple-ticket-popup collapsed';
         simpleTicket.innerHTML = `
             <div class="simple-ticket-content">
                 <div class="ticket-header">
@@ -1561,7 +1572,7 @@ class WakeUpMapGame {
                     <span class="airline-name">WAKE UP</span>
                 </div>
                 <div class="ticket-route">
-                    <span class="from">TPE</span>
+                    <span class="from">${originCode}</span>
                     <span class="arrow">→</span>
                     <span class="to">${destination.countryCode || 'XXX'}</span>
                 </div>
@@ -1594,6 +1605,18 @@ class WakeUpMapGame {
         const overlayContainer = document.getElementById('resultState') || document.body;
         overlayContainer.appendChild(flightStatus);
         overlayContainer.appendChild(simpleTicket);
+
+        // 設置展開/收起功能
+        const expandToggle = flightStatus.querySelector('#expandToggle');
+        if (expandToggle) {
+            expandToggle.addEventListener('click', () => {
+                simpleTicket.classList.toggle('collapsed');
+                const arrow = expandToggle.querySelector('.expand-arrow');
+                if (arrow) {
+                    arrow.textContent = simpleTicket.classList.contains('collapsed') ? '▼' : '▲';
+                }
+            });
+        }
 
         // 如果計時器還沒開始，立即開始計時器（進入地圖時自動開始）
         if (!this.gameState.timerStartTime || !this.gameState.timerEndTime) {
@@ -3676,35 +3699,12 @@ class WakeUpMapGame {
             console.log('🛫 [showBoardingInfoScreen] 使用現有視窗元素');
         }
 
-        // 更新視窗內容
+        // 更新視窗內容（簡化版：只顯示標題和狀態）
         infoScreen.innerHTML = `
             <div class="boarding-info-content">
                 <div class="boarding-info-header">
                     <div class="boarding-info-icon">✈️</div>
                     <h1 class="boarding-info-title" id="boardingInfoTitle">準備起飛</h1>
-                </div>
-                <div class="boarding-info-body" id="boardingInfoBody">
-                    <div class="boarding-route">
-                        <div class="route-item">
-                            <span class="route-label">出發地</span>
-                            <span class="route-value">${originName}</span>
-                        </div>
-                        <div class="route-arrow">→</div>
-                        <div class="route-item">
-                            <span class="route-label">目的地</span>
-                            <span class="route-value">${cityName}, ${countryName}</span>
-                        </div>
-                    </div>
-                    <div class="boarding-details">
-                        <div class="detail-item">
-                            <span class="detail-label">⏱️ 飛行時間</span>
-                            <span class="detail-value">${timerMinutes} 分鐘</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">🎯 任務</span>
-                            <span class="detail-value">${this.getTaskTypeName(this.gameState.taskType || 'REST')}</span>
-                        </div>
-                    </div>
                 </div>
                 <div class="boarding-info-status" id="boardingInfoStatus">準備中...</div>
             </div>

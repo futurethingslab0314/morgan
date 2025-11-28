@@ -4150,11 +4150,35 @@ body {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
     padding: 12px 14px;
+    padding-bottom: 8px;
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 107, 53, 0.2);
     z-index: 1000;
     width: 280px;
+}
+
+/* 展開/收起按鈕 */
+.expand-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 8px;
+    padding: 4px 0;
+    cursor: pointer;
+    border-top: 1px solid rgba(255, 107, 53, 0.2);
+    transition: all 0.3s ease;
+}
+
+.expand-toggle:hover {
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.expand-arrow {
+    color: #ff6b35;
+    font-size: 16px;
+    font-weight: bold;
+    transition: transform 0.3s ease;
 }
 
 .flight-status-content h3 {
@@ -4411,7 +4435,7 @@ body {
 /* 簡單機票（左下角） */
 .simple-ticket-popup {
     position: fixed;
-    bottom: 20px;
+    top: 240px;
     left: 20px;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
@@ -4421,6 +4445,20 @@ body {
     border: 1px solid rgba(255, 107, 53, 0.2);
     z-index: 1000;
     width: 280px;
+    max-height: 300px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    transform-origin: top;
+}
+
+/* 收起狀態 */
+.simple-ticket-popup.collapsed {
+    max-height: 0;
+    padding: 0 14px;
+    margin-top: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: scaleY(0);
 }
 
 .simple-ticket-content {
@@ -5205,7 +5243,7 @@ body {
     position: fixed;
     right: 20px;
     bottom: 20px;
-    z-index: 9999999999 !important;
+    z-index: 9999 !important;
 }
 
 /* 移除 pulse-glow 動畫定義，避免閃爍效果 */
