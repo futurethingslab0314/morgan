@@ -687,10 +687,11 @@ class WakeUpMapGame {
             console.log('🔄 開始旅程按鈕被點擊', {
                 hasTicket: !!this.gameState.currentTicket,
                 currentTicket: this.gameState.currentTicket,
-                selectedDestination: this.gameState.selectedDestination
+                selectedDestination: this.gameState.selectedDestination,
+                flightTimerMode: this.gameState.flightTimerMode
             });
 
-            if (!this.gameState.currentTicket) {
+            if (!this.gameState.currentTicket && !this.gameState.selectedDestination) {
                 console.warn('⚠️ 尚未規劃旅程，無法開始旅程');
                 alert('請先規劃旅程！');
                 return; // 尚未購票
@@ -700,17 +701,20 @@ class WakeUpMapGame {
 
             // 顯示起飛資訊大視窗（同時播放機長聲音，播放完成後自動跳轉）
             const destination = this.gameState.selectedDestination || this.gameState.currentTicket?.destination;
+            console.log('📍 目的地資訊:', destination);
+
             if (destination) {
-                // 臨時設置目的地以便顯示資訊
-                const originalDestination = this.gameState.selectedDestination;
-                this.gameState.selectedDestination = destination;
-                await this.showBoardingInfoScreen();
-                // 恢復原始目的地（如果有的話）
-                if (originalDestination) {
-                    this.gameState.selectedDestination = originalDestination;
+                // 確保目的地已設置
+                if (!this.gameState.selectedDestination) {
+                    this.gameState.selectedDestination = destination;
                 }
+                console.log('🛫 準備顯示起飛資訊大視窗');
+                await this.showBoardingInfoScreen();
             } else {
+                console.warn('⚠️ 沒有目的地，直接開始遊戲');
                 // 如果沒有目的地，直接開始遊戲
+                this.gameState.flightStarted = true;
+                this.gameState.flightStatus = 'flying';
                 this.startGame();
             }
         });
@@ -2426,7 +2430,7 @@ class WakeUpMapGame {
         // 假設飛機速度 800km/h，30分鐘 = 0.5小時 * 800 = 400km
         const FLIGHT_SPEED_KMH = 800; // 飛機時速
         const maxDistanceKm = (validTimerMinutes / 60) * FLIGHT_SPEED_KMH;
-        console.log(`✈️ 計時 ${validTimerMinutes} 分鐘，最大飛行距離: ${maxDistanceKm.toFixed(0)}km`);
+        console.log(`✈️ 計時 ${validTimerMinutes} 分鐘，最大飛行距離: ${maxDistanceKm.toFixed(0)}km (嚴格限制)`);
 
         // 計算所有城市到起點的距離
         const withDistance = pool.map(c => ({
@@ -2447,13 +2451,14 @@ class WakeUpMapGame {
             .sort((a, b) => a.distanceKm - b.distanceKm);
         console.log(`📊 在 ${minDistanceKm}-${maxDistanceKm.toFixed(0)}km 範圍內的城市數量:`, candidates.length);
 
-        // 如果候選城市太少，積極放寬距離範圍（最多到 1.5 倍）
-        if (candidates.length < 20) {
-            const expandedMax = maxDistanceKm * 1.5;
+        // 如果候選城市太少，稍微放寬距離範圍（最多到 1.2 倍，更嚴格）
+        // 但不會無限制擴大，保持合理的飛行時間
+        if (candidates.length < 10) {
+            const expandedMax = Math.min(maxDistanceKm * 1.2, maxDistanceKm + 200); // 最多增加200km或20%
             candidates = withDistance
                 .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= expandedMax)
                 .sort((a, b) => a.distanceKm - b.distanceKm);
-            console.log(`⚠️ 候選城市較少，放寬距離範圍至 ${expandedMax.toFixed(0)}km，現在有 ${candidates.length} 個候選城市`);
+            console.log(`⚠️ 候選城市較少，稍微放寬距離範圍至 ${expandedMax.toFixed(0)}km，現在有 ${candidates.length} 個候選城市`);
         }
 
         // 依國家分組，挑「最近」或「更耳熟能詳」的城市
@@ -2542,30 +2547,40 @@ class WakeUpMapGame {
         let top = pickUniqueCountries(candidates);
         console.log(`📊 初步選擇了 ${top.length} 個目的地`);
 
-        // 如果不足4個國家，逐步擴大搜尋範圍（最多到2.5倍距離，讓選項更多元）
-        let expand = maxDistanceKm * 1.5;
-        const maxExpand = maxDistanceKm * 2.5;
-        while (top.length < 4 && expand <= maxExpand) {
-            const more = withDistance
-                .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= expand)
-                .sort((a, b) => a.distanceKm - b.distanceKm);
-            const newTop = pickUniqueCountries(more);
-            if (newTop.length > top.length) {
-                top = newTop;
-                console.log(`📊 擴大搜尋範圍至 ${expand.toFixed(0)}km，找到 ${top.length} 個目的地`);
+        // 如果不足4個國家，稍微擴大搜尋範圍（但嚴格限制，最多到1.5倍距離）
+        // 這樣可以保持飛行時間的合理性
+        if (top.length < 4) {
+            const maxExpand = Math.min(maxDistanceKm * 1.5, maxDistanceKm + 300); // 最多增加300km或50%
+            let expand = maxDistanceKm * 1.1; // 從1.1倍開始
+            const expandStep = maxDistanceKm * 0.1; // 每次增加10%
+
+            while (top.length < 4 && expand <= maxExpand) {
+                const more = withDistance
+                    .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= expand)
+                    .sort((a, b) => a.distanceKm - b.distanceKm);
+                const newTop = pickUniqueCountries(more);
+                if (newTop.length > top.length) {
+                    top = newTop;
+                    console.log(`📊 擴大搜尋範圍至 ${expand.toFixed(0)}km，找到 ${top.length} 個目的地`);
+                }
+                expand += expandStep;
             }
-            expand += maxDistanceKm * 0.3; // 每次增加30%
         }
 
-        // 最後保底：如果還是不到4個，從所有候選中選（不限制距離上限）
+        // 如果還是不到4個，只從合理距離內選擇（不無限制擴大）
+        // 寧可顯示較少的目的地，也不要顯示不合理距離的目的地
         if (top.length < 4) {
-            console.log('⚠️ 候選城市仍不足，從所有城市中選擇（不限制距離上限）');
-            const allCandidates = withDistance
-                .filter(c => c.distanceKm >= minDistanceKm)
+            const reasonableMax = Math.min(maxDistanceKm * 1.5, maxDistanceKm + 300);
+            console.log(`⚠️ 候選城市仍不足，從合理距離內選擇（最多 ${reasonableMax.toFixed(0)}km）`);
+            const reasonableCandidates = withDistance
+                .filter(c => c.distanceKm >= minDistanceKm && c.distanceKm <= reasonableMax)
                 .sort((a, b) => a.distanceKm - b.distanceKm);
-            const finalTop = pickUniqueCountries(allCandidates);
+            const finalTop = pickUniqueCountries(reasonableCandidates);
             if (finalTop.length > top.length) {
                 top = finalTop;
+                console.log(`✅ 從合理距離內找到 ${top.length} 個目的地`);
+            } else {
+                console.log(`⚠️ 在合理距離內仍只有 ${top.length} 個目的地，將顯示這些選項`);
             }
         }
 
@@ -3624,7 +3639,7 @@ class WakeUpMapGame {
 
     // 顯示起飛資訊大視窗（整合顯示資訊和播放聲音，播放完成後自動跳轉）
     async showBoardingInfoScreen() {
-        console.log('🛫 顯示起飛資訊大視窗');
+        console.log('🛫 [showBoardingInfoScreen] 開始顯示起飛資訊大視窗');
         const destination = this.gameState.selectedDestination;
         const origin = this.gameState.currentLocation;
         const cityName = destination?.name || '目的地';
@@ -3632,13 +3647,26 @@ class WakeUpMapGame {
         const originName = origin?.name || '台北';
         const timerMinutes = this.gameState.timerDuration || 30;
 
+        console.log('🛫 [showBoardingInfoScreen] 資訊:', {
+            destination,
+            origin,
+            cityName,
+            countryName,
+            originName,
+            timerMinutes
+        });
+
         // 創建或獲取起飛資訊大視窗
         let infoScreen = document.getElementById('boardingInfoScreen');
         if (!infoScreen) {
+            console.log('🛫 [showBoardingInfoScreen] 創建新的視窗元素');
             infoScreen = document.createElement('div');
             infoScreen.id = 'boardingInfoScreen';
             infoScreen.className = 'boarding-info-screen';
             document.body.appendChild(infoScreen);
+            console.log('🛫 [showBoardingInfoScreen] 視窗元素已添加到 body');
+        } else {
+            console.log('🛫 [showBoardingInfoScreen] 使用現有視窗元素');
         }
 
         // 更新視窗內容
@@ -3677,20 +3705,38 @@ class WakeUpMapGame {
 
         const statusEl = document.getElementById('boardingInfoStatus');
 
-        // 顯示視窗
+        // 強制顯示視窗
+        console.log('🛫 [showBoardingInfoScreen] 設置視窗顯示');
         infoScreen.style.display = 'flex';
         infoScreen.style.zIndex = '10000';
+        infoScreen.style.position = 'fixed';
+        infoScreen.style.top = '0';
+        infoScreen.style.left = '0';
+        infoScreen.style.width = '100%';
+        infoScreen.style.height = '100%';
+        infoScreen.style.backgroundColor = 'rgba(30, 60, 114, 0.95)';
+
+        // 檢查視窗是否真的顯示了
+        const computedStyle = window.getComputedStyle(infoScreen);
+        console.log('🛫 [showBoardingInfoScreen] 視窗樣式檢查:', {
+            display: computedStyle.display,
+            zIndex: computedStyle.zIndex,
+            position: computedStyle.position,
+            visibility: computedStyle.visibility,
+            opacity: computedStyle.opacity
+        });
 
         // 稍微延遲一下，讓視窗先顯示
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // 更新狀態：等待語音生成
         if (statusEl) {
-            statusEl.textContent = '準備起飛...機長準備廣播...';
+            statusEl.textContent = '機長準備廣播...';
+            console.log('🛫 [showBoardingInfoScreen] 狀態更新為: 機長準備廣播...');
         }
 
         // 播放登機廣播（包含語音生成和播放）
-        // 在開始播放時更新狀態
+        console.log('🛫 [showBoardingInfoScreen] 開始播放登機廣播');
         const playPromise = this.playSleepFlightAnnouncement('boarding', destination);
 
         // 稍微延遲後更新狀態為「正在廣播中」（給 API 調用一點時間）
@@ -3698,14 +3744,17 @@ class WakeUpMapGame {
             if (statusEl) {
                 statusEl.textContent = '機長正在廣播中...';
                 statusEl.classList.add('status-playing');
+                console.log('🛫 [showBoardingInfoScreen] 狀態更新為: 機長正在廣播中...');
             }
-        }, 500);
+        }, 1000);
 
         // 等待播放完成
         await playPromise;
+        console.log('🛫 [showBoardingInfoScreen] 廣播播放完成');
 
         // 播放完成後，隱藏視窗並直接跳轉到地圖
         infoScreen.style.display = 'none';
+        console.log('🛫 [showBoardingInfoScreen] 視窗已隱藏，準備跳轉到地圖');
 
         // 設置飛行狀態並開始遊戲
         this.gameState.flightStarted = true;
@@ -3714,6 +3763,7 @@ class WakeUpMapGame {
 
         // 重置處理標誌
         this.isProcessingAction = false;
+        console.log('🛫 [showBoardingInfoScreen] 流程完成');
     }
 
     // 確認起飛資訊
