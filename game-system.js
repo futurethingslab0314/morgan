@@ -30,6 +30,9 @@ class WakeUpMapGame {
         this.usedCitiesFallback = false;
         this.citiesDataSource = 'unknown';
 
+        // 防重複點擊標誌
+        this.isProcessingAction = false;
+
         this.init();
     }
 
@@ -66,8 +69,8 @@ class WakeUpMapGame {
         const packs = {
             'zh-TW': {
                 langCode: '中',
-                buyText: '購買機票',
-                buySub: '選擇你的目的地',
+                buyText: '規劃旅程',
+                buySub: '選擇任務與目的地',
                 startText: '開始旅程',
                 startSub: '準備啟程',
                 flightInfoTitle: '飛行資訊',
@@ -91,8 +94,8 @@ class WakeUpMapGame {
             },
             'en': {
                 langCode: 'EN',
-                buyText: 'BUY TICKET',
-                buySub: 'Choose your destination',
+                buyText: 'PLAN JOURNEY',
+                buySub: 'Choose task & destination',
                 startText: 'START JOURNEY',
                 startSub: 'Get ready to fly',
                 flightInfoTitle: 'FLIGHT STATUS',
@@ -675,10 +678,10 @@ class WakeUpMapGame {
     }
 
     setupEventListeners() {
-        // 首頁：購買機票/開始旅程
+        // 首頁：規劃旅程/開始旅程
         document.getElementById('buyTicketBtn')?.addEventListener('click', () => {
             if (this.gameState.currentTicket) return; // 已有機票，禁用
-            this.showTimerModal(); // 先顯示計時長度選擇視窗
+            this.showTaskModal(); // 先顯示任務選擇視窗
         });
         document.getElementById('beginJourneyBtn')?.addEventListener('click', async () => {
             console.log('🔄 開始旅程按鈕被點擊', {
@@ -688,8 +691,8 @@ class WakeUpMapGame {
             });
 
             if (!this.gameState.currentTicket) {
-                console.warn('⚠️ 尚未購票，無法開始旅程');
-                alert('請先購買機票！');
+                console.warn('⚠️ 尚未規劃旅程，無法開始旅程');
+                alert('請先規劃旅程！');
                 return; // 尚未購票
             }
 
@@ -838,9 +841,9 @@ class WakeUpMapGame {
 
         console.log('✅ 任務已確認:', this.gameState.taskType);
 
-        // 關閉任務視窗，顯示目的地選擇視窗
+        // 關閉任務視窗，顯示計時長度選擇視窗
         this.hideTaskModal();
-        this.showDestinationModal();
+        this.showTimerModal();
     }
 
     async renderDestinationGrid() {
@@ -948,7 +951,7 @@ class WakeUpMapGame {
         }
     }
 
-    // 確認計時長度，進入第二階段：顯示目的地選擇
+    // 確認計時長度，進入第三階段：顯示目的地選擇
     async confirmTimerDuration() {
         const timerInput = document.getElementById('timerDurationInput');
         const timerMinutes = timerInput ? Number(timerInput.value) || 30 : 30;
@@ -960,9 +963,9 @@ class WakeUpMapGame {
 
         console.log(`✅ 計時長度已確認：${validMinutes} 分鐘`);
 
-        // 關閉計時長度視窗，開啟 TASK 視窗
+        // 關閉計時長度視窗，開啟目的地選擇視窗
         this.hideTimerModal();
-        this.showTaskModal();
+        this.showDestinationModal();
     }
 
     showDestinationModal() {
@@ -1087,7 +1090,7 @@ class WakeUpMapGame {
         }
 
         const destination = this.gameState.selectedDestination;
-        console.log('🎫 確認購買機票', destination);
+        console.log('🎫 確認旅程規劃', destination);
 
         // 生成機票
         this.gameState.currentTicket = {
@@ -1109,7 +1112,7 @@ class WakeUpMapGame {
         // 顯示機票UI在台北位置欄位下方
         this.showTicketInLocationPanel();
 
-        // 更新首頁按鈕狀態（購票後：購買機票禁用、開始旅程可按）
+        // 更新首頁按鈕狀態（規劃旅程後：規劃旅程按鈕禁用、開始旅程可按）
         this.refreshHomeButtonsState();
         console.log('✅ 按鈕狀態已更新，開始旅程按鈕應該已啟用');
 
@@ -1129,8 +1132,8 @@ class WakeUpMapGame {
         this.gameState.selectedDestination = null;
         this.gameState.currentTicket = null;
 
-        // 重新顯示計時長度選擇視窗（第一階段）
-        this.showTimerModal();
+        // 重新顯示任務選擇視窗（第一階段）
+        this.showTaskModal();
         this.refreshHomeButtonsState();
     }
 
@@ -2948,69 +2951,194 @@ class WakeUpMapGame {
 
     // 處理固定按鈕點擊
     async handleActionButton() {
-        console.log('按鈕被點擊，當前狀態:', this.gameState.actionButtonState);
-        alert('按鈕被點擊了！狀態: ' + this.gameState.actionButtonState);
+        // 防止重複點擊
+        if (this.isProcessingAction) {
+            console.log('⏸️ 正在處理中，請稍候...');
+            return;
+        }
 
+        console.log('按鈕被點擊，當前狀態:', this.gameState.actionButtonState);
         const state = this.gameState.actionButtonState;
+
+        // 設置處理中標誌
+        this.isProcessingAction = true;
+
+        // 隱藏按鈕，防止重複點擊
+        this.hideActionButton();
 
         switch (state) {
             case 'boarding':
                 console.log('執行起飛流程');
-                this.startFlight();
+                // 顯示等待視窗
+                this.showWaitingModal('boarding');
+                // 延遲一下讓用戶看到提示，然後開始流程
+                setTimeout(async () => {
+                    await this.startFlight();
+                }, 500);
                 break;
             case 'landing': {
                 console.log('執行降落流程');
-
-                // 記錄：使用者按下降落鍵（起床時間）
-                try {
-                    const dest = this.gameState.selectedDestination;
-                    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                    await this.saveGameRecord({
-                        eventType: 'landing_press',
-                        city: dest?.name || '',
-                        country: dest?.country || '',
-                        latitude: dest?.latitude,
-                        longitude: dest?.longitude,
-                        timezone: tz,
-                        localTime: new Date(this.now()).toISOString(),
-                        timerDuration: this.gameState.timerDuration || 30, // 計時長度（分鐘）
-                        originCity: this.gameState.currentLocation?.name || '台北',
-                        originCountry: this.gameState.currentLocation?.country || '台灣'
-                    });
-                } catch (e) { console.warn('寫入降落按鍵記錄失敗', e); }
-
-                // Firestore：更新為 landed，記錄 landingPressedAt 與準點狀態（稍後計算）
-                try {
-                    if (window.dbUpsertFlight) {
-                        const flightId = this.gameState.currentFlightId || `flight_${Date.now()}`;
-                        this.gameState.currentFlightId = flightId;
-                        await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, {
-                            landingPressedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
-                            status: 'landing'
-                        });
-                        window.dbAddClockEvent && window.dbAddClockEvent((window.env && window.env.USER_NAME) || 'morgan', { type: 'landing_press' });
-                    }
-                } catch (e) { console.warn('更新 Firestore 降落狀態失敗', e); }
-
-                // 先設置為降落中狀態
-                this.gameState.flightStatus = 'landing';
-                this.gameState.isLanding = true;
-
-                // 顯示降落中狀態
-                this.updateFlightStatusDisplay('降落中');
-
-                // 2秒後顯示降落結果彈窗
+                // 顯示等待視窗
+                this.showWaitingModal('landing');
+                // 延遲一下讓用戶看到提示，然後開始流程
                 setTimeout(async () => {
-                    const p = this.getPunctualityStatus();
-                    await this.showLandingOutcomeModal(p);
-                }, 2000);
-
+                    await this.handleLandingFlow();
+                }, 500);
                 break;
             }
             default:
                 console.log('未知狀態:', state);
+                this.isProcessingAction = false; // 重置標誌
                 break;
         }
+    }
+
+    // 顯示等待視窗
+    showWaitingModal(actionType) {
+        // 創建或獲取等待視窗
+        let modal = document.getElementById('waitingActionModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'waitingActionModal';
+            modal.className = 'waiting-action-modal';
+            modal.innerHTML = `
+                <div class="waiting-modal-backdrop"></div>
+                <div class="waiting-modal-content">
+                    <div class="waiting-spinner">✈️</div>
+                    <h2 class="waiting-title" id="waitingTitle">準備中...</h2>
+                    <p class="waiting-message" id="waitingMessage">請稍候，系統正在處理您的請求</p>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // 根據操作類型設置內容
+        const title = document.getElementById('waitingTitle');
+        const message = document.getElementById('waitingMessage');
+
+        if (actionType === 'boarding') {
+            if (title) title.textContent = '✈️ 準備起飛';
+            if (message) message.textContent = '正在準備登機廣播，請稍候...';
+        } else if (actionType === 'landing') {
+            if (title) title.textContent = '🛬 準備降落';
+            if (message) message.textContent = '正在準備降落廣播，請稍候...';
+        }
+
+        // 顯示視窗
+        modal.style.display = 'flex';
+    }
+
+    // 隱藏等待視窗
+    hideWaitingModal() {
+        const modal = document.getElementById('waitingActionModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // 顯示起飛畫面
+    showTakeOffScreen() {
+        // 創建或獲取起飛畫面
+        let takeOffScreen = document.getElementById('takeOffScreen');
+        if (!takeOffScreen) {
+            takeOffScreen = document.createElement('div');
+            takeOffScreen.id = 'takeOffScreen';
+            takeOffScreen.className = 'take-off-screen';
+            takeOffScreen.innerHTML = `
+                <div class="take-off-content">
+                    <div class="take-off-icon">✈️</div>
+                    <h1 class="take-off-title">準備起飛</h1>
+                    <div class="take-off-animation">
+                        <div class="plane-animation">✈️</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(takeOffScreen);
+        }
+        takeOffScreen.style.display = 'flex';
+    }
+
+    // 隱藏起飛畫面
+    hideTakeOffScreen() {
+        const takeOffScreen = document.getElementById('takeOffScreen');
+        if (takeOffScreen) {
+            takeOffScreen.style.display = 'none';
+        }
+    }
+
+    // 顯示地圖畫面
+    showMapScreen() {
+        // 切換到 resultState（地圖頁面）
+        const resultState = document.getElementById('resultState');
+        const gameStartState = document.getElementById('gameStartState');
+
+        if (resultState) {
+            resultState.classList.add('active');
+        }
+        if (gameStartState) {
+            gameStartState.classList.remove('active');
+        }
+    }
+
+    // 處理降落流程
+    async handleLandingFlow() {
+        // 記錄：使用者按下降落鍵（起床時間）
+        try {
+            const dest = this.gameState.selectedDestination;
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            await this.saveGameRecord({
+                eventType: 'landing_press',
+                city: dest?.name || '',
+                country: dest?.country || '',
+                latitude: dest?.latitude,
+                longitude: dest?.longitude,
+                timezone: tz,
+                localTime: new Date(this.now()).toISOString(),
+                timerDuration: this.gameState.timerDuration || 30, // 計時長度（分鐘）
+                originCity: this.gameState.currentLocation?.name || '台北',
+                originCountry: this.gameState.currentLocation?.country || '台灣'
+            });
+        } catch (e) { console.warn('寫入降落按鍵記錄失敗', e); }
+
+        // Firestore：更新為 landed，記錄 landingPressedAt 與準點狀態（稍後計算）
+        try {
+            if (window.dbUpsertFlight) {
+                const flightId = this.gameState.currentFlightId || `flight_${Date.now()}`;
+                this.gameState.currentFlightId = flightId;
+                await window.dbUpsertFlight((window.env && window.env.USER_NAME) || 'morgan', flightId, {
+                    landingPressedAt: (window.firebaseSDK && window.firebaseSDK.serverTimestamp) ? window.firebaseSDK.serverTimestamp() : null,
+                    status: 'landing'
+                });
+                window.dbAddClockEvent && window.dbAddClockEvent((window.env && window.env.USER_NAME) || 'morgan', { type: 'landing_press' });
+            }
+        } catch (e) { console.warn('更新 Firestore 降落狀態失敗', e); }
+
+        // 先設置為降落中狀態
+        this.gameState.flightStatus = 'landing';
+        this.gameState.isLanding = true;
+
+        // 顯示降落中狀態
+        this.updateFlightStatusDisplay('降落中');
+
+        // 隱藏等待視窗，顯示起飛畫面
+        this.hideWaitingModal();
+        this.showTakeOffScreen();
+
+        // 播放降落廣播
+        const punctuality = this.getPunctualityStatus();
+        await this.playSleepFlightAnnouncement('landing', this.gameState.selectedDestination, punctuality);
+
+        // 播放完成後，隱藏起飛畫面，顯示地圖
+        this.hideTakeOffScreen();
+        this.showMapScreen();
+
+        // 2秒後顯示降落結果彈窗
+        setTimeout(async () => {
+            await this.showLandingOutcomeModal(punctuality);
+        }, 2000);
+
+        // 重置處理標誌
+        this.isProcessingAction = false;
     }
 
     // 開始飛行（計時器模式）
@@ -3040,9 +3168,6 @@ class WakeUpMapGame {
             }
         }
 
-        // 隱藏按鈕
-        this.hideActionButton();
-
         // 記錄：睡覺開始（起飛前）
         try {
             const cur = this.gameState.currentLocation;
@@ -3063,11 +3188,19 @@ class WakeUpMapGame {
             });
         } catch (e) { console.warn('寫入睡覺開始記錄失敗', e); }
 
+        // 隱藏等待視窗，顯示起飛畫面
+        this.hideWaitingModal();
+        this.showTakeOffScreen();
+
         // 播放登機廣播
         if (this.gameState.flightTimerMode && this.gameState.selectedDestination) {
             console.log('準備播放登機廣播');
             await this.playSleepFlightAnnouncement('boarding', this.gameState.selectedDestination);
         }
+
+        // 播放完成後，隱藏起飛畫面，顯示地圖
+        this.hideTakeOffScreen();
+        this.showMapScreen();
 
         // 寫入 Firestore：flight 狀態為 flying，記錄 sleepStartAt
         try {
@@ -3105,6 +3238,9 @@ class WakeUpMapGame {
             waiting.style.display = 'none';
             waiting.classList.remove('active');
         }
+
+        // 重置處理標誌
+        this.isProcessingAction = false;
     }
 
     // 設置降落鬧鐘
@@ -4290,16 +4426,22 @@ class WakeUpMapGame {
 
             const announcement = (data && data.announcement) ? data.announcement : null;
             if (announcement) {
-                // 直接使用前端播放（或你的 audioManager）
-                const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
-                if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
-                    await window.audioManager.playTextWithLanguage(announcement, lang, {
-                        voice: 'male_lively', rate: 1.05, pitch: 0.95, style: 'lively'
-                    });
-                } else {
-                    this.playTextWithBrowserTTS(announcement);
-                }
-                return true;
+                // 使用 Promise 包裝播放，以便等待播放完成
+                return new Promise((resolve) => {
+                    const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
+                    if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
+                        window.audioManager.playTextWithLanguage(announcement, lang, {
+                            voice: 'male_lively', rate: 1.05, pitch: 0.95, style: 'lively'
+                        }).then(() => {
+                            resolve(true);
+                        }).catch(() => {
+                            resolve(false);
+                        });
+                    } else {
+                        // 使用瀏覽器 TTS，監聽播放完成事件
+                        this.playTextWithBrowserTTS(announcement, resolve);
+                    }
+                });
             }
         } catch (err) {
             console.warn('OpenAI 生成失敗，改用備用廣播。', err);
@@ -4307,23 +4449,29 @@ class WakeUpMapGame {
 
         // 備援：本地機長口吻文案
         const fallback = this.getCaptainStyleFallback(announcementType, destination);
-        try {
-            const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
-            if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
-                await window.audioManager.playTextWithLanguage(fallback, lang, {
-                    voice: 'male_lively',
-                    rate: 1.05,
-                    pitch: 0.95,
-                    style: 'lively'
-                });
-            } else {
-                this.playTextWithBrowserTTS(fallback);
+        return new Promise((resolve) => {
+            try {
+                const lang = this.gameState.language === 'en' ? 'en-US' : 'zh-TW';
+                if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
+                    window.audioManager.playTextWithLanguage(fallback, lang, {
+                        voice: 'male_lively',
+                        rate: 1.05,
+                        pitch: 0.95,
+                        style: 'lively'
+                    }).then(() => {
+                        resolve(false);
+                    }).catch(() => {
+                        resolve(false);
+                    });
+                } else {
+                    this.playTextWithBrowserTTS(fallback, resolve);
+                }
+            } catch (e) {
+                console.warn('播放備援語音失敗，改以 alert 顯示文案');
+                alert(fallback);
+                resolve(false);
             }
-        } catch (e) {
-            console.warn('播放備援語音失敗，改以 alert 顯示文案');
-            alert(fallback);
-        }
-        return false;
+        });
     }
 
     // 備用廣播內容（一般）
@@ -4361,7 +4509,7 @@ class WakeUpMapGame {
     }
 
     // 使用瀏覽器TTS播放文字
-    playTextWithBrowserTTS(text) {
+    playTextWithBrowserTTS(text, onComplete = null) {
         if ('speechSynthesis' in window) {
             const voices = speechSynthesis.getVoices();
             const preferred = voices.find(v => /zh-TW/i.test(v.lang) && /male|Google|Android/i.test(v.name));
@@ -4370,7 +4518,20 @@ class WakeUpMapGame {
             utterance.lang = 'zh-TW';
             utterance.rate = 1.05; // 活潑一點
             utterance.pitch = 0.95;
+
+            // 監聽播放完成事件
+            if (onComplete) {
+                utterance.onend = () => {
+                    onComplete(true);
+                };
+                utterance.onerror = () => {
+                    onComplete(false);
+                };
+            }
+
             speechSynthesis.speak(utterance);
+        } else if (onComplete) {
+            onComplete(false);
         }
     }
 

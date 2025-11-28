@@ -58,6 +58,143 @@
         .pixel-font-mixed {
             font-family: 'ByteBounce', 'GB18030 Bitmap', 'Press Start 2P', 'Microsoft YaHei', '微軟雅黑', monospace;
         }
+
+        /* 等待視窗樣式 */
+        .waiting-action-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .waiting-modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .waiting-modal-content {
+            position: relative;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .waiting-spinner {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: bounce 1.5s infinite;
+        }
+
+        .waiting-title {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+        }
+
+        .waiting-message {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            margin: 0;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* 起飛畫面樣式 */
+        .take-off-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            z-index: 9999;
+        }
+
+        .take-off-content {
+            text-align: center;
+            color: white;
+        }
+
+        .take-off-icon {
+            font-size: 120px;
+            margin-bottom: 30px;
+            animation: fly 2s infinite;
+        }
+
+        .take-off-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 0 0 40px 0;
+        }
+
+        .take-off-animation {
+            margin-top: 40px;
+        }
+
+        .plane-animation {
+            font-size: 80px;
+            animation: takeOff 3s infinite;
+        }
+
+        @keyframes fly {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-30px) rotate(5deg);
+            }
+        }
+
+        @keyframes takeOff {
+            0% {
+                transform: translateX(-200px) translateY(0) scale(0.5);
+                opacity: 0.5;
+            }
+            50% {
+                transform: translateX(0) translateY(-100px) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(200px) translateY(-200px) scale(1.2);
+                opacity: 0;
+            }
+        }
     </style>
     
     <link rel="stylesheet" href="pi-style.css">
@@ -139,9 +276,9 @@
                     <!-- 首頁操作按鈕：等寬雙按鈕 -->
                     <div class="start-journey-section">
                         <button id="buyTicketBtn" class="start-journey-button">
-                            <div class="button-icon">🎫</div>
-                            <div class="button-text">購買機票</div>
-                            <div class="button-subtitle">選擇你的目的地</div>
+                            <div class="button-icon">🎯</div>
+                            <div class="button-text">規劃旅程</div>
+                            <div class="button-subtitle">選擇任務與目的地</div>
                         </button>
                         <button id="beginJourneyBtn" class="start-journey-button">
                             <div class="button-icon">✈️</div>
@@ -341,7 +478,7 @@
                     
                     <div class="ticket-actions">
                         <div class="button-section">
-                            <button id="confirmTicket" class="confirm-button">確認購買機票</button>
+                            <button id="confirmTicket" class="confirm-button">確認旅程</button>
                             <button id="changeDestination" class="change-button">重新選擇</button>
                         </div>
                     </div>
