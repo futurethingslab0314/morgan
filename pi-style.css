@@ -2998,7 +2998,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
+    gap: 20px;
+    padding: 10px 0;
 }
 
 .timer-selector-container {
@@ -3081,15 +3082,21 @@ body {
 
 /* TASK 任務選擇（玻璃效果） */
 .task-selector {
-    margin-top: 10px;
+    margin-top: 0;
     padding-top: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .task-title {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 10px;
-    letter-spacing: 1px;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 25px;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    text-align: center;
 }
 
 .task-buttons {
@@ -3130,6 +3137,176 @@ body {
     box-shadow:
         0 8px 20px rgba(88, 232, 237, 0.45),
         inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* 旋鈕風格任務選擇器 */
+.rotary-knob-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px;
+    min-height: 400px;
+}
+
+.rotary-knob-wrapper {
+    position: relative;
+    width: 360px;
+    height: 360px;
+    margin: 0 auto 20px;
+}
+
+.rotary-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.25), rgba(168, 85, 247, 0.25));
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 2px 8px rgba(255, 255, 255, 0.15),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+}
+
+.knob-indicator {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 18px;
+    background: linear-gradient(180deg, #60a5fa, #a855f7);
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(96, 165, 250, 0.7);
+}
+
+.knob-options {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.knob-option {
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    opacity: 0.7;
+    /* 使用極座標系統，中心點在 180px, 180px */
+    transform-origin: 180px 180px;
+}
+
+/* 5個選項均勻分布在圓周上，半徑 110px，從頂部開始，每個間隔 72度 */
+/* 位置0: 頂部 (90度) */
+.knob-option[data-position="0"] {
+    top: calc(50% - 110px);
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* 位置1: 右上 (90-72=18度) */
+.knob-option[data-position="1"] {
+    top: calc(50% - 110px * 0.809); /* cos(18°) ≈ 0.809 */
+    left: calc(50% + 110px * 0.588); /* sin(18°) ≈ 0.588 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置2: 右下 (90-144=-54度，即306度) */
+.knob-option[data-position="2"] {
+    top: calc(50% + 110px * 0.309); /* cos(54°) ≈ 0.309 */
+    left: calc(50% + 110px * 0.951); /* sin(54°) ≈ 0.951 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置3: 左下 (90-216=-126度，即234度) */
+.knob-option[data-position="3"] {
+    top: calc(50% + 110px * 0.309); /* cos(54°) ≈ 0.309 */
+    left: calc(50% - 110px * 0.951); /* sin(54°) ≈ 0.951 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置4: 左上 (90-288=-198度，即162度) */
+.knob-option[data-position="4"] {
+    top: calc(50% - 110px * 0.809); /* cos(18°) ≈ 0.809 */
+    left: calc(50% - 110px * 0.588); /* sin(18°) ≈ 0.588 */
+    transform: translate(-50%, -50%);
+}
+
+.knob-option:hover {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.05);
+    border-color: rgba(96, 165, 250, 0.5);
+}
+
+.knob-option.active {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.35), rgba(168, 85, 247, 0.35));
+    border-color: rgba(96, 165, 250, 0.9);
+    box-shadow:
+        0 8px 24px rgba(96, 165, 250, 0.6),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3),
+        0 0 20px rgba(96, 165, 250, 0.4);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+    z-index: 5;
+}
+
+.knob-option.active .knob-option-icon {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.8));
+}
+
+.knob-option-icon {
+    font-size: 32px;
+    margin-bottom: 6px;
+    transition: all 0.3s ease;
+    line-height: 1;
+}
+
+.knob-option-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
+
+.knob-option.active .knob-option-label {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.7);
+    font-weight: 700;
+}
+
+.knob-hint {
+    margin-top: 15px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    text-align: center;
+    font-style: italic;
+    letter-spacing: 0.5px;
+}
+
+/* 旋鈕旋轉動畫 - 由JS控制transform，這裡只提供平滑過渡 */
+.rotary-knob {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* 目的地視窗：提示文字樣式 */

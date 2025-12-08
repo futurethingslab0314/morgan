@@ -88,10 +88,6 @@ const TASK_GUIDANCE = {
             zh: '這次飛行任務是「讀書」。請在廣播中強調：認真、專注、準備進入深度學習狀態。可以提到目的地能幫助專注的氛圍，例如：日本的安靜秩序可以幫助你專注閱讀。',
             en: 'The flight task is "Reading". Emphasize: seriousness, focus, preparing for deep learning. Mention how the destination\'s atmosphere can help with concentration, e.g., Japan\'s quiet order can help you focus on reading.'
         },
-        'EXERCISE': {
-            zh: '這次飛行任務是「運動」。請在廣播中強調：活力、動能、準備身體活動。可以提到目的地能帶來活力的氛圍。',
-            en: 'The flight task is "Exercise". Emphasize: vitality, energy, preparing for physical activity. Mention how the destination\'s atmosphere can bring vitality.'
-        },
         'MEDITATION': {
             zh: '這次飛行任務是「冥想」。請在廣播中強調：平靜、內觀、準備進入冥想狀態。可以提到目的地能帶來平靜的氛圍。',
             en: 'The flight task is "Meditation". Emphasize: calm, introspection, preparing for meditation. Mention how the destination\'s atmosphere can bring calm.'
@@ -113,10 +109,6 @@ const TASK_GUIDANCE = {
         'READING': {
             zh: '乘客剛完成「讀書」任務。請提醒：可以休息一下眼睛，做個簡單的放鬆，搭配【國家文化特色】的放鬆方式。例如：日本的安靜可以幫助你放鬆眼睛；泰國的柔軟可以讓你的眼睛得到休息。讓乘客感覺完成了深度學習後，需要適當的放鬆。',
             en: 'The passenger just completed a "Reading" task. Remind them: rest your eyes, do some simple relaxation, combined with the country\'s cultural relaxation style. Make them feel that after deep learning, they need proper relaxation.'
-        },
-        'EXERCISE': {
-            zh: '乘客剛完成「運動」任務。請提醒：補充水分、做拉伸放鬆，搭配【國家文化特色】的恢復方式。例如：日本的安靜可以幫助你恢復；泰國的柔軟可以讓你的肌肉得到放鬆。',
-            en: 'The passenger just completed an "Exercise" task. Remind them: hydrate, do stretching, combined with the country\'s cultural recovery style.'
         },
         'MEDITATION': {
             zh: '乘客剛完成「冥想」任務。請提醒：保持平靜，搭配【國家文化特色】的平靜氛圍。例如：日本的安靜可以延續你的平靜；泰國的柔軟可以讓你的心保持放鬆。',
@@ -218,51 +210,236 @@ export default async function handler(req, res) {
             flightTimeDesc = `${flightTime || '8'}小時`;
         }
 
+        // 生成航班號碼
+        const flightNumber = `FA${Math.floor(Math.random() * 9000) + 1000}`;
+
+        // 生成季節性天氣描述（根據當前月份和目的地緯度）
+        const now = new Date();
+        const month = now.getMonth() + 1; // 1-12
+        let seasonalWeatherLine = '';
+
+        // 根據月份判斷季節（北半球）
+        let season = '';
+        if (month >= 3 && month <= 5) {
+            season = 'spring';
+        } else if (month >= 6 && month <= 8) {
+            season = 'summer';
+        } else if (month >= 9 && month <= 11) {
+            season = 'autumn';
+        } else {
+            season = 'winter';
+        }
+
+        // 根據季節生成天氣描述（讓 OpenAI 根據目的地和季節生成）
+        if (isEnglish) {
+            seasonalWeatherLine = `typical ${season} weather for ${city}, ${country} (e.g., mild temperatures, occasional rain, or sunny skies - model should generate appropriate weather based on the destination's climate)`;
+        } else {
+            seasonalWeatherLine = `${city}在${season === 'spring' ? '春季' : season === 'summer' ? '夏季' : season === 'autumn' ? '秋季' : '冬季'}的典型天氣（例如：溫和氣溫、偶有降雨或晴朗天空 - 模型應根據目的地的氣候生成適當的天氣描述）`;
+        }
+
         if (announcementType === 'boarding') {
-            // 登機廣播 - Focus Airlines 敘事風格
+            // 登機廣播 - 強化機長風格版本
             if (isEnglish) {
-                prompt = `You are the captain of Focus Airlines. Write a boarding announcement with the following style:
-- 20% captain (use aviation language: flight route, destination, takeoff)
-- 40% gentle guide (warm, steady, guiding tone)
-- 40% inner narrative (focus on passenger's inner state)
+                prompt = `You are a professional airline captain of Focus Airlines. Generate a boarding announcement with a strong, steady captain's presence. 
 
-Requirements:
-1. Welcome passengers to Focus Airlines
-2. Departure: ${currentLocation || 'Taipei'}
-3. Destination: ${city} (${country})
-4. Flight time: ${flightTimeDesc}
-5. Inner state theme: The destination represents "${mentalState.stateEn}" - ${mentalState.description}
-6. Cultural mood (NOT tourist attractions): Describe the country's "${mentalState.culturalMood}" - this is about emotional atmosphere, not physical places/activities
-${taskGuidanceText ? `7. Task guidance: ${taskGuidanceText}` : ''}
-${taskGuidanceText ? '8. ' : '7. '}DO NOT mention: beaches, food, specific landmarks, shopping, tourist activities
-${taskGuidanceText ? '9. ' : '8. '}DO mention: the country's emotional quality, cultural mood, inner atmosphere (e.g., "Japan's quiet order", "Thailand's soft relaxation", "New York's decisive rhythm")
-${taskGuidanceText ? '10. ' : '9. '}Tone: natural, conversational, warm, positive - like a friendly captain + meditation guide
-${greetingHint}
+Follow the exact structure below. Length ~200–230 words. Natural spoken English. 
 
-Write in natural English, within 80 words. Make it feel immersive and warm, without creating a sense of loss or missing out.`;
+Tone = 40% aviation professionalism + 30% gentle guidance + 30% inner reflective narrative.
+
+DO NOT mention: beaches, food, landmarks, shopping, tourist activities.
+
+====================
+
+STRUCTURE & REQUIREMENTS
+
+====================
+
+[OPENING — PRO]
+
+1. Start with: "Good morning/afternoon/evening, this is your captain speaking. Welcome aboard Focus Airlines flight ${flightNumber}..."
+
+2. Include aviation terminology:
+
+   - Flight number: ${flightNumber}
+
+   - Route: ${currentLocation || 'Taipei'} → ${city} (${country})
+
+   - Estimated flight time: ${flightTimeDesc}
+
+   - Initial climb, cruise altitude, takeoff procedures
+
+3. Include ONE line requesting passengers to switch devices to airplane mode.
+
+   *Tone: part safety, part symbolic transition into focus.*
+
+   Example vibe: "Please switch your devices to airplane mode, allowing this journey to begin without distractions."
+
+4. Report destination local time:
+
+   ${localTimeInfo ? `Local time at ${city} will be approximately ${localTimeInfo.localTimeString} (${localTimeInfo.timeContext}).` : 'Please note the local time at destination.'}
+
+5. Destination weather:
+
+   "The weather in ${city} is typically ${seasonalWeatherLine} around this time."
+
+[GUIDE — CULTURAL MOOD]
+
+6. Describe the **emotional atmosphere** of ${country} (NOT tourist places):
+
+   Use: "${mentalState.culturalMood}"
+
+[INNER NARRATIVE — EMOTION → BODY → TASK]
+
+7. Explain the symbolic meaning of the destination:
+
+   "${mentalState.stateEn}" — ${mentalState.description}
+
+8. Emotion mapping segment:
+
+   - Name two possible emotions (model decides).
+
+   - Ask user to check intensity (0–10).
+
+9. Body grounding instruction:
+
+   One calming breath + relaxing shoulders.
+
+10. Task guidance:
+
+   ${taskGuidanceText || 'Give one clear action the passenger will do during the flight.'}
+
+   Include:
+
+   - One first-minute micro action
+
+   - One simple focus rule
+
+   - One "if distracted" recovery line
+
+[CLOSING]
+
+11. End with: "Thank you for choosing Focus Airlines. We wish you a pleasant journey."
+
+====================
+
+OUTPUT STYLE
+
+====================
+
+- Use soft pacing cues: [pause 0.3s], [slow], [gentle]
+
+- Warm but not overly sentimental
+
+- Realistic captain phrasing
+
+${greetingHint}`;
             } else {
-                prompt = `你是 Focus Airlines 的機長。請生成一個登機廣播，風格如下：
-- 20% 機長（使用航空語言：航線、目的地、起飛）
-- 40% 溫柔導引（溫暖、穩定、有導引感）
-- 40% 內在敘事（專注於乘客的內在狀態）
+                prompt = `你是 Focus Airlines 的專業機長。請生成具有強烈機長風格的登機廣播。
 
-必須包含：
-1. 歡迎乘客搭乘 Focus Airlines
-2. 出發地：${currentLocation || '台北'}
-3. 目的地：${city} (${country})
-4. 飛行時間：${flightTimeDesc}
-5. 內在狀態主題：目的地象徵「${mentalState.state}」- ${mentalState.description}
-6. 文化情緒特色（非旅遊景點）：描述這個國家的「${mentalState.culturalMood}」- 這是關於情緒氛圍，不是具體地點或活動
-${taskGuidanceText ? `7. 任務指引：${taskGuidanceText}` : ''}
-${taskGuidanceText ? '8. ' : '7. '}禁止提到：海灘、美食、具體景點、購物、觀光活動
-${taskGuidanceText ? '9. ' : '8. '}可以提到：國家的情緒質感、文化氛圍、內在氣氛（例如：「日本的安靜秩序」、「泰國的柔軟鬆弛」、「紐約的決斷節奏」）
-${taskGuidanceText ? '10. ' : '9. '}語氣：自然、口語、溫暖、積極，像輕鬆的機長＋冥想導師
-${greetingHint}
+語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
 
-請用繁體中文，控制在100字以內。讓乘客感覺有沉浸感、溫暖，但不會產生失落感或「沒去過」的空虛感。`;
+篇幅：約 200–230 字。口語化、自然、沉穩。
+
+禁止提到：海灘、美食、景點、購物、觀光活動。
+
+====================
+
+結構與必備內容
+
+====================
+
+【PRO 專業開場】
+
+1. 開場必須以：
+
+「各位乘客大家好，我是本次航班的機長，歡迎搭乘 Focus Airlines 航班 ${flightNumber}…」 開始。
+
+2. 使用航空專業語句：
+
+   - 航班：${flightNumber}
+
+   - 航線：${currentLocation || '台北'} → ${city}（${country}）
+
+   - 飛行時間：${flightTimeDesc}
+
+   - 初始爬升、高度、起飛程序、安全提醒
+
+3. 必須加入一句「請將手機調為飛航模式」，語氣需同時具有：
+
+   - 航空安全程序
+
+   - 進入專注狀態的象徵儀式
+
+   例如：
+
+   「也請將您的手機切換至飛航模式，像是把外界的吵雜暫時關上，讓自己全心投入這段旅程。」
+
+4. 目的地當地時間：
+
+   ${localTimeInfo ? `抵達【${city}】時的當地時間約為 ${localTimeInfo.localTimeString}（${localTimeInfo.timeContext}）。` : '請留意目的地的當地時間。'}
+
+5. 目的地天氣：
+
+   「目前${city} 的典型天氣為：${seasonalWeatherLine}。」
+
+【GUIDE 導引段】
+
+6. 描述該國家的「情緒氛圍」：
+
+   「${mentalState.culturalMood}」 但不可提及任何旅遊地點。
+
+【INNER 內在敘事：情緒 → 身體 → 任務】
+
+7. 說明目的地象徵的內在狀態：
+
+   「${mentalState.state}」— ${mentalState.description}
+
+8. 情緒映射：
+
+   - 模型自行生成兩個情緒詞
+
+   - 讓乘客感受當下強度（0–10）
+
+9. 身體校準：
+
+   - 一次深長呼吸
+
+   - 放鬆肩頸／下顎
+
+10. 任務引導：
+
+   ${taskGuidanceText || '給一個明確在飛行期間要完成的任務。'}
+
+   需包含：
+
+   - 第一分鐘微行動
+
+   - 一條專注規則
+
+   - 分心時的回神語
+
+【結尾】
+
+11. 結尾統一：
+
+「感謝您選擇 Focus Airlines，祝您旅途愉快。」
+
+====================
+
+輸出風格
+
+====================
+
+- 加入口語節奏：[pause 0.3s]、[slow]
+
+- 像真實機長廣播，不油、不雞湯
+
+- 穩定、溫暖、有畫面感
+
+${greetingHint}`;
             }
         } else if (announcementType === 'landing') {
-            // 降落廣播 - 專注於內在狀態和心理豐收
+            // 降落廣播 - 強化機長風格版本
             const timeDesc = timerDuration ? '飛行完成' : `當地時間：${wakeTime || '08:00'}`;
 
             // 如果是 GAME 任務，需要特別處理當地時間資訊
@@ -271,6 +448,17 @@ ${greetingHint}
                 const { localTimeString, timeContext, timeOfDay } = localTimeInfo;
                 gameTimeGuidance = `\n\n特別注意（GAME 任務）：\n- 目的地當地時間：${timeContext} ${localTimeString}\n- 請根據這個時間和時段（${timeOfDay}），提醒乘客進入工作狀態或開始專注\n- 例如：如果是早晨，提醒「是時候開始專注工作了」；如果是下午，提醒「可以開始專注下一個任務」\n- 搭配【國家文化特色】的轉換氛圍，幫助乘客從遊戲模式轉換到工作/專注模式`;
             }
+
+            // 降落廣播的當地時間和天氣資訊
+            const landingTimeInfo = localTimeInfo ?
+                (isEnglish ?
+                    `Local time at ${city} is now ${localTimeInfo.localTimeString} (${localTimeInfo.timeContext}).` :
+                    `目前【${city}】的當地時間是 ${localTimeInfo.localTimeString}（${localTimeInfo.timeContext}）。`) :
+                '';
+
+            const landingWeatherInfo = isEnglish ?
+                `The current weather in ${city} is ${seasonalWeatherLine}.` :
+                `目前【${city}】的天氣狀況：${seasonalWeatherLine}。`;
 
             // 內在狀態提示（文化情緒特色，非旅遊特色）
             const innerStatePrompt = `內在狀態主題：
@@ -291,24 +479,61 @@ ${taskGuidanceText ? `- 任務完成後指引：${taskGuidanceText}` : ''}${game
                 // 根據準時性狀態生成不同的語音
                 switch (punctuality.status) {
                     case 'PERFECT': // 完美準時（±1分鐘）
-                        prompt = `你是 Focus Airlines 的機長。請生成一個「準時降落」的廣播，風格如下：
-- 20% 機長（使用航空語言：降落、航線、目的地）
-- 40% 溫柔導引（溫暖、穩定、有導引感）
-- 40% 內在敘事（專注於乘客的內在狀態）
+                        prompt = `你是 Focus Airlines 的專業機長。請生成一個「完美準時降落」的廣播，具有強烈的機長風格。
 
-必須包含：
-1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯成中文
-2. 專業的降落宣告：「本次航班順利準時降落於【${city}】。」
-3. 內在狀態引導：${innerStatePrompt}
-4. 感謝詞：感謝乘客完成這段旅程
-5. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
 
-重要原則：
-- 可以描述國家的「文化情緒特色」（如：日本的安靜秩序、泰國的柔軟鬆弛）
-- 禁止提到具體景點、美食、觀光活動（會造成失落感）
-- 讓國家特色變成心理象徵，聽起來舒服、有畫面、但不會空虛
+篇幅：約 200–230 字。口語化、自然、沉穩。
 
-請用繁體中文，控制在100字以內。語氣：自然、口語、溫暖、積極。`;
+====================
+
+結構與必備內容
+
+====================
+
+【PRO 專業開場】
+
+1. 開場：「各位乘客，我是機長。本次 Focus Airlines 航班 ${flightNumber} 已順利準時降落於【${city}】。」
+
+2. 報告當地時間和天氣：
+
+   ${landingTimeInfo}
+   
+   ${landingWeatherInfo}
+
+3. 使用航空專業語句：降落程序、跑道、地面溫度等
+
+【GUIDE 導引段】
+
+4. 描述該國家的「情緒氛圍」：
+
+   「${mentalState.culturalMood}」 但不可提及任何旅遊地點。
+
+【INNER 內在敘事】
+
+5. 說明目的地象徵的內在狀態：
+
+   「${mentalState.state}」— ${mentalState.description}
+
+6. 任務完成後指引：
+
+   ${taskGuidanceText || '提醒乘客已完成飛行任務，可以放鬆或進入下一個階段。'}
+
+【結尾】
+
+7. 結尾：「感謝您選擇 Focus Airlines，祝您在【${city}】的旅程愉快。」
+
+====================
+
+輸出風格
+
+====================
+
+- 加入口語節奏：[pause 0.3s]、[slow]
+- 像真實機長廣播，專業、溫暖、有畫面感
+- 禁止提到：海灘、美食、景點、購物、觀光活動
+
+${greetingHint}`;
 
                     case 'EARLY': // 提早降落
                         const earlyMinutes = punctuality.minutesDiff || 0;
@@ -455,7 +680,7 @@ ${prompt}`;
             model: "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 200
+            max_tokens: 400 // 增加到 400 tokens 以支持 200-230 字的內容
         });
 
         const announcement = response.choices[0].message.content.trim();

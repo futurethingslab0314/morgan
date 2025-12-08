@@ -21,7 +21,7 @@ class WakeUpMapGame {
             actionButtonState: 'hidden', // hidden, boarding, landing
             flightCompleted: false,
             isLanding: false,
-            // 任務類型：READING / EXERCISE / MEDITATION / REST / WORK
+            // 任務類型：READING / MEDITATION / REST / GAME / WORK
             taskType: 'REST',
             // 介面語言：'zh-TW' 或 'en'
             language: 'zh-TW'
@@ -32,6 +32,10 @@ class WakeUpMapGame {
 
         // 防重複點擊標誌
         this.isProcessingAction = false;
+
+        // 旋鈕控制相關
+        this.knobPollInterval = null;
+        this.lastKnobPosition = null;
 
         this.init();
     }
@@ -182,13 +186,15 @@ class WakeUpMapGame {
         if (taskSectionTitle) taskSectionTitle.textContent = dict.taskSectionTitle;
         const confirmTaskBtn = document.getElementById('confirmTaskBtn');
         if (confirmTaskBtn) confirmTaskBtn.textContent = dict.confirmTask;
-        document.querySelectorAll('#taskModal .task-option').forEach(btn => {
-            const key = btn.dataset.task;
+        // 更新旋鈕選項的文字（如果需要動態更新）
+        document.querySelectorAll('#taskModal .knob-option').forEach(option => {
+            const key = option.dataset.task;
             if (!key) return;
-            const mapZh = { READING: '📚 讀書', EXERCISE: '💪 運動', MEDITATION: '🧘 冥想', REST: '😴 休息', WORK: '💻 工作', GAME: '🎮 遊戲' };
-            const mapEn = { READING: '📚 READ', EXERCISE: '💪 WORKOUT', MEDITATION: '🧘 MEDITATE', REST: '😴 REST', WORK: '💻 WORK', GAME: '🎮 GAME' };
+            const mapZh = { READING: '讀書', MEDITATION: '冥想', REST: '休息', WORK: '工作', GAME: '遊戲' };
+            const mapEn = { READING: 'READ', MEDITATION: 'MEDITATE', REST: 'REST', WORK: 'WORK', GAME: 'GAME' };
             const tMap = (lang === 'en' ? mapEn : mapZh);
-            if (tMap[key]) btn.textContent = tMap[key];
+            const labelEl = option.querySelector('.knob-option-label');
+            if (labelEl && tMap[key]) labelEl.textContent = tMap[key];
         });
 
         // 目的地選擇視窗文字
@@ -835,24 +841,54 @@ class WakeUpMapGame {
             });
         });
 
-        // 任務選擇按鈕事件（TASK）
-        document.querySelectorAll('.task-option').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.task-option').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const task = btn.dataset.task || 'REST';
-                this.gameState.taskType = task;
-                this.saveGameState();
-                console.log('🎯 任務已選擇:', task);
+        // 旋鈕選項點擊事件（TASK）- 保留點擊功能作為備用
+        document.querySelectorAll('.knob-option').forEach(option => {
+            option.addEventListener('click', () => {
+                this.selectTaskByPosition(option.dataset.position);
             });
         });
+
+        // 啟動旋鈕監控
+        this.startKnobMonitoring();
+    }
+
+    selectTaskByPosition(position) {
+        const positionNum = parseInt(position);
+        const taskMap = {
+            0: 'READING',
+            1: 'MEDITATION',
+            2: 'REST',
+            3: 'GAME',
+            4: 'WORK'
+        };
+        const task = taskMap[positionNum] || 'REST';
+
+        // 移除所有 active 狀態
+        document.querySelectorAll('.knob-option').forEach(opt => opt.classList.remove('active'));
+
+        // 設置新的 active 狀態
+        const selectedOption = document.querySelector(`.knob-option[data-position="${position}"]`);
+        if (selectedOption) {
+            selectedOption.classList.add('active');
+
+            // 旋轉旋鈕指示器
+            const knob = document.querySelector('.rotary-knob');
+            if (knob) {
+                const rotation = positionNum * 72; // 每個位置間隔 72 度
+                knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+            }
+        }
+
+        this.gameState.taskType = task;
+        this.saveGameState();
+        console.log('🎯 任務已選擇:', task, '位置:', position);
     }
 
     confirmTaskSelection() {
         // 讀取目前選擇的 TASK（若無則維持原值）
-        const activeTaskBtn = document.querySelector('.task-option.active');
-        if (activeTaskBtn && activeTaskBtn.dataset.task) {
-            this.gameState.taskType = activeTaskBtn.dataset.task;
+        const activeOption = document.querySelector('.knob-option.active');
+        if (activeOption && activeOption.dataset.task) {
+            this.gameState.taskType = activeOption.dataset.task;
             this.saveGameState();
         }
 
@@ -943,14 +979,32 @@ class WakeUpMapGame {
         if (modal) {
             modal.classList.add('active');
 
-            // 更新任務按鈕狀態
-            document.querySelectorAll('.task-option').forEach(btn => {
-                btn.classList.remove('active');
-                const task = btn.dataset.task || 'REST';
-                if (task === (this.gameState.taskType || 'REST')) {
-                    btn.classList.add('active');
+            // 更新旋鈕選項狀態
+            const currentTask = this.gameState.taskType || 'REST';
+            const taskToPosition = {
+                'READING': 0,
+                'MEDITATION': 1,
+                'REST': 2,
+                'GAME': 3,
+                'WORK': 4
+            };
+            const position = taskToPosition[currentTask] !== undefined ? taskToPosition[currentTask] : 2;
+
+            // 移除所有 active 狀態
+            document.querySelectorAll('.knob-option').forEach(opt => opt.classList.remove('active'));
+
+            // 設置對應位置的 active 狀態
+            const activeOption = document.querySelector(`.knob-option[data-position="${position}"]`);
+            if (activeOption) {
+                activeOption.classList.add('active');
+
+                // 旋轉旋鈕到對應位置
+                const knob = document.querySelector('.rotary-knob');
+                if (knob) {
+                    const rotation = position * 72; // 每個位置間隔 72 度
+                    knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
                 }
-            });
+            }
         }
     }
 
@@ -958,6 +1012,45 @@ class WakeUpMapGame {
         const modal = document.getElementById('taskModal');
         if (modal) {
             modal.classList.remove('active');
+        }
+    }
+
+    startKnobMonitoring() {
+        // 每 100ms 輪詢一次旋鈕位置
+        this.knobPollInterval = setInterval(async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:5001/api/knob/position');
+                if (!response.ok) {
+                    // API 不可用時靜默失敗（可能不在樹莓派上運行）
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.position !== undefined) {
+                    // 如果位置改變了
+                    if (this.lastKnobPosition !== data.position) {
+                        this.lastKnobPosition = data.position;
+
+                        // 如果任務選擇視窗是打開的，自動選擇對應任務
+                        const taskModal = document.getElementById('taskModal');
+                        if (taskModal && taskModal.classList.contains('active')) {
+                            this.selectTaskByPosition(data.position.toString());
+                            console.log('🎯 旋鈕選擇任務:', data.task, '位置:', data.position);
+                        }
+                    }
+                }
+            } catch (error) {
+                // 如果 API 不可用，靜默失敗（可能不在樹莓派上運行）
+                // 只在第一次失敗時記錄，避免日誌刷屏
+            }
+        }, 100); // 100ms 輪詢間隔
+    }
+
+    stopKnobMonitoring() {
+        if (this.knobPollInterval) {
+            clearInterval(this.knobPollInterval);
+            this.knobPollInterval = null;
         }
     }
 
@@ -1085,7 +1178,6 @@ class WakeUpMapGame {
         // 更新 TASK 顯示（上下兩個 Banner）
         const taskLabelMap = {
             READING: '讀書',
-            EXERCISE: '運動',
             MEDITATION: '冥想',
             REST: '休息',
             WORK: '工作',
@@ -1174,6 +1266,9 @@ class WakeUpMapGame {
             selectedDestination: this.gameState.selectedDestination
         });
 
+        // 重要：重置飛行完成狀態，確保新旅程可以正常顯示降落按鈕
+        this.gameState.flightCompleted = false;
+        this.gameState.isLanding = false;
         this.gameState.gameStarted = true;
         this.saveGameState();
 
@@ -1266,7 +1361,42 @@ class WakeUpMapGame {
         if (this.map && this.map.invalidateSize) {
             this.map.invalidateSize();
             this._ensureMapPanelsVisible && this._ensureMapPanelsVisible();
-            return;
+
+            // 重要：檢查目的地是否改變，如果改變了需要重新繪製地圖
+            const currentDestinationId = this._lastDestinationId;
+            const newDestinationId = destination.id;
+            if (currentDestinationId && currentDestinationId !== newDestinationId) {
+                console.log('⚠️ 目的地已改變，清除舊的標記和航線，重新繪製地圖');
+                // 清除所有標記和航線（包括飛機標記）
+                this.map.eachLayer((layer) => {
+                    // 保留地圖瓦片層，只清除標記和航線
+                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+                        this.map.removeLayer(layer);
+                    }
+                });
+                // 清除飛機動畫定時器
+                if (this._planeUpdateInterval) {
+                    clearInterval(this._planeUpdateInterval);
+                    this._planeUpdateInterval = null;
+                }
+                // 清除舊的飛行狀態面板
+                this.cleanupMapOverlays();
+                // 繼續執行下面的代碼重新繪製地圖
+            } else {
+                // 目的地沒改變，只更新狀態
+                this._lastDestinationId = newDestinationId;
+                // 重要：即使地圖已存在，也要確保計時器回調已設置（修復重複設置新旅程後降落按鈕消失的問題）
+                if (!this._timerCompletionTimeout && this.gameState.flightTimerMode && this.gameState.timerEndTime) {
+                    console.log('⚠️ 地圖已存在，但計時器回調未設置，重新設置');
+                    this.setTimerCompletionCallback();
+                }
+                // 重要：即使地圖已存在，也要顯示降落按鈕（修復第二次開始旅程後按鈕消失的問題）
+                if (!this.gameState.flightCompleted) {
+                    console.log('⚠️ 地圖已存在，確保降落按鈕顯示');
+                    this.showLandingButton();
+                }
+                return;
+            }
         }
         if (el._leaflet_id) {
             const fresh = el.cloneNode(false);
@@ -1298,6 +1428,9 @@ class WakeUpMapGame {
                 <p>${originCountry}</p>
             </div>
         `);
+
+        // 保存當前目的地ID，用於檢測目的地是否改變
+        this._lastDestinationId = destination.id;
 
         // 添加目的地標記
         const destinationMarker = L.marker(destinationCoords).addTo(this.map);
@@ -1413,8 +1546,12 @@ class WakeUpMapGame {
         };
 
         // 5. 啟動飛機動畫（每10秒更新一次）
+        // 清除舊的定時器（如果存在）
+        if (this._planeUpdateInterval) {
+            clearInterval(this._planeUpdateInterval);
+        }
         updatePlanePosition(); // 立即更新一次
-        setInterval(updatePlanePosition, 10000); // 每10秒更新
+        this._planeUpdateInterval = setInterval(updatePlanePosition, 10000); // 每10秒更新
 
         // 計算距離
         const distance = this.calculateDistance(originCoords, destinationCoords);
@@ -1426,8 +1563,19 @@ class WakeUpMapGame {
         const group = new L.featureGroup([originMarker, destinationMarker]);
         this.map.fitBounds(group.getBounds().pad(0.1));
 
-        // 立即顯示降落按鈕（測試用）
-        this.showActionButton('landing');
+        // 飛行開始時就顯示降落按鈕，讓用戶可以隨時手動降落
+        // 計時結束時也會確保按鈕顯示（通過 handleTimerComplete）
+        this.showLandingButton();
+
+        // 確保計時器回調已設置（重要：確保降落按鈕會在計時結束時顯示）
+        if (this.gameState.flightTimerMode && this.gameState.timerEndTime) {
+            if (!this._timerCompletionTimeout) {
+                console.log('⚠️ 初始化地圖時，計時器回調未設置，重新設置');
+                this.setTimerCompletionCallback();
+            } else {
+                console.log('✅ 計時器回調已設置');
+            }
+        }
 
         // 保底：確保四個地圖面板可見
         this._ensureMapPanelsVisible();
@@ -1642,21 +1790,28 @@ class WakeUpMapGame {
             });
         }
 
-        // 每次進入地圖時，如果計時器還沒開始，立即開始計時器
-        // 注意：這裡不檢查是否已存在，因為 startFlight() 已經設定了計時器
-        // 但如果直接進入地圖（例如從其他地方），則需要自動啟動
+        // 檢查計時器是否已正確設置
+        // 注意：startFlight() 應該已經設置了計時器，但如果沒有，這裡作為備援
         if (!this.gameState.timerStartTime || !this.gameState.timerEndTime) {
-            console.log('🚀 地圖初始化時自動啟動計時器');
+            console.log('⚠️ 地圖初始化時發現計時器未設置，自動啟動計時器');
             const timerMinutes = this.gameState.timerDuration || 30;
             const now = this.now();
             this.gameState.timerStartTime = now;
             this.gameState.timerEndTime = new Date(now.getTime() + timerMinutes * 60 * 1000);
             this.saveGameState();
             console.log(`⏱️ 計時器已自動啟動：${timerMinutes}分鐘`);
+
+            // 設置計時結束回調
+            this.setTimerCompletionCallback();
         } else {
-            // 如果計時器已經存在，檢查是否應該重新開始（例如從上次飛行繼續）
-            // 但為了確保每次新飛行都從頭開始，我們應該在 startFlight() 中強制重新設定
             console.log('⏱️ 計時器已存在，使用現有計時器');
+            // 確保計時結束回調已設置（重要：確保降落按鈕會在計時結束時顯示）
+            if (!this._timerCompletionTimeout) {
+                console.log('⚠️ 計時器回調未設置，重新設置');
+                this.setTimerCompletionCallback();
+            } else {
+                console.log('✅ 計時器回調已設置');
+            }
         }
 
         // 開始實時更新計時器和進度（包含到達時間的實時更新）
@@ -3113,15 +3268,14 @@ class WakeUpMapGame {
         return destination;
     }
 
-    // 根據起床時間計算UTC偏移
-    getUTCOffsetFromWakeTime(wakeTime) {
-        const [hours, minutes] = wakeTime.split(':').map(Number);
-        const totalMinutes = hours * 60 + minutes;
-
-        // 將時間轉換為UTC偏移（簡化計算）
-        // 8:00 = UTC+8, 6:00 = UTC+6, 10:00 = UTC+10
-        return Math.round((totalMinutes - 480) / 60); // 480分鐘 = 8小時
-    }
+    // 【已註解】根據起床時間計算UTC偏移 - 目前未使用（舊的睡眠航班模式）
+    // getUTCOffsetFromWakeTime(wakeTime) {
+    //     const [hours, minutes] = wakeTime.split(':').map(Number);
+    //     const totalMinutes = hours * 60 + minutes;
+    //     // 將時間轉換為UTC偏移（簡化計算）
+    //     // 8:00 = UTC+8, 6:00 = UTC+6, 10:00 = UTC+10
+    //     return Math.round((totalMinutes - 480) / 60); // 480分鐘 = 8小時
+    // }
 
     // 計算航班價格
     calculateFlightPrice(distance) {
@@ -3132,11 +3286,11 @@ class WakeUpMapGame {
         return price;
     }
 
-    // 計算「旅程長度」的文字描述（不再回傳實際時間點）
-    calculateArrivalTime(destination) {
-        const minutes = this.gameState.timerDuration || 30;
-        return this.formatDuration(minutes);
-    }
+    // 【已註解】計算「旅程長度」的文字描述 - 目前未使用（只被已註解的 getFallbackAnnouncement 使用）
+    // calculateArrivalTime(destination) {
+    //     const minutes = this.gameState.timerDuration || 30;
+    //     return this.formatDuration(minutes);
+    // }
 
     // 在左側（當前位置區）顯示地圖效果的位置面板
     showTicketInLocationPanel() {
@@ -3177,7 +3331,6 @@ class WakeUpMapGame {
             const taskText = (() => {
                 const mapZh = {
                     READING: '讀書',
-                    EXERCISE: '運動',
                     MEDITATION: '冥想',
                     REST: '休息',
                     WORK: '工作',
@@ -3185,7 +3338,6 @@ class WakeUpMapGame {
                 };
                 const mapEn = {
                     READING: 'READ',
-                    EXERCISE: 'WORKOUT',
                     MEDITATION: 'MEDITATE',
                     REST: 'REST',
                     WORK: 'WORK',
@@ -3687,13 +3839,18 @@ class WakeUpMapGame {
 
     // 計時完成處理（飛行計時器模式）
     async handleTimerComplete() {
-        if (this.gameState.flightCompleted) return; // 已經處理過
+        if (this.gameState.flightCompleted) {
+            console.log('⚠️ 飛行已完成，跳過計時完成處理');
+            return; // 已經處理過
+        }
 
         console.log('⏱️ 計時完成！顯示降落按鈕');
 
         // 不要直接處理降落，而是顯示降落按鈕讓用戶點擊
         // 這樣可以保持流程的一致性
         this.showLandingButton();
+
+        console.log('✅ 降落按鈕已顯示');
 
         // 更新當前位置為目的地（下次飛行從這裡開始）
         if (this.gameState.selectedDestination) {
@@ -3880,17 +4037,25 @@ class WakeUpMapGame {
             const targetTime = this.gameState.timerEndTime.getTime();
             const actualTime = now.getTime();
             const timeDiff = actualTime - targetTime;
-            const minutesDiff = Math.round(timeDiff / (1000 * 60));
+            const minutesDiff = Math.round(timeDiff / (1000 * 60)); // 保留正負號：負數=提早，正數=延後
+
+            console.log('⏱️ 準時性計算:', {
+                targetTime: new Date(targetTime).toLocaleTimeString('zh-TW'),
+                actualTime: now.toLocaleTimeString('zh-TW'),
+                timeDiffMs: timeDiff,
+                minutesDiff: minutesDiff, // 原始值（有正負號）
+                minutesDiffAbs: Math.abs(minutesDiff) // 絕對值
+            });
 
             // 保存實際時間和目標時間
             const result = {
                 status: '',
-                minutesDiff: Math.abs(minutesDiff),
+                minutesDiff: minutesDiff, // 修改：保留正負號，不要用 Math.abs()
                 actualTime: now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
                 targetTime: new Date(targetTime).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
             };
 
-            // 更細緻的分級
+            // 更細緻的分級（使用原始的 minutesDiff，保留正負號）
             if (minutesDiff < -10) {
                 result.status = 'EARLY'; // 超早（提前 10 分鐘以上）
             } else if (minutesDiff < -5) {
@@ -3899,11 +4064,18 @@ class WakeUpMapGame {
                 result.status = 'PERFECT'; // 完美準時（±1分鐘內）
             } else if (Math.abs(minutesDiff) <= 5) {
                 result.status = 'ON_TIME'; // 準時（±2-5分鐘）
-            } else if (minutesDiff <= 10) {
+            } else if (minutesDiff > 5 && minutesDiff <= 10) {
                 result.status = 'LATE'; // 輕微遲到（5-10分鐘）
-            } else {
+            } else if (minutesDiff > 10) {
                 result.status = 'LATE'; // 嚴重誤點（超過 10 分鐘）
             }
+
+            console.log('✅ 準時性狀態結果:', {
+                status: result.status,
+                minutesDiff: result.minutesDiff,
+                actualTime: result.actualTime,
+                targetTime: result.targetTime
+            });
 
             return result;
         }
@@ -3917,16 +4089,16 @@ class WakeUpMapGame {
         targetTime.setHours(wakeHour, wakeMinute, 0, 0);
 
         const timeDiff = now.getTime() - targetTime.getTime();
-        const minutesDiff = Math.round(timeDiff / (1000 * 60));
+        const minutesDiff = Math.round(timeDiff / (1000 * 60)); // 保留正負號
 
         const result = {
             status: '',
-            minutesDiff: Math.abs(minutesDiff),
+            minutesDiff: minutesDiff, // 修改：保留正負號
             actualTime: now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
             targetTime: targetTime.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
         };
 
-        // 更細緻的分級
+        // 更細緻的分級（使用原始的 minutesDiff，保留正負號）
         if (minutesDiff < -10) {
             result.status = 'EARLY';
         } else if (minutesDiff < -5) {
@@ -3935,9 +4107,9 @@ class WakeUpMapGame {
             result.status = 'PERFECT';
         } else if (Math.abs(minutesDiff) <= 5) {
             result.status = 'ON_TIME';
-        } else if (minutesDiff <= 10) {
+        } else if (minutesDiff > 5 && minutesDiff <= 10) {
             result.status = 'LATE';
-        } else {
+        } else if (minutesDiff > 10) {
             result.status = 'LATE';
         }
 
@@ -4039,9 +4211,17 @@ class WakeUpMapGame {
         await playPromise;
         console.log('🛫 [showBoardingInfoScreen] 廣播播放完成');
 
-        // 播放完成後，隱藏視窗（地圖已經在背景準備好了）
+        // 播放完成後，設置飛行狀態並顯示地圖
+        this.gameState.flightStarted = true;
+        this.gameState.flightStatus = 'flying';
+
+        // 隱藏視窗
         infoScreen.style.display = 'none';
-        console.log('🛫 [showBoardingInfoScreen] 視窗已隱藏，地圖已顯示');
+        console.log('🛫 [showBoardingInfoScreen] 視窗已隱藏');
+
+        // 開始遊戲（顯示地圖並初始化計時器）
+        this.startGame();
+        console.log('🛫 [showBoardingInfoScreen] 已調用 startGame()');
 
         // 重置處理標誌
         this.isProcessingAction = false;
@@ -4073,7 +4253,6 @@ class WakeUpMapGame {
     getTaskTypeName(taskType) {
         const taskNames = {
             'READING': '📚 讀書',
-            'EXERCISE': '💪 運動',
             'MEDITATION': '🧘 冥想',
             'REST': '😴 休息',
             'WORK': '💻 工作',
@@ -4133,7 +4312,8 @@ class WakeUpMapGame {
         let actionButtons = '';
 
         if (punctuality.status === 'EARLY') {
-            const isSuperEarly = punctuality.minutesDiff >= 10;
+            const minutesDiffAbs = Math.abs(punctuality.minutesDiff); // 提早時 minutesDiff 是負數，取絕對值
+            const isSuperEarly = minutesDiffAbs >= 10;
             const isMidwayLanding = punctuality.isEarlyLanding && punctuality.landingCity;
             const landingCityName = punctuality.landingCity || cityName;
             const originalDestName = punctuality.originalDestination || cityName;
@@ -4145,14 +4325,14 @@ class WakeUpMapGame {
             if (isMidwayLanding && landingCityName !== originalDestName) {
                 const progressPercent = punctuality.flightProgress || 0;
                 bodyContent = `
-                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>您提早了 ${minutesDiffAbs} 分鐘降落！</p>
                     <p>${isSuperEarly ? '哇！時間管理大師！' : '呃…我們好像提早到太多了。'}</p>
                     <p>因為還沒到終點，飛機已在【${landingCityName}】提前降落。</p>
                     <p>原定目的地【${originalDestName}】尚未到達（已飛行約 ${progressPercent}% 的距離）。</p>
                 `;
             } else {
                 bodyContent = `
-                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>您提早了 ${minutesDiffAbs} 分鐘降落！</p>
                     <p>${isSuperEarly ? '哇！時間管理大師！飛機提前完成任務，已經降落在' : '呃…我們好像提早到太多了。飛機已在'}【${cityName}】提前降落。</p>
                 `;
             }
@@ -4183,7 +4363,8 @@ class WakeUpMapGame {
             `;
         } else {
             // LATE
-            const isSevereLate = punctuality.minutesDiff > 10;
+            const minutesDiffAbs = Math.abs(punctuality.minutesDiff); // 延誤時 minutesDiff 是正數，但為了一致性也取絕對值
+            const isSevereLate = punctuality.minutesDiff > 10; // 延誤時 minutesDiff 是正數
             const hasDiversion = punctuality.originalDestination && punctuality.divertedCity;
             const originalCityName = punctuality.originalDestination || cityName;
 
@@ -4201,7 +4382,7 @@ class WakeUpMapGame {
             }
 
             bodyContent = `
-                <p>抱歉，我們在空中繞了幾圈…本次航班延誤了 ${punctuality.minutesDiff} 分鐘。</p>
+                <p>抱歉，我們在空中繞了幾圈…本次航班延誤了 ${minutesDiffAbs} 分鐘。</p>
                 ${destinationNote}
                 <p>飛機需要在空中盤旋等待降落許可。</p>
             `;
@@ -4465,7 +4646,8 @@ class WakeUpMapGame {
 
         // 根據狀態設置內容
         if (punctuality.status === 'EARLY') {
-            const isSuperEarly = punctuality.minutesDiff >= 10;
+            const minutesDiffAbs = Math.abs(punctuality.minutesDiff); // 提早時 minutesDiff 是負數，取絕對值
+            const isSuperEarly = minutesDiffAbs >= 10;
             const isMidwayLanding = punctuality.isEarlyLanding && punctuality.landingCity;
             const landingCityName = punctuality.landingCity || cityName;
             const originalDestName = punctuality.originalDestination || cityName;
@@ -4479,7 +4661,7 @@ class WakeUpMapGame {
                 // 中途降落情況
                 const progressPercent = punctuality.flightProgress || 0;
                 bodyContent = `
-                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>您提早了 ${minutesDiffAbs} 分鐘降落！</p>
                     <p>${isSuperEarly ? '哇！時間管理大師！' : '呃…我們好像提早到太多了。'}</p>
                     <p>因為還沒到終點，飛機已在【${landingCityName}】提前降落。</p>
                     <p>原定目的地【${originalDestName}】尚未到達（已飛行約 ${progressPercent}% 的距離）。</p>
@@ -4489,7 +4671,7 @@ class WakeUpMapGame {
             } else {
                 // 直接降落在目的地（但提早了）
                 bodyContent = `
-                    <p>您提早了 ${punctuality.minutesDiff} 分鐘降落！</p>
+                    <p>您提早了 ${minutesDiffAbs} 分鐘降落！</p>
                     <p>${isSuperEarly ? '哇！時間管理大師！飛機提前完成任務，已經降落在' : '呃…我們好像提早到太多了。飛機已在'}【${cityName}】提前降落。</p>
                     <p>沒事的，機組人員會處理後續。下次我們一起飛完全程吧！</p>
                     <p>雖然還沒到終點，但這段飛行仍然很棒。歡迎來到【${cityName}】！</p>
@@ -4528,7 +4710,8 @@ class WakeUpMapGame {
             `;
         } else {
             // LATE
-            const isSevereLate = punctuality.minutesDiff > 10;
+            const minutesDiffAbs = Math.abs(punctuality.minutesDiff); // 延誤時 minutesDiff 是正數，但為了一致性也取絕對值
+            const isSevereLate = punctuality.minutesDiff > 10; // 延誤時 minutesDiff 是正數
             const hasDiversion = punctuality.originalDestination && punctuality.divertedCity;
             const originalCityName = punctuality.originalDestination || cityName;
 
@@ -4546,7 +4729,7 @@ class WakeUpMapGame {
             }
 
             body.innerHTML = `
-                <p>抱歉，我們在空中繞了幾圈…本次航班延誤了 ${punctuality.minutesDiff} 分鐘。</p>
+                <p>抱歉，我們在空中繞了幾圈…本次航班延誤了 ${minutesDiffAbs} 分鐘。</p>
                 ${destinationNote}
                 <p>飛機需要在空中盤旋等待降落許可。</p>
                 <p>下次一起看看能不能準時降落吧，我相信你可以。</p>
@@ -5151,7 +5334,16 @@ class WakeUpMapGame {
 
     // 播放睡眠航班語音（優先呼叫後端 OpenAI 生成；失敗時使用備用）
     async playSleepFlightAnnouncement(announcementType, destination, punctuality = null) {
-        console.log('播放睡眠航班廣播:', announcementType, destination, punctuality);
+        console.log('🎤 播放睡眠航班廣播:', {
+            announcementType,
+            destination: destination?.name || destination,
+            punctuality: punctuality ? {
+                status: punctuality.status,
+                minutesDiff: punctuality.minutesDiff,
+                actualTime: punctuality.actualTime,
+                targetTime: punctuality.targetTime
+            } : null
+        });
 
         // 組合請求內容（加入機長口吻、風趣、在地特色）
         const origin = this.gameState.currentLocation || { name: '台北', country: '台灣', coordinates: [25.0330, 121.5654] };
@@ -5351,15 +5543,15 @@ class WakeUpMapGame {
         });
     }
 
-    // 備用廣播內容（一般）
-    getFallbackAnnouncement(announcementType, destination) {
-        if (announcementType === 'boarding') {
-            return `歡迎搭乘 Wake Up Airlines！我們即將從 ${this.gameState.currentLocation?.name || '台北'} 飛往 ${destination.name}，預計明天 ${this.calculateArrivalTime(destination)} 到達。請準備好您的夢想，我們即將起飛！`;
-        } else if (announcementType === 'landing') {
-            return `各位旅客，飛機即將降落在 ${destination.name}。請繫好安全帶，準備降落。如果您準備好了，請按按鈕確認降落。`;
-        }
-        return '';
-    }
+    // 【已註解】備用廣播內容（一般）- 目前未使用，保留作為參考
+    // getFallbackAnnouncement(announcementType, destination) {
+    //     if (announcementType === 'boarding') {
+    //         return `歡迎搭乘 Wake Up Airlines！我們即將從 ${this.gameState.currentLocation?.name || '台北'} 飛往 ${destination.name}，預計明天 ${this.calculateArrivalTime(destination)} 到達。請準備好您的夢想，我們即將起飛！`;
+    //     } else if (announcementType === 'landing') {
+    //         return `各位旅客，飛機即將降落在 ${destination.name}。請繫好安全帶，準備降落。如果您準備好了，請按按鈕確認降落。`;
+    //     }
+    //     return '';
+    // }
 
     // 備用廣播內容（機長口吻、風趣版）
     getCaptainStyleFallback(announcementType, destination) {
@@ -5389,12 +5581,16 @@ class WakeUpMapGame {
     playTextWithBrowserTTS(text, onComplete = null, onStart = null) {
         if ('speechSynthesis' in window) {
             const voices = speechSynthesis.getVoices();
-            const preferred = voices.find(v => /zh-TW/i.test(v.lang) && /male|Google|Android/i.test(v.name));
+            // 優先選擇男聲：尋找包含 male、Google、Android、Microsoft Male、Alex 等關鍵字的聲音
+            const preferred = voices.find(v =>
+                /zh-TW/i.test(v.lang) &&
+                (/male|Google|Android|Microsoft.*Male|Alex|男/i.test(v.name) || v.name.includes('男'))
+            ) || voices.find(v => /zh-TW/i.test(v.lang));
             const utterance = new SpeechSynthesisUtterance(text);
             if (preferred) utterance.voice = preferred; // 男聲偏好
             utterance.lang = 'zh-TW';
-            utterance.rate = 1.05; // 活潑一點
-            utterance.pitch = 0.95;
+            utterance.rate = 1.0; // 稍微慢一點，更像機長
+            utterance.pitch = 0.9; // 稍微低一點，更像男聲
 
             // 監聽播放開始事件
             if (onStart) {
@@ -5462,14 +5658,15 @@ class WakeUpMapGame {
         });
     }
 
-    hideLegacyResultPanels() {
-        const selectors = ['.result-info-panel', '.voice-loading-bar', '#resultInfoPanel', '#voiceLoadingBar'];
-        selectors.forEach(sel => {
-            document.querySelectorAll(sel).forEach(el => {
-                el.style.display = 'none';
-            });
-        });
-    }
+    // 【已註解】隱藏舊版結果面板 - 目前未使用
+    // hideLegacyResultPanels() {
+    //     const selectors = ['.result-info-panel', '.voice-loading-bar', '#resultInfoPanel', '#voiceLoadingBar'];
+    //     selectors.forEach(sel => {
+    //         document.querySelectorAll(sel).forEach(el => {
+    //             el.style.display = 'none';
+    //         });
+    //     });
+    // }
 }
 
 // 初始化遊戲系統
