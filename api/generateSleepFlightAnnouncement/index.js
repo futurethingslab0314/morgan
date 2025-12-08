@@ -103,6 +103,10 @@ const TASK_GUIDANCE = {
         'WORK': {
             zh: '這次飛行任務是「工作」。請在廣播中強調：效率、專注、準備進入工作狀態。可以提到目的地能帶來效率的氛圍。',
             en: 'The flight task is "Work". Emphasize: efficiency, focus, preparing for work mode. Mention how the destination\'s atmosphere can bring efficiency.'
+        },
+        'CREATIVE': {
+            zh: '這次飛行任務是「創作」。請在廣播中強調：靈感、創意、準備進入創作狀態。可以提到目的地能帶來靈感的氛圍，例如：異國文化可以激發創作靈感。',
+            en: 'The flight task is "Creative". Emphasize: inspiration, creativity, preparing for creative work. Mention how the destination\'s atmosphere can inspire creativity.'
         }
     },
     landing: {
@@ -125,6 +129,10 @@ const TASK_GUIDANCE = {
         'WORK': {
             zh: '乘客剛完成「工作」任務。請提醒：可以放鬆一下，搭配【國家文化特色】的放鬆方式。例如：日本的安靜可以幫助你放鬆；泰國的柔軟可以讓你的身心得到休息。讓乘客感覺完成了工作後，需要適當的放鬆。',
             en: 'The passenger just completed a "Work" task. Remind them: relax a bit, combined with the country\'s cultural relaxation style. Make them feel that after work, they need proper relaxation.'
+        },
+        'CREATIVE': {
+            zh: '乘客剛完成「創作」任務。請提醒：可以休息一下，讓創意沉澱，搭配【國家文化特色】的放鬆方式。例如：日本的安靜可以幫助你整理思緒；泰國的柔軟可以讓你的創意得到休息。讓乘客感覺完成了創作後，需要適當的放鬆和沉澱。',
+            en: 'The passenger just completed a "Creative" task. Remind them: take a break, let creativity settle, combined with the country\'s cultural relaxation style. Make them feel that after creative work, they need proper rest and reflection.'
         }
     }
 };

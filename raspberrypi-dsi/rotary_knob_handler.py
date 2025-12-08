@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 旋鈕控制處理模組（優化版 - 增加防抖處理）
-讀取 GPIO 5, 6, 13, 19, 26 的狀態來判斷旋鈕位置
+讀取 GPIO 5, 6, 13, 19, 26, 21 的狀態來判斷旋鈕位置
 """
 
 import RPi.GPIO as GPIO
@@ -17,17 +17,31 @@ class RotaryKnobHandler:
     """旋鈕處理器（帶防抖功能）"""
     
     def __init__(self):
-        # GPIO 腳位配置
-        self.pins = [5, 6, 13, 19, 26]
-        self.names = ["選單 1", "選單 2", "選單 3", "選單 4", "選單 5"]
+        # GPIO 腳位配置（順序：5, 6, 13, 19, 26, 21）
+        self.pins = [5, 6, 13, 19, 26, 21]
+        self.names = ["選單 1", "選單 2", "選單 3", "選單 4", "選單 5", "選單 6"]
         
-        # 任務對應（5個任務）
+        # GPIO 索引到 UI 位置的映射
+        # GPIO順序: [5, 6, 13, 19, 26, 21]
+        # 對應任務: [讀書, 工作, 創作, 冥想, 遊戲, 休息]
+        # UI位置:   [0,   1,   2,   4,   5,   3]  (位置3是底部，給休息)
+        self.gpio_to_position = {
+            0: 0,  # GPIO 5 (索引0) -> 位置0 -> 讀書（頂部）
+            1: 1,  # GPIO 6 (索引1) -> 位置1 -> 工作
+            2: 2,  # GPIO 13 (索引2) -> 位置2 -> 創作
+            3: 4,  # GPIO 19 (索引3) -> 位置4 -> 冥想
+            4: 5,  # GPIO 26 (索引4) -> 位置5 -> 遊戲
+            5: 3   # GPIO 21 (索引5) -> 位置3 -> 休息（底部）
+        }
+        
+        # 任務對應（6個任務，按 UI 位置順序）
         self.task_map = {
-            0: 'READING',    # 選單 1 -> 讀書
-            1: 'MEDITATION', # 選單 2 -> 冥想
-            2: 'REST',       # 選單 3 -> 休息
-            3: 'GAME',       # 選單 4 -> 遊戲
-            4: 'WORK'        # 選單 5 -> 工作
+            0: 'READING',    # 位置0 -> 讀書（頂部）
+            1: 'WORK',       # 位置1 -> 工作
+            2: 'CREATIVE',   # 位置2 -> 創作
+            3: 'REST',       # 位置3 -> 休息（底部）
+            4: 'MEDITATION', # 位置4 -> 冥想
+            5: 'GAME'        # 位置5 -> 遊戲
         }
         
         self.current_position = None
@@ -62,7 +76,7 @@ class RotaryKnobHandler:
             raise
     
     def read_position(self) -> Optional[int]:
-        """讀取當前旋鈕位置（0-4），多次讀取取平均值以提高穩定性"""
+        """讀取當前旋鈕位置（0-5），多次讀取取平均值以提高穩定性"""
         try:
             # 連續讀取3次，取最常見的值
             readings = []
@@ -76,8 +90,11 @@ class RotaryKnobHandler:
             if not readings:
                 return None
             
-            # 返回最常見的值（如果有多個，返回第一個）
-            return max(set(readings), key=readings.count)
+            # 返回最常見的 GPIO 索引
+            gpio_index = max(set(readings), key=readings.count)
+            
+            # 將 GPIO 索引轉換為 UI 位置
+            return self.gpio_to_position.get(gpio_index)
         except Exception as e:
             logger.error(f"讀取旋鈕位置失敗: {e}")
             return None

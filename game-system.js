@@ -21,7 +21,7 @@ class WakeUpMapGame {
             actionButtonState: 'hidden', // hidden, boarding, landing
             flightCompleted: false,
             isLanding: false,
-            // 任務類型：READING / MEDITATION / REST / GAME / WORK
+            // 任務類型：READING / MEDITATION / REST / GAME / WORK / CREATIVE
             taskType: 'REST',
             // 介面語言：'zh-TW' 或 'en'
             language: 'zh-TW'
@@ -190,8 +190,8 @@ class WakeUpMapGame {
         document.querySelectorAll('#taskModal .knob-option').forEach(option => {
             const key = option.dataset.task;
             if (!key) return;
-            const mapZh = { READING: '讀書', MEDITATION: '冥想', REST: '休息', WORK: '工作', GAME: '遊戲' };
-            const mapEn = { READING: 'READ', MEDITATION: 'MEDITATE', REST: 'REST', WORK: 'WORK', GAME: 'GAME' };
+            const mapZh = { READING: '讀書', MEDITATION: '冥想', REST: '休息', WORK: '工作', GAME: '遊戲', CREATIVE: '創作' };
+            const mapEn = { READING: 'READ', MEDITATION: 'MEDITATE', REST: 'REST', WORK: 'WORK', GAME: 'GAME', CREATIVE: 'CREATE' };
             const tMap = (lang === 'en' ? mapEn : mapZh);
             const labelEl = option.querySelector('.knob-option-label');
             if (labelEl && tMap[key]) labelEl.textContent = tMap[key];
@@ -855,11 +855,12 @@ class WakeUpMapGame {
     selectTaskByPosition(position) {
         const positionNum = parseInt(position);
         const taskMap = {
-            0: 'READING',
-            1: 'MEDITATION',
-            2: 'REST',
-            3: 'GAME',
-            4: 'WORK'
+            0: 'READING',    // 位置0 -> 讀書（頂部）
+            1: 'WORK',       // 位置1 -> 工作
+            2: 'CREATIVE',   // 位置2 -> 創作
+            3: 'REST',       // 位置3 -> 休息（底部）
+            4: 'MEDITATION', // 位置4 -> 冥想
+            5: 'GAME'        // 位置5 -> 遊戲
         };
         const task = taskMap[positionNum] || 'REST';
 
@@ -982,13 +983,14 @@ class WakeUpMapGame {
             // 更新旋鈕選項狀態
             const currentTask = this.gameState.taskType || 'REST';
             const taskToPosition = {
-                'READING': 0,
-                'MEDITATION': 1,
-                'REST': 2,
-                'GAME': 3,
-                'WORK': 4
+                'READING': 0,      // 讀書 -> 位置0（頂部）
+                'WORK': 1,         // 工作 -> 位置1
+                'CREATIVE': 2,     // 創作 -> 位置2
+                'REST': 3,         // 休息 -> 位置3（底部）
+                'MEDITATION': 4,   // 冥想 -> 位置4
+                'GAME': 5          // 遊戲 -> 位置5
             };
-            const position = taskToPosition[currentTask] !== undefined ? taskToPosition[currentTask] : 2;
+            const position = taskToPosition[currentTask] !== undefined ? taskToPosition[currentTask] : 3;
 
             // 移除所有 active 狀態
             document.querySelectorAll('.knob-option').forEach(opt => opt.classList.remove('active'));
@@ -998,10 +1000,10 @@ class WakeUpMapGame {
             if (activeOption) {
                 activeOption.classList.add('active');
 
-                // 旋轉旋鈕到對應位置（位置0在頂部，從0度開始）
+                // 旋轉旋鈕到對應位置（位置0在頂部，從0度開始，6個選項每個間隔60度）
                 const knob = document.querySelector('.rotary-knob');
                 if (knob) {
-                    const rotation = position * 72; // 每個位置間隔 72 度，位置0在頂部（0度）
+                    const rotation = position * 60; // 每個位置間隔 60 度，位置0在頂部（0度）
                     knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
                 }
             }
@@ -1181,7 +1183,8 @@ class WakeUpMapGame {
             MEDITATION: '冥想',
             REST: '休息',
             WORK: '工作',
-            GAME: '遊戲'
+            GAME: '遊戲',
+            CREATIVE: '創作'
         };
         const task = this.gameState.taskType || 'REST';
         const taskText = taskLabelMap[task] || '休息';
@@ -3334,14 +3337,16 @@ class WakeUpMapGame {
                     MEDITATION: '冥想',
                     REST: '休息',
                     WORK: '工作',
-                    GAME: '遊戲'
+                    GAME: '遊戲',
+                    CREATIVE: '創作'
                 };
                 const mapEn = {
                     READING: 'READ',
                     MEDITATION: 'MEDITATE',
                     REST: 'REST',
                     WORK: 'WORK',
-                    GAME: 'GAME'
+                    GAME: 'GAME',
+                    CREATIVE: 'CREATE'
                 };
                 const key = this.gameState.taskType || 'REST';
                 const map = (lang === 'en') ? mapEn : mapZh;
@@ -4256,7 +4261,8 @@ class WakeUpMapGame {
             'MEDITATION': '🧘 冥想',
             'REST': '😴 休息',
             'WORK': '💻 工作',
-            'GAME': '🎮 遊戲'
+            'GAME': '🎮 遊戲',
+            'CREATIVE': '✍️ 創作'
         };
         return taskNames[taskType] || '😴 休息';
     }

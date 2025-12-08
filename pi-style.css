@@ -3214,39 +3214,46 @@ body {
     transform-origin: 180px 180px;
 }
 
-/* 5個選項均勻分布在圓周上，半徑 110px，從頂部開始，每個間隔 72度 */
-/* 位置0: 頂部 (90度) - 讀書，最邊邊 */
+/* 6個選項均勻分布在圓周上，半徑 110px，從頂部開始，每個間隔 60度 */
+/* 位置0: 頂部 (90度) - 讀書 */
 .knob-option[data-position="0"] {
     top: calc(50% - 110px);
     left: 50%;
     transform: translate(-50%, -50%);
 }
 
-/* 位置1: 右上 (90-72=18度) - 冥想 */
+/* 位置1: 右上 (90-60=30度) - 工作 */
 .knob-option[data-position="1"] {
-    top: calc(50% - 110px * 0.809); /* cos(18°) ≈ 0.809 */
-    left: calc(50% + 110px * 0.588); /* sin(18°) ≈ 0.588 */
+    top: calc(50% - 110px * 0.866); /* cos(30°) ≈ 0.866 */
+    left: calc(50% + 110px * 0.5); /* sin(30°) = 0.5 */
     transform: translate(-50%, -50%);
 }
 
-/* 位置2: 右下 (90-144=-54度，即306度) - 休息 */
+/* 位置2: 右下 (90-120=-30度，即330度) - 創作 */
 .knob-option[data-position="2"] {
-    top: calc(50% + 110px * 0.309); /* cos(54°) ≈ 0.309 */
-    left: calc(50% + 110px * 0.951); /* sin(54°) ≈ 0.951 */
+    top: calc(50% + 110px * 0.5); /* cos(60°) = 0.5，但這裡是下方 */
+    left: calc(50% + 110px * 0.866); /* sin(60°) ≈ 0.866 */
     transform: translate(-50%, -50%);
 }
 
-/* 位置3: 左下 (90-216=-126度，即234度) - 遊戲 */
+/* 位置3: 底部 (90-180=-90度，即270度) - 休息 */
 .knob-option[data-position="3"] {
-    top: calc(50% + 110px * 0.309); /* cos(54°) ≈ 0.309 */
-    left: calc(50% - 110px * 0.951); /* sin(54°) ≈ 0.951 */
+    top: calc(50% + 110px);
+    left: 50%;
     transform: translate(-50%, -50%);
 }
 
-/* 位置4: 左上 (90-288=-198度，即162度) - 工作 */
+/* 位置4: 左下 (90-240=-150度，即210度) - 冥想 */
 .knob-option[data-position="4"] {
-    top: calc(50% - 110px * 0.809); /* cos(18°) ≈ 0.809 */
-    left: calc(50% - 110px * 0.588); /* sin(18°) ≈ 0.588 */
+    top: calc(50% + 110px * 0.5);
+    left: calc(50% - 110px * 0.866);
+    transform: translate(-50%, -50%);
+}
+
+/* 位置5: 左上 (90-300=-210度，即150度) - 遊戲 */
+.knob-option[data-position="5"] {
+    top: calc(50% - 110px * 0.866);
+    left: calc(50% - 110px * 0.5);
     transform: translate(-50%, -50%);
 }
 
