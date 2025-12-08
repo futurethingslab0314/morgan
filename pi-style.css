@@ -2998,7 +2998,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 15px;
+    /* 進一步減少間距為15px */
     padding: 10px 0;
 }
 
@@ -3041,6 +3042,8 @@ body {
     width: 100%;
     display: flex;
     justify-content: center;
+    margin: 0;
+    /* 移除margin，間距由父容器的gap控制 */
 }
 
 .confirm-timer-btn {
@@ -3145,15 +3148,18 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 30px 20px;
-    min-height: 400px;
+    padding: 20px 20px 0;
+    /* 減少頂部padding，從30px改為20px */
+    min-height: auto;
+    /* 改為auto，讓內容自然決定高度 */
 }
 
 .rotary-knob-wrapper {
     position: relative;
-    width: 360px;
-    height: 360px;
-    margin: 0 auto 20px;
+    width: 400px;
+    height: 400px;
+    margin: 0 auto -110px;
+    /* 底部間距改為15px，縮小與提示文字的距離 */
 }
 
 .rotary-knob {
@@ -3210,50 +3216,66 @@ body {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     opacity: 0.7;
-    /* 使用極座標系統，中心點在 180px, 180px */
-    transform-origin: 180px 180px;
+    /* 使用極座標系統，中心點在 200px, 200px（容器中心） */
+    transform-origin: 200px 200px;
 }
 
-/* 6個選項均勻分布在圓周上，半徑 110px，從頂部開始，每個間隔 60度 */
-/* 位置0: 頂部 (90度) - 讀書 */
+/* 6個選項均勻分布在上側180度扇形內，左右對稱，每個間隔35度，半徑：180px */
+/* 標準座標系：0度在右側（3點），順時針為正 */
+/* 上側180度扇形：從左側(180度)到右側(0度)，左右對稱 */
+/* 左側：讀書(180度), 工作(145度), 創作(110度) - 每個間隔35度 */
+/* 右側：冥想(70度), 遊戲(35度), 休息(0度) - 每個間隔35度，與左側對稱 */
+/* 位置0: 讀書 - 左側 (180度) */
 .knob-option[data-position="0"] {
-    top: calc(50% - 110px);
-    left: 50%;
+    top: 50%;
+    /* sin(180°) = 0 */
+    left: calc(50% - 180px);
+    /* cos(180°) = -1，左側 */
     transform: translate(-50%, -50%);
 }
 
-/* 位置1: 右上 (90-60=30度) - 工作 */
+/* 位置1: 工作 (145度) */
 .knob-option[data-position="1"] {
-    top: calc(50% - 110px * 0.866); /* cos(30°) ≈ 0.866 */
-    left: calc(50% + 110px * 0.5); /* sin(30°) = 0.5 */
+    top: calc(50% - 180px * 0.574);
+    /* sin(145°) = 0.574，向上為負 */
+    left: calc(50% - 180px * 0.819);
+    /* cos(145°) = -0.819，左側 */
     transform: translate(-50%, -50%);
 }
 
-/* 位置2: 右下 (90-120=-30度，即330度) - 創作 */
+/* 位置2: 創作 (110度) */
 .knob-option[data-position="2"] {
-    top: calc(50% + 110px * 0.5); /* cos(60°) = 0.5，但這裡是下方 */
-    left: calc(50% + 110px * 0.866); /* sin(60°) ≈ 0.866 */
+    top: calc(50% - 180px * 0.940);
+    /* sin(110°) = 0.940，向上為負 */
+    left: calc(50% - 180px * 0.342);
+    /* cos(110°) = -0.342，左側 */
     transform: translate(-50%, -50%);
 }
 
-/* 位置3: 底部 (90-180=-90度，即270度) - 休息 */
+/* 位置3: 休息 - 右側 (0度) */
 .knob-option[data-position="3"] {
-    top: calc(50% + 110px);
-    left: 50%;
+    top: 50%;
+    /* sin(0°) = 0 */
+    left: calc(50% + 180px);
+    /* cos(0°) = 1，右側 */
     transform: translate(-50%, -50%);
 }
 
-/* 位置4: 左下 (90-240=-150度，即210度) - 冥想 */
+/* 位置4: 冥想 (70度) - 與創作對稱 */
 .knob-option[data-position="4"] {
-    top: calc(50% + 110px * 0.5);
-    left: calc(50% - 110px * 0.866);
+    top: calc(50% - 180px * 0.940);
+    /* sin(70°) = 0.940，向上為負 */
+    left: calc(50% + 180px * 0.342);
+    /* cos(70°) = 0.342，右側 */
     transform: translate(-50%, -50%);
 }
 
-/* 位置5: 左上 (90-300=-210度，即150度) - 遊戲 */
+/* 位置5: 遊戲 (35度) - 與工作對稱 */
 .knob-option[data-position="5"] {
-    top: calc(50% - 110px * 0.866);
-    left: calc(50% - 110px * 0.5);
+    top: calc(50% - 180px * 0.574);
+    /* sin(35°) = 0.574，向上為負 */
+    left: calc(50% + 180px * 0.819);
+    /* cos(35°) = 0.819，右側 */
     transform: translate(-50%, -50%);
 }
 
@@ -3303,7 +3325,8 @@ body {
 }
 
 .knob-hint {
-    margin-top: 15px;
+    margin-top: 0;
+    /* 移除margin-top，間距由父容器的gap控制 */
     color: rgba(255, 255, 255, 0.6);
     font-size: 13px;
     text-align: center;

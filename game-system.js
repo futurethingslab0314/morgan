@@ -872,10 +872,25 @@ class WakeUpMapGame {
         if (selectedOption) {
             selectedOption.classList.add('active');
 
-            // 旋轉旋鈕指示器（位置0在頂部，從0度開始）
+            // 旋轉旋鈕指示器（上側180度扇形，左右對稱，每個間隔35度）
+            // 左側：讀書(180度), 工作(145度), 創作(110度)
+            // 右側：冥想(70度), 遊戲(35度), 休息(0度) - 與左側對稱
+            // 旋鈕指示器在頂部（-90度），要指向選項角度，需要逆時針旋轉
+            // 指示器在頂部（-90度），要指向0度（右側），需要逆時針轉90度 = -90度
+            // 指示器在頂部（-90度），要指向35度（右上），需要逆時針轉125度 = -125度
+            // 從休息(0度)到遊戲(35度)：-90度 -> -125度，逆時針轉35度 ✓
             const knob = document.querySelector('.rotary-knob');
             if (knob) {
-                const rotation = positionNum * 72; // 每個位置間隔 72 度，位置0在頂部（0度）
+                // 直接映射位置到旋鈕旋轉角度
+                const rotationMap = {
+                    0: 270,  // 讀書 - 180度 → 旋鈕旋轉 270度
+                    1: 305,  // 工作 - 145度 → 旋鈕旋轉 305度
+                    2: 340,  // 創作 - 110度 → 旋鈕旋轉 340度
+                    3: 90,   // 休息 - 0度 → 旋鈕旋轉 90度
+                    4: 20,   // 冥想 - 70度 → 旋鈕旋轉 20度
+                    5: 55    // 遊戲 - 35度 → 旋鈕旋轉 55度
+                };
+                const rotation = rotationMap[positionNum] || 90;
                 knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
             }
         }
@@ -1000,10 +1015,22 @@ class WakeUpMapGame {
             if (activeOption) {
                 activeOption.classList.add('active');
 
-                // 旋轉旋鈕到對應位置（位置0在頂部，從0度開始，6個選項每個間隔60度）
+                // 旋轉旋鈕到對應位置（上側180度扇形，左右對稱，每個間隔35度）
+                // 左側：讀書(180度), 工作(145度), 創作(110度)
+                // 右側：冥想(70度), 遊戲(35度), 休息(0度) - 與左側對稱
+                // 旋鈕指示器在頂部（-90度），要指向選項角度，需要旋轉 (選項角度 + 90度)
                 const knob = document.querySelector('.rotary-knob');
                 if (knob) {
-                    const rotation = position * 60; // 每個位置間隔 60 度，位置0在頂部（0度）
+                    // 直接映射位置到旋鈕旋轉角度
+                    const rotationMap = {
+                        0: 270,  // 讀書 - 180度 → 旋鈕旋轉 270度
+                        1: 305,  // 工作 - 145度 → 旋鈕旋轉 305度
+                        2: 340,  // 創作 - 110度 → 旋鈕旋轉 340度
+                        3: 90,   // 休息 - 0度 → 旋鈕旋轉 90度
+                        4: 20,   // 冥想 - 70度 → 旋鈕旋轉 20度
+                        5: 55    // 遊戲 - 35度 → 旋鈕旋轉 55度
+                    };
+                    const rotation = rotationMap[position] || 90;
                     knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
                 }
             }
