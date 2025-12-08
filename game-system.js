@@ -871,10 +871,10 @@ class WakeUpMapGame {
         if (selectedOption) {
             selectedOption.classList.add('active');
 
-            // 旋轉旋鈕指示器
+            // 旋轉旋鈕指示器（位置0在頂部，從0度開始）
             const knob = document.querySelector('.rotary-knob');
             if (knob) {
-                const rotation = positionNum * 72; // 每個位置間隔 72 度
+                const rotation = positionNum * 72; // 每個位置間隔 72 度，位置0在頂部（0度）
                 knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
             }
         }
@@ -998,10 +998,10 @@ class WakeUpMapGame {
             if (activeOption) {
                 activeOption.classList.add('active');
 
-                // 旋轉旋鈕到對應位置
+                // 旋轉旋鈕到對應位置（位置0在頂部，從0度開始）
                 const knob = document.querySelector('.rotary-knob');
                 if (knob) {
-                    const rotation = position * 72; // 每個位置間隔 72 度
+                    const rotation = position * 72; // 每個位置間隔 72 度，位置0在頂部（0度）
                     knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
                 }
             }
