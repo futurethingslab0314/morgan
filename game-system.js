@@ -990,14 +990,15 @@ class WakeUpMapGame {
             modal.classList.add('active');
 
             // 根據當前計時長度設置旋鈕位置
+            // 從左邊順時針一圈：30(位置0) -> 45(位置1) -> 60(位置2) -> 90(位置4) -> 120(位置5) -> 180(位置3)
             const currentDuration = this.gameState.timerDuration || 30;
             const durationToPosition = {
-                30: 0,
-                45: 1,
-                60: 2,
-                90: 3,
-                120: 4,
-                180: 5
+                30: 0,   // 位置0 (180度，最左)
+                45: 1,   // 位置1 (145度)
+                60: 2,   // 位置2 (110度)
+                90: 4,   // 位置4 (70度)
+                120: 5,  // 位置5 (35度)
+                180: 3   // 位置3 (0度，最右)
             };
             const position = durationToPosition[currentDuration] !== undefined ? durationToPosition[currentDuration] : 0;
 
@@ -1012,13 +1013,14 @@ class WakeUpMapGame {
 
     selectTimerByPosition(position) {
         const positionNum = parseInt(position);
+        // 從左邊順時針一圈：30(位置0) -> 45(位置1) -> 60(位置2) -> 90(位置4) -> 120(位置5) -> 180(位置3)
         const timerMap = {
-            0: 30,   // 位置0 -> 30分鐘
-            1: 45,   // 位置1 -> 45分鐘
-            2: 60,   // 位置2 -> 60分鐘
-            3: 90,   // 位置3 -> 90分鐘
-            4: 120,  // 位置4 -> 120分鐘
-            5: 180   // 位置5 -> 180分鐘
+            0: 30,   // 位置0 (180度，最左) -> 30分鐘
+            1: 45,   // 位置1 (145度) -> 45分鐘
+            2: 60,   // 位置2 (110度) -> 60分鐘
+            3: 180,  // 位置3 (0度，最右) -> 180分鐘
+            4: 90,   // 位置4 (70度) -> 90分鐘
+            5: 120   // 位置5 (35度) -> 120分鐘
         };
         const timerMinutes = timerMap[positionNum] || 30;
 
@@ -1031,15 +1033,16 @@ class WakeUpMapGame {
             selectedOption.classList.add('active');
 
             // 旋轉旋鈕指示器（使用與任務選擇相同的角度映射）
+            // 從左邊順時針：位置0(180度) -> 位置1(145度) -> 位置2(110度) -> 位置4(70度) -> 位置5(35度) -> 位置3(0度)
             const knob = document.querySelector('#timerModal .rotary-knob');
             if (knob) {
                 const rotationMap = {
-                    0: 270,  // 30分 - 180度 → 旋鈕旋轉 270度
-                    1: 305,  // 45分 - 145度 → 旋鈕旋轉 305度
-                    2: 340,  // 60分 - 110度 → 旋鈕旋轉 340度
-                    3: 90,   // 90分 - 0度 → 旋鈕旋轉 90度
-                    4: 20,   // 120分 - 70度 → 旋鈕旋轉 20度
-                    5: 55    // 180分 - 35度 → 旋鈕旋轉 55度
+                    0: 270,  // 30分 - 位置0 (180度) → 旋鈕旋轉 270度
+                    1: 305,  // 45分 - 位置1 (145度) → 旋鈕旋轉 305度
+                    2: 340,  // 60分 - 位置2 (110度) → 旋鈕旋轉 340度
+                    3: 90,   // 180分 - 位置3 (0度，最右) → 旋鈕旋轉 90度
+                    4: 20,   // 90分 - 位置4 (70度) → 旋鈕旋轉 20度
+                    5: 55    // 120分 - 位置5 (35度) → 旋鈕旋轉 55度
                 };
                 const rotation = rotationMap[positionNum] || 90;
                 knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;

@@ -78,23 +78,48 @@ class RotaryKnobHandler:
     def read_position(self) -> Optional[int]:
         """讀取當前旋鈕位置（0-5），多次讀取取平均值以提高穩定性"""
         try:
-            # 連續讀取3次，取最常見的值
+            # 連續讀取5次，取最常見的值（增加讀取次數以提高穩定性）
             readings = []
-            for _ in range(3):
+            gpio_states = {}  # 記錄每個 GPIO 的狀態，用於調試
+            
+            for _ in range(5):
+                # 讀取所有 GPIO 的狀態
+                active_pins = []
                 for i, p in enumerate(self.pins):
-                    if GPIO.input(p) == GPIO.LOW:
-                        readings.append(i)
-                        break
+                    state = GPIO.input(p)
+                    gpio_states[p] = state
+                    if state == GPIO.LOW:
+                        active_pins.append(i)
+                
+                # 如果有多個 pin 是 LOW，記錄所有（但通常應該只有一個）
+                if active_pins:
+                    # 如果有多個，選擇第一個（或者可以記錄所有）
+                    readings.append(active_pins[0])
+                else:
+                    # 沒有讀取到任何 LOW，記錄 None
+                    readings.append(None)
+                
                 time.sleep(0.01)  # 短暫延遲
             
-            if not readings:
+            # 過濾掉 None 值
+            valid_readings = [r for r in readings if r is not None]
+            
+            if not valid_readings:
+                # 所有讀取都是 None，記錄調試信息
+                logger.warning(f"無法讀取到任何有效位置，GPIO 狀態: {gpio_states}")
                 return None
             
             # 返回最常見的 GPIO 索引
-            gpio_index = max(set(readings), key=readings.count)
+            gpio_index = max(set(valid_readings), key=valid_readings.count)
             
             # 將 GPIO 索引轉換為 UI 位置
-            return self.gpio_to_position.get(gpio_index)
+            ui_position = self.gpio_to_position.get(gpio_index)
+            
+            # 調試信息：如果讀取到創作（索引2）或休息（索引5），記錄詳細信息
+            if gpio_index == 2 or gpio_index == 5:
+                logger.info(f"讀取到 GPIO 索引 {gpio_index} (GPIO {self.pins[gpio_index]}) -> UI 位置 {ui_position}, GPIO 狀態: {gpio_states}, 有效讀取: {valid_readings}")
+            
+            return ui_position
         except Exception as e:
             logger.error(f"讀取旋鈕位置失敗: {e}")
             return None

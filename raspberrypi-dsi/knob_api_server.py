@@ -75,6 +75,50 @@ def health_check():
         'knob_handler_available': knob_handler is not None
     })
 
+@app.route("/api/knob/debug", methods=["GET"])
+def debug_gpio():
+    """調試端點：檢查所有 GPIO 的狀態"""
+    if knob_handler is None:
+        return jsonify({
+            'success': False,
+            'message': '旋鈕處理器未初始化'
+        }), 503
+    
+    try:
+        import RPi.GPIO as GPIO
+        gpio_states = {}
+        for i, pin in enumerate(knob_handler.pins):
+            try:
+                state = GPIO.input(pin)
+                gpio_states[pin] = {
+                    'state': 'LOW' if state == GPIO.LOW else 'HIGH',
+                    'value': state,
+                    'gpio_index': i,
+                    'ui_position': knob_handler.gpio_to_position.get(i),
+                    'task': knob_handler.task_map.get(knob_handler.gpio_to_position.get(i)) if knob_handler.gpio_to_position.get(i) is not None else None
+                }
+            except Exception as e:
+                gpio_states[pin] = {'error': str(e)}
+        
+        current_pos = knob_handler.read_position()
+        return jsonify({
+            'success': True,
+            'gpio_states': gpio_states,
+            'current_position': current_pos,
+            'last_stable_position': knob_handler.last_stable_position,
+            'pins_mapping': {
+                'gpio_pins': knob_handler.pins,
+                'gpio_to_position': knob_handler.gpio_to_position,
+                'task_map': knob_handler.task_map
+            }
+        })
+    except Exception as e:
+        logger.error(f"調試 GPIO 失敗: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 if __name__ == "__main__":
     # 啟動 Flask 服務器
     logger.info("啟動旋鈕 API 服務器...")
