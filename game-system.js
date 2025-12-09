@@ -842,15 +842,28 @@ class WakeUpMapGame {
             });
         });
 
-        // 旋鈕選項點擊事件（TASK）- 使用事件委派確保動態元素也能點擊
+        // 旋鈕選項點擊事件（TASK 和 TIMER）- 使用事件委派確保動態元素也能點擊
         document.addEventListener('click', (e) => {
             const knobOption = e.target.closest('.knob-option');
             if (knobOption && knobOption.dataset.position !== undefined) {
                 e.preventDefault();
                 e.stopPropagation();
                 const position = knobOption.dataset.position;
-                console.log('🖱️ 點擊任務選項，位置:', position);
-                this.selectTaskByPosition(position);
+
+                // 判斷是任務選項還是計時選項
+                if (knobOption.classList.contains('timer-option')) {
+                    // 計時選項
+                    console.log('🖱️ 點擊計時選項，位置:', position);
+                    this.selectTimerByPosition(position);
+                    // 更新 lastKnobPosition，避免旋鈕監控重複觸發
+                    this.lastKnobPosition = parseInt(position);
+                } else {
+                    // 任務選項
+                    console.log('🖱️ 點擊任務選項，位置:', position);
+                    this.selectTaskByPosition(position);
+                    // 更新 lastKnobPosition，避免旋鈕監控重複觸發
+                    this.lastKnobPosition = parseInt(position);
+                }
             }
         });
 
@@ -870,22 +883,16 @@ class WakeUpMapGame {
         };
         const task = taskMap[positionNum] || 'REST';
 
-        // 移除所有 active 狀態
-        document.querySelectorAll('.knob-option').forEach(opt => opt.classList.remove('active'));
+        // 移除所有 active 狀態（只針對任務選項，不包括計時選項）
+        document.querySelectorAll('#taskModal .knob-option').forEach(opt => opt.classList.remove('active'));
 
         // 設置新的 active 狀態
-        const selectedOption = document.querySelector(`.knob-option[data-position="${position}"]`);
+        const selectedOption = document.querySelector(`#taskModal .knob-option[data-position="${position}"]`);
         if (selectedOption) {
             selectedOption.classList.add('active');
 
-            // 旋轉旋鈕指示器（上側180度扇形，左右對稱，每個間隔35度）
-            // 左側：讀書(180度), 工作(145度), 創作(110度)
-            // 右側：冥想(70度), 遊戲(35度), 休息(0度) - 與左側對稱
-            // 旋鈕指示器在頂部（-90度），要指向選項角度，需要逆時針旋轉
-            // 指示器在頂部（-90度），要指向0度（右側），需要逆時針轉90度 = -90度
-            // 指示器在頂部（-90度），要指向35度（右上），需要逆時針轉125度 = -125度
-            // 從休息(0度)到遊戲(35度)：-90度 -> -125度，逆時針轉35度 ✓
-            const knob = document.querySelector('.rotary-knob');
+            // 旋轉旋鈕指示器（只針對任務視窗的旋鈕）
+            const knob = document.querySelector('#taskModal .rotary-knob');
             if (knob) {
                 // 直接映射位置到旋鈕旋轉角度
                 const rotationMap = {
@@ -1003,6 +1010,47 @@ class WakeUpMapGame {
         }
     }
 
+    selectTimerByPosition(position) {
+        const positionNum = parseInt(position);
+        const timerMap = {
+            0: 30,   // 位置0 -> 30分鐘
+            1: 45,   // 位置1 -> 45分鐘
+            2: 60,   // 位置2 -> 60分鐘
+            3: 90,   // 位置3 -> 90分鐘
+            4: 120,  // 位置4 -> 120分鐘
+            5: 180   // 位置5 -> 180分鐘
+        };
+        const timerMinutes = timerMap[positionNum] || 30;
+
+        // 移除所有 active 狀態（只針對計時選項）
+        document.querySelectorAll('#timerModal .timer-option').forEach(opt => opt.classList.remove('active'));
+
+        // 設置新的 active 狀態
+        const selectedOption = document.querySelector(`#timerModal .timer-option[data-position="${position}"]`);
+        if (selectedOption) {
+            selectedOption.classList.add('active');
+
+            // 旋轉旋鈕指示器（使用與任務選擇相同的角度映射）
+            const knob = document.querySelector('#timerModal .rotary-knob');
+            if (knob) {
+                const rotationMap = {
+                    0: 270,  // 30分 - 180度 → 旋鈕旋轉 270度
+                    1: 305,  // 45分 - 145度 → 旋鈕旋轉 305度
+                    2: 340,  // 60分 - 110度 → 旋鈕旋轉 340度
+                    3: 90,   // 90分 - 0度 → 旋鈕旋轉 90度
+                    4: 20,   // 120分 - 70度 → 旋鈕旋轉 20度
+                    5: 55    // 180分 - 35度 → 旋鈕旋轉 55度
+                };
+                const rotation = rotationMap[positionNum] || 90;
+                knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+            }
+        }
+
+        this.gameState.timerDuration = timerMinutes;
+        this.saveGameState();
+        console.log('⏱️ 計時長度已選擇:', timerMinutes, '分鐘，位置:', position);
+    }
+
     showTaskModal() {
         const modal = document.getElementById('taskModal');
         if (modal) {
@@ -1091,6 +1139,7 @@ class WakeUpMapGame {
 
                 const data = await response.json();
 
+                // 如果 API 返回成功且有位置信息
                 if (data.success && data.position !== undefined) {
                     // 重置錯誤標記
                     if (this.apiErrorLogged) {
@@ -1111,6 +1160,7 @@ class WakeUpMapGame {
                         // 如果任務選擇視窗是打開的，自動選擇對應任務
                         const taskModal = document.getElementById('taskModal');
                         if (taskModal && taskModal.classList.contains('active')) {
+                            console.log('📋 任務視窗已打開，更新選擇');
                             this.selectTaskByPosition(data.position.toString());
                             console.log('🎯 旋鈕選擇任務:', data.task, '位置:', data.position);
                         }
@@ -1118,9 +1168,17 @@ class WakeUpMapGame {
                         // 如果計時選擇視窗是打開的，自動選擇對應計時長度
                         const timerModal = document.getElementById('timerModal');
                         if (timerModal && timerModal.classList.contains('active')) {
+                            console.log('⏱️ 計時視窗已打開，更新選擇');
                             this.selectTimerByPosition(data.position.toString());
                             console.log('⏱️ 旋鈕選擇計時長度，位置:', data.position);
                         }
+                    }
+                } else if (!data.success) {
+                    // API 返回失敗（例如：旋鈕在兩個位置之間）
+                    // 不更新位置，保持當前狀態
+                    // 只在調試時記錄
+                    if (this.lastKnobPosition === null) {
+                        console.log('⚠️ 旋鈕位置未確定，等待穩定位置...');
                     }
                 }
             } catch (error) {
