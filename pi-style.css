@@ -3266,6 +3266,9 @@ body {
     opacity: 0.7;
     /* 使用極座標系統，中心點在 200px, 200px（容器中心） */
     transform-origin: 200px 200px;
+    /* 確保可以點擊 */
+    pointer-events: auto !important;
+    z-index: 100;
 }
 
 /* 6個選項均勻分布在上側180度扇形內，左右對稱，每個間隔35度，半徑：180px */
