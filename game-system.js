@@ -854,6 +854,8 @@ class WakeUpMapGame {
 
     selectTaskByPosition(position) {
         const positionNum = parseInt(position);
+        console.log('🔍 selectTaskByPosition 被調用:', { position, positionNum }); // 調試日誌
+
         const taskMap = {
             0: 'READING',    // 位置0 -> 讀書（頂部）
             1: 'WORK',       // 位置1 -> 工作
@@ -869,8 +871,11 @@ class WakeUpMapGame {
 
         // 設置新的 active 狀態
         const selectedOption = document.querySelector(`.knob-option[data-position="${position}"]`);
+        console.log('🔍 找到選項元素:', selectedOption ? '是' : '否', '位置:', position); // 調試日誌
+
         if (selectedOption) {
             selectedOption.classList.add('active');
+            console.log('✅ 已設置 active 狀態，任務:', task); // 調試日誌
 
             // 旋轉旋鈕指示器（上側180度扇形，左右對稱，每個間隔35度）
             // 左側：讀書(180度), 工作(145度), 創作(110度)
@@ -898,6 +903,59 @@ class WakeUpMapGame {
         this.gameState.taskType = task;
         this.saveGameState();
         console.log('🎯 任務已選擇:', task, '位置:', position);
+    }
+
+    selectTimerByPosition(position) {
+        const positionNum = parseInt(position);
+        console.log('🔍 selectTimerByPosition 被調用:', { position, positionNum });
+
+        // 位置到分鐘數的映射（6個選項，對應6個位置）
+        // 左側：30分鐘(180度), 60分鐘(145度), 90分鐘(110度)
+        // 右側：180分鐘(0度), 150分鐘(70度), 120分鐘(35度)
+        const minutesMap = {
+            0: 30,   // 位置0 -> 30分鐘（左側，180度）
+            1: 60,   // 位置1 -> 60分鐘（145度）
+            2: 90,   // 位置2 -> 90分鐘（110度）
+            3: 180,  // 位置3 -> 180分鐘（右側，0度）
+            4: 150,  // 位置4 -> 150分鐘（70度）
+            5: 120   // 位置5 -> 120分鐘（35度）
+        };
+        const minutes = minutesMap[positionNum] || 30;
+
+        // 移除所有 active 狀態
+        document.querySelectorAll('#timerModal .knob-option').forEach(opt => opt.classList.remove('active'));
+
+        // 設置新的 active 狀態
+        const selectedOption = document.querySelector(`#timerModal .knob-option[data-position="${position}"]`);
+        console.log('🔍 找到計時選項元素:', selectedOption ? '是' : '否', '位置:', position);
+
+        if (selectedOption) {
+            selectedOption.classList.add('active');
+            console.log('✅ 已設置 active 狀態，計時長度:', minutes, '分鐘');
+
+            // 旋轉旋鈕指示器（使用與任務選擇相同的角度映射）
+            const knob = document.querySelector('#timerModal .rotary-knob');
+            if (knob) {
+                // 直接映射位置到旋鈕旋轉角度（與任務選擇相同）
+                const rotationMap = {
+                    0: 270,  // 30分鐘 - 180度 → 旋鈕旋轉 270度
+                    1: 305,  // 60分鐘 - 145度 → 旋鈕旋轉 305度
+                    2: 340,  // 90分鐘 - 110度 → 旋鈕旋轉 340度
+                    3: 90,   // 180分鐘 - 0度 → 旋鈕旋轉 90度
+                    4: 20,   // 150分鐘 - 70度 → 旋鈕旋轉 20度
+                    5: 55    // 120分鐘 - 35度 → 旋鈕旋轉 55度
+                };
+                const rotation = rotationMap[positionNum] || 90;
+                knob.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+            }
+
+            // 更新輸入框和遊戲狀態
+            const timerInput = document.getElementById('timerDurationInput');
+            if (timerInput) {
+                timerInput.value = minutes;
+            }
+            this.gameState.timerDuration = minutes;
+        }
     }
 
     confirmTaskSelection() {
@@ -975,18 +1033,29 @@ class WakeUpMapGame {
         const modal = document.getElementById('timerModal');
         if (modal) {
             modal.classList.add('active');
+
+            // 根據當前計時長度找到對應位置
+            const currentMinutes = this.gameState.timerDuration || 30;
+            const minutesToPosition = {
+                30: 0,
+                60: 1,
+                90: 2,
+                180: 3,
+                150: 4,
+                120: 5
+            };
+            const position = minutesToPosition[currentMinutes] !== undefined
+                ? minutesToPosition[currentMinutes]
+                : 0; // 預設為30分鐘（位置0）
+
+            // 初始化旋鈕位置
+            this.selectTimerByPosition(position.toString());
+
             // 確保使用預設值
             const timerInput = document.getElementById('timerDurationInput');
             if (timerInput) {
-                timerInput.value = this.gameState.timerDuration || 30;
+                timerInput.value = currentMinutes;
             }
-            // 更新預設按鈕狀態
-            document.querySelectorAll('.time-preset').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.dataset.minutes && Number(btn.dataset.minutes) === (this.gameState.timerDuration || 30)) {
-                    btn.classList.add('active');
-                }
-            });
         }
     }
 
@@ -1059,6 +1128,12 @@ class WakeUpMapGame {
                 if (data.success && data.position !== undefined) {
                     // 如果位置改變了
                     if (this.lastKnobPosition !== data.position) {
+                        console.log('🔄 位置改變:', {
+                            old: this.lastKnobPosition,
+                            new: data.position,
+                            task: data.task
+                        }); // 調試日誌
+
                         this.lastKnobPosition = data.position;
 
                         // 如果任務選擇視窗是打開的，自動選擇對應任務
@@ -1066,6 +1141,13 @@ class WakeUpMapGame {
                         if (taskModal && taskModal.classList.contains('active')) {
                             this.selectTaskByPosition(data.position.toString());
                             console.log('🎯 旋鈕選擇任務:', data.task, '位置:', data.position);
+                        }
+
+                        // 如果計時選擇視窗是打開的，自動選擇對應計時長度
+                        const timerModal = document.getElementById('timerModal');
+                        if (timerModal && timerModal.classList.contains('active')) {
+                            this.selectTimerByPosition(data.position.toString());
+                            console.log('⏱️ 旋鈕選擇計時長度，位置:', data.position);
                         }
                     }
                 }
@@ -1092,8 +1174,16 @@ class WakeUpMapGame {
 
     // 確認計時長度，進入第三階段：顯示目的地選擇
     async confirmTimerDuration() {
-        const timerInput = document.getElementById('timerDurationInput');
-        const timerMinutes = timerInput ? Number(timerInput.value) || 30 : 30;
+        // 優先使用旋鈕選擇的值，如果沒有則使用輸入框
+        const activeOption = document.querySelector('#timerModal .knob-option.active');
+        let timerMinutes = 30;
+
+        if (activeOption && activeOption.dataset.minutes) {
+            timerMinutes = Number(activeOption.dataset.minutes);
+        } else {
+            const timerInput = document.getElementById('timerDurationInput');
+            timerMinutes = timerInput ? Number(timerInput.value) || 30 : 30;
+        }
 
         // 確保最短30分鐘
         const validMinutes = Math.max(30, timerMinutes);

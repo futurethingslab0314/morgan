@@ -2983,12 +2983,34 @@ body {
         rgba(15, 23, 42, 0.9);
 }
 
+/* 計時選擇視窗：與任務選擇視窗相同的高度和樣式（只針對純 timer-modal，不影響 task-modal） */
+.timer-modal:not(.task-modal) .modal-content {
+    max-width: 720px;
+    padding: 28px 40px 24px;
+    min-height: 46vh;
+    background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.65), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.75), transparent 45%),
+        rgba(15, 23, 42, 0.9);
+}
+
 .task-modal .modal-header {
+    display: none;
+}
+
+/* 計時選擇視窗：隱藏標題欄 */
+.timer-modal .modal-header {
     display: none;
 }
 
 /* Task 視窗：避免內部再捲動，讓所有按鈕一次看完 */
 .task-modal .modal-body {
+    max-height: none;
+    overflow: visible;
+    padding-bottom: 0;
+}
+
+/* 計時選擇視窗：避免內部再捲動，讓所有按鈕一次看完（只針對純 timer-modal，不影響 task-modal） */
+.timer-modal:not(.task-modal) .modal-body {
     max-height: none;
     overflow: visible;
     padding-bottom: 0;
@@ -3043,6 +3065,11 @@ body {
     display: flex;
     justify-content: center;
     margin: 0;
+    position: relative;
+    z-index: 100;
+    /* 提高z-index，確保按鈕在最上層，可以點擊 */
+    pointer-events: auto;
+    /* 確保可以點擊 */
     /* 移除margin，間距由父容器的gap控制 */
 }
 
@@ -3059,6 +3086,11 @@ body {
         0 10px 24px rgba(15, 23, 42, 0.8),
         0 0 0 1px rgba(255, 255, 255, 0.12);
     transition: all 0.3s ease;
+    position: relative;
+    z-index: 200;
+    /* 提高z-index，確保按鈕在最上層 */
+    pointer-events: auto;
+    /* 確保可以點擊 */
 }
 
 .confirm-timer-btn:hover {
@@ -3152,6 +3184,18 @@ body {
     /* 減少頂部padding，從30px改為20px */
     min-height: auto;
     /* 改為auto，讓內容自然決定高度 */
+    pointer-events: none;
+    /* 讓點擊事件穿透 */
+}
+
+/* 旋鈕選項需要可以點擊（任務選擇和計時選擇都適用） */
+.rotary-knob-container .knob-option,
+#taskModal .knob-option,
+#timerModal .knob-option {
+    pointer-events: auto !important;
+    /* 選項本身可以點擊，使用 !important 確保優先級 */
+    cursor: pointer;
+    /* 顯示手型游標 */
 }
 
 .rotary-knob-wrapper {
@@ -3159,7 +3203,11 @@ body {
     width: 400px;
     height: 400px;
     margin: 0 auto -110px;
-    /* 底部間距改為15px，縮小與提示文字的距離 */
+    /* 恢復負margin */
+    z-index: 1;
+    /* 確保在正確的層級 */
+    pointer-events: none;
+    /* 讓點擊事件穿透，不阻擋按鈕 */
 }
 
 .rotary-knob {
@@ -3325,8 +3373,8 @@ body {
 }
 
 .knob-hint {
-    margin-top: 0;
-    /* 移除margin-top，間距由父容器的gap控制 */
+    margin-top: 30px;
+    /* 恢復間距，與旋鈕保持30px距離 */
     color: rgba(255, 255, 255, 0.6);
     font-size: 13px;
     text-align: center;

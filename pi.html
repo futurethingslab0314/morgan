@@ -687,24 +687,47 @@
         <div id="timerModal" class="timer-modal">
             <div class="modal-overlay" id="timerModalOverlay"></div>
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header" style="display: none;">
                     <h2 class="modal-title">⏱️ 選擇計時長度</h2>
                     <button class="modal-close" id="timerModalClose">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="timer-selection-layout">
-                        <div class="timer-selector-container">
-                            <div class="timer-input-wrapper">
-                                <input type="number" id="timerDurationInput" class="time-input" 
-                                       min="30" max="180" step="5" value="30" placeholder="分鐘">
-                                <span class="timer-label">分鐘</span>
-                            </div>
-                            <div class="time-presets">
-                                <button class="time-preset" data-minutes="30">30分鐘</button>
-                                <button class="time-preset active" data-minutes="45">45分鐘</button>
-                                <button class="time-preset" data-minutes="60">1小時</button>
-                                <button class="time-preset" data-minutes="90">1.5小時</button>
-                                <button class="time-preset" data-minutes="120">2小時</button>
+                        <div class="task-selector">
+                            <div class="task-title">⏱️ 計時長度</div>
+                            <div class="rotary-knob-container">
+                                <div class="rotary-knob-wrapper">
+                                    <div class="rotary-knob">
+                                        <div class="knob-indicator"></div>
+                                    </div>
+                                    <div class="knob-options">
+                                        <div class="knob-option" data-minutes="30" data-position="0">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">30分鐘</div>
+                                        </div>
+                                        <div class="knob-option" data-minutes="60" data-position="1">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">1小時</div>
+                                        </div>
+                                        <div class="knob-option" data-minutes="90" data-position="2">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">1.5小時</div>
+                                        </div>
+                                        <div class="knob-option" data-minutes="180" data-position="3">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">3小時</div>
+                                        </div>
+                                        <div class="knob-option" data-minutes="150" data-position="4">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">2.5小時</div>
+                                        </div>
+                                        <div class="knob-option" data-minutes="120" data-position="5">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">2小時</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="knob-hint">轉動旋鈕選擇計時長度</div>
                             </div>
                         </div>
                         <div class="timer-confirm-section">
