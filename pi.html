@@ -1104,7 +1104,7 @@
             try {
               if (!text || typeof text !== 'string') {
                 console.warn('[WakeUpFlight] playTextWithLanguage 收到空白文字');
-                return;
+                throw new Error('空白文字');
               }
 
               const payload = {
@@ -1116,18 +1116,42 @@
                 style: options.style || 'default'
               };
 
-              const res = await fetch(`${TTS_BASE}/tts/play`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              });
+              console.log('[WakeUpFlight] 開始調用 TTS 服務:', { textLength: text.length, language, voice: payload.voice });
 
-              if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                console.error('[WakeUpFlight] 本機 TTS 服務回報失敗', err);
+              // 設置較長的超時時間（60秒），避免長文本被中斷
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒超時
+
+              try {
+                const res = await fetch(`${TTS_BASE}/tts/play`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                  signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  console.error('[WakeUpFlight] 本機 TTS 服務回報失敗', err);
+                  throw new Error(`TTS 服務錯誤: ${res.status} - ${err.error || '未知錯誤'}`);
+                }
+
+                const result = await res.json().catch(() => ({ success: true }));
+                console.log('[WakeUpFlight] TTS 播放成功:', result);
+                return result;
+              } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                  console.error('[WakeUpFlight] TTS 請求超時');
+                  throw new Error('TTS 請求超時');
+                }
+                throw fetchError;
               }
             } catch (error) {
               console.error('[WakeUpFlight] 呼叫本機 TTS 失敗', error);
+              throw error; // 重新拋出錯誤，讓調用者可以處理
             }
           }
         };

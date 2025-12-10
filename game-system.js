@@ -6270,42 +6270,107 @@ class WakeUpMapGame {
     // 使用瀏覽器TTS播放文字
     playTextWithBrowserTTS(text, onComplete = null, onStart = null) {
         if ('speechSynthesis' in window) {
+            // 先取消任何正在播放的語音，避免中斷
+            speechSynthesis.cancel();
+
+            // 等待語音列表載入完成
             const voices = speechSynthesis.getVoices();
-            // 優先選擇男聲：尋找包含 male、Google、Android、Microsoft Male、Alex 等關鍵字的聲音
-            const preferred = voices.find(v =>
-                /zh-TW/i.test(v.lang) &&
-                (/male|Google|Android|Microsoft.*Male|Alex|男/i.test(v.name) || v.name.includes('男'))
-            ) || voices.find(v => /zh-TW/i.test(v.lang));
-            const utterance = new SpeechSynthesisUtterance(text);
+            if (voices.length === 0) {
+                // 如果語音列表還沒載入，等待載入完成
+                speechSynthesis.onvoiceschanged = () => {
+                    this._speakWithBrowserTTS(text, onComplete, onStart);
+                };
+                return;
+            }
+
+            this._speakWithBrowserTTS(text, onComplete, onStart);
+        } else if (onComplete) {
+            onComplete(false);
+        }
+    }
+
+    // 實際執行瀏覽器 TTS 播放的內部方法
+    _speakWithBrowserTTS(text, onComplete = null, onStart = null) {
+        const voices = speechSynthesis.getVoices();
+        // 優先選擇男聲：尋找包含 male、Google、Android、Microsoft Male、Alex 等關鍵字的聲音
+        const preferred = voices.find(v =>
+            /zh-TW/i.test(v.lang) &&
+            (/male|Google|Android|Microsoft.*Male|Alex|男/i.test(v.name) || v.name.includes('男'))
+        ) || voices.find(v => /zh-TW/i.test(v.lang));
+
+        // 如果文字太長，分段播放（瀏覽器 TTS 可能有長度限制）
+        const maxLength = 200; // 每段最多200字
+        const textChunks = [];
+        if (text.length > maxLength) {
+            // 嘗試在句號、問號、驚嘆號處分段
+            let currentChunk = '';
+            const sentences = text.split(/([。！？\n])/);
+            for (let i = 0; i < sentences.length; i++) {
+                if (currentChunk.length + sentences[i].length <= maxLength) {
+                    currentChunk += sentences[i];
+                } else {
+                    if (currentChunk) textChunks.push(currentChunk);
+                    currentChunk = sentences[i];
+                }
+            }
+            if (currentChunk) textChunks.push(currentChunk);
+        } else {
+            textChunks.push(text);
+        }
+
+        let currentChunkIndex = 0;
+        let hasStarted = false;
+
+        const speakChunk = () => {
+            if (currentChunkIndex >= textChunks.length) {
+                // 所有片段都播放完成
+                if (onComplete) {
+                    onComplete(true);
+                }
+                return;
+            }
+
+            const chunk = textChunks[currentChunkIndex];
+            const utterance = new SpeechSynthesisUtterance(chunk);
             if (preferred) utterance.voice = preferred; // 男聲偏好
             utterance.lang = 'zh-TW';
             utterance.rate = 1.0; // 稍微慢一點，更像機長
             utterance.pitch = 0.9; // 稍微低一點，更像男聲
 
-            // 監聽播放開始事件
-            if (onStart) {
+            // 只在第一段播放時觸發 onStart
+            if (onStart && !hasStarted) {
                 utterance.onstart = () => {
+                    hasStarted = true;
                     onStart();
                 };
             }
 
             // 監聽播放完成事件
-            if (onComplete) {
-                utterance.onend = () => {
-                    console.log('🎤 語音播放完成');
-                    onComplete(true);
-                };
-                utterance.onerror = (e) => {
-                    console.warn('⚠️ 語音播放錯誤:', e);
-                    // 即使出錯也要調用 onComplete，避免卡住
-                    onComplete(false);
-                };
-            }
+            utterance.onend = () => {
+                console.log(`🎤 語音片段 ${currentChunkIndex + 1}/${textChunks.length} 播放完成`);
+                currentChunkIndex++;
+                // 播放下一段
+                speakChunk();
+            };
+
+            utterance.onerror = (e) => {
+                console.warn('⚠️ 語音播放錯誤:', e);
+                // 即使出錯也繼續播放下一段，或結束
+                currentChunkIndex++;
+                if (currentChunkIndex >= textChunks.length) {
+                    if (onComplete) {
+                        onComplete(false);
+                    }
+                } else {
+                    speakChunk();
+                }
+            };
 
             speechSynthesis.speak(utterance);
-        } else if (onComplete) {
-            onComplete(false);
-        }
+        };
+
+        // 開始播放第一段
+        speakChunk();
     }
 
     // 外部 API
