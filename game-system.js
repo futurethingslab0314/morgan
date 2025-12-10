@@ -1213,15 +1213,16 @@ class WakeUpMapGame {
 
     // 確認計時長度，進入第三階段：顯示目的地選擇
     async confirmTimerDuration() {
-        const timerInput = document.getElementById('timerDurationInput');
-        const timerMinutes = timerInput ? Number(timerInput.value) || 30 : 30;
+        // 直接使用 gameState.timerDuration（已經由 selectTimerByPosition 更新）
+        // 如果沒有值，則使用預設值 30 分鐘
+        const timerMinutes = this.gameState.timerDuration || 30;
 
         // 確保最短30分鐘
         const validMinutes = Math.max(30, timerMinutes);
         this.gameState.timerDuration = validMinutes;
         this.saveGameState();
 
-        console.log(`✅ 計時長度已確認：${validMinutes} 分鐘`);
+        console.log(`✅ 計時長度已確認：${validMinutes} 分鐘（從 gameState 讀取）`);
 
         // 關閉計時長度視窗，開啟目的地選擇視窗
         this.hideTimerModal();
