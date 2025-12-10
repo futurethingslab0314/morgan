@@ -5782,6 +5782,52 @@ class WakeUpMapGame {
         });
     }
 
+    // 顯示全屏機長廣播
+    showCaptainAnnouncementFullscreen(announcementType) {
+        const fullscreenEl = document.getElementById('captainAnnouncementFullscreen');
+        const titleEl = document.getElementById('captainAnnouncementTitle');
+        const subtitleEl = document.getElementById('captainAnnouncementSubtitle');
+
+        if (!fullscreenEl) {
+            console.warn('⚠️ 找不到全屏機長廣播元素');
+            return;
+        }
+
+        // 根據廣播類型設置標題
+        const isEnglish = this.gameState.language === 'en';
+        let title = '';
+        let subtitle = '';
+
+        if (announcementType === 'boarding') {
+            title = isEnglish ? 'Captain Announcement' : '機長廣播';
+            subtitle = isEnglish ? 'Please listen carefully' : '請仔細聆聽';
+        } else if (announcementType === 'approach') {
+            title = isEnglish ? 'Pre-Landing Announcement' : '準備降落預告';
+            subtitle = isEnglish ? 'We will be landing soon' : '即將降落，請準備';
+        } else if (announcementType === 'landing') {
+            title = isEnglish ? 'Landing Announcement' : '降落廣播';
+            subtitle = isEnglish ? 'Welcome to your destination' : '歡迎抵達目的地';
+        } else {
+            title = isEnglish ? 'Captain Announcement' : '機長廣播';
+            subtitle = isEnglish ? 'Please listen carefully' : '請仔細聆聽';
+        }
+
+        if (titleEl) titleEl.textContent = title;
+        if (subtitleEl) subtitleEl.textContent = subtitle;
+
+        fullscreenEl.style.display = 'flex';
+        console.log('📢 顯示全屏機長廣播:', announcementType);
+    }
+
+    // 隱藏全屏機長廣播
+    hideCaptainAnnouncementFullscreen() {
+        const fullscreenEl = document.getElementById('captainAnnouncementFullscreen');
+        if (fullscreenEl) {
+            fullscreenEl.style.display = 'none';
+            console.log('📢 隱藏全屏機長廣播');
+        }
+    }
+
     // 播放準備降落預告廣播
     async playApproachAnnouncement(destination) {
         if (!destination) {
@@ -5918,14 +5964,6 @@ class WakeUpMapGame {
             } : null
         });
 
-        // 如果是起飛廣播（boarding），先播放 captain.mp3 的前6秒
-        if (announcementType === 'boarding') {
-            await this.playCaptainSoundIntro();
-        }
-
-        // 在播放廣播前，先播放提示音效
-        await this.playAnnouncementChime();
-
         // 組合請求內容（加入機長口吻、風趣、在地特色）
         const origin = this.gameState.currentLocation || { name: '台北', country: '台灣', coordinates: [25.0330, 121.5654] };
 
@@ -6040,13 +6078,40 @@ class WakeUpMapGame {
         };
 
         try {
-            const res = await fetch('/api/generateSleepFlightAnnouncement', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+            // 如果是起飛廣播（boarding），在 API 調用的同時播放 captain.mp3 的前6秒（並行執行）
+            let captainSoundPromise = null;
+            if (announcementType === 'boarding') {
+                captainSoundPromise = this.playCaptainSoundIntro();
+            }
+
+            // 並行執行：同時調用 API 和播放 captain 音效
+            const [apiResult, captainSoundResult] = await Promise.allSettled([
+                fetch('/api/generateSleepFlightAnnouncement', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                }),
+                captainSoundPromise || Promise.resolve()
+            ]);
+
+            // 處理 API 結果
+            let res;
+            if (apiResult.status === 'fulfilled') {
+                res = apiResult.value;
+            } else {
+                throw apiResult.reason;
+            }
+
             if (!res.ok) throw new Error(`API status ${res.status}`);
             const data = await res.json();
+
+            // 等待 captain 音效播放完成（如果有的話，確保音效播完再繼續）
+            if (captainSoundPromise) {
+                await captainSoundPromise;
+            }
+
+            // 在播放廣播前，先播放提示音效
+            await this.playAnnouncementChime();
 
             const announcement = (data && data.announcement) ? data.announcement : null;
             if (announcement) {
@@ -6078,17 +6143,29 @@ class WakeUpMapGame {
                             voice: 'male_lively', rate: 1.05, pitch: 0.95, style: 'lively'
                         }).then(() => {
                             onEndCallback();
-                        }).catch(() => {
+                        }).catch((err) => {
                             // OpenAI TTS 失敗，使用備用瀏覽器 TTS
-                            console.warn('⚠️ OpenAI TTS 失敗，使用備用瀏覽器 TTS');
-                            this.playTextWithBrowserTTS(announcement, onEndCallback, onStartCallback);
+                            console.warn('⚠️ OpenAI TTS 失敗，使用備用瀏覽器 TTS:', err);
+                            try {
+                                this.playTextWithBrowserTTS(announcement, onEndCallback, onStartCallback);
+                            } catch (e) {
+                                console.error('⚠️ 備用 TTS 也失敗，強制結束:', e);
+                                // 即使備用 TTS 也失敗，也要調用 onEndCallback 避免卡住
+                                onEndCallback();
+                            }
                         });
                         // audioManager 可能沒有 onStart，所以立即觸發
                         setTimeout(onStartCallback, 100);
                     } else {
                         // 沒有 audioManager，使用瀏覽器 TTS（備用）
                         console.warn('⚠️ audioManager 不可用，使用備用瀏覽器 TTS');
-                        this.playTextWithBrowserTTS(announcement, onEndCallback, onStartCallback);
+                        try {
+                            this.playTextWithBrowserTTS(announcement, onEndCallback, onStartCallback);
+                        } catch (e) {
+                            console.error('⚠️ 瀏覽器 TTS 失敗，強制結束:', e);
+                            // 即使 TTS 失敗，也要調用 onEndCallback 避免卡住
+                            onEndCallback();
+                        }
                     }
                 });
             }
@@ -6139,7 +6216,13 @@ class WakeUpMapGame {
                 } else {
                     // 沒有 audioManager，使用瀏覽器 TTS（備用）
                     console.warn('⚠️ audioManager 不可用，使用備用瀏覽器 TTS');
-                    this.playTextWithBrowserTTS(fallback, onEndCallback, onStartCallback);
+                    try {
+                        this.playTextWithBrowserTTS(fallback, onEndCallback, onStartCallback);
+                    } catch (e) {
+                        console.error('⚠️ 瀏覽器 TTS 失敗，強制結束:', e);
+                        // 即使 TTS 失敗，也要調用 onEndCallback 避免卡住
+                        onEndCallback();
+                    }
                 }
             } catch (e) {
                 console.warn('播放備援語音失敗，改以 alert 顯示文案');
@@ -6209,9 +6292,12 @@ class WakeUpMapGame {
             // 監聽播放完成事件
             if (onComplete) {
                 utterance.onend = () => {
+                    console.log('🎤 語音播放完成');
                     onComplete(true);
                 };
-                utterance.onerror = () => {
+                utterance.onerror = (e) => {
+                    console.warn('⚠️ 語音播放錯誤:', e);
+                    // 即使出錯也要調用 onComplete，避免卡住
                     onComplete(false);
                 };
             }
