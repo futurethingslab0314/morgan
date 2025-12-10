@@ -4,7 +4,7 @@ const LOCAL_GREETINGS = {
     TH: 'สวัสดีครับ/ค่ะ', // 泰語 Sawasdee krub/ka
     JP: 'こんにちは',
     KR: '안녕하세요',
-    CN: '大家好',
+    CN: '大家好好',
     HK: '大家好',
     MO: '大家好',
     SG: 'Hello everyone',
