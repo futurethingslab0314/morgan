@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280, initial-scale=1.0">
+    <title>Focus Flight Raspberry Pi</title>
+    <script>
+        // 低功耗模式：在樹莓派或小螢幕時啟用，關閉重型特效以避免捲動卡頓/閃爍
+        (function () {
+            const isSmallScreen = Math.min(window.innerWidth, window.innerHeight) <= 1280;
+            const isPiUA = /raspberry|armv|aarch64/i.test(navigator.userAgent || '');
+            if (isSmallScreen || isPiUA) {
+                document.documentElement.classList.add('low-power');
+                // 如非除錯模式，關閉大量 console 輸出，降低主執行緒壓力
+                if (!location.search.includes('debug=1')) {
+                    try { console.log = function () {}; } catch (e) {}
+                }
+            }
+        })();
+    </script>
+    
+    <!-- 網頁圖標設定 -->
+    <link rel="icon" href="favicon.ico">
+    <link rel="icon" href="favicon-16x16.png" sizes="16x16" type="image/png">
+    <link rel="icon" href="favicon-32x32.png" sizes="32x32" type="image/png">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="theme-color" content="#4d714f">
+    
+    <!-- Google Fonts - Pixel/Digital 風格字體 -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com"> -->
+    <!-- <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> -->
+    <!-- <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=VT323&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet"> -->
+    
+    <!-- 自定義像素字體 -->
+    <style>
+        @font-face {
+            font-family: 'ByteBounce';
+            src: local('ByteBounce'), local('ByteBounce-Regular');
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'GB18030 Bitmap';
+            src: local('GB18030 Bitmap'), local('GB18030Bitmap');
+            font-display: swap;
+        }
+        
+        /* 字體堆疊設置 */
+        .pixel-font-en {
+            font-family: 'ByteBounce', 'Press Start 2P', 'Courier New', monospace;
+        }
+        
+        .pixel-font-cn {
+            font-family: 'GB18030 Bitmap', 'Microsoft YaHei', '微軟雅黑', SimHei, '黑體', sans-serif;
+        }
+        
+        .pixel-font-mixed {
+            font-family: 'ByteBounce', 'GB18030 Bitmap', 'Press Start 2P', 'Microsoft YaHei', '微軟雅黑', monospace;
+        }
+
+        /* 等待視窗樣式 */
+        .waiting-action-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .waiting-modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .waiting-modal-content {
+            position: relative;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 40px 60px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .waiting-spinner {
+            font-size: 64px;
+            margin-bottom: 20px;
+            animation: bounce 1.5s infinite;
+        }
+
+        .waiting-title {
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+        }
+
+        .waiting-message {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 18px;
+            margin: 0;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        /* 起飛畫面樣式 */
+        .take-off-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            z-index: 9999;
+        }
+
+        .take-off-content {
+            text-align: center;
+            color: white;
+        }
+
+        .take-off-icon {
+            font-size: 120px;
+            margin-bottom: 30px;
+            animation: fly 2s infinite;
+        }
+
+        .take-off-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 0 0 40px 0;
+        }
+
+        .take-off-animation {
+            margin-top: 40px;
+        }
+
+        .plane-animation {
+            font-size: 80px;
+            animation: takeOff 3s infinite;
+        }
+
+        @keyframes fly {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-30px) rotate(5deg);
+            }
+        }
+
+        @keyframes takeOff {
+            0% {
+                transform: translateX(-200px) translateY(0) scale(0.5);
+                opacity: 0.5;
+            }
+            50% {
+                transform: translateX(0) translateY(-100px) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(200px) translateY(-200px) scale(1.2);
+                opacity: 0;
+            }
+        }
+
+        /* 降落畫面樣式 */
+        .landing-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2d5016 0%, #3d6b1f 100%);
+            z-index: 9999;
+        }
+
+        .landing-content {
+            text-align: center;
+            color: white;
+        }
+
+        .landing-icon {
+            font-size: 120px;
+            margin-bottom: 30px;
+            animation: landing 2s infinite;
+        }
+
+        .landing-title {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 0 0 40px 0;
+        }
+
+        .landing-animation {
+            margin-top: 40px;
+        }
+
+        .plane-landing-animation {
+            font-size: 80px;
+            animation: planeLanding 3s infinite;
+        }
+
+        @keyframes landing {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(10px) rotate(-2deg);
+            }
+        }
+
+        @keyframes planeLanding {
+            0% {
+                transform: translateX(0) translateY(-200px) scale(1.2);
+                opacity: 0.5;
+            }
+            50% {
+                transform: translateX(0) translateY(-50px) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(0) translateY(0) scale(0.8);
+                opacity: 1;
+            }
+        }
+
+        /* 降落資訊大視窗樣式 */
+        .landing-info-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #4a5568 100%);
+            z-index: 10000;
+        }
+
+        .landing-info-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            padding: 60px 80px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeInScale 0.5s ease-out;
+            text-align: center;
+        }
+
+        .landing-info-header {
+            margin-bottom: 40px;
+        }
+
+        .landing-info-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            animation: landing 2s infinite;
+        }
+
+        .landing-info-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .landing-info-status {
+            font-size: 20px;
+            color: #2c3e50;
+            margin: 30px 0;
+            padding: 15px;
+            background: rgba(44, 62, 80, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .landing-info-status.status-playing {
+            color: #34495e;
+            background: rgba(52, 73, 94, 0.2);
+            animation: pulse 1.5s infinite;
+        }
+
+        .landing-info-body {
+            font-size: 20px;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 40px;
+            text-align: left;
+        }
+
+        .landing-info-body p {
+            margin: 15px 0;
+        }
+
+        .landing-info-actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .landing-info-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .landing-info-btn-primary {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            color: white;
+        }
+
+        .landing-info-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(44, 62, 80, 0.4);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .badge-early {
+            background: #ffa500;
+            color: white;
+        }
+
+        .badge-perfect {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .badge-ontime {
+            background: #4caf50;
+            color: white;
+        }
+
+        .badge-late {
+            background: #f44336;
+            color: white;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* 起飛資訊大視窗樣式 */
+        .boarding-info-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            z-index: 99999;
+            pointer-events: auto;
+        }
+
+        .boarding-info-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 30px;
+            padding: 60px 80px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: fadeInScale 0.5s ease-out;
+            text-align: center;
+        }
+
+        .boarding-info-header {
+            margin-bottom: 40px;
+        }
+
+        .boarding-info-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            animation: fly 2s infinite;
+        }
+
+        .boarding-info-title {
+            font-size: 42px;
+            font-weight: bold;
+            color: #1e3c72;
+            margin: 0;
+        }
+
+        .boarding-info-body {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .boarding-route {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(30, 60, 114, 0.1);
+            border-radius: 15px;
+        }
+
+        .route-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .route-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .route-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .route-arrow {
+            font-size: 32px;
+            color: #1e3c72;
+        }
+
+        .boarding-details {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .detail-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .detail-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1e3c72;
+        }
+
+        .boarding-info-status {
+            font-size: 20px;
+            color: #1e3c72;
+            margin: 30px 0;
+            padding: 15px;
+            background: rgba(30, 60, 114, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .boarding-info-status.status-playing {
+            color: #2a5298;
+            background: rgba(42, 82, 152, 0.2);
+            animation: pulse 1.5s infinite;
+        }
+
+        .boarding-info-status.status-complete {
+            color: #4caf50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .boarding-info-actions {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .boarding-info-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .boarding-info-btn-primary {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .boarding-info-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(30, 60, 114, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+    </style>
+    
+    <link rel="stylesheet" href="pi-style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+</head>
+<body>
+    <div class="container">
+        
+
+        <!-- 主要顯示區域 -->
+        <main class="main-display">
+            <!-- 全域背景地圖 -->
+            <!-- <div id="mainMapContainer" class="main-map-background"></div> -->
+            
+            <!-- 地圖縮放控制按鈕 - 統一位置 -->
+            
+            
+            <!-- 遊戲化開始畫面 -->
+            <div id="gameStartState" class="state game-start-state active">
+                <div class="game-start-container">
+                    <!-- 語言切換按鈕 -->
+                    <button id="languageToggle" class="language-toggle" aria-label="切換語言">
+                        <span class="lang-icon">🌏</span>
+                        <span class="lang-code" id="langCode">中</span>
+                    </button>
+
+                    <!-- 遊戲標題 -->
+                    <div class="game-title-section">
+                        <h1 class="game-main-title">✈️ FOCUS AIRLINE</h1>
+                        <!-- <p class="game-subtitle">每週旅程模式 - 選擇你的目的地</p> -->
+                    </div>
+                    
+                    <!-- 目前所在位置（台北）資訊區塊：機票會顯示在此下方 -->
+                    <div class="taipei-location-panel">
+                        <div class="location-header">
+                            <div class="location-icon">📍</div>
+                            <div class="location-info">
+                                <h2 id="currentCityName">當前位置：台北大安區</h2>
+                                <p class="location-subtitle">Taipei, Taiwan 🇹🇼</p>
+                            </div>
+                            <div class="weather-info">
+                                <div class="weather-icon">☀️</div>
+                                <div class="weather-text">24°C</div>
+                            </div>
+                        </div>
+                        
+                        
+                        
+                       
+                        
+                        
+                        <!-- 機票會由 game-system.js 的 showTicketInLocationPanel() 插入在此區塊末端 -->
+                    </div>
+                    
+                    <!-- 飛行資訊面板 -->
+                    <div class="flight-info-panel" id="flightInfoPanel" style="cursor: pointer;">
+                        <div class="info-panel-header">
+                            <div class="info-icon">📊</div>
+                            <h3 class="info-title">飛行資訊</h3>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-item">
+                                <span class="info-label">總飛行次數</span>
+                                <span class="info-value" id="totalFlights">0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">總飛行距離</span>
+                                <span class="info-value" id="totalDistance">0 km</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">訪問城市</span>
+                                <span class="info-value" id="visitedCities">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 首頁操作按鈕：等寬雙按鈕 -->
+                    <div class="start-journey-section">
+                        <button id="buyTicketBtn" class="start-journey-button">
+                            <div class="button-icon">🎯</div>
+                            <div class="button-text">規劃旅程</div>
+                            <div class="button-subtitle">選擇任務與目的地</div>
+                        </button>
+                        <button id="beginJourneyBtn" class="start-journey-button">
+                            <div class="button-icon">✈️</div>
+                            <div class="button-text">開始旅程</div>
+                            <div class="button-subtitle">準備啟程</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+
+
+            <!-- 結果狀態 -->
+            <div id="resultState" class="state result-state">
+                <!-- 航班票券 Web Component（顯示在結果頁面） -->
+                <div id="wumFlightContainer" style="position: fixed; top: 10px; right: 10px; z-index: 1000; max-width: 350px;">
+                    <wum-flight id="wumFlight"></wum-flight>
+                </div>
+
+                <!-- 自訂地圖縮放控制 -->
+                <div class="custom-zoom-controls">
+                    <button id="mapZoomInBtn" class="zoom-btn" aria-label="地圖放大">+</button>
+                    <button id="mapZoomOutBtn" class="zoom-btn" aria-label="地圖縮小">−</button>
+                </div>
+
+
+            </div>
+
+            <!-- 錯誤狀態 -->
+            <div id="errorState" class="error-state">
+                <div class="error-content">
+                    <div class="error-icon">⚠️</div>
+                    <h2 class="error-text">暫時無法連接</h2>
+                    <p id="errorMessage" class="error-subtitle">請稍候再試</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- 第一階段：選擇計時長度視窗 -->
+        <div id="timerModal" class="timer-modal">
+            <div class="modal-overlay" id="timerModalOverlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">⏱️ 選擇計時長度</h2>
+                    <button class="modal-close" id="timerModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="timer-selection-layout">
+                        <div class="task-selector">
+                            <div class="task-title">TIMER 計時長度</div>
+                            <div class="rotary-knob-container">
+                                <div class="rotary-knob-wrapper">
+                                    <div class="rotary-knob">
+                                        <div class="knob-indicator"></div>
+                                    </div>
+                                    <div class="knob-options">
+                                        <div class="knob-option timer-option" data-minutes="30" data-position="0">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">30分</div>
+                                        </div>
+                                        <div class="knob-option timer-option" data-minutes="45" data-position="1">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">45分</div>
+                                        </div>
+                                        <div class="knob-option timer-option" data-minutes="60" data-position="2">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">60分</div>
+                                        </div>
+                                        <div class="knob-option timer-option" data-minutes="180" data-position="3">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">180分</div>
+                                        </div>
+                                        <div class="knob-option timer-option" data-minutes="90" data-position="4">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">90分</div>
+                                        </div>
+                                        <div class="knob-option timer-option" data-minutes="120" data-position="5">
+                                            <div class="knob-option-icon">⏱️</div>
+                                            <div class="knob-option-label">120分</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="knob-hint">轉動旋鈕選擇計時長度</div>
+                            </div>
+                        </div>
+                        <div class="timer-confirm-section">
+                            <button id="confirmTimerBtn" class="confirm-timer-btn">確認計時長度</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TASK 任務選擇視窗 -->
+        <div id="taskModal" class="timer-modal task-modal">
+            <div class="modal-overlay" id="taskModalOverlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🎯 選擇任務</h2>
+                    <button class="modal-close" id="taskModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="timer-selection-layout">
+                        <div class="task-selector">
+                            <div class="task-title">TASK 任務類型</div>
+                            <div class="rotary-knob-container">
+                                <div class="rotary-knob-wrapper">
+                                    <div class="rotary-knob">
+                                        <div class="knob-indicator"></div>
+                                    </div>
+                                    <div class="knob-options">
+                                        <div class="knob-option" data-task="READING" data-position="0">
+                                            <div class="knob-option-icon">📚</div>
+                                            <div class="knob-option-label">讀書</div>
+                                        </div>
+                                        <div class="knob-option" data-task="WORK" data-position="1">
+                                            <div class="knob-option-icon">💻</div>
+                                            <div class="knob-option-label">工作</div>
+                                        </div>
+                                        <div class="knob-option" data-task="CREATIVE" data-position="2">
+                                            <div class="knob-option-icon">✍️</div>
+                                            <div class="knob-option-label">創作</div>
+                                        </div>
+                                        <div class="knob-option" data-task="REST" data-position="3">
+                                            <div class="knob-option-icon">😴</div>
+                                            <div class="knob-option-label">休息</div>
+                                        </div>
+                                        <div class="knob-option" data-task="MEDITATION" data-position="4">
+                                            <div class="knob-option-icon">🧘</div>
+                                            <div class="knob-option-label">冥想</div>
+                                        </div>
+                                        <div class="knob-option" data-task="GAME" data-position="5">
+                                            <div class="knob-option-icon">🎮</div>
+                                            <div class="knob-option-label">遊戲</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="knob-hint">轉動旋鈕選擇任務</div>
+                            </div>
+                        </div>
+                        <div class="timer-confirm-section">
+                            <button id="confirmTaskBtn" class="confirm-timer-btn">確認任務</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第二階段：目的地選擇懸浮視窗 -->
+        <div id="destinationModal" class="destination-modal">
+            <div class="modal-overlay" id="modalOverlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">✈️ 選擇目的地</h2>
+                    <button class="modal-close" id="modalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="destination-layout">
+                        <div class="destination-info-section">
+                            <p class="destination-hint">根據您選擇的 <strong id="selectedTimerDisplay">30</strong> 分鐘計時，以下是您可以飛到的目的地：</p>
+                        </div>
+                        <div class="right-grid">
+                            <div class="destination-grid" id="destinationGrid">
+                                <!-- 目的地選項將由 JavaScript 動態生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 機票確認懸浮視窗 -->
+        <div id="ticketModal" class="ticket-modal">
+            <div class="modal-overlay" id="ticketModalOverlay"></div>
+            <div class="modal-content ticket-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">✈️ 機票確認</h2>
+                    <button class="modal-close" id="ticketModalClose">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="boarding-pass">
+                        <!-- 頂部橫幅 -->
+                        <div class="boarding-header">
+                            <div class="airline-section">
+                                <span class="airline-icon">✈️</span>
+                                <span class="airline-name">FOCUS AIRLINES</span>
+                            </div>
+                            <div class="boarding-text">BOARDING PASS</div>
+                        </div>
+                        
+                        <!-- 主要內容 - 橫向佈局 -->
+                        <div class="boarding-content">
+                            <!-- 左側：出發資訊 -->
+                            <div class="departure-info">
+                                <div class="from-label">FROM</div>
+                                <div class="city-code" id="originCityCode">TPE</div>
+                                <div class="city-name" id="originCityName">台北</div>
+                                <div class="departure-time" id="departureTime">11:30</div>
+                            </div>
+                            
+                            <!-- 中間虛線連接 -->
+                            <div class="flight-route">
+                                <div class="route-dots">• • • • • • • • • • • • • • • • • • • •</div>
+                                <div class="plane-icon">✈️</div>
+                            </div>
+                            
+                            <!-- 右側：到達資訊 -->
+                            <div class="arrival-info">
+                                <div class="to-label">TO</div>
+                                <div class="city-code" id="destinationCode">XXX</div>
+                                <div class="city-name" id="selectedDestination">目的地</div>
+                                <div class="arrival-time" id="arrivalTime">隔天 08:00</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 乘客和航班資訊 -->
+                        <div class="passenger-section">
+                            <div class="passenger-name">WAKE UP USER</div>
+                            <div class="flight-info">
+                                <div class="info-item">
+                                    <span class="info-label">FLIGHT</span>
+                                    <span class="info-value" id="flightNumber">WU-2025</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">DATE</span>
+                                    <span class="info-value" id="departureDate">19 AUG 2025</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">GATE</span>
+                                    <span class="info-value" id="gateNumber">04</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">SEAT</span>
+                                    <span class="info-value" id="seatNumber">12A</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 底部條碼區域 -->
+                        <div class="barcode-section">
+                            <div class="vertical-barcode">||||| ||||| ||||| ||||| ||||| |||||</div>
+                            <div class="barcode-number" id="barcodeNumber">WU20250120001</div>
+                        </div>
+                        
+                    </div>
+                    
+                    <div class="ticket-actions">
+                        <div class="button-section">
+                            <button id="confirmTicket" class="confirm-button">確認旅程</button>
+                            <button id="changeDestination" class="change-button">重新選擇</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 隱藏元素 (用於保持相容性) -->
+        <div style="display: none;">
+            <input type="hidden" id="groupName" value="">
+            <input type="hidden" id="userName" value="">
+            
+            <!-- 虛擬按鈕元素，供原有 JavaScript 相容 -->
+            <button id="setUserNameButton" class="load-button">載入資料</button>
+            <button id="findCityButton" class="start-button">開始這一天</button>
+            
+            <!-- 相容性元素 -->
+            <div id="resultText" class="result-text"></div>
+            <div id="debugInfo" class="debug-info"></div>
+            <div id="debugInfoSmall" class="debug-info-small"></div>
+            <div id="currentUserId"></div>
+            <div id="currentUserDisplayName"></div>
+            
+            <!-- 分頁相關隱藏元素 -->
+            <ul id="historyList"></ul>
+            <div id="historyMapContainer"></div>
+            <div id="historyDebugInfo"></div>
+            <button id="refreshHistoryButton"></button>
+            <input type="date" id="globalDate">
+            <select id="groupFilter"><option value="all">所有人</option></select>
+            <button id="refreshGlobalMapButton"></button>
+            <div id="globalTodayMapContainer"></div>
+            <div id="globalTodayDebugInfo"></div>
+        </div>
+    </div>
+
+    <!-- 固定右下角：準備起飛按鈕（全域） -->
+    <div class="fixed-action-button" id="fixedActionButton" style="display: none;">
+        <button class="action-btn" id="actionBtn" onclick="handleActionButton()">
+            <span class="btn-icon" id="btnIcon">✈️</span>
+            <span class="btn-text" id="btnText">準備起飛</span>
+        </button>
+    </div>
+
+    <!-- 載入彈跳式日誌視窗 -->
+    <div id="historyLogModal" class="modal" style="display:none;">
+        <div class="modal-dialog">
+            <div class="modal-content-wrapper">
+                <div class="modal-header">
+                    <h2 id="modalTitle">甦醒日誌詳情</h2>
+                    <span id="historyLogModalClose" class="modal-close-button">&times;</span>
+                </div>
+                <div id="historyLogModalContent" class="modal-body"></div>
+                <div class="modal-footer">
+                    <button id="closeModalFooterButton" class="modal-button-secondary">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 航班票券彈窗 -->
+
+    <!-- 1. 首先載入 Firebase 配置 -->
+    <script src="/api/config"></script>
+
+    <!-- 2. 載入 Firebase SDK 並初始化 -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js';
+        import { 
+            getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken
+        } from 'https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js';
+        import { 
+            getFirestore, collection, addDoc, query, where, getDocs, orderBy, 
+            serverTimestamp, doc, setDoc, getDoc, limit, updateDoc, setLogLevel
+        } from 'https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js';
+
+        // 等待 Firebase 配置載入
+        function initializeFirebase() {
+            if (window.firebaseConfig) {
+                try {
+                    console.log('🔥 開始初始化 Firebase...');
+                    const app = initializeApp(window.firebaseConfig);
+                    
+                    // 打包所有 Firebase 功能供主腳本使用
+                    window.firebaseSDK = {
+                        initializeApp,
+                        getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
+                        getFirestore, collection, addDoc, query, where, getDocs, orderBy, 
+                        serverTimestamp, doc, setDoc, getDoc, limit, updateDoc, setLogLevel
+                    };
+                    
+                    console.log('✅ Firebase SDK 已準備就緒');
+                    
+                    // 發送 Firebase 就緒事件
+                    window.dispatchEvent(new CustomEvent('firebaseReady'));
+                } catch (error) {
+                    console.error('❌ Firebase 初始化失敗:', error);
+                    // 即使失敗也要設置基本的 SDK
+                    window.firebaseSDK = {
+                        initializeApp,
+                        getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
+                        getFirestore, collection, addDoc, query, where, getDocs, orderBy, 
+                        serverTimestamp, doc, setDoc, getDoc, limit, updateDoc, setLogLevel
+                    };
+                }
+            } else {
+                console.warn('⚠️ Firebase 配置尚未載入，2秒後重試...');
+                setTimeout(initializeFirebase, 2000);
+            }
+        }
+
+        // 開始初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeFirebase);
+        } else {
+            initializeFirebase();
+        }
+    </script>
+
+    <!-- 2.1 定義 Firestore 寫入工具：artifacts/default-app-id-worldclock-history/userProfiles/{user}/Flight 與 clockHistory -->
+    <script type="module">
+        function attachDbHelpers() {
+            try {
+                const sdk = window.firebaseSDK;
+                if (!sdk || !sdk.getFirestore) return;
+                const db = sdk.getFirestore();
+                const APP_ID = 'default-app-id-worldclock-history';
+
+                window.dbUpsertFlight = async function(userName, flightId, payload) {
+                    const user = (userName || (window.env && window.env.USER_NAME) || 'morgan').toLowerCase();
+                    const ref = sdk.doc(db, 'artifacts', APP_ID, 'userProfiles', user, 'Flight', flightId);
+                    await sdk.setDoc(ref, { ...payload, updatedAt: sdk.serverTimestamp() }, { merge: true });
+                    return ref.id;
+                };
+                window.dbAddClockEvent = async function(userName, event) {
+                    const user = (userName || (window.env && window.env.USER_NAME) || 'morgan').toLowerCase();
+                    const col = sdk.collection(db, 'artifacts', APP_ID, 'userProfiles', user, 'clockHistory');
+                    const ref = await sdk.addDoc(col, { ...event, createdAt: sdk.serverTimestamp() });
+                    return ref.id;
+                };
+                console.log('✅ Firestore helpers 已掛載 (dbUpsertFlight / dbAddClockEvent)');
+            } catch (e) { console.warn('Firestore helpers 掛載失敗', e); }
+        }
+        if (window.firebaseSDK) attachDbHelpers();
+        else window.addEventListener('firebaseReady', attachDbHelpers);
+    </script>
+    <script>
+        // 綁定右上角日期/時間更新到測試時鐘
+        (function bindTestClockControls(){
+            const btn = document.getElementById('updateTime');
+            const d = document.getElementById('customDate');
+            const t = document.getElementById('customTime');
+            if (!btn || !d || !t) return;
+            
+            // 初始化：自動填入當前時間
+            const now = new Date();
+            d.value = now.toISOString().split('T')[0];
+            t.value = now.toTimeString().slice(0, 5);
+            console.log('🕐 已自動填入當前時間:', now.toLocaleString());
+            
+            btn.addEventListener('click', function(){
+                if (!d.value || !t.value) { alert('請選擇日期與時間'); return; }
+                const dt = new Date(`${d.value} ${t.value}`);
+                if (window.wakeUpMapGame && typeof window.wakeUpMapGame.enableTestClock === 'function') {
+                    window.wakeUpMapGame.enableTestClock(dt);
+                    console.log('🧪 已啟用測試時鐘：', dt.toLocaleString());
+                }
+            });
+            
+            // 提供全域方法切回真實時間
+            window.disableTestClock = function(){
+                if (window.wakeUpMapGame && typeof window.wakeUpMapGame.disableTestClock === 'function') {
+                    window.wakeUpMapGame.disableTestClock();
+                    console.log('🧪 已停用測試時鐘');
+                }
+                // 重新填入當前真實時間
+                const now = new Date();
+                d.value = now.toISOString().split('T')[0];
+                t.value = now.toTimeString().slice(0, 5);
+                console.log('🕐 已還原為真實時間:', now.toLocaleString());
+            }
+        })();
+    </script>
+
+    <!-- 3. 載入 Leaflet 地圖庫 -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <!-- 4. 載入使用者名稱，需要將使用者名稱改成自己的版本，並上傳至自己的vercel link -->
+    <script>
+      window.env = window.env || {};
+      window.env.USER_NAME = 'morgan';
+    </script>
+
+    <!-- 4.5 橋接本機音訊服務，供睡眠航班語音播放使用 -->
+    <script>
+      (function injectLocalAudioManager(){
+        if (window.audioManager && typeof window.audioManager.playTextWithLanguage === 'function') {
+          console.log('[WakeUpFlight] audioManager 已存在，跳過注入');
+          return;
+        }
+
+        const TTS_BASE = (window.env && window.env.TTS_BASE) || 'http://127.0.0.1:5005';
+
+        window.audioManager = {
+          async playTextWithLanguage(text, language = 'zh', options = {}) {
+            try {
+              if (!text || typeof text !== 'string') {
+                console.warn('[WakeUpFlight] playTextWithLanguage 收到空白文字');
+                throw new Error('空白文字');
+              }
+
+              const payload = {
+                text,
+                languageCode: language && language.toLowerCase().startsWith('zh') ? 'zh' : language || 'zh',
+                voice: options.voice || (language && language.toLowerCase().startsWith('zh') ? 'nova' : 'alloy'),
+                rate: options.rate || 1,
+                pitch: options.pitch || 0,
+                style: options.style || 'default'
+              };
+
+              console.log('[WakeUpFlight] 開始調用 TTS 服務:', { textLength: text.length, language, voice: payload.voice });
+
+              // 設置較長的超時時間（60秒），避免長文本被中斷
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 120000); // 120秒超時
+
+              try {
+                const res = await fetch(`${TTS_BASE}/tts/play`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload),
+                  signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  console.error('[WakeUpFlight] 本機 TTS 服務回報失敗', err);
+                  throw new Error(`TTS 服務錯誤: ${res.status} - ${err.error || '未知錯誤'}`);
+                }
+
+                const result = await res.json().catch(() => ({ success: true }));
+                console.log('[WakeUpFlight] TTS 播放成功:', result);
+                return result;
+              } catch (fetchError) {
+                clearTimeout(timeoutId);
+                if (fetchError.name === 'AbortError') {
+                  console.error('[WakeUpFlight] TTS 請求超時');
+                  throw new Error('TTS 請求超時');
+                }
+                throw fetchError;
+              }
+            } catch (error) {
+              console.error('[WakeUpFlight] 呼叫本機 TTS 失敗', error);
+              throw error; // 重新拋出錯誤，讓調用者可以處理
+            }
+          }
+        };
+
+        console.log('[WakeUpFlight] 已注入本機 audioManager (TTS_BASE=', TTS_BASE, ')');
+      })();
+    </script>
+    
+    <!-- 5. 載入主要應用程式腳本 -->
+    <script src="pi-script.js"></script>
+    
+    <!-- 6. 載入 wum-flight Web Component (新飛行系統) -->
+    <script src="wum-flight.js"></script>
+    
+    <!-- 7. 載入遊戲化系統 -->
+    <script src="game-system.js"></script>
+    
+    <script>
+        // 初始化 wum-flight Web Component
+        (function initWumFlight() {
+            const wumFlight = document.getElementById('wumFlight');
+            
+            if (!wumFlight) {
+                console.warn('⚠️ wum-flight 元素未找到');
+                return;
+            }
+            
+            // 等待 Web Component 就緒
+            wumFlight.addEventListener('wum:ready', (e) => {
+                console.log('✈️ wum-flight 已就緒', e.detail.api);
+                window.wumFlightAPI = e.detail.api;
+                
+                // 發送全域就緒事件
+                window.dispatchEvent(new CustomEvent('wumFlightReady', {
+                    detail: { api: e.detail.api }
+                }));
+            });
+            
+            // 監聽票券生成事件
+            wumFlight.addEventListener('wum:ticket-generated', (e) => {
+                console.log('✈️ 新票券已生成', e.detail.ticket);
+                console.log('💰 當前 Fuel:', e.detail.currentFuel);
+                
+            });
+            
+            console.log('✈️ wum-flight 初始化腳本已載入');
+        })();
+        
+        // 隱藏按鈕快捷鍵功能
+        document.addEventListener('keydown', function(event) {
+            // Ctrl + H 觸發隱藏按鈕
+            if (event.ctrlKey && event.key === 'h') {
+                event.preventDefault();
+                console.log('🔧 隱藏快捷鍵 Ctrl+H 被觸發');
+                if (window.startTheDay && typeof window.startTheDay === 'function') {
+                    window.startTheDay();
+                } else {
+                    console.warn('⚠️ startTheDay 函數尚未準備就緒');
+                }
+            }
+            
+                         // ESC 鍵顯示/隱藏緊急按鈕
+             if (event.key === 'Escape') {
+                 const hiddenButton = document.getElementById('hiddenBackupButton');
+                 if (hiddenButton) {
+                     if (hiddenButton.style.opacity === '0.02' || hiddenButton.style.opacity === '') {
+                         hiddenButton.style.opacity = '0.3';
+                         hiddenButton.style.background = 'rgba(255, 100, 100, 0.3)';
+                         console.log('🆘 緊急按鈕已顯示 (左上角)');
+                         setTimeout(() => {
+                             hiddenButton.style.opacity = '0.02';
+                             hiddenButton.style.background = 'rgba(255, 255, 255, 0.02)';
+                         }, 5000); // 5秒後自動隱藏
+                     }
+                 }
+             }
+        });
+        
+        // 隱藏按鈕調試功能 (開發者控制台使用)
+        window.hiddenButtonControl = {
+            show: function() {
+                const button = document.getElementById('hiddenBackupButton');
+                if (button) {
+                    button.style.opacity = '0.8';
+                    button.style.background = 'rgba(77, 113, 79, 0.8)';
+                    button.style.border = '2px solid #4d714f';
+                    console.log('🔧 隱藏按鈕已強制顯示');
+                }
+            },
+            hide: function() {
+                const button = document.getElementById('hiddenBackupButton');
+                if (button) {
+                    button.style.opacity = '0.02';
+                    button.style.background = 'rgba(255, 255, 255, 0.02)';
+                    button.style.border = '1px solid rgba(255, 255, 255, 0.05)';
+                    console.log('🔧 隱藏按鈕已重新隱藏');
+                }
+            },
+            trigger: function() {
+                console.log('🔧 透過調試功能觸發隱藏按鈕');
+                if (window.startTheDay && typeof window.startTheDay === 'function') {
+                    window.startTheDay();
+                } else {
+                    console.warn('⚠️ startTheDay 函數尚未準備就緒');
+                }
+            },
+                         help: function() {
+                 console.log(`
+🔧 隱藏按鈕控制指令：
+- hiddenButtonControl.show()    : 顯示隱藏按鈕 (左上角)
+- hiddenButtonControl.hide()    : 隱藏按鈕
+- hiddenButtonControl.trigger() : 觸發按鈕功能
+- Ctrl + H                      : 鍵盤快捷鍵觸發
+- ESC                          : 臨時顯示緊急按鈕 (5秒，左上角)
+                 `);
+             }
+        };
+        
+        // 在控制台顯示隱藏按鈕使用說明
+        console.log('🔧 隱藏按鈕已初始化！輸入 hiddenButtonControl.help() 查看使用說明');
+    </script>
+    <script>
+        // 固定右下角按鈕點擊 - 轉呼叫遊戲系統
+        function handleActionButton() {
+            try {
+                if (window.wakeUpMapGame && typeof window.wakeUpMapGame.handleActionButton === 'function') {
+                    window.wakeUpMapGame.handleActionButton();
+                } else if (window.game && typeof window.game.handleActionButton === 'function') {
+                    // 兼容舊版全域變數
+                    window.game.handleActionButton();
+                } else {
+                    alert('系統尚未準備好，請稍候再試');
+                }
+            } catch (e) {
+                console.error('固定按鈕呼叫失敗:', e);
+            }
+        }
+    </script>
+    <script>
+        // 產生台北位置的 AI 文字內容
+        function generateLocationAIContent() {
+            const aiText = document.getElementById('aiContentText');
+            if (!aiText) return;
+
+            const facts = [
+                '你知道嗎？台北101 曾是世界最高建築，今晚從台北出發，就像從雲端起飛。',
+                '台北夜市聞名世界，從士林到饒河，每個夜晚都像一場旅行的序曲。',
+                '台北捷運準時又乾淨，就像我們的睡眠航班，帶你穩穩抵達目的地。',
+                '小籠包是台北必吃，熱騰騰的湯汁，像剛起飛的熱氣流，滿滿元氣。',
+                '台北是一座融合傳統與科技的城市，從這裡出發，世界就成了你的夢境地圖。'
+            ];
+
+            const random = facts[Math.floor(Math.random() * facts.length)];
+            aiText.innerHTML = '<div class="ai-fact">\
+                <div class="fact-icon">💡</div>\
+                <div class="fact-text">' + random + '</div>\
+            </div>';
+        }
+
+        // 綁定刷新與初始化
+        document.addEventListener('DOMContentLoaded', function () {
+            const refreshBtn = document.getElementById('refreshAIButton');
+            const aiText = document.getElementById('aiContentText');
+            if (aiText) {
+                aiText.innerHTML = '<div class="loading-ai">🔄 AI 正在生成內容...</div>';
+                setTimeout(generateLocationAIContent, 800);
+            }
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', function () {
+                    if (aiText) aiText.innerHTML = '<div class="loading-ai">🔄 AI 正在生成內容...</div>';
+                    setTimeout(generateLocationAIContent, 500);
+                });
+            }
+        });
+    </script>
+    <!-- 降落結果彈窗 -->
+    <div id="landingModal" class="landing-modal" style="display:none;">
+      <div class="landing-modal-backdrop"></div>
+      <div class="landing-modal-content">
+        <div class="landing-modal-header">
+          <h3 id="landingTitle">降落結果</h3>
+          <button id="landingClose" class="landing-close-btn">×</button>
+        </div>
+        <div class="landing-modal-body" id="landingBody"></div>
+        <div class="landing-modal-actions" id="landingActions"></div>
+      </div>
+    </div>
+    
+    <!-- 飛行歷史視窗 -->
+    <div id="flightHistoryModal" class="flight-history-modal" style="display: none;"></div>
+    
+    <!-- 全屏機長廣播顯示 -->
+    <div id="captainAnnouncementFullscreen" class="captain-announcement-fullscreen" style="display: none;">
+        <div class="captain-announcement-backdrop"></div>
+        <div class="captain-announcement-content">
+            <div class="captain-announcement-icon">✈️</div>
+            <div class="captain-announcement-title" id="captainAnnouncementTitle">機長廣播</div>
+            <div class="captain-announcement-subtitle" id="captainAnnouncementSubtitle">請仔細聆聽</div>
+            <div class="captain-announcement-wave">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+            </div>
+        </div>
+    </div>
+    
+</body>
+</html> 
