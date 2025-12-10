@@ -134,6 +134,32 @@ const TASK_GUIDANCE = {
             zh: '乘客剛完成「創作」任務。請提醒：可以休息一下，讓創意沉澱，搭配【國家文化特色】的放鬆方式。例如：日本的安靜可以幫助你整理思緒；泰國的柔軟可以讓你的創意得到休息。讓乘客感覺完成了創作後，需要適當的放鬆和沉澱。',
             en: 'The passenger just completed a "Creative" task. Remind them: take a break, let creativity settle, combined with the country\'s cultural relaxation style. Make them feel that after creative work, they need proper rest and reflection.'
         }
+    },
+    approach: {
+        'READING': {
+            zh: '乘客正在進行「讀書」任務。請提醒：慢慢合上書本，讓眼睛休息一下，準備降落。可以提到：閱讀了這麼久，眼睛需要休息，準備好從深度學習中轉換。',
+            en: 'The passenger is doing a "Reading" task. Remind them: slowly close the book, rest your eyes, prepare for landing. Mention: after reading for so long, your eyes need rest, prepare to transition from deep learning.'
+        },
+        'MEDITATION': {
+            zh: '乘客正在進行「冥想」任務。請提醒：慢慢睜開眼睛，保持內心的平靜，準備降落。可以提到：保持剛才冥想的平靜感，準備好從內在狀態中轉換。',
+            en: 'The passenger is doing a "Meditation" task. Remind them: slowly open your eyes, maintain inner calm, prepare for landing. Mention: keep the calm from meditation, prepare to transition from inner state.'
+        },
+        'REST': {
+            zh: '乘客正在進行「休息」任務。請提醒：慢慢調整姿勢，準備從休息中醒來，準備降落。可以提到：休息得很好，現在慢慢醒來，準備好迎接新的開始。',
+            en: 'The passenger is doing a "Rest" task. Remind them: slowly adjust your posture, prepare to wake from rest, prepare for landing. Mention: you\'ve rested well, now slowly wake up, prepare for a new beginning.'
+        },
+        'GAME': {
+            zh: '乘客正在進行「遊戲」任務。請提醒：慢慢放下遊戲，準備從遊戲中轉換，準備降落。可以提到：遊戲時間結束了，慢慢從遊戲模式轉換，準備好進入下一個狀態。',
+            en: 'The passenger is doing a "Game" task. Remind them: slowly put down the game, prepare to transition from gaming, prepare for landing. Mention: game time is over, slowly transition from game mode, prepare for the next state.'
+        },
+        'WORK': {
+            zh: '乘客正在進行「工作」任務。請提醒：慢慢整理思緒，準備從工作中轉換，準備降落。可以提到：工作告一段落，慢慢整理思緒，準備好從工作模式轉換。',
+            en: 'The passenger is doing a "Work" task. Remind them: slowly organize your thoughts, prepare to transition from work, prepare for landing. Mention: work is done for now, slowly organize your thoughts, prepare to transition from work mode.'
+        },
+        'CREATIVE': {
+            zh: '乘客正在進行「創作」任務。請提醒：慢慢整理創意，準備從創作中轉換，準備降落。可以提到：創意已經記錄下來，慢慢整理思緒，準備好從創作模式轉換。',
+            en: 'The passenger is doing a "Creative" task. Remind them: slowly organize your creativity, prepare to transition from creative work, prepare for landing. Mention: your creativity has been recorded, slowly organize your thoughts, prepare to transition from creative mode.'
+        }
     }
 };
 
@@ -225,6 +251,7 @@ export default async function handler(req, res) {
         const now = new Date();
         const month = now.getMonth() + 1; // 1-12
         let seasonalWeatherLine = '';
+        let weatherTaskGuidance = '';
 
         // 根據月份判斷季節（北半球）
         let season = '';
@@ -238,14 +265,110 @@ export default async function handler(req, res) {
             season = 'winter';
         }
 
-        // 根據季節生成天氣描述（讓 OpenAI 根據目的地和季節生成）
+        // 根據任務類型生成天氣與任務的融合指引
+        const taskWeatherMap = {
+            'READING': {
+                zh: '可以將天氣與閱讀氛圍結合，例如：細雨適合深度閱讀、陽光透過窗戶適合專注、微風帶來思考的節奏',
+                en: 'Connect weather with reading atmosphere, e.g., light rain suits deep reading, sunlight through windows aids focus, gentle breeze brings thinking rhythm'
+            },
+            'MEDITATION': {
+                zh: '可以將天氣與冥想狀態結合，例如：雲層帶來內在的寧靜、微風幫助呼吸節奏、陽光帶來溫暖的專注',
+                en: 'Connect weather with meditation state, e.g., clouds bring inner calm, gentle breeze aids breathing rhythm, sunlight brings warm focus'
+            },
+            'REST': {
+                zh: '可以將天氣與休息氛圍結合，例如：陰天適合深度休息、微風帶來放鬆、溫度適中讓人感到舒適',
+                en: 'Connect weather with rest atmosphere, e.g., cloudy sky suits deep rest, gentle breeze brings relaxation, moderate temperature feels comfortable'
+            },
+            'WORK': {
+                zh: '可以將天氣與工作效率結合，例如：晴朗天氣帶來清晰思路、微風保持清醒、適中的溫度有助專注',
+                en: 'Connect weather with work efficiency, e.g., clear sky brings clear thinking, gentle breeze keeps alert, moderate temperature aids focus'
+            },
+            'GAME': {
+                zh: '可以將天氣與遊戲心情結合，例如：多變的天氣像遊戲的節奏、陽光帶來活力、微風帶來輕鬆感',
+                en: 'Connect weather with gaming mood, e.g., changing weather like game rhythm, sunlight brings energy, gentle breeze brings ease'
+            },
+            'CREATIVE': {
+                zh: '可以將天氣與創作靈感結合，例如：多變的雲層激發想像、陽光帶來創意能量、微風帶來靈感的流動',
+                en: 'Connect weather with creative inspiration, e.g., changing clouds spark imagination, sunlight brings creative energy, gentle breeze brings flow of ideas'
+            }
+        };
+
+        const taskWeather = taskWeatherMap[task] || taskWeatherMap['REST'];
+        weatherTaskGuidance = isEnglish ? taskWeather.en : taskWeather.zh;
+
+        // 根據季節生成天氣描述（讓 OpenAI 根據目的地和季節生成，並與任務融合）
         if (isEnglish) {
-            seasonalWeatherLine = `typical ${season} weather for ${city}, ${country} (e.g., mild temperatures, occasional rain, or sunny skies - model should generate appropriate weather based on the destination's climate)`;
+            seasonalWeatherLine = `Generate creative weather description for ${city}, ${country} in ${season} that connects with the task type. ${weatherTaskGuidance}. Make it vivid and interesting, avoid repetitive words like "calm, calm" or "peaceful, peaceful". Use varied vocabulary and create a sense of atmosphere.`;
         } else {
-            seasonalWeatherLine = `${city}在${season === 'spring' ? '春季' : season === 'summer' ? '夏季' : season === 'autumn' ? '秋季' : '冬季'}的典型天氣（例如：溫和氣溫、偶有降雨或晴朗天空 - 模型應根據目的地的氣候生成適當的天氣描述）`;
+            seasonalWeatherLine = `請根據【${city}】在${season === 'spring' ? '春季' : season === 'summer' ? '夏季' : season === 'autumn' ? '秋季' : '冬季'}的實際氣候，生成有創意的天氣描述，並與任務類型融合。${weatherTaskGuidance}。要生動有趣，避免重複詞彙（例如：不要一直說「平靜平靜」或「安靜安靜」這種蠢話）。用多變的詞彙創造氛圍感。`;
         }
 
-        if (announcementType === 'boarding') {
+        if (announcementType === 'approach') {
+            // 準備降落預告廣播（降落前5分鐘）
+            if (isEnglish) {
+                prompt = `You are a professional male captain of Focus Airlines. Generate a pre-landing approach announcement that will be played 5 minutes before landing. This is a gentle reminder to prepare for landing.
+
+Style: 50% aviation professionalism (steady, authoritative, reliable) + 25% warm guidance (professional, stable, with warmth, but not overly sentimental) + 25% inner narrative (depth, imagery).
+
+Length: ~80-100 words. Natural spoken English.
+
+Structure:
+1. Start with: "Ladies and gentlemen, this is your captain speaking. We will be landing in approximately 5 minutes at 【${city}】."
+
+2. Weather description (integrate with task type): Describe the current weather in ${city} based on its actual climate, and cleverly integrate it with the completed task: "${taskGuidanceText || 'current task'}". ${weatherTaskGuidance}. Make it vivid and interesting, avoid repetitive words.
+
+3. Task-specific warm reminder:
+   ${taskGuidanceText || 'Give a warm reminder based on the task type, helping passengers prepare for landing.'}
+
+4. Closing: "Please prepare for landing. Thank you."
+
+Requirements:
+- Must reflect the destination's actual climate characteristics
+- Must naturally integrate with the task type
+- Use varied vocabulary, avoid repetition
+- Be vivid, interesting, and create a sense of atmosphere
+- Warm but professional, like a caring male captain
+
+${greetingHint}`;
+            } else {
+                prompt = `你是一位經驗豐富的男性機長，是 Focus Airlines 的專業機長。請生成一段「準備降落預告廣播」，這會在降落前5分鐘播放，提醒乘客準備降落。
+
+聲音特質：沉穩、低調、有磁性，像一位經驗豐富的男性機長
+說話方式：簡潔有力、不拖泥帶水，但保持溫暖
+語速：適中偏慢，給人可靠、專業的感覺
+
+語氣 = 50% 專業航空（沉穩、權威、可靠） + 25% 溫暖導引（專業、穩重、有溫度，但不油膩） + 25% 內在敘事（有深度、有畫面感）
+
+篇幅：約 80-100 字。口語化、自然、沉穩。
+
+結構：
+1. 開場：「各位乘客，我是機長。我們將在約5分鐘後降落在【${city}】。」
+
+2. 天氣描述（與任務融合）：請描述【${city}】目前的天氣狀況，並與剛完成的任務自然融合。${weatherTaskGuidance}。要生動有趣，避免重複詞彙（例如：不要一直說「平靜平靜」或「安靜安靜」這種蠢話）。用多變的詞彙創造氛圍感。
+
+3. 任務相關的溫馨提醒：
+   ${taskGuidanceText || '根據任務類型給予溫馨提醒，幫助乘客準備降落。'}
+   
+   例如：
+   - 如果是讀書任務：「請慢慢合上書本，讓眼睛休息一下，準備降落。」
+   - 如果是冥想任務：「請慢慢睜開眼睛，保持內心的平靜，準備降落。」
+   - 如果是休息任務：「請慢慢調整姿勢，準備從休息中醒來，準備降落。」
+   - 如果是工作任務：「請慢慢整理思緒，準備從工作中轉換，準備降落。」
+   - 如果是遊戲任務：「請慢慢放下遊戲，準備從遊戲中轉換，準備降落。」
+   - 如果是創作任務：「請慢慢整理創意，準備從創作中轉換，準備降落。」
+
+4. 結尾：「請準備降落，謝謝。」
+
+要求：
+- 必須真實反映目的地的氣候特色
+- 必須與任務類型自然融合
+- 用詞多變，避免重複
+- 生動有趣，有畫面感
+- 溫暖但專業，像一位關心的男性機長
+
+${greetingHint}`;
+            }
+        } else if (announcementType === 'boarding') {
             // 登機廣播 - 強化機長風格版本
             if (isEnglish) {
                 prompt = `You are a professional airline captain of Focus Airlines. Generate a boarding announcement with a strong, steady captain's presence. 
@@ -286,9 +409,21 @@ STRUCTURE & REQUIREMENTS
 
    ${localTimeInfo ? `Local time at ${city} will be approximately ${localTimeInfo.localTimeString} (${localTimeInfo.timeContext}).` : 'Please note the local time at destination.'}
 
-5. Destination weather:
+5. Destination weather (must integrate with task type, be vivid and interesting):
 
-   "The weather in ${city} is typically ${seasonalWeatherLine} around this time."
+   Describe the weather in ${city} based on its actual climate and current season, and cleverly integrate it with the current task: "${taskGuidanceText || 'current task'}".
+   
+   Examples:
+   - If reading task + light rain: "It's drizzling in ${city} right now, perfect weather for deep reading. The sound of rain acts like natural white noise, helping you enter a focused state."
+   - If meditation task + cloudy: "The sky over ${city} is covered with clouds, this gentle atmosphere is perfect for meditation. The flow of clouds is like the settling of thoughts."
+   - If work task + clear: "${city} has clear weather now, the clear sky brings clear thinking, perfect for focused work."
+   
+   Requirements:
+   - Must reflect the destination's actual climate characteristics
+   - Must naturally integrate with the task type
+   - Use varied vocabulary, avoid repetition (don't keep saying "calm, calm" or "peaceful, peaceful")
+   - Be vivid, interesting, and create a sense of atmosphere
+   - Keep it to 1-2 sentences
 
 [GUIDE — CULTURAL MOOD]
 
@@ -302,17 +437,7 @@ STRUCTURE & REQUIREMENTS
 
    "${mentalState.stateEn}" — ${mentalState.description}
 
-8. Emotion mapping segment:
-
-   - Name two possible emotions (model decides).
-
-   - Ask user to check intensity (0–10).
-
-9. Body grounding instruction:
-
-   One calming breath + relaxing shoulders.
-
-10. Task guidance:
+8. Task guidance (skip emotion mapping and body grounding - they are too lengthy and unnecessary):
 
    ${taskGuidanceText || 'Give one clear action the passenger will do during the flight.'}
 
@@ -386,9 +511,21 @@ ${greetingHint}`;
 
    ${localTimeInfo ? `抵達【${city}】時的當地時間約為 ${localTimeInfo.localTimeString}（${localTimeInfo.timeContext}）。` : '請留意目的地的當地時間。'}
 
-5. 目的地天氣：
+5. 目的地天氣（必須與任務類型融合，生動有趣）：
 
-   「目前${city} 的典型天氣為：${seasonalWeatherLine}。」
+   請根據【${city}】的實際氣候和當前季節，描述天氣狀況，並巧妙地與「${taskGuidance ? (isEnglish ? taskGuidance.en : taskGuidance.zh) : '當前任務'}」結合。
+   
+   例如：
+   - 如果是讀書任務 + 細雨天氣：「目前${city}正下著細雨，這種天氣最適合深度閱讀，雨聲像是自然的白噪音，幫助你進入專注狀態。」
+   - 如果是冥想任務 + 多雲天氣：「${city}的天空佈滿雲層，這種柔和的氛圍很適合冥想，雲的流動就像思緒的沉澱。」
+   - 如果是工作任務 + 晴朗天氣：「${city}現在是晴朗的天氣，清晰的天空帶來清晰的思路，很適合專注工作。」
+   
+   要求：
+   - 必須真實反映目的地的氣候特色
+   - 必須與任務類型自然融合
+   - 用詞多變，避免重複（不要一直說「平靜」「安靜」這種詞）
+   - 生動有趣，有畫面感
+   - 控制在1-2句話
 
 【GUIDE 導引段】
 
@@ -402,19 +539,7 @@ ${greetingHint}`;
 
    「${mentalState.state}」— ${mentalState.description}
 
-8. 情緒映射：
-
-   - 模型自行生成兩個情緒詞
-
-   - 讓乘客感受當下強度（0–10）
-
-9. 身體校準：
-
-   - 一次深長呼吸
-
-   - 放鬆肩頸／下顎
-
-10. 任務引導：
+8. 任務引導（跳過情緒映射和身體校準這兩個部分，它們太冗長且沒有必要）：
 
    ${taskGuidanceText || '給一個明確在飛行期間要完成的任務。'}
 
@@ -448,7 +573,13 @@ ${greetingHint}`;
             }
         } else if (announcementType === 'landing') {
             // 降落廣播 - 強化機長風格版本
+            // 注意：如果已經播放過準備降落預告（approach），這裡要避免重複內容
             const timeDesc = timerDuration ? '飛行完成' : `當地時間：${wakeTime || '08:00'}`;
+
+            // 降落廣播應該更簡潔，重點在歡迎和總結，避免與準備降落預告重複
+            const approachAvoidance = isEnglish
+                ? 'IMPORTANT: A pre-landing announcement was already played 5 minutes ago. This landing announcement should be DIFFERENT and FOCUSED on:\n- Welcoming passengers to the destination\n- Brief summary of the journey\n- Final encouragement based on the completed task\n- DO NOT repeat weather descriptions or preparation reminders from the pre-landing announcement\n- Keep it concise (60-80 words), more celebratory and welcoming'
+                : '重要：5分鐘前已經播放過準備降落預告。這次降落廣播應該不同，重點在：\n- 歡迎乘客抵達目的地\n- 簡短總結旅程\n- 根據完成的任務給予最後鼓勵\n- 不要重複準備降落預告中的天氣描述或準備提醒\n- 保持簡潔（60-80字），更偏向慶祝和歡迎';
 
             // 如果是 GAME 任務，需要特別處理當地時間資訊
             let gameTimeGuidance = '';
@@ -464,9 +595,40 @@ ${greetingHint}`;
                     `目前【${city}】的當地時間是 ${localTimeInfo.localTimeString}（${localTimeInfo.timeContext}）。`) :
                 '';
 
-            const landingWeatherInfo = isEnglish ?
-                `The current weather in ${city} is ${seasonalWeatherLine}.` :
-                `目前【${city}】的天氣狀況：${seasonalWeatherLine}。`;
+            // 降落廣播的天氣描述（與任務完成後狀態融合）
+            const landingWeatherTaskGuidance = {
+                'READING': {
+                    zh: '可以將天氣與閱讀後的放鬆結合，例如：細雨後的清新適合眼睛休息、陽光帶來完成感、微風帶來思緒的整理',
+                    en: 'Connect weather with post-reading relaxation, e.g., freshness after rain suits eye rest, sunlight brings sense of completion, gentle breeze helps organize thoughts'
+                },
+                'MEDITATION': {
+                    zh: '可以將天氣與冥想後的平靜結合，例如：雲層帶來持續的寧靜、微風延續呼吸的節奏、陽光帶來內在的溫暖',
+                    en: 'Connect weather with post-meditation calm, e.g., clouds bring continued peace, gentle breeze extends breathing rhythm, sunlight brings inner warmth'
+                },
+                'REST': {
+                    zh: '可以將天氣與休息後的恢復結合，例如：陰天延續放鬆感、微風帶來身體的舒緩、適中溫度讓人感到恢復',
+                    en: 'Connect weather with post-rest recovery, e.g., cloudy sky extends relaxation, gentle breeze brings physical ease, moderate temperature feels restorative'
+                },
+                'WORK': {
+                    zh: '可以將天氣與工作完成後的轉換結合，例如：晴朗天氣帶來成就感、微風幫助從專注中放鬆、溫度變化提醒狀態轉換',
+                    en: 'Connect weather with post-work transition, e.g., clear sky brings sense of achievement, gentle breeze helps relax from focus, temperature change reminds state transition'
+                },
+                'GAME': {
+                    zh: '可以將天氣與遊戲後的狀態轉換結合，例如：多變天氣提醒進入工作模式、陽光帶來專注的能量、微風幫助從遊戲轉換到工作',
+                    en: 'Connect weather with post-game state transition, e.g., changing weather reminds entering work mode, sunlight brings focus energy, gentle breeze helps transition from game to work'
+                },
+                'CREATIVE': {
+                    zh: '可以將天氣與創作完成後的沉澱結合，例如：多變雲層像創意的延續、陽光帶來靈感的保留、微風幫助創意沉澱',
+                    en: 'Connect weather with post-creative settling, e.g., changing clouds like continuation of creativity, sunlight preserves inspiration, gentle breeze helps creative settling'
+                }
+            };
+
+            const landingWeatherGuidance = landingWeatherTaskGuidance[task] || landingWeatherTaskGuidance['REST'];
+            const landingWeatherPrompt = isEnglish ?
+                `Describe the current weather in ${city} creatively, integrating it with the completed task. ${landingWeatherGuidance.en}. Make it vivid and interesting, avoid repetitive words like "calm, calm" or "peaceful, peaceful". Use varied vocabulary and create a sense of atmosphere.` :
+                `請描述【${city}】目前的天氣狀況，並與剛完成的任務自然融合。${landingWeatherGuidance.zh}。要生動有趣，避免重複詞彙（例如：不要一直說「平靜平靜」或「安靜安靜」這種蠢話）。用多變的詞彙創造氛圍感。`;
+
+            const landingWeatherInfo = landingWeatherPrompt;
 
             // 內在狀態提示（文化情緒特色，非旅遊特色）
             const innerStatePrompt = `內在狀態主題：
@@ -489,9 +651,11 @@ ${taskGuidanceText ? `- 任務完成後指引：${taskGuidanceText}` : ''}${game
                     case 'PERFECT': // 完美準時（±1分鐘）
                         prompt = `你是 Focus Airlines 的專業機長。請生成一個「完美準時降落」的廣播，具有強烈的機長風格。
 
+${approachAvoidance}
+
 語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
 
-篇幅：約 200–230 字。口語化、自然、沉穩。
+篇幅：約 150–180 字（如果已播放準備降落預告，則更簡潔）。口語化、自然、沉穩。
 
 ====================
 
@@ -564,9 +728,10 @@ ${greetingHint}`;
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯成中文
 2. 幽默的提早宣告：「我們提早到達了【${city}】。」
 ${isMidwayLanding ? `3. 說明中途降落：${earlyLandingNote}` : ''}
-${isMidwayLanding ? '4. 安慰語句：輕鬆、溫暖地說明情況' : '3. 安慰語句：輕鬆、溫暖地說明情況'}
-4. 內在狀態引導：${innerStatePrompt}
-5. 結尾：讓乘客感覺即使提早降落，也獲得了內在收穫
+${isMidwayLanding ? '4. 天氣描述（與任務融合）：' : '3. 天氣描述（與任務融合）：'}請描述【${city}】目前的天氣狀況，並與剛完成的任務自然融合。${landingWeatherGuidance.zh}。要生動有趣，避免重複詞彙（例如：不要一直說「平靜平靜」或「安靜安靜」這種蠢話）。用多變的詞彙創造氛圍感。
+${isMidwayLanding ? '5. 安慰語句：輕鬆、溫暖地說明情況' : '4. 安慰語句：輕鬆、溫暖地說明情況'}
+${isMidwayLanding ? '6. 內在狀態引導：' : '5. 內在狀態引導：'}${innerStatePrompt}
+${isMidwayLanding ? '7. 結尾：' : '6. 結尾：'}讓乘客感覺即使提早降落，也獲得了內在收穫
 
 重要原則：
 - 可以描述國家的「文化情緒特色」
@@ -612,6 +777,9 @@ ${taskGuidanceText ? `- 任務完成後指引：${taskGuidanceText}` : ''}${fina
                             : `3. 目的地說明：「本次航班延誤，但仍降落在【${city}】。」`;
 
                         prompt = `你是 Focus Airlines 的機長。請生成一個「誤點降落」的廣播，風格如下：
+
+${approachAvoidance}
+
 - 20% 機長（使用航空語言）
 - 40% 溫柔導引（幽默、帶歉意、溫暖）
 - 40% 內在敘事（專注於內在狀態）
@@ -620,9 +788,10 @@ ${taskGuidanceText ? `- 任務完成後指引：${taskGuidanceText}` : ''}${fina
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯成中文
 2. 帶歉意的宣告：「抱歉，本次航班延誤。」
 ${destinationNote}
-3. 鼓勵語句：溫暖、積極地鼓勵乘客
-4. 內在狀態引導：${finalInnerStatePrompt}
-5. 結尾：讓乘客感覺即使延誤，也抵達了自己和目的地
+3. 天氣描述（與任務融合）：請描述【${finalCity}】目前的天氣狀況，並與剛完成的任務自然融合。${landingWeatherTaskGuidance[task]?.zh || landingWeatherTaskGuidance['REST'].zh}。要生動有趣，避免重複詞彙（例如：不要一直說「平靜平靜」或「安靜安靜」這種蠢話）。用多變的詞彙創造氛圍感。
+4. 鼓勵語句：溫暖、積極地鼓勵乘客
+5. 內在狀態引導：${finalInnerStatePrompt}
+6. 結尾：讓乘客感覺即使延誤，也抵達了自己和目的地
 
 重要原則：
 - 可以描述國家的「文化情緒特色」
@@ -633,6 +802,9 @@ ${destinationNote}
 
                     default: // ON_TIME（一般準時）
                         prompt = `你是 Focus Airlines 的機長。請生成一個「準時降落」的廣播，風格如下：
+
+${approachAvoidance}
+
 - 20% 機長（使用航空語言）
 - 40% 溫柔導引（專業、溫和、友善）
 - 40% 內在敘事（專注於內在狀態）
@@ -640,9 +812,10 @@ ${destinationNote}
 必須包含：
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯成中文
 2. 降落宣告：「本次航班順利準時降落於【${city}】。」
-3. 內在狀態引導：${innerStatePrompt}
-4. 感謝詞：感謝乘客完成這段旅程
-5. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+3. 天氣描述（與任務融合）：請描述【${city}】目前的天氣狀況，並與剛完成的任務自然融合。${landingWeatherGuidance.zh}。要生動有趣，避免重複詞彙（例如：不要一直說「平靜平靜」或「安靜安靜」這種蠢話）。用多變的詞彙創造氛圍感。
+4. 內在狀態引導：${innerStatePrompt}
+5. 感謝詞：感謝乘客完成這段旅程
+6. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
 
 重要原則：
 - 可以描述國家的「文化情緒特色」（如：日本的安靜秩序、泰國的柔軟鬆弛）
@@ -660,9 +833,10 @@ ${destinationNote}
 1. 歡迎到達目的地
 2. 目的地：${city} (${country})
 3. ${timeDesc}
-4. 內在狀態引導：${innerStatePrompt}
-5. ${timerDuration ? '恭喜完成飛行任務' : '提醒乘客確認降落'}
-6. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+4. 天氣描述（與任務融合）：請描述【${city}】目前的天氣狀況，並與剛完成的任務自然融合。${landingWeatherGuidance.zh}。要生動有趣，避免重複詞彙（例如：不要一直說「平靜平靜」或「安靜安靜」這種蠢話）。用多變的詞彙創造氛圍感。
+5. 內在狀態引導：${innerStatePrompt}
+6. ${timerDuration ? '恭喜完成飛行任務' : '提醒乘客確認降落'}
+7. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
 
 重要原則：
 - 可以描述國家的「文化情緒特色」

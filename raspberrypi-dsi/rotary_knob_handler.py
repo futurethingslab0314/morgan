@@ -50,7 +50,7 @@ class RotaryKnobHandler:
         
         # 防抖處理參數
         self.debounce_count = 0  # 連續讀取到相同位置的次數
-        self.debounce_threshold = 3  # 需要連續讀取3次才確認（可調整）
+        self.debounce_threshold = 6  # 需要連續讀取6次才確認（提高穩定性）
         self.candidate_position = None  # 候選位置
         
         # 運行狀態
@@ -78,11 +78,11 @@ class RotaryKnobHandler:
     def read_position(self) -> Optional[int]:
         """讀取當前旋鈕位置（0-5），多次讀取取平均值以提高穩定性"""
         try:
-            # 連續讀取5次，取最常見的值（增加讀取次數以提高穩定性）
+            # 連續讀取10次，取最常見的值（增加讀取次數以提高穩定性）
             readings = []
             gpio_states = {}  # 記錄每個 GPIO 的狀態，用於調試
             
-            for _ in range(5):
+            for _ in range(10):  # 從 5 次增加到 10 次
                 # 讀取所有 GPIO 的狀態
                 active_pins = []
                 for i, p in enumerate(self.pins):
@@ -91,33 +91,42 @@ class RotaryKnobHandler:
                     if state == GPIO.LOW:
                         active_pins.append(i)
                 
-                # 如果有多個 pin 是 LOW，記錄所有（但通常應該只有一個）
-                if active_pins:
-                    # 如果有多個，選擇第一個（或者可以記錄所有）
+                # 如果有多個 pin 是 LOW，這是過渡狀態，記錄為 None（不穩定）
+                if len(active_pins) == 1:
+                    # 只有一個 pin 是 LOW，這是有效讀取
                     readings.append(active_pins[0])
+                elif len(active_pins) > 1:
+                    # 多個 pin 同時是 LOW，這是過渡狀態，記錄為 None
+                    readings.append(None)
                 else:
                     # 沒有讀取到任何 LOW，記錄 None
                     readings.append(None)
                 
-                time.sleep(0.01)  # 短暫延遲
+                time.sleep(0.02)  # 從 0.01 增加到 0.02 秒
             
             # 過濾掉 None 值
             valid_readings = [r for r in readings if r is not None]
             
             if not valid_readings:
-                # 所有讀取都是 None，記錄調試信息
-                logger.warning(f"無法讀取到任何有效位置，GPIO 狀態: {gpio_states}")
+                # 所有讀取都是 None，返回 None（保持上次穩定位置）
                 return None
             
-            # 返回最常見的 GPIO 索引
-            gpio_index = max(set(valid_readings), key=valid_readings.count)
+            # 計算每個 GPIO 索引出現的次數
+            from collections import Counter
+            reading_counts = Counter(valid_readings)
+            
+            # 獲取最常見的讀取
+            most_common = reading_counts.most_common(1)[0]
+            gpio_index = most_common[0]
+            count = most_common[1]
+            
+            # 如果最常見的讀取出現次數少於總有效讀取次數的 60%，認為不穩定
+            if count < len(valid_readings) * 0.6:
+                # 讀取不穩定，返回 None（保持上次穩定位置）
+                return None
             
             # 將 GPIO 索引轉換為 UI 位置
             ui_position = self.gpio_to_position.get(gpio_index)
-            
-            # 調試信息：如果讀取到創作（索引2）或休息（索引5），記錄詳細信息
-            if gpio_index == 2 or gpio_index == 5:
-                logger.info(f"讀取到 GPIO 索引 {gpio_index} (GPIO {self.pins[gpio_index]}) -> UI 位置 {ui_position}, GPIO 狀態: {gpio_states}, 有效讀取: {valid_readings}")
             
             return ui_position
         except Exception as e:
@@ -177,12 +186,12 @@ class RotaryKnobHandler:
                             except Exception as e:
                                 logger.error(f"位置變更回調執行失敗: {e}")
             else:
-                # 讀取到 None（空檔），保持上次穩定位置，重置防抖計數
+                # 讀取到 None（空檔或過渡狀態），保持上次穩定位置，重置防抖計數
                 self.debounce_count = 0
                 self.candidate_position = None
                 # 不更新 current_position，保持上次有效位置
             
-            time.sleep(0.05)  # 50ms 輪詢間隔
+            time.sleep(0.1)  # 從 50ms 增加到 100ms 輪詢間隔，減少誤觸發
     
     def stop_monitoring(self):
         """停止監控"""

@@ -1490,6 +1490,131 @@ body {
     z-index: 1001 !important;
 }
 
+/* === 全屏機長廣播顯示 === */
+.captain-announcement-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.captain-announcement-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    opacity: 0.95;
+}
+
+.captain-announcement-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: white;
+    padding: 40px;
+}
+
+.captain-announcement-icon {
+    font-size: 120px;
+    margin-bottom: 30px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.captain-announcement-title {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    font-family: 'Press Start 2P', 'Courier Prime', monospace;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.captain-announcement-subtitle {
+    font-size: 24px;
+    margin-bottom: 40px;
+    opacity: 0.9;
+    font-family: 'Press Start 2P', 'Courier Prime', monospace;
+}
+
+.captain-announcement-wave {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 40px;
+}
+
+.captain-announcement-wave .wave-bar {
+    width: 8px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    animation: wave 1.2s ease-in-out infinite;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(4) {
+    animation-delay: 0.6s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(5) {
+    animation-delay: 0.8s;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes wave {
+
+    0%,
+    100% {
+        transform: scaleY(0.5);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scaleY(1.5);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 /* === 新增：清喉嚨彈出對話框樣式 === */
 .throat-clearing-popup {
     position: fixed;
