@@ -550,6 +550,21 @@
             <div style="font-size: 14px; color: #999; margin-top: 30px; text-align: center;">
                 點擊按鈕開始旅程
             </div>
+        </div>
+        
+        <!-- 狀態5: 準備起航 -->
+        <div class="info-state" id="stateReady_to_fly">
+            <div class="state-label">🛫 準備起航</div>
+            <div class="country-display" style="margin-top: 20px; text-align: center;">
+                <div style="font-size: 20px; font-weight: bold; color: #ff6b35; margin-bottom: 15px;">
+                    一切準備就緒
+                </div>
+                <div style="font-size: 16px; color: #666; margin-bottom: 10px;">
+                    請再次按下按鈕開始起飛
+                </div>
+                <div id="readyDestinationInfo" style="font-size: 14px; color: #999; margin-top: 15px;">
+                    ...
+                </div>
             </div>
         </div>
     </div>
@@ -704,14 +719,24 @@
 
             // 顯示新狀態
             currentState = newState;
-            const stateId = 'state' + newState.charAt(0).toUpperCase() + newState.slice(1);
+            // 將狀態名稱轉換為元素 ID：ready_to_fly -> stateReady_to_fly
+            let stateId = 'state' + newState.charAt(0).toUpperCase() + newState.slice(1);
+            // 處理下劃線：ready_to_fly -> Ready_to_fly -> stateReady_to_fly
             const stateElement = document.getElementById(stateId);
             
             if (stateElement) {
                 stateElement.classList.add('active');
-                console.log('✅ 成功切換到狀態:', newState);
+                console.log('✅ 成功切換到狀態:', newState, '元素 ID:', stateId);
+                
+                // 如果是準備起航狀態，更新目的地資訊顯示
+                if (newState === State.READY_TO_FLY && destinationData) {
+                    const readyInfo = document.getElementById('readyDestinationInfo');
+                    if (readyInfo) {
+                        readyInfo.textContent = destinationData.city + ', ' + destinationData.country;
+                    }
+                }
             } else {
-                console.error('❌ 找不到狀態元素:', stateId);
+                console.error('❌ 找不到狀態元素:', stateId, '狀態:', newState);
             }
             
             // 如果切換到時間選擇或氣候帶選擇，立即讀取旋鈕位置
@@ -1063,7 +1088,10 @@
                 
                 const data = await response.json();
                 
-                if (data.knob_handler_available && data.position !== undefined) {
+                // 支持新舊兩種 API 格式
+                // 新格式：{success: true, knob_handler_available: true, position: 0-5}
+                // 舊格式：{success: true, position: 0-5, name: "...", task: "..."}
+                if (data.success && data.position !== undefined) {
                     consecutiveErrors = 0;
                     const position = parseInt(data.position);
                     
@@ -1142,7 +1170,10 @@
                     
                     const data = await response.json();
                     
-                    if (data.knob_handler_available && data.position !== undefined) {
+                    // 支持新舊兩種 API 格式
+                    // 新格式：{success: true, knob_handler_available: true, position: 0-5}
+                    // 舊格式：{success: true, position: 0-5, name: "...", task: "..."}
+                    if (data.success && data.position !== undefined) {
                         // 重置錯誤計數和標記（服務已恢復）
                         consecutiveErrors = 0;
                         if (connectionErrorLogged) {
@@ -1427,16 +1458,14 @@
                     break;
                     
                 case State.ANGLE:
-                    // 從選擇氣候帶 → 顯示目的地 → 準備起航
+                    // 從選擇氣候帶 → 準備起航（不顯示目的地）
                     if (selectedDirection !== null) {
                         console.log('✅ 按鈕：氣候帶已選擇，進入準備起航狀態');
                         if (destinationData) {
-                            // 先顯示目的地
-                            switchToPhase(Phase.DESTINATION_SHOW);
-                            // 然後準備起航（準備 TTS，不播放）
-                            setTimeout(() => {
-                                prepareForTakeoff();
-                            }, 1000);
+                            // 直接準備起航（準備 TTS，不播放），不顯示目的地
+                            currentState = State.READY_TO_FLY;
+                            switchState(State.READY_TO_FLY);
+                            prepareForTakeoff();
                         } else {
                             console.log('⚠️ 目的地資料尚未計算，請稍候...');
                         }
