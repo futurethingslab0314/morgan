@@ -53,33 +53,43 @@ except Exception as e:
 
 @app.route("/api/knob/position", methods=["GET"])
 def get_knob_position():
-    """獲取當前旋鈕位置"""
+    """獲取當前旋鈕位置（新系統：只返回位置 0-5，不返回任務）"""
     if knob_handler is None:
         return jsonify({
             'success': False,
+            'knob_handler_available': False,
             'message': '旋鈕處理器未初始化（可能不在樹莓派上運行）'
         }), 503
     
     try:
         pos = knob_handler.read_position()
-        task = knob_handler.get_current_task()
         
         if pos is not None:
             return jsonify({
                 'success': True,
-                'position': pos,
-                'name': knob_handler.names[pos],
-                'task': task
+                'knob_handler_available': True,
+                'position': pos
             })
         else:
-            return jsonify({
-                'success': False,
-                'message': '無法讀取旋鈕位置（可能沒有選中任何位置）'
-            })
+            # 如果讀取不到位置，返回上次穩定位置（如果有的話）
+            last_pos = knob_handler.last_stable_position if hasattr(knob_handler, 'last_stable_position') else None
+            if last_pos is not None:
+                return jsonify({
+                    'success': True,
+                    'knob_handler_available': True,
+                    'position': last_pos
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'knob_handler_available': True,
+                    'message': '無法讀取旋鈕位置（可能沒有選中任何位置）'
+                })
     except Exception as e:
         logger.error(f"讀取旋鈕位置失敗: {e}")
         return jsonify({
             'success': False,
+            'knob_handler_available': True,
             'error': str(e)
         }), 500
 

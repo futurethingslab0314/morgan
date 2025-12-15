@@ -19,29 +19,28 @@ class RotaryKnobHandler:
     def __init__(self):
         # GPIO 腳位配置（順序：5, 6, 13, 19, 26, 21）
         self.pins = [5, 6, 13, 19, 26, 21]
-        self.names = ["選單 1", "選單 2", "選單 3", "選單 4", "選單 5", "選單 6"]
+        self.names = ["位置 0", "位置 1", "位置 2", "位置 3", "位置 4", "位置 5"]
         
-        # GPIO 索引到 UI 位置的映射
+        # GPIO 索引到 UI 位置的映射（簡化：直接對應 0-5）
         # GPIO順序: [5, 6, 13, 19, 26, 21]
-        # 對應任務: [讀書, 工作, 創作, 冥想, 遊戲, 休息]
-        # UI位置:   [0,   1,   2,   4,   5,   3]  (位置3是底部，給休息)
+        # UI位置:   [0, 1, 2, 3, 4, 5]  (直接對應，不再使用舊的任務映射)
         self.gpio_to_position = {
-            0: 0,  # GPIO 5 (索引0) -> 位置0 -> 讀書（頂部）
-            1: 1,  # GPIO 6 (索引1) -> 位置1 -> 工作
-            2: 2,  # GPIO 13 (索引2) -> 位置2 -> 創作
-            3: 4,  # GPIO 19 (索引3) -> 位置4 -> 冥想
-            4: 5,  # GPIO 26 (索引4) -> 位置5 -> 遊戲
-            5: 3   # GPIO 21 (索引5) -> 位置3 -> 休息（底部）
+            0: 0,  # GPIO 5 (索引0) -> 位置0
+            1: 1,  # GPIO 6 (索引1) -> 位置1
+            2: 2,  # GPIO 13 (索引2) -> 位置2
+            3: 3,  # GPIO 19 (索引3) -> 位置3
+            4: 4,  # GPIO 26 (索引4) -> 位置4
+            5: 5   # GPIO 21 (索引5) -> 位置5
         }
         
-        # 任務對應（6個任務，按 UI 位置順序）
+        # 保留 task_map 以向後兼容，但不再使用（新系統由前端決定對應內容）
         self.task_map = {
-            0: 'READING',    # 位置0 -> 讀書（頂部）
-            1: 'WORK',       # 位置1 -> 工作
-            2: 'CREATIVE',   # 位置2 -> 創作
-            3: 'REST',       # 位置3 -> 休息（底部）
-            4: 'MEDITATION', # 位置4 -> 冥想
-            5: 'GAME'        # 位置5 -> 遊戲
+            0: 'POSITION_0',
+            1: 'POSITION_1',
+            2: 'POSITION_2',
+            3: 'POSITION_3',
+            4: 'POSITION_4',
+            5: 'POSITION_5'
         }
         
         self.current_position = None
@@ -177,12 +176,11 @@ class RotaryKnobHandler:
                         # 位置確實改變了
                         self.current_position = pos
                         self.last_stable_position = pos
-                        task = self.task_map.get(pos)
-                        logger.info(f"旋鈕位置變更: {self.names[pos]} -> 任務: {task}")
+                        logger.info(f"旋鈕位置變更: {self.names[pos]} (位置 {pos})")
                         
                         if self.on_position_change:
                             try:
-                                self.on_position_change(pos, task)
+                                self.on_position_change(pos, None)  # 不再傳遞任務，由前端決定
                             except Exception as e:
                                 logger.error(f"位置變更回調執行失敗: {e}")
             else:
