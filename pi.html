@@ -248,20 +248,21 @@
         /* 選項容器（中間，可滾動） */
         .options-container {
             display: flex !important;
-            gap: 10px;
+            gap: 8px;
             flex: 1;
             justify-content: center;
             align-items: flex-start;
             flex-wrap: nowrap;
-            padding: 10px 15px;
+            padding: 10px 12px;
             overflow-y: auto;
-            overflow-x: hidden;
+            overflow-x: auto;
             width: 100%;
             box-sizing: border-box;
         }
 
         .options-container::-webkit-scrollbar {
             width: 6px;
+            height: 6px;
         }
 
         .options-container::-webkit-scrollbar-track {
@@ -272,6 +273,10 @@
         .options-container::-webkit-scrollbar-thumb {
             background: #ff6b35;
             border-radius: 3px;
+        }
+
+        .options-container::-webkit-scrollbar-thumb:hover {
+            background: #ff8555;
         }
 
         /* 時間選項 - 清爽設計 */
@@ -358,8 +363,10 @@
 
         /* 氣候帶選項專用樣式 */
         .climate-option {
-            min-width: 120px;
-            padding: 20px 16px;
+            min-width: 110px;
+            max-width: 120px;
+            flex: 1;
+            padding: 18px 12px;
         }
 
         .climate-icon {
@@ -369,17 +376,19 @@
         }
 
         .climate-name {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             margin-bottom: 2px;
+            white-space: nowrap;
         }
 
         .climate-desc {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 400;
             opacity: 0.8;
             text-align: center;
             line-height: 1.3;
+            word-break: keep-all;
         }
 
         .angle-option.active .climate-desc {
@@ -568,8 +577,8 @@
         <div id="testResult" style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; max-height: 400px; overflow-y: auto; display: none;"></div>
     </div>
 
-    <!-- 下一步按鈕 - 在測試面板下方 -->
-    <button id="nextButton" class="next-button" style="position: fixed; top: auto; bottom: 20px; right: 10px; width: 400px;">下一步</button>
+    <!-- 下一步按鈕 - 已隱藏，改用實體按鈕 -->
+    <button id="nextButton" class="next-button" style="display: none;">下一步</button>
 
     <script>
         // Phase 定義
@@ -590,7 +599,8 @@
             COUNTRY: 'country',
             TIMER: 'timer',
             ANGLE: 'angle',
-            DESTINATION: 'destination'
+            DESTINATION: 'destination',
+            READY_TO_FLY: 'ready_to_fly'  // 準備起航狀態（已準備好，等待起飛按鈕）
         };
 
         let currentPhase = Phase.POST_ARRIVAL;
@@ -704,6 +714,14 @@
                 console.error('❌ 找不到狀態元素:', stateId);
             }
             
+            // 如果切換到時間選擇或氣候帶選擇，立即讀取旋鈕位置
+            if (newState === State.TIMER || newState === State.ANGLE) {
+                // 延遲一點點，確保 UI 已經更新
+                setTimeout(() => {
+                    readKnobPositionAndSelect();
+                }, 100);
+            }
+            
             // 更新按鈕狀態
             updateNextButton();
         }
@@ -742,7 +760,8 @@
                     selectTimer(position);
                 }
             } else if (type === 'angle' && currentState === State.ANGLE) {
-                if (position >= 0 && position < angleOptions.length) {
+                // 使用 climateZoneOptions 的長度（6個氣候帶選項）
+                if (position >= 0 && position < climateZoneOptions.length) {
                     selectAngle(position);
                 }
             }
@@ -769,6 +788,10 @@
                 case State.DESTINATION:
                     nextButton.textContent = destinationData ? '開始旅程' : '計算中...';
                     nextButton.disabled = !destinationData;
+                    break;
+                case State.READY_TO_FLY:
+                    nextButton.textContent = '準備起飛（按實體按鈕）';
+                    nextButton.disabled = false;
                     break;
                 default:
                     nextButton.textContent = '下一步';
@@ -821,10 +844,14 @@
                     }
                     break;
                 case State.DESTINATION:
-                    // 從顯示目的地 → 開始旅程
-                    if (destinationData) {
-                        console.log('按鈕：從目的地顯示進入起飛準備');
-                        switchToPhase(Phase.TAKEOFF_PREP);
+                case State.READY_TO_FLY:
+                    // 從顯示目的地/準備起航 → 開始起飛
+                    if (preparedAnnouncement) {
+                        console.log('按鈕：開始起飛！');
+                        startTakeoffSequence();
+                    } else if (destinationData) {
+                        // 如果還沒準備，先準備
+                        prepareForTakeoff();
                     }
                     break;
             }
@@ -1012,6 +1039,51 @@
         let consecutiveErrors = 0; // 連續錯誤計數
         const MAX_CONSECUTIVE_ERRORS = 5; // 連續 5 次錯誤後停止輪詢
         let knobMonitoringEnabled = true; // 開關：是否啟用旋鈕監控
+        let lastState = null; // 記錄上次狀態，用於檢測狀態變化
+        
+        // 立即讀取旋鈕位置並選擇（用於狀態切換時）
+        async function readKnobPositionAndSelect() {
+            if (!knobMonitoringEnabled || consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                return;
+            }
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 500);
+                
+                const response = await fetch('http://127.0.0.1:5001/api/knob/position', {
+                    signal: controller.signal
+                }).catch(() => {
+                    throw new Error('Connection refused');
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.knob_handler_available && data.position !== undefined) {
+                    consecutiveErrors = 0;
+                    const position = parseInt(data.position);
+                    
+                    // 立即選擇對應位置（即使位置沒改變）
+                    lastKnobPosition = position;
+                    console.log('📍 立即讀取旋鈕位置:', position);
+                    
+                    // 根據當前狀態選擇對應的選項
+                    if (currentState === State.TIMER) {
+                        selectByPosition(position, 'timer');
+                    } else if (currentState === State.ANGLE) {
+                        selectByPosition(position, 'angle');
+                    }
+                }
+            } catch (error) {
+                // 靜默處理錯誤
+            }
+        }
         
         function startKnobMonitoring() {
             if (knobPollInterval) {
@@ -1036,6 +1108,15 @@
                         }
                     }
                     return;
+                }
+                
+                // 檢測狀態變化：如果狀態改變到 TIMER 或 ANGLE，立即讀取位置
+                if (lastState !== currentState) {
+                    if (currentState === State.TIMER || currentState === State.ANGLE) {
+                        console.log('🔄 狀態切換到', currentState, '，立即讀取旋鈕位置');
+                        readKnobPositionAndSelect();
+                    }
+                    lastState = currentState;
                 }
                 
                 // 取消之前的請求
@@ -1138,6 +1219,369 @@
         
         // 自動啟動旋鈕監控
         startKnobMonitoring();
+        
+        // ============================================================================
+        // 實體按鈕 API 監控（GPIO 4，接 3V3）
+        // ============================================================================
+        let buttonPollInterval = null;
+        let lastButtonState = false; // false = 未按下, true = 按下
+        let buttonConsecutiveErrors = 0;
+        const MAX_BUTTON_ERRORS = 5;
+        let buttonMonitoringEnabled = true;
+        let preparedAnnouncement = null; // 準備好的 TTS 語音文字
+        
+        function startButtonMonitoring() {
+            if (buttonPollInterval) {
+                clearInterval(buttonPollInterval);
+            }
+            
+            console.log('🔘 啟動實體按鈕監控（GPIO 4，接 3V3）...');
+            
+            let connectionErrorLogged = false;
+            let controller = null;
+            buttonConsecutiveErrors = 0;
+            
+            buttonPollInterval = setInterval(async () => {
+                if (!buttonMonitoringEnabled || buttonConsecutiveErrors >= MAX_BUTTON_ERRORS) {
+                    if (buttonConsecutiveErrors >= MAX_BUTTON_ERRORS && buttonPollInterval) {
+                        clearInterval(buttonPollInterval);
+                        buttonPollInterval = null;
+                        if (!connectionErrorLogged) {
+                            console.log('ℹ️ 按鈕 API 不可用，已停止輪詢（可在控制台執行 window.enableButtonMonitoring() 重新啟用）');
+                            connectionErrorLogged = true;
+                        }
+                    }
+                    return;
+                }
+                
+                if (controller) {
+                    controller.abort();
+                }
+                
+                controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 500);
+                
+                try {
+                    // 監控 GPIO 4（接 3V3，實體針腳 7）
+                    // 嘗試多種可能的 API 端點格式
+                    let response = null;
+                    let data = null;
+                    
+                    // 嘗試格式 1: /api/button/state?gpio=4
+                    try {
+                        response = await fetch('http://127.0.0.1:5001/api/button/state?gpio=4', {
+                            signal: controller.signal
+                        });
+                        if (response.ok) {
+                            data = await response.json();
+                        }
+                    } catch (e) {
+                        // 嘗試格式 2: /api/button?gpio=4
+                        try {
+                            response = await fetch('http://127.0.0.1:5001/api/button?gpio=4', {
+                                signal: controller.signal
+                            });
+                            if (response.ok) {
+                                data = await response.json();
+                            }
+                        } catch (e2) {
+                            // 嘗試格式 3: /api/gpio/4
+                            try {
+                                response = await fetch('http://127.0.0.1:5001/api/gpio/4', {
+                                    signal: controller.signal
+                                });
+                                if (response.ok) {
+                                    data = await response.json();
+                                }
+                            } catch (e3) {
+                                throw new Error('Connection refused');
+                            }
+                        }
+                    }
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response || !response.ok) {
+                        throw new Error('HTTP ' + (response ? response.status : 'no response'));
+                    }
+                    
+                    // 處理多種可能的 API 返回格式
+                    let pressed = false;
+                    if (data) {
+                        // 格式 1: { pressed: true/false }
+                        if (data.pressed !== undefined) {
+                            pressed = data.pressed;
+                        }
+                        // 格式 2: { state: 1/0 } 或 { value: 1/0 }
+                        else if (data.state !== undefined) {
+                            pressed = data.state === 1 || data.state === true;
+                        }
+                        else if (data.value !== undefined) {
+                            pressed = data.value === 1 || data.value === true;
+                        }
+                        // 格式 3: { gpio4: 1/0 } 或 { gpio_4: 1/0 }
+                        else if (data.gpio4 !== undefined) {
+                            pressed = data.gpio4 === 1 || data.gpio4 === true;
+                        }
+                        else if (data.gpio_4 !== undefined) {
+                            pressed = data.gpio_4 === 1 || data.gpio_4 === true;
+                        }
+                    }
+                    
+                    if (data && (data.pressed !== undefined || data.state !== undefined || data.value !== undefined || data.gpio4 !== undefined || data.gpio_4 !== undefined)) {
+                        buttonConsecutiveErrors = 0;
+                        if (connectionErrorLogged) {
+                            console.log('✅ 按鈕 API 已恢復連接');
+                            connectionErrorLogged = false;
+                        }
+                        
+                        // 檢測按鈕按下（從 false 變為 true）
+                        // 注意：按鈕接 3V3 和 GPIO 4，按下時 GPIO 4 會是 HIGH (1)，釋放時是 LOW (0)（如果使用下拉電阻）
+                        // 或者按下時是 LOW (0)，釋放時是 HIGH (1)（如果使用上拉電阻）
+                        // 這裡假設按下時 pressed = true（HIGH），如果相反需要調整
+                        if (!lastButtonState && pressed) {
+                            lastButtonState = true;
+                            console.log('🔘 實體按鈕按下！');
+                            handlePhysicalButtonPress();
+                        } else if (lastButtonState && !pressed) {
+                            lastButtonState = false;
+                            console.log('🔘 實體按鈕釋放');
+                        }
+                    } else {
+                        buttonConsecutiveErrors++;
+                    }
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    buttonConsecutiveErrors++;
+                    
+                    if (!connectionErrorLogged && buttonConsecutiveErrors === 1) {
+                        console.log('ℹ️ 按鈕 API 不可用（這是正常的，如果不在 Raspberry Pi 上）');
+                        connectionErrorLogged = true;
+                    }
+                }
+            }, 100); // 每 100ms 檢查一次（按鈕需要更快的響應）
+        }
+        
+        // 處理實體按鈕按下事件
+        function handlePhysicalButtonPress() {
+            console.log('🔘 處理實體按鈕按下，當前狀態:', currentState);
+            
+            switch (currentState) {
+                case State.COUNTRY:
+                    // 從國家顯示 → 選擇時長
+                    console.log('按鈕：從國家顯示切換到時間選擇');
+                    currentPhase = Phase.TIME_SELECTION;
+                    switchState(State.TIMER);
+                    break;
+                    
+                case State.TIMER:
+                    // 從選擇時長 → 選擇氣候帶（必須已選擇時間）
+                    if (selectedTimer) {
+                        console.log('按鈕：從時間選擇切換到氣候帶選擇');
+                        switchState(State.ANGLE);
+                        currentPosition = 0;
+                    } else {
+                        console.log('⚠️ 請先選擇時長');
+                    }
+                    break;
+                    
+                case State.ANGLE:
+                    // 從選擇氣候帶 → 顯示目的地 → 準備起航
+                    if (selectedDirection !== null) {
+                        console.log('按鈕：氣候帶已選擇，進入準備起航狀態');
+                        if (destinationData) {
+                            // 先顯示目的地
+                            switchToPhase(Phase.DESTINATION_SHOW);
+                            // 然後準備起航（準備 TTS，不播放）
+                            setTimeout(() => {
+                                prepareForTakeoff();
+                            }, 1000);
+                        }
+                    } else {
+                        console.log('⚠️ 請先選擇氣候帶');
+                    }
+                    break;
+                    
+                case State.DESTINATION:
+                case State.READY_TO_FLY:
+                    // 從準備起航 → 開始起飛
+                    if (preparedAnnouncement) {
+                        console.log('按鈕：開始起飛！');
+                        startTakeoffSequence();
+                    } else {
+                        console.log('⚠️ 起飛準備未完成，請稍候...');
+                    }
+                    break;
+                    
+                default:
+                    console.log('⚠️ 當前狀態不支援按鈕操作:', currentState);
+            }
+        }
+        
+        // 準備起航（準備 TTS 語音，不播放）
+        async function prepareForTakeoff() {
+            console.log('✈️ 準備起航：生成 TTS 語音（不播放）...');
+            
+            if (destinationData) {
+                const climateZone = destinationData.climateZone || null;
+                const announcement = generateTakeoffAnnouncement(
+                    destinationData,
+                    destinationData.country,
+                    selectedTimer,
+                    climateZone
+                );
+                
+                if (announcement) {
+                    preparedAnnouncement = announcement;
+                    console.log('✅ TTS 語音已準備完成（等待起飛按鈕）');
+                    
+                    // 切換到準備起航狀態
+                    currentState = State.READY_TO_FLY;
+                    console.log('🛫 已準備好起飛，等待按鈕...');
+                } else {
+                    console.warn('⚠️ 語音生成失敗');
+                }
+            }
+        }
+        
+        // 開始起飛序列
+        async function startTakeoffSequence() {
+            console.log('🚀 開始起飛序列...');
+            
+            // 1. 播放 captain.mp3
+            console.log('1️⃣ 播放 captain.mp3...');
+            await playAudioFile('sounds/captain.mp3');
+            
+            // 2. 播放準備好的 TTS 語音
+            if (preparedAnnouncement) {
+                console.log('2️⃣ 播放 TTS 語音...');
+                await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
+                    isTakeoff: true,
+                    rate: 0.7,
+                    pitch: 0.85,
+                    volume: 0.9
+                });
+            }
+            
+            // 3. 播放 takeoff.mp3
+            console.log('3️⃣ 播放 takeoff.mp3...');
+            await playAudioFile('sounds/takeoff.mp3');
+            
+            // 4. 同時播放 takeoff1.mp4 和 loop takeoff2.mp4
+            console.log('4️⃣ 播放起飛影片...');
+            await playTakeoffVideos();
+            
+            // 5. 進入巡航階段
+            console.log('✅ 起飛序列完成，進入巡航階段');
+            switchToPhase(Phase.CRUISE);
+        }
+        
+        // 播放音頻文件
+        function playAudioFile(url) {
+            return new Promise((resolve, reject) => {
+                const audio = new Audio(url);
+                audio.onended = () => resolve();
+                audio.onerror = (error) => {
+                    console.error('❌ 音頻播放失敗:', url, error);
+                    resolve(); // 即使失敗也繼續
+                };
+                audio.play().catch(error => {
+                    console.error('❌ 音頻播放錯誤:', error);
+                    resolve();
+                });
+            });
+        }
+        
+        // 播放起飛影片（takeoff1.mp4 一次，然後 loop takeoff2.mp4）
+        async function playTakeoffVideos() {
+            const videoContainer = document.querySelector('.window-area');
+            if (!videoContainer) {
+                console.error('❌ 找不到影片容器');
+                return;
+            }
+            
+            // 清除之前的影片
+            const existingVideos = videoContainer.querySelectorAll('video');
+            existingVideos.forEach(v => v.remove());
+            
+            // 創建 takeoff1.mp4 影片元素
+            const video1 = document.createElement('video');
+            video1.src = 'takeoff1.mp4';
+            video1.className = 'takeoff-video';
+            video1.preload = 'auto';
+            video1.muted = true;
+            video1.playsInline = true;
+            video1.style.width = '100%';
+            video1.style.height = '100%';
+            video1.style.objectFit = 'contain';
+            video1.style.position = 'absolute';
+            video1.style.top = '0';
+            video1.style.left = '0';
+            video1.style.opacity = '1';
+            
+            videoContainer.appendChild(video1);
+            
+            // 播放 takeoff1.mp4
+            await new Promise((resolve) => {
+                video1.onended = () => {
+                    console.log('✅ takeoff1.mp4 播放完成');
+                    resolve();
+                };
+                video1.onerror = (error) => {
+                    console.error('❌ takeoff1.mp4 播放失敗:', error);
+                    resolve();
+                };
+                video1.play().catch(error => {
+                    console.error('❌ takeoff1.mp4 播放錯誤:', error);
+                    resolve();
+                });
+            });
+            
+            // 創建 takeoff2.mp4 影片元素（循環播放）
+            const video2 = document.createElement('video');
+            video2.src = 'takeoff2.mp4';
+            video2.className = 'takeoff-video';
+            video2.preload = 'auto';
+            video2.muted = true;
+            video2.playsInline = true;
+            video2.loop = true; // 循環播放
+            video2.style.width = '100%';
+            video2.style.height = '100%';
+            video2.style.objectFit = 'contain';
+            video2.style.position = 'absolute';
+            video2.style.top = '0';
+            video2.style.left = '0';
+            video2.style.opacity = '1';
+            
+            videoContainer.appendChild(video2);
+            
+            // 播放 takeoff2.mp4（循環）
+            video2.play().catch(error => {
+                console.error('❌ takeoff2.mp4 播放錯誤:', error);
+            });
+            
+            console.log('✅ takeoff2.mp4 開始循環播放');
+        }
+        
+        // 提供全局函數來控制按鈕監控
+        window.enableButtonMonitoring = function() {
+            buttonMonitoringEnabled = true;
+            buttonConsecutiveErrors = 0;
+            startButtonMonitoring();
+            console.log('✅ 按鈕監控已啟用');
+        };
+        
+        window.disableButtonMonitoring = function() {
+            buttonMonitoringEnabled = false;
+            if (buttonPollInterval) {
+                clearInterval(buttonPollInterval);
+                buttonPollInterval = null;
+            }
+            console.log('⏸️ 按鈕監控已停用');
+        };
+        
+        // 自動啟動按鈕監控
+        startButtonMonitoring();
 
         // 初始化
         console.log('Focus Flight - New Layout 已載入');
