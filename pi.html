@@ -1126,6 +1126,11 @@
         const MAX_CONSECUTIVE_ERRORS = 20; // 連續 20 次錯誤後停止輪詢（增加容錯性）
         let knobMonitoringEnabled = true; // 開關：是否啟用旋鈕監控
         let lastState = null; // 記錄上次狀態，用於檢測狀態變化
+
+        // 前端額外穩定判定（在 Python 已做防抖的基礎上，再確認數次）
+        let jsCandidatePosition = null;
+        let jsStableCount = 0;
+        const JS_POSITION_STABLE_COUNT = 2; // 需要連續 2 次讀到同一個位置才採用（約 400ms）
         
         // 立即讀取旋鈕位置並選擇（用於狀態切換時）
         async function readKnobPositionAndSelect() {
@@ -1162,27 +1167,24 @@
                 if (data && data.success && data.position !== undefined) {
                     consecutiveErrors = 0;
                     const position = parseInt(data.position);
-                    
-                    // 記錄之前的位置
+                    if (isNaN(position)) return;
+
                     const previousPosition = lastKnobPosition;
-                    
                     console.log('📍 立即讀取旋鈕位置（狀態切換時）:', position, '之前位置:', previousPosition, '當前狀態:', currentState);
-                    
-                    // 在狀態切換時，立即選擇並設置 lastKnobPosition
-                    // 這樣輪詢邏輯可以正確檢測後續的位置變化
-                    if (previousPosition === null || previousPosition !== position) {
-                        // 根據當前狀態選擇對應的選項
-                        if (currentState === State.TIMER) {
-                            console.log('✅ 狀態切換時：選擇時間，位置:', position);
-                            selectByPosition(position, 'timer');
-                        } else if (currentState === State.ANGLE) {
-                            console.log('✅ 狀態切換時：選擇氣候帶，位置:', position);
-                            selectByPosition(position, 'angle');
-                        }
+
+                    // 立刻根據當前狀態選擇對應的選項
+                    if (currentState === State.TIMER) {
+                        console.log('✅ 狀態切換時：選擇時間，位置:', position);
+                        selectByPosition(position, 'timer');
+                    } else if (currentState === State.ANGLE) {
+                        console.log('✅ 狀態切換時：選擇氣候帶，位置:', position);
+                        selectByPosition(position, 'angle');
                     }
-                    
-                    // 設置 lastKnobPosition，讓輪詢邏輯可以正確檢測位置變化
+
+                    // 同步更新前端穩定判定的狀態
                     lastKnobPosition = position;
+                    jsCandidatePosition = position;
+                    jsStableCount = JS_POSITION_STABLE_COUNT; // 視為已穩定，下一次變化才會觸發
                 }
             } catch (error) {
                 // 靜默處理錯誤
@@ -1273,43 +1275,33 @@
                             connectionErrorLogged = false;
                         }
                         
-                        const position = parseInt(data.position);
-                        
-                        // 檢測位置變化：只有當位置改變時才觸發選擇（避免重複觸發）
-                        if (lastKnobPosition === null) {
-                            // 首次讀取到位置，只記錄位置，不觸發任何操作
-                            // 這樣可以確保初始顯示國家時不會自動跳轉
-                            lastKnobPosition = position;
-                            console.log('📍 首次讀取旋鈕位置:', position, '當前狀態:', currentState, '（僅記錄，不觸發操作）');
-                            
-                            // 只有在已經進入 TIMER 或 ANGLE 狀態時，才選擇對應的選項
-                            // 不自動從 POST_ARRIVAL 切換到 TIME_SELECTION（應該由按鈕觸發）
-                            if (currentState === State.TIMER) {
-                                console.log('✅ 首次讀取：選擇時間，位置:', position);
-                                selectByPosition(position, 'timer');
-                            } else if (currentState === State.ANGLE) {
-                                console.log('✅ 首次讀取：選擇氣候帶，位置:', position);
-                                selectByPosition(position, 'angle');
-                            }
-                            // 注意：不處理 POST_ARRIVAL 狀態，讓按鈕來觸發切換
-                        } else if (lastKnobPosition !== position) {
-                            // 位置改變了，更新並觸發選擇
+                        const rawPosition = parseInt(data.position);
+                        if (isNaN(rawPosition)) {
+                            return;
+                        }
+
+                        // 前端額外穩定判定：連續多次讀到相同位置才採用
+                        if (jsCandidatePosition === rawPosition) {
+                            jsStableCount++;
+                        } else {
+                            jsCandidatePosition = rawPosition;
+                            jsStableCount = 1;
+                        }
+
+                        if (jsStableCount < JS_POSITION_STABLE_COUNT) {
+                            // 還沒達到穩定次數，不更新 UI（避免小抖動）
+                            return;
+                        }
+
+                        const position = jsCandidatePosition;
+
+                        // 只有當位置真的改變時才更新 UI
+                        if (lastKnobPosition !== position) {
                             const oldPosition = lastKnobPosition;
                             lastKnobPosition = position;
                             console.log('🔄 旋鈕位置改變:', oldPosition, '->', position, '當前狀態:', currentState);
-                            
-                            // 如果還在 Phase 0（POST_ARRIVAL），旋鈕轉動可以進入 Phase 1
-                            // 但只有在用戶主動轉動旋鈕時才觸發（位置改變表示用戶轉動了）
-                            if (currentPhase === Phase.POST_ARRIVAL && currentState === State.COUNTRY) {
-                                console.log('✅ 旋鈕轉動，從 Phase 0 進入 Phase 1');
-                                currentPhase = Phase.TIME_SELECTION;
-                                switchState(State.TIMER);
-                                phase0Initialized = true;
-                                // 選擇對應的時間選項
-                                selectByPosition(position, 'timer');
-                            }
-                            // 根據當前狀態選擇對應的選項
-                            else if (currentState === State.TIMER) {
+
+                            if (currentState === State.TIMER) {
                                 console.log('✅ 旋鈕選擇時間，位置:', position);
                                 selectByPosition(position, 'timer');
                             } else if (currentState === State.ANGLE) {
