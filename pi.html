@@ -543,6 +543,10 @@
             <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
                 選擇後點擊按鈕繼續
             </div>
+            <!-- 顯示旋鈕位置對應的時間說明 -->
+            <div id="timerKnobInfo" style="font-size: 14px; color: #ccc; margin-top: 6px; text-align: center; pointer-events: none;">
+                旋鈕位置 0 代表 1.5 小時
+            </div>
         </div>
 
         <!-- 狀態3: 氣候帶選擇（取代原本的方向選擇） -->
@@ -582,6 +586,10 @@
             </div>
             <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
                 選擇後點擊按鈕繼續
+            </div>
+            <!-- 顯示旋鈕位置對應的氣候說明 -->
+            <div id="climateKnobInfo" style="font-size: 14px; color: #ccc; margin-top: 6px; text-align: center; pointer-events: none;">
+                旋鈕位置 0 代表 熱帶夢境
             </div>
         </div>
 
@@ -824,10 +832,17 @@
             currentPosition = position;
             selectedTimer = timerOptions[position];
             
-            // 更新 UI
+            // 更新 UI 高亮
             document.querySelectorAll('.timer-option').forEach((option, idx) => {
                 option.classList.toggle('active', idx === position);
             });
+
+            // 更新旋鈕位置對應說明
+            const timerKnobInfo = document.getElementById('timerKnobInfo');
+            if (timerKnobInfo) {
+                const hours = selectedTimer / 60;
+                timerKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${hours} 小時`;
+            }
 
             console.log('✅ 選擇時間:', selectedTimer, '分鐘');
             
@@ -841,17 +856,24 @@
             onDirectionSelected(position);
         }
 
-        // 旋鈕邏輯：根據位置選擇（模擬旋鈕轉動）
+        // 旋鈕邏輯：根據位置選擇（模擬旋鈕轉動，type 由呼叫端決定）
         function selectByPosition(position, type) {
-            if (type === 'timer' && currentState === State.TIMER) {
+            console.log('🎛 selectByPosition 被呼叫，type=', type, 'position=', position, 'currentState=', currentState);
+
+            if (type === 'timer') {
                 if (position >= 0 && position < timerOptions.length) {
                     selectTimer(position);
+                } else {
+                    console.warn('timer 位置超出範圍:', position);
                 }
-            } else if (type === 'angle' && currentState === State.ANGLE) {
-                // 使用 climateZoneOptions 的長度（6個氣候帶選項）
+            } else if (type === 'angle') {
                 if (position >= 0 && position < climateZoneOptions.length) {
                     selectAngle(position);
+                } else {
+                    console.warn('angle 位置超出範圍:', position);
                 }
+            } else {
+                console.warn('未知的 type 傳入 selectByPosition:', type);
             }
         }
 
@@ -1263,7 +1285,8 @@
                     }
                     
                     const data = await response.json();
-                    
+                    console.log('📡 旋鈕 API 回傳資料:', data, 'currentState=', currentState);
+
                     // 支持新舊兩種 API 格式
                     // 新格式：{success: true, knob_handler_available: true, position: 0-5}
                     // 舊格式：{success: true, position: 0-5, name: "...", task: "..."}
@@ -1299,7 +1322,20 @@
                         if (lastKnobPosition !== position) {
                             const oldPosition = lastKnobPosition;
                             lastKnobPosition = position;
-                            console.log('🔄 旋鈕位置改變:', oldPosition, '->', position, '當前狀態:', currentState);
+                            console.log(
+                                '🔄 旋鈕位置改變:',
+                                oldPosition,
+                                '->',
+                                position,
+                                '當前狀態:',
+                                currentState,
+                                'type(推測):',
+                                currentState === State.TIMER
+                                    ? 'timer'
+                                    : currentState === State.ANGLE
+                                        ? 'angle'
+                                        : 'none'
+                            );
 
                             if (currentState === State.TIMER) {
                                 console.log('✅ 旋鈕選擇時間，位置:', position);
@@ -3599,6 +3635,12 @@
             document.querySelectorAll('.angle-option').forEach((option, idx) => {
                 option.classList.toggle('active', idx === position);
             });
+
+            // 更新氣候旋鈕位置對應說明
+            const climateKnobInfo = document.getElementById('climateKnobInfo');
+            if (climateKnobInfo) {
+                climateKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${selectedClimateZone.name}`;
+            }
 
             console.log('✅ 選擇氣候帶:', selectedClimateZone.name, '位置:', position);
             console.log('📊 當前狀態 - Phase:', currentPhase, 'State:', currentState, 'Timer:', selectedTimer);
