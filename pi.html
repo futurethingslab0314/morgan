@@ -1219,7 +1219,7 @@
                 clearInterval(knobPollInterval);
             }
 
-            console.log('🔄 啟動「簡化版」旋鈕監控');
+            console.log('🔄 啟動「簡化版」旋鈕監控（僅在狀態/位置變化時輸出 log）');
 
             knobPollInterval = setInterval(async () => {
                 if (!knobMonitoringEnabled) {
@@ -1229,7 +1229,7 @@
                 try {
                     const res = await fetch('http://127.0.0.1:5001/api/knob/position');
                     const data = await res.json();
-                    console.log('📡 簡化監控 API 回傳:', data, 'currentState=', currentState);
+                    // console.log('📡 簡化監控 API 回傳:', data, 'currentState=', currentState); // 預設關閉，避免洗版
 
                     if (!data || !data.success || data.position === undefined) return;
 
@@ -1241,15 +1241,13 @@
 
                     const old = lastKnobPosition;
                     lastKnobPosition = pos;
-                    console.log('🌀 簡化監控：位置變化', old, '→', pos, 'state=', currentState);
+                    console.log('🌀 旋鈕位置變化', old, '→', pos, 'state=', currentState);
 
                     // 根據當前狀態決定如何使用旋鈕位置
                     if (currentState === State.TIMER) {
                         selectTimer(pos);
                     } else if (currentState === State.ANGLE) {
                         selectAngle(pos);
-                    } else {
-                        console.log('ℹ️ 目前狀態不處理旋鈕變化:', currentState);
                     }
                 } catch (e) {
                     // 這裡先靜默錯誤，避免在 Vercel 或非樹莓派環境洗版
