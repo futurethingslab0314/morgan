@@ -183,9 +183,10 @@
 
         .flight-progress-bar-bg {
             width: 100%;
-            height: 10px;
+            height: 12px;
             border-radius: 999px;
-            background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            /* 淺淺的底色，讓整條長度一眼看得出來 */
+            background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
             overflow: hidden;
             position: relative;
         }
@@ -209,6 +210,25 @@
             left: 0;
             pointer-events: none;
             transition: left 0.5s ease-out;
+        }
+
+        .flight-progress-plane {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            pointer-events: none;
+            transition: left 0.5s ease-out;
+            filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));
+        }
+
+        .flight-progress-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #bbb;
+            margin-top: 4px;
+            padding: 0 2px;
         }
 
         /* 下一步按鈕 */
@@ -647,6 +667,12 @@
             <div class="flight-progress-bar-bg">
                 <div class="flight-progress-bar-fill" id="flightProgressFill"></div>
                 <div class="flight-progress-glow" id="flightProgressGlow"></div>
+                <!-- 小飛機 icon，跟著進度條前進 -->
+                <div class="flight-progress-plane" id="flightProgressPlane">✈️</div>
+            </div>
+            <div class="flight-progress-meta">
+                <span id="flightProgressStartLabel">目前位置</span>
+                <span id="flightProgressEndLabel">???</span>
             </div>
         </div>
 
@@ -4039,10 +4065,24 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 const wrapper = document.getElementById('flightProgressWrapper');
                 const fill = document.getElementById('flightProgressFill');
                 const glow = document.getElementById('flightProgressGlow');
-                if (wrapper && fill && glow) {
+                const plane = document.getElementById('flightProgressPlane');
+                const startLabel = document.getElementById('flightProgressStartLabel');
+                const endLabel = document.getElementById('flightProgressEndLabel');
+                if (wrapper && fill && glow && plane && startLabel && endLabel) {
                     wrapper.style.display = 'block';
                     fill.style.width = '0%';
                     glow.style.left = '0%';
+                    plane.style.left = '0%';
+
+                    // 左邊顯示目前位置（國家名稱），右邊永遠是「???」
+                    try {
+                        const countryEl = document.getElementById('currentCountry');
+                        const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
+                        startLabel.textContent = countryText || '目前位置';
+                    } catch (e) {
+                        startLabel.textContent = '目前位置';
+                    }
+                    endLabel.textContent = '???';
 
                     // 先清掉舊的計時器
                     if (window._flightProgressInterval) {
@@ -4064,6 +4104,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         // 讓光暈跟著前端推進，稍微超前一點點看起來更有動感
                         const glowPos = Math.min(100, Math.max(0, progress * 100 + 2));
                         glow.style.left = glowPos + '%';
+
+                        // 小飛機 icon 跟著進度前進，位於填滿部分的最前端
+                        const planePos = Math.min(100, Math.max(0, progress * 100));
+                        plane.style.left = planePos + '%';
                     }, 1000);
                 }
             } catch (e) {
@@ -4119,9 +4163,15 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 const wrapper = document.getElementById('flightProgressWrapper');
                 const fill = document.getElementById('flightProgressFill');
                 const glow = document.getElementById('flightProgressGlow');
-                if (wrapper && fill && glow) {
+                const plane = document.getElementById('flightProgressPlane');
+                const startLabel = document.getElementById('flightProgressStartLabel');
+                const endLabel = document.getElementById('flightProgressEndLabel');
+                if (wrapper && fill && glow && plane && startLabel && endLabel) {
                     fill.style.width = '100%';
                     glow.style.left = '100%';
+                    plane.style.left = '100%';
+                    // 降落後可以把右側標籤改成「已抵達」，但不顯示具體地點
+                    endLabel.textContent = '已抵達';
                     // 稍微停留一下再隱藏，讓使用者看到已經「抵達」
                     setTimeout(() => {
                         wrapper.style.display = 'none';
