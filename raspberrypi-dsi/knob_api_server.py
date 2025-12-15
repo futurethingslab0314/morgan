@@ -22,6 +22,8 @@ app = Flask(__name__)
 CORS(app)  # 允許跨域請求
 
 knob_handler = None
+button_gpio_pin = 4  # GPIO 4 (實體針腳 7，接 3V3)
+button_handler = None
 
 # 嘗試導入旋鈕處理器（如果不在樹莓派上運行會失敗）
 try:
@@ -34,6 +36,20 @@ except ImportError as e:
 except Exception as e:
     logger.error(f"旋鈕處理器初始化失敗: {e}")
     knob_handler = None
+
+# 初始化按鈕 GPIO（GPIO 4，接 3V3）
+try:
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(button_gpio_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)  # 下拉電阻（按下時連到 3V3 = HIGH）
+    button_handler = True
+    logger.info(f"按鈕 GPIO {button_gpio_pin} 初始化成功（接 3V3）")
+except ImportError:
+    logger.warning("無法導入 RPi.GPIO（可能不在樹莓派上運行）")
+    button_handler = None
+except Exception as e:
+    logger.error(f"按鈕 GPIO 初始化失敗: {e}")
+    button_handler = None
 
 @app.route("/api/knob/position", methods=["GET"])
 def get_knob_position():
@@ -74,6 +90,84 @@ def health_check():
         'status': 'ok',
         'knob_handler_available': knob_handler is not None
     })
+
+@app.route("/api/button/state", methods=["GET"])
+def get_button_state():
+    """獲取按鈕狀態（GPIO 4，接 3V3）"""
+    from flask import request
+    
+    # 獲取 GPIO 參數（如果提供）
+    gpio_param = request.args.get('gpio', str(button_gpio_pin))
+    try:
+        gpio_pin = int(gpio_param)
+    except ValueError:
+        gpio_pin = button_gpio_pin
+    
+    if button_handler is None:
+        return jsonify({
+            'success': False,
+            'pressed': False,
+            'message': '按鈕處理器未初始化（可能不在樹莓派上運行）'
+        }), 503
+    
+    try:
+        import RPi.GPIO as GPIO
+        # 讀取 GPIO 狀態
+        # 按鈕接 3V3，按下時 GPIO 4 會是 HIGH (1)，釋放時是 LOW (0)（使用下拉電阻）
+        state = GPIO.input(gpio_pin)
+        pressed = (state == GPIO.HIGH)  # HIGH = 按下（連到 3V3）
+        
+        return jsonify({
+            'success': True,
+            'pressed': pressed,
+            'state': 1 if pressed else 0,
+            'gpio': gpio_pin,
+            'value': state
+        })
+    except Exception as e:
+        logger.error(f"讀取按鈕狀態失敗: {e}")
+        return jsonify({
+            'success': False,
+            'pressed': False,
+            'error': str(e)
+        }), 500
+
+@app.route("/api/button", methods=["GET"])
+def get_button():
+    """獲取按鈕狀態（簡化端點）"""
+    return get_button_state()
+
+@app.route("/api/gpio/<int:gpio>", methods=["GET"])
+def get_gpio_state(gpio):
+    """獲取指定 GPIO 的狀態"""
+    if button_handler is None:
+        return jsonify({
+            'success': False,
+            'state': 0,
+            'message': 'GPIO 處理器未初始化'
+        }), 503
+    
+    try:
+        import RPi.GPIO as GPIO
+        state = GPIO.input(gpio)
+        pressed = (state == GPIO.HIGH)
+        
+        return jsonify({
+            'success': True,
+            'pressed': pressed,
+            'state': 1 if pressed else 0,
+            'gpio': gpio,
+            'value': state,
+            'gpio' + str(gpio): 1 if pressed else 0,
+            'gpio_' + str(gpio): 1 if pressed else 0
+        })
+    except Exception as e:
+        logger.error(f"讀取 GPIO {gpio} 狀態失敗: {e}")
+        return jsonify({
+            'success': False,
+            'state': 0,
+            'error': str(e)
+        }), 500
 
 @app.route("/api/knob/debug", methods=["GET"])
 def debug_gpio():
@@ -121,7 +215,9 @@ def debug_gpio():
 
 if __name__ == "__main__":
     # 啟動 Flask 服務器
-    logger.info("啟動旋鈕 API 服務器...")
-    logger.info("API 端點: http://0.0.0.0:5001/api/knob/position")
+    logger.info("啟動旋鈕和按鈕 API 服務器...")
+    logger.info("旋鈕 API 端點: http://0.0.0.0:5001/api/knob/position")
+    logger.info("按鈕 API 端點: http://0.0.0.0:5001/api/button/state?gpio=4")
+    logger.info(f"按鈕 GPIO: {button_gpio_pin} (實體針腳 7，接 3V3)")
     app.run(host='0.0.0.0', port=5001, debug=False)
 

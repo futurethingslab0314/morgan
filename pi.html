@@ -60,7 +60,7 @@
         /* 窗戶區域 - 上方，固定 500px 高 */
         .window-area {
             width: 800px;
-            height: 500px;
+            height: 700px;
             background: #f8f9fa;
             position: relative;
             display: flex;
@@ -70,10 +70,10 @@
             overflow: hidden;
         }
 
-        /* 窗戶框 - 500x500 方形，完全填滿窗戶區域 */
+        /* 窗戶框 - 700x700 方形，完全填滿窗戶區域 */
         .window-frame {
-            width: 500px;
-            height: 500px;
+            width: 700px;
+            height: 700px;
             background: #ffffff;
             border: 4px solid #ff6b35;
             border-radius: 12px;
@@ -100,8 +100,8 @@
 
         /* 初始圖片背景 */
         .initial-image {
-            width: 500px;
-            height: 500px;
+            width: 700px;
+            height: 700px;
             position: absolute;
             top: 0;
             left: 0;
@@ -123,10 +123,10 @@
             filter: blur(8px) brightness(1.2); /* 模糊和亮度增加，製造景深效果 */
         }
 
-        /* 影片容器 - 滿版 500x500 */
+        /* 影片容器 - 滿版 700x700 */
         .video-container {
-            width: 500px;
-            height: 500px;
+            width: 700px;
+            height: 700px;
             position: absolute;
             top: 0;
             left: 0;
@@ -204,10 +204,10 @@
             opacity: 0.6;
         }
 
-        /* 底部資訊 bar - 剩餘空間 480px 高 (980 - 500 = 480) */
+        /* 底部資訊 bar - 剩餘空間 280px 高 (980 - 700 = 280) */
         .info-bar {
             width: 800px;
-            height: 480px; /* 固定高度：980 - 500 = 480px */
+            height: 280px; /* 固定高度：980 - 700 = 280px */
             background: #ffffff;
             border-top: 3px solid #ff6b35;
             display: flex;
@@ -437,7 +437,7 @@
     <div class="main-container">
         <!-- 視窗容器：800x980 -->
         <div class="window-container">
-            <!-- 窗戶區域 - 上方 500x500 -->
+            <!-- 窗戶區域 - 上方 700x700 -->
             <div class="window-area">
         <div class="window-frame">
             <div class="window-content">
@@ -867,10 +867,11 @@
 
             console.log('⌨️ 按鍵:', e.key, '當前狀態:', currentState);
 
-            // Enter 或 Space：確認/下一步（使用實體按鈕邏輯）
+            // Enter 或 Space：確認/下一步（僅用於測試，實體按鈕優先）
+            // 注意：實體按鈕是主要操作方式，鍵盤僅作為測試備用
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                console.log('⌨️ 按鍵（Enter/Space）觸發按鈕按下');
+                console.log('⌨️ 按鍵（Enter/Space）觸發按鈕按下（測試模式）');
                 handlePhysicalButtonPress();
                 return;
             }
@@ -1154,16 +1155,31 @@
                         // 只有當位置改變時才觸發選擇（避免重複觸發）
                         if (lastKnobPosition !== position) {
                             lastKnobPosition = position;
-                            console.log('🔄 旋鈕位置改變:', position);
+                            console.log('🔄 旋鈕位置改變:', position, '當前狀態:', currentState);
                             
                             // 如果還在 Phase 0，轉動旋鈕進入 Phase 1
                             if (currentPhase === Phase.POST_ARRIVAL) {
+                                console.log('✅ 旋鈕轉動，從 Phase 0 進入 Phase 1');
                                 currentPhase = Phase.TIME_SELECTION;
                                 switchState(State.TIMER);
                                 phase0Initialized = true;
                             }
                             
                             // 根據當前狀態選擇對應的選項
+                            if (currentState === State.TIMER) {
+                                console.log('✅ 旋鈕選擇時間，位置:', position);
+                                selectByPosition(position, 'timer');
+                            } else if (currentState === State.ANGLE) {
+                                console.log('✅ 旋鈕選擇氣候帶，位置:', position);
+                                selectByPosition(position, 'angle');
+                            } else {
+                                console.log('⚠️ 旋鈕位置改變，但當前狀態不支援選擇:', currentState);
+                            }
+                        } else if (lastKnobPosition === null) {
+                            // 首次讀取到位置，立即選擇
+                            lastKnobPosition = position;
+                            console.log('📍 首次讀取旋鈕位置:', position, '當前狀態:', currentState);
+                            
                             if (currentState === State.TIMER) {
                                 selectByPosition(position, 'timer');
                             } else if (currentState === State.ANGLE) {
@@ -1305,6 +1321,12 @@
                     // 處理多種可能的 API 返回格式
                     let pressed = false;
                     if (data) {
+                        // 檢查 success 字段（如果 API 返回失敗，不處理）
+                        if (data.success === false) {
+                            buttonConsecutiveErrors++;
+                            return;
+                        }
+                        
                         // 格式 1: { pressed: true/false }
                         if (data.pressed !== undefined) {
                             pressed = data.pressed;
@@ -1333,12 +1355,13 @@
                         }
                         
                         // 檢測按鈕按下（從 false 變為 true）
-                        // 注意：按鈕接 3V3 和 GPIO 4，按下時 GPIO 4 會是 HIGH (1)，釋放時是 LOW (0)（如果使用下拉電阻）
-                        // 或者按下時是 LOW (0)，釋放時是 HIGH (1)（如果使用上拉電阻）
-                        // 這裡假設按下時 pressed = true（HIGH），如果相反需要調整
+                        // 按鈕接 3V3 和 GPIO 4，使用下拉電阻（PUD_DOWN）
+                        // 按下時：GPIO 4 連接到 3V3 = HIGH (1) = pressed = true
+                        // 釋放時：GPIO 4 為 LOW (0) = pressed = false
                         if (!lastButtonState && pressed) {
                             lastButtonState = true;
-                            console.log('🔘 實體按鈕按下！');
+                            console.log('🔘🔘🔘 實體按鈕按下！🔘🔘🔘');
+                            console.log('   當前狀態:', currentState);
                             handlePhysicalButtonPress();
                         } else if (lastButtonState && !pressed) {
                             lastButtonState = false;
@@ -1364,31 +1387,49 @@
         
         // 處理實體按鈕按下事件
         function handlePhysicalButtonPress() {
-            console.log('🔘 處理實體按鈕按下，當前狀態:', currentState);
+            console.log('🔘 處理實體按鈕按下');
+            console.log('   當前狀態:', currentState);
+            console.log('   selectedTimer:', selectedTimer);
+            console.log('   selectedDirection:', selectedDirection);
+            console.log('   destinationData:', destinationData);
+            console.log('   preparedAnnouncement:', preparedAnnouncement ? '已準備' : '未準備');
             
             switch (currentState) {
                 case State.COUNTRY:
                     // 從國家顯示 → 選擇時長
-                    console.log('按鈕：從國家顯示切換到時間選擇');
+                    console.log('✅ 按鈕：從國家顯示切換到時間選擇');
                     currentPhase = Phase.TIME_SELECTION;
                     switchState(State.TIMER);
+                    // 自動選擇第一個時間選項
+                    setTimeout(() => {
+                        if (!selectedTimer) {
+                            selectTimer(0);
+                        }
+                    }, 100);
                     break;
                     
                 case State.TIMER:
-                    // 從選擇時長 → 選擇氣候帶（必須已選擇時間）
+                    // 從選擇時長 → 選擇氣候帶
                     if (selectedTimer) {
-                        console.log('按鈕：從時間選擇切換到氣候帶選擇');
+                        console.log('✅ 按鈕：從時間選擇切換到氣候帶選擇');
                         switchState(State.ANGLE);
                         currentPosition = 0;
+                        // 自動選擇第一個氣候帶選項
+                        setTimeout(() => {
+                            if (selectedDirection === null) {
+                                selectAngle(0);
+                            }
+                        }, 100);
                     } else {
-                        console.log('⚠️ 請先選擇時長');
+                        console.log('⚠️ 請先選擇時長，自動選擇第一個選項');
+                        selectTimer(0);
                     }
                     break;
                     
                 case State.ANGLE:
                     // 從選擇氣候帶 → 顯示目的地 → 準備起航
                     if (selectedDirection !== null) {
-                        console.log('按鈕：氣候帶已選擇，進入準備起航狀態');
+                        console.log('✅ 按鈕：氣候帶已選擇，進入準備起航狀態');
                         if (destinationData) {
                             // 先顯示目的地
                             switchToPhase(Phase.DESTINATION_SHOW);
@@ -1396,9 +1437,12 @@
                             setTimeout(() => {
                                 prepareForTakeoff();
                             }, 1000);
+                        } else {
+                            console.log('⚠️ 目的地資料尚未計算，請稍候...');
                         }
                     } else {
-                        console.log('⚠️ 請先選擇氣候帶');
+                        console.log('⚠️ 請先選擇氣候帶，自動選擇第一個選項');
+                        selectAngle(0);
                     }
                     break;
                     
@@ -1406,15 +1450,19 @@
                 case State.READY_TO_FLY:
                     // 從準備起航 → 開始起飛
                     if (preparedAnnouncement) {
-                        console.log('按鈕：開始起飛！');
+                        console.log('✅ 按鈕：開始起飛！');
                         startTakeoffSequence();
                     } else {
-                        console.log('⚠️ 起飛準備未完成，請稍候...');
+                        console.log('⚠️ 起飛準備未完成，嘗試重新準備...');
+                        if (destinationData) {
+                            prepareForTakeoff();
+                        }
                     }
                     break;
                     
                 default:
                     console.log('⚠️ 當前狀態不支援按鈕操作:', currentState);
+                    console.log('   可用狀態:', Object.values(State));
             }
         }
         
@@ -1608,9 +1656,24 @@
         // 初始化
         console.log('Focus Flight - New Layout 已載入');
         console.log('視窗尺寸: 800 x 980px (直式)');
-        console.log('窗戶區域: 500 x 500px (上方)');
-        console.log('資訊 bar: 800 x 480px (下方)');
-        console.log('總高度: 500 + 480 = 980px ✓');
+        console.log('窗戶區域: 700 x 700px (上方)');
+        console.log('資訊 bar: 800 x 280px (下方)');
+        console.log('總高度: 700 + 280 = 980px ✓');
+        
+        // 初始化：確保初始狀態正確顯示
+        function initializeApp() {
+            console.log('🚀 初始化應用程式...');
+            console.log('   初始狀態:', currentState);
+            console.log('   初始 Phase:', currentPhase);
+            
+            // 確保初始狀態正確顯示
+            switchState(State.COUNTRY);
+            
+            // 更新按鈕狀態
+            updateNextButton();
+            
+            console.log('✅ 應用程式初始化完成');
+        }
         
         // 驗證尺寸
         window.addEventListener('load', () => {
@@ -1622,6 +1685,9 @@
             console.log('Body 尺寸:', bodyEl.offsetWidth, 'x', bodyEl.offsetHeight);
             console.log('窗戶區域:', windowArea?.offsetWidth, 'x', windowArea?.offsetHeight);
             console.log('資訊 bar:', infoBar?.offsetWidth, 'x', infoBar?.offsetHeight);
+            
+            // 初始化應用程式
+            initializeApp();
             console.log('總高度:', (windowArea?.offsetHeight || 0) + (infoBar?.offsetHeight || 0), 'px');
         });
         
