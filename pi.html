@@ -867,14 +867,11 @@
 
             console.log('⌨️ 按鍵:', e.key, '當前狀態:', currentState);
 
-            // Enter 或 Space：確認/下一步
+            // Enter 或 Space：確認/下一步（使用實體按鈕邏輯）
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                const nextButton = document.getElementById('nextButton');
-                if (nextButton && !nextButton.disabled) {
-                    console.log('⌨️ 按鍵觸發下一步按鈕');
-                    handleNextButtonClick();
-                }
+                console.log('⌨️ 按鍵（Enter/Space）觸發按鈕按下');
+                handlePhysicalButtonPress();
                 return;
             }
 
@@ -1347,6 +1344,9 @@
                             lastButtonState = false;
                             console.log('🔘 實體按鈕釋放');
                         }
+                    } else if (data) {
+                        // API 返回了數據但格式不匹配，不算錯誤
+                        buttonConsecutiveErrors = 0;
                     } else {
                         buttonConsecutiveErrors++;
                     }
@@ -1579,6 +1579,28 @@
             }
             console.log('⏸️ 按鈕監控已停用');
         };
+        
+        // 測試函數：手動觸發按鈕按下（用於測試，不需要實體按鈕）
+        window.testButtonPress = function() {
+            console.log('🧪 測試：手動觸發按鈕按下');
+            handlePhysicalButtonPress();
+        };
+        
+        // 鍵盤快捷鍵：按 'B' 鍵模擬按鈕按下（用於測試）
+        document.addEventListener('keydown', (e) => {
+            // 如果正在輸入框中，不處理
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // 按 'B' 鍵模擬按鈕按下
+            if (e.key === 'b' || e.key === 'B') {
+                e.preventDefault();
+                console.log('⌨️ 按鍵 B 觸發按鈕按下（測試模式）');
+                handlePhysicalButtonPress();
+                return;
+            }
+        });
         
         // 自動啟動按鈕監控
         startButtonMonitoring();
