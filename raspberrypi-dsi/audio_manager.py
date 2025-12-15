@@ -1202,12 +1202,12 @@ class AudioManager:
         try:
             # 根據文件格式選擇播放器
             if audio_file.suffix.lower() == '.mp3':
-                # 嘗試 mpg123 播放 MP3（將 timeout 調長，避免長篇 TTS 被截斷）
+                # 嘗試 mpg123 播放 MP3（timeout 調得非常長，避免任何長篇 TTS 被截斷）
                 try:
                     result = subprocess.run(
                         ['mpg123', str(audio_file)],
                         capture_output=True,
-                        timeout=200  # 允許最多 5 分鐘，確保完整播放
+                        timeout=600  # 允許最多 10 分鐘，幾乎不可能被正常內容用完
                     )
                     if result.returncode == 0:
                         self.logger.info("音頻播放完成（mpg123）")
@@ -1215,12 +1215,12 @@ class AudioManager:
                 except FileNotFoundError:
                     pass
                 
-                # 嘗試 ffplay 播放 MP3（同樣延長 timeout）
+                # 嘗試 ffplay 播放 MP3（同樣給非常大的 timeout）
                 try:
                     result = subprocess.run(
                         ['ffplay', '-nodisp', '-autoexit', str(audio_file)],
                         capture_output=True,
-                        timeout=300  # 允許最多 5 分鐘
+                        timeout=600  # 允許最多 10 分鐘
                     )
                     if result.returncode == 0:
                         self.logger.info("音頻播放完成（ffplay）")
@@ -1233,7 +1233,7 @@ class AudioManager:
                 result = subprocess.run(
                     ['paplay', str(audio_file)],
                     capture_output=True,
-                    timeout=300  # TTS 可能很長，延長到 5 分鐘
+                    timeout=600  # TTS 可能很長，這裡也給 10 分鐘的上限
                 )
                 if result.returncode == 0:
                     self.logger.info("音頻播放完成（paplay）")
@@ -1247,7 +1247,7 @@ class AudioManager:
                 result = subprocess.run(
                     ['aplay', str(audio_file)],
                     capture_output=True,
-                    timeout=300  # 允許較長的 TTS 完整播完
+                    timeout=600  # 允許較長的 TTS 完整播完
                 )
                 if result.returncode == 0:
                     self.logger.info("音頻播放完成（aplay - 預設設備）")
