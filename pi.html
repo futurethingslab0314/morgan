@@ -1213,158 +1213,49 @@
             }
         }
         
+        // 簡化版旋鈕監控：直接輪詢位置，有變就更新 UI
         function startKnobMonitoring() {
             if (knobPollInterval) {
                 clearInterval(knobPollInterval);
             }
-            
-            console.log('🔄 啟動旋鈕監控...');
-            
-            let connectionErrorLogged = false; // 避免重複記錄錯誤
-            let controller = null; // AbortController 用於取消請求
-            consecutiveErrors = 0; // 重置錯誤計數
-            
+
+            console.log('🔄 啟動「簡化版」旋鈕監控');
+
             knobPollInterval = setInterval(async () => {
-                // 如果已禁用或連續錯誤太多，停止輪詢
-                if (!knobMonitoringEnabled || consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-                    if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && knobPollInterval) {
-                        clearInterval(knobPollInterval);
-                        knobPollInterval = null;
-                        if (!connectionErrorLogged) {
-                            console.log('ℹ️ 旋鈕 API 不可用，已停止輪詢（可在控制台執行 window.enableKnobMonitoring() 重新啟用）');
-                            connectionErrorLogged = true;
-                        }
-                    }
+                if (!knobMonitoringEnabled) {
                     return;
                 }
-                
-                // 檢測狀態變化：如果狀態改變到 TIMER 或 ANGLE，立即讀取位置
-                if (lastState !== currentState) {
-                    if (currentState === State.TIMER || currentState === State.ANGLE) {
-                        console.log('🔄 狀態切換到', currentState, '，立即讀取旋鈕位置');
-                        readKnobPositionAndSelect();
-                    }
-                    lastState = currentState;
-                }
-                
-                // 取消之前的請求
-                if (controller) {
-                    controller.abort();
-                }
-                
-                // 創建新的 AbortController
-                controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 500); // 500ms 超時
-                
+
                 try {
-                    const response = await fetch('http://127.0.0.1:5001/api/knob/position', {
-                        signal: controller.signal
-                    }).catch(() => {
-                        // 完全靜默 fetch 錯誤，不讓它冒泡
-                        throw new Error('Connection refused');
-                    });
-                    
-                    clearTimeout(timeoutId);
-                    
-                    // 即使返回 503 或其他錯誤，也嘗試解析 JSON
-                    if (!response.ok) {
-                        // 503 錯誤不計入連續錯誤（服務器可能暫時不可用）
-                        if (response.status === 503) {
-                            console.log('⚠️ 旋鈕 API 返回 503（服務暫時不可用），繼續重試...');
-                            return; // 不增加錯誤計數，繼續輪詢
-                        }
-                        // 嘗試解析錯誤響應
-                        try {
-                            const errorData = await response.json();
-                            if (errorData && errorData.success === false) {
-                                throw new Error('HTTP ' + response.status);
-                            }
-                        } catch (e) {
-                            throw new Error('HTTP ' + response.status);
-                        }
-                    }
-                    
-                    const data = await response.json();
-                    console.log('📡 旋鈕 API 回傳資料:', data, 'currentState=', currentState);
+                    const res = await fetch('http://127.0.0.1:5001/api/knob/position');
+                    const data = await res.json();
+                    console.log('📡 簡化監控 API 回傳:', data, 'currentState=', currentState);
 
-                    // 支持新舊兩種 API 格式
-                    // 新格式：{success: true, knob_handler_available: true, position: 0-5}
-                    // 舊格式：{success: true, position: 0-5, name: "...", task: "..."}
-                    if (data && data.success && data.position !== undefined) {
-                        // 重置錯誤計數和標記（服務已恢復）
-                        consecutiveErrors = 0;
-                        if (connectionErrorLogged) {
-                            console.log('✅ 旋鈕 API 已恢復連接');
-                            connectionErrorLogged = false;
-                        }
-                        
-                        const rawPosition = parseInt(data.position);
-                        if (isNaN(rawPosition)) {
-                            return;
-                        }
+                    if (!data || !data.success || data.position === undefined) return;
 
-                        // 前端額外穩定判定：連續多次讀到相同位置才採用
-                        if (jsCandidatePosition === rawPosition) {
-                            jsStableCount++;
-                        } else {
-                            jsCandidatePosition = rawPosition;
-                            jsStableCount = 1;
-                        }
+                    const pos = parseInt(data.position);
+                    if (isNaN(pos)) return;
 
-                        if (jsStableCount < JS_POSITION_STABLE_COUNT) {
-                            // 還沒達到穩定次數，不更新 UI（避免小抖動）
-                            return;
-                        }
+                    // 位置沒變就不處理，避免一直重畫
+                    if (pos === lastKnobPosition) return;
 
-                        const position = jsCandidatePosition;
+                    const old = lastKnobPosition;
+                    lastKnobPosition = pos;
+                    console.log('🌀 簡化監控：位置變化', old, '→', pos, 'state=', currentState);
 
-                        // 只有當位置真的改變時才更新 UI
-                        if (lastKnobPosition !== position) {
-                            const oldPosition = lastKnobPosition;
-                            lastKnobPosition = position;
-                            console.log(
-                                '🔄 旋鈕位置改變:',
-                                oldPosition,
-                                '->',
-                                position,
-                                '當前狀態:',
-                                currentState,
-                                'type(推測):',
-                                currentState === State.TIMER
-                                    ? 'timer'
-                                    : currentState === State.ANGLE
-                                        ? 'angle'
-                                        : 'none'
-                            );
-
-                            if (currentState === State.TIMER) {
-                                console.log('✅ 旋鈕選擇時間，位置:', position);
-                                selectByPosition(position, 'timer');
-                            } else if (currentState === State.ANGLE) {
-                                console.log('✅ 旋鈕選擇氣候帶，位置:', position);
-                                selectByPosition(position, 'angle');
-                            } else {
-                                console.log('⚠️ 旋鈕位置改變，但當前狀態不支援選擇:', currentState);
-                            }
-                        }
-                        // 如果位置沒變，不做任何處理（避免重複觸發）
+                    // 根據當前狀態決定如何使用旋鈕位置
+                    if (currentState === State.TIMER) {
+                        selectTimer(pos);
+                    } else if (currentState === State.ANGLE) {
+                        selectAngle(pos);
                     } else {
-                        consecutiveErrors++;
+                        console.log('ℹ️ 目前狀態不處理旋鈕變化:', currentState);
                     }
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    consecutiveErrors++;
-                    
-                    // 只在第一次錯誤時記錄，之後完全靜默
-                    if (!connectionErrorLogged && consecutiveErrors === 1) {
-                        console.log('ℹ️ 旋鈕 API 不可用（這是正常的，如果不在 Raspberry Pi 上）');
-                        connectionErrorLogged = true;
-                    }
-                    
-                    // 完全靜默所有後續錯誤，不顯示在 console
-                    // 使用空的 catch 來防止錯誤冒泡
+                } catch (e) {
+                    // 這裡先靜默錯誤，避免在 Vercel 或非樹莓派環境洗版
+                    // console.error('🔴 簡化監控抓旋鈕失敗:', e);
                 }
-            }, 200); // 每 200ms 檢查一次
+            }, 300); // 每 300ms 讀一次
         }
         
         // 提供全局函數來控制旋鈕監控
