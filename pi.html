@@ -165,6 +165,52 @@
             opacity: 1;
         }
 
+        /* 睡眠旅程進度條（只在飛行階段顯示，不顯示具體時間） */
+        .flight-progress-wrapper {
+            width: 100%;
+            padding: 6px 24px 10px;
+            box-sizing: border-box;
+            display: none; /* 預設隱藏，進入起飛/巡航階段時打開 */
+        }
+
+        .flight-progress-label {
+            font-size: 13px;
+            color: #ccc;
+            text-align: center;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .flight-progress-bar-bg {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            overflow: hidden;
+            position: relative;
+        }
+
+        .flight-progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #56ccf2, #2f80ed);
+            box-shadow: 0 0 8px rgba(86,204,242,0.6);
+            transition: width 0.5s ease-out;
+        }
+
+        .flight-progress-glow {
+            position: absolute;
+            top: -4px;
+            bottom: -4px;
+            width: 40px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(255,255,255,0.5), transparent 70%);
+            left: 0;
+            pointer-events: none;
+            transition: left 0.5s ease-out;
+        }
+
         /* 下一步按鈕 */
         .next-button {
             width: 400px;
@@ -590,6 +636,17 @@
             <!-- 顯示旋鈕位置對應的氣候說明 -->
             <div id="climateKnobInfo" style="font-size: 14px; color: #ccc; margin-top: 6px; text-align: center; pointer-events: none;">
                 旋鈕位置 0 代表 熱帶夢境
+            </div>
+        </div>
+
+        <!-- 飛行階段進度條（從出發地到未知目的地的旅程進度，不顯示具體時間） -->
+        <div class="flight-progress-wrapper" id="flightProgressWrapper">
+            <div class="flight-progress-label">
+                從出發地前往未知目的地的旅程進行中…
+            </div>
+            <div class="flight-progress-bar-bg">
+                <div class="flight-progress-bar-fill" id="flightProgressFill"></div>
+                <div class="flight-progress-glow" id="flightProgressGlow"></div>
             </div>
         </div>
 
@@ -2946,170 +3003,88 @@
                 durationDescription = `${minutes}分鐘`;
             }
             
-            // 獲取城市中文名稱
+            // 獲取城市中文名稱（僅用於內部紀錄，不在廣播中直接說出目的地）
             const cityName = city.city_zh || city.city || '目的地';
             const countryName = city.country_zh || city.country || '目的地國家';
             
-            // 5組不同的起飛語音文字稿模板
+            // 根據氣候帶產生描述，用來做隱喻，不直接暴露實際城市
+            const climateName = climateZoneOption && climateZoneOption.name
+                ? climateZoneOption.name
+                : '您此刻想像中的氣候';
+            const climateDescription = `一個擁有「${climateName}」氣候的地方`;
+            
+            // 5組不同的起飛語音文字稿模板（已整體簡化約 50%，加入專業機長開場與安全提醒）
             const announcementTemplates = [
-                // 模板 1：經典機長風格（縮短40%）
-                `各位旅客，晚安。我是本次航班的機長。
+                // 模板 1：經典專業機長風格（精簡版）
+                `各位旅客，晚安。這裡是機長為您廣播。
 
-在接下來的${durationDescription}飛行中，我將陪伴您前往${cityName}，${countryName}。
+我們預計在${timeDescription}起飛，飛行時間約為${durationDescription}，今晚將帶您前往${climateDescription}。
 
-現在，請輕輕閉上眼睛，讓自己放鬆。
+在起飛前，請您先確認安全事項：請將手機調整為飛航模式，並把螢幕調暗；也可以輕輕拉下窗簾，讓機艙內維持柔和的光線，有助於您入睡與休息。
 
-請感受您的肩膀慢慢下沉，放下緊繃與壓力。放鬆您的下巴，讓下顎自然垂落。
+現在，請讓身體慢慢放鬆。讓肩膀稍微往下沉，放鬆下巴與臉部肌肉。
 
-專注於您的呼吸。深深吸氣，緩緩呼出。讓每一次呼吸都帶走緊張，帶來放鬆。
+接著，專注在您的呼吸：深深吸一口氣，停留一秒，再緩慢吐氣。每一次吐氣，都把今天的緊繃與壓力帶走一點。
 
-我們即將在${timeDescription}起飛。${weatherDescription}正靜靜等待著我們。
+${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會像安穩的背景音，陪您一起進入睡眠。
 
-飛機引擎的平穩運轉聲，就像溫柔的搖籃曲。機艙內溫度適中，空氣清新。您很安全，很溫暖。
+在這段${durationDescription}的旅程中，我與全體機組人員會為您守護這片夜空，確保飛行平穩、安全。
 
-現在，感受您的眼皮越來越沉重。讓思緒慢慢飄散，就像雲朵在天空中流動。
+接下來的時間，就交給您的睡意與這趟飛行。祝您有一段安穩、深層的睡眠，抵達時精神飽滿。`,
 
-您已經準備好進入深層的、安穩的睡眠。在這次飛行中，您將得到充分的休息。
+                // 模板 2：溫柔陪伴風格（精簡版）
+                `晚安，親愛的旅客。這裡是您的機長。
 
-我將確保這次飛行平穩、安全。您可以完全放心。
+今晚我們會陪您飛往${climateDescription}，飛行時間約${durationDescription}。
 
-現在，讓自己完全放鬆，進入甜美的夢鄉。
+在起飛前，請您先幫自己打造一個舒服的睡眠小空間：請將手機調成飛航模式，調暗螢幕亮度；如果方便，也可以把窗簾拉下，讓外面的光線不再打擾您。
 
-祝您，安穩入眠。`,
+接下來，請輕輕閉上眼睛。讓肩膀自然下垂，雙手隨意放好，不需要刻意用力維持任何姿勢。
 
-                // 模板 2：更溫柔的引導風格（縮短40%）
-                `晚安，親愛的旅客。我是您的機長。
+跟著自己的呼吸節奏：吸氣時，感受空氣進入胸口；吐氣時，想像今天累積的事情慢慢遠離您。
 
-我們即將展開一段${durationDescription}的旅程，前往${cityName}，${countryName}。
+我們會在${timeDescription}起飛，${weatherDescription}為我們鋪好今晚的航路。引擎的穩定聲響、機艙內柔和的燈光，都是為了讓您能好好休息。
 
-請輕輕閉上雙眼，讓我引導您進入深度的放鬆。
+在這段飛行中，請把照顧自己的任務交給睡意，把飛行的安全交給我們。祝您一路好眠，醒來時剛好抵達目的地。`,
 
-從頭部開始。放鬆您的額頭，讓皺紋舒展開來。放鬆您的眉毛，讓它們自然下垂。
+                // 模板 3：簡潔俐落風格（超精簡）
+                `各位旅客晚安，我是本次航班的機長。
 
-放鬆您的臉頰，感受臉部肌肉的柔軟。
+我們即將從${timeDescription}起飛，前往${climateDescription}，預計飛行時間約${durationDescription}。
 
-現在，將注意力轉移到肩膀。讓肩膀緩緩下沉，帶走所有的緊繃。
+現在請您簡單做三件事：第一，將手機與電子設備調整為飛航模式；第二，調暗螢幕亮度或關閉螢幕；第三，如果您想要更好入睡，可以把窗簾拉下。
 
-放鬆您的雙臂，讓它們自然垂放。感受手臂的重量，讓重力溫柔地牽引。
+接著，就讓身體靠在座椅上，放鬆肩膀與頸部，找到一個不需要用力的姿勢。
 
-專注於您的呼吸。吸氣時，感受空氣帶來平靜。呼氣時，讓疲憊與壓力隨著氣息離開。
+飛機引擎的穩定聲響與機艙內的舒適環境，會一路陪著您休息到目的地。
 
-我們將在${timeDescription}起飛。${weatherDescription}為我們鋪設了寧靜的航路。
+在整個${durationDescription}的旅程中，請放心將安全交給我們，您只要好好睡一覺就好。祝您有個安穩的夜晚。`,
 
-機艙內一切就緒。溫度舒適，空氣清新。您正被安全與溫暖包圍。
+                // 模板 4：帶點詩意、但更短的風格
+                `親愛的旅客，晚安。這裡是機長。
 
-感受您的身體越來越輕，越來越放鬆。就像漂浮在柔軟的雲朵上。
+今晚，我們將在${timeDescription}起飛，帶您飛往${climateDescription}，飛行時間約${durationDescription}。
 
-讓意識慢慢下沉，進入更深層的、寧靜的空間。在那裡，只有純粹的放鬆與休息。
+在這段旅程開始之前，請先替自己關掉外界的打擾：請將手機調成飛航模式，關閉不必要的通知；也可以把窗簾拉下，讓外面的城市燈火留在玻璃外面。
 
-您即將進入美好的睡眠。醒來時，會感到身心都得到了滋養。
+當您這麼做的同時，也是在告訴身體：「接下來，是屬於休息的時間。」讓肩膀放鬆、讓眼皮自然變重，呼吸變得慢而穩。
 
-請放心，我會確保飛行安全、平穩。您只需要專注於休息。
+${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一個為您準備好的小小夜空。
 
-現在，讓自己完全放鬆，進入甜美的夢境。
+我們會在駕駛艙裡守護這段航程，確保飛行平穩、安全。您只需要安心地睡一覺，醒來時，就已經在${cityName}上空。願您今晚睡得很深、很香。`,
 
-願您，得到最深的休息。`,
+                // 模板 5：專業公告＋明確安全提醒風格
+                `各位旅客，您好，這裡是本次航班的機長。
 
-                // 模板 3：簡潔而有力的風格（縮短40%）
-                `晚安，我是本次航班的機長。
+稍後我們將從${timeDescription}起飛，前往${climateDescription}，預計飛行時間約${durationDescription}。
 
-我們即將飛往${cityName}，${countryName}。飛行時間約${durationDescription}。
+在關閉艙門前，再次提醒您幾項事項：請確認安全帶已經繫好，手機與平板已切換到飛航模式，並關閉或靜音通知。如果您希望更好入睡，也可以現在就把窗簾拉下，讓座位周圍變得安靜、柔和。
 
-請閉上眼睛，開始放鬆。
+接下來的時間，機艙燈光會逐漸調暗，讓您可以放心閉上眼睛休息。我們的機組成員會不時巡視機艙，有任何需要都可以輕按呼叫鈴告訴我們。
 
-放鬆您的肩膀，讓它們下沉。放鬆您的下巴，讓它自然垂落。
+在整段${durationDescription}的旅程中，我與全體機組人員會專注在飛行與安全上，為您守護這趟夜航。也邀請您，把這段時間完全留給自己，補上一場久違的好眠。
 
-深呼吸。吸氣，感受平靜。呼氣，釋放壓力。
-
-我們將在${timeDescription}起飛。${weatherDescription}正等待著我們。
-
-引擎的聲音平穩而規律，就像心跳一樣，帶給您安全感。
-
-機艙內溫度適中，空氣清新。您很安全，很舒適。
-
-感受您的眼皮越來越重。讓思緒慢慢飄散，就像雲朵一樣輕盈。
-
-您已經準備好進入深層的睡眠。在這次飛行中，您將得到充分的休息。
-
-我會確保飛行安全、平穩。請放心。
-
-現在，讓自己完全放鬆，進入夢鄉。
-
-祝您，安穩入眠。`,
-
-                // 模板 4：詩意而溫柔的風格（縮短40%）
-                `親愛的旅客，晚安。
-
-我是您的機長，今晚將陪伴您，展開一段${durationDescription}的旅程，前往${cityName}，${countryName}。
-
-請閉上眼睛，讓我們一起，進入一個寧靜的空間。
-
-感受您的身體。從頭頂開始，讓每一寸肌膚都慢慢放鬆。
-
-放鬆您的額頭，讓思緒的皺紋都舒展開來。
-
-放鬆您的眼睛，讓眼周的肌肉完全鬆弛。
-
-放鬆您的臉頰，感受臉部的柔軟與溫暖。
-
-放鬆您的肩膀，讓它們像羽毛一樣輕盈，緩緩下沉。
-
-放鬆您的雙臂，讓它們自然垂放，感受重力的溫柔牽引。
-
-專注於您的呼吸。每一次吸氣，都帶來平靜。每一次呼氣，都帶走疲憊。
-
-我們即將在${timeDescription}起飛。${weatherDescription}為我們照亮了前方的路。
-
-飛機的引擎聲，就像低沉的搖籃曲，溫柔而穩定。機艙內的環境，為您創造了完美的休息空間。
-
-感受您的身體越來越放鬆，越來越輕盈。就像漂浮在溫暖的海洋中，被溫柔的水流輕輕搖晃。
-
-讓意識慢慢下沉，進入更深層的、寧靜的狀態。在那裡，時間變得緩慢，思緒變得輕盈。
-
-您即將進入美好的睡眠。這段睡眠將滋養您的身心，讓您在醒來時，感到煥然一新。
-
-請放心，我會確保飛行安全、平穩。您只需要專注於放鬆。
-
-現在，讓自己完全放鬆，進入甜美的夢境。
-
-願您，得到最深的安寧。`,
-
-                // 模板 5：專業而親切的風格（縮短40%）
-                `各位旅客，晚安。我是本次航班的機長。
-
-我們即將開始一段${durationDescription}的飛行，目的地是${cityName}，${countryName}。
-
-在起飛之前，讓我引導您進入深度的放鬆。
-
-請輕輕閉上眼睛，讓自己完全放鬆。
-
-將注意力集中在您的身體上。從頭部開始，慢慢向下，讓每一處都放鬆下來。
-
-
-放鬆您的眼睛和臉頰，感受臉部肌肉的柔軟。
-
-放鬆您的下巴和頸部，讓頭部自然地靠在椅背上。
-
-放鬆您的肩膀，讓它們慢慢下沉，遠離您的耳朵。
-
-
-專注於您的呼吸。用鼻子深深吸氣，感受空氣進入您的身體。然後，用嘴巴緩緩呼氣，讓所有的緊張都隨著氣息離開。
-
-我們將在${timeDescription}起飛。${weatherDescription}為我們創造了完美的飛行條件。
-
-飛機的引擎正在平穩運轉，發出規律而安心的聲音。機艙內的環境已經調整到最舒適的狀態。您正坐在安全的座位上，被溫暖與舒適包圍。
-
-感受您的眼皮越來越沉重。就像有柔軟的羽毛輕輕覆蓋在您的眼瞼上，帶來舒適的壓力。
-
-讓思緒慢慢放空。不需要思考任何事情，不需要計劃任何事情。此刻，您只需要存在，只需要放鬆。
-
-您已經準備好進入深層的、恢復性的睡眠。在這次飛行中，您的身體和心靈都將得到充分的休息。
-
-我會確保這次飛行安全、平穩、舒適。您可以完全信任這次旅程。
-
-現在，讓自己完全放鬆，進入深層的休息狀態。
-
-祝您，得到最美好的睡眠。`
+代表全體機組，祝您有一段安穩、舒適的睡眠旅程。謝謝。`
             ];
             
             // 根據氣候帶選擇模板，如果沒有指定則隨機選擇
@@ -3901,26 +3876,35 @@
                     });
                 });
                 
-                // 2）takeoff1.mp4 完成後，改播 takeoff2.mp4 並無限循環
-                console.log('🎬 切換到 takeoff2.mp4，開始無限循環播放');
-                
-                // 隱藏第一個影片，只保留第二個
-                video1.pause();
-                video1.currentTime = 0;
-                video1.classList.remove('playing');
-                video1.style.display = 'none';
-                
-                video2.loop = true;
+                // 2）takeoff1.mp4 → takeoff2.mp4：做一次交叉淡入淡出，之後 takeoff2.mp4 持續以 crossfade 方式循環
+                console.log('🎬 切換到 takeoff2.mp4，開始交叉淡入淡出 + 循環播放');
+
+                // 先確保第二支影片從頭開始，並可見（但 opacity 由 CSS 控制）
                 video2.currentTime = 0;
                 video2.style.display = 'block';
-                video2.classList.add('playing');
-                
-                video2.play().catch(error => {
-                    console.error('❌ takeoff2.mp4 播放錯誤:', error);
-                });
-                
-                // 注意：這裡「不再等待」影片結束，讓 takeoff2.mp4 一直循環播放
-                console.log('✅ takeoff2.mp4 已開始循環播放');
+
+                // 第一次：讓 takeoff1.mp4 交叉淡出到 takeoff2.mp4
+                await playVideoWithCrossfade(video1, video2, 1000); // 1 秒 crossfade
+
+                // 後續：使用 video1 / video2 交替播放 takeoff2.mp4，做無限 crossfade 迴圈（背景執行，不阻塞流程）
+                video1.src = 'takeoff2.mp4';
+                video2.src = 'takeoff2.mp4';
+
+                (async function loopTakeoff2Crossfade() {
+                    let current = video2;
+                    let next = video1;
+                    while (true) {
+                        try {
+                            await playVideoWithCrossfade(current, next, 1000);
+                            const temp = current;
+                            current = next;
+                            next = temp;
+                        } catch (e) {
+                            console.warn('⚠️ takeoff2 crossfade 迴圈中止:', e);
+                            break;
+                        }
+                    }
+                })();
                 
             } catch (error) {
                 console.error('❌ 播放影片時發生錯誤:', error);
@@ -4049,6 +4033,42 @@
             const descentTime = durationMs - (5 * 60 * 1000); // 提前 5 分鐘
             
             console.log('✈️ 進入巡航階段，開始計時');
+
+            // 顯示並初始化飛行進度條（只用長條代表旅程比例，不顯示數字時間）
+            try {
+                const wrapper = document.getElementById('flightProgressWrapper');
+                const fill = document.getElementById('flightProgressFill');
+                const glow = document.getElementById('flightProgressGlow');
+                if (wrapper && fill && glow) {
+                    wrapper.style.display = 'block';
+                    fill.style.width = '0%';
+                    glow.style.left = '0%';
+
+                    // 先清掉舊的計時器
+                    if (window._flightProgressInterval) {
+                        clearInterval(window._flightProgressInterval);
+                    }
+
+                    // 每 1 秒更新一次進度，根據實際經過的時間計算比例
+                    window._flightProgressInterval = setInterval(() => {
+                        if (!sleepStartTime || !selectedTimer) return;
+                        const now = Date.now();
+                        const elapsed = now - sleepStartTime;
+                        let progress = elapsed / durationMs;
+                        if (progress < 0) progress = 0;
+                        if (progress > 1) progress = 1;
+
+                        const percent = (progress * 100).toFixed(1);
+                        fill.style.width = percent + '%';
+
+                        // 讓光暈跟著前端推進，稍微超前一點點看起來更有動感
+                        const glowPos = Math.min(100, Math.max(0, progress * 100 + 2));
+                        glow.style.left = glowPos + '%';
+                    }, 1000);
+                }
+            } catch (e) {
+                console.warn('⚠️ 更新飛行進度條時發生小問題，可忽略:', e);
+            }
             
             // 設定降落前 5 分鐘提醒
             sleepTimer = setTimeout(() => {
@@ -4088,6 +4108,27 @@
             
             if (sleepTimer) {
                 clearTimeout(sleepTimer);
+            }
+
+            // 結束飛行進度條顯示（條已經滿格，準備回到窗外世界）
+            try {
+                if (window._flightProgressInterval) {
+                    clearInterval(window._flightProgressInterval);
+                    window._flightProgressInterval = null;
+                }
+                const wrapper = document.getElementById('flightProgressWrapper');
+                const fill = document.getElementById('flightProgressFill');
+                const glow = document.getElementById('flightProgressGlow');
+                if (wrapper && fill && glow) {
+                    fill.style.width = '100%';
+                    glow.style.left = '100%';
+                    // 稍微停留一下再隱藏，讓使用者看到已經「抵達」
+                    setTimeout(() => {
+                        wrapper.style.display = 'none';
+                    }, 3000);
+                }
+            } catch (e) {
+                console.warn('⚠️ 關閉飛行進度條時發生小問題，可忽略:', e);
             }
             
             const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
