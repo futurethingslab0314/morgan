@@ -23,15 +23,27 @@ export default function handler(req, res) {
   }
 
   try {
-    // 讀取 cities_data.json 檔案
-    const filePath = path.join(process.cwd(), 'cities_data.json');
+    // 讀取 sleepcity.json 檔案
+    const filePath = path.join(process.cwd(), 'sleepcity.json');
     const fileContents = fs.readFileSync(filePath, 'utf8');
     const jsonData = JSON.parse(fileContents);
 
-    res.setHeader('Content-Type', 'application/json');
-    res.status(200).json(jsonData);
+    // 新格式是 { "cities": [...] }，需要轉換為舊格式或直接返回
+    // 將字段映射：lat -> latitude, lon -> longitude
+    if (jsonData.cities) {
+      const mappedCities = jsonData.cities.map(city => ({
+        ...city,
+        latitude: city.lat || city.latitude,
+        longitude: city.lon || city.longitude
+      }));
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).json(mappedCities);
+    } else {
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).json(jsonData);
+    }
   } catch (error) {
-    console.error('讀取 cities_data.json 失敗:', error);
+    console.error('讀取 sleepcity.json 失敗:', error);
     res.status(500).json({ error: '無法讀取城市資料', details: error.message });
   }
 }

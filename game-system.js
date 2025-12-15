@@ -251,14 +251,14 @@ class WakeUpMapGame {
                 urlCandidates.push(`${origin.replace(/\/$/, '')}/api/cities-data`);
             }
             // 備用：直接訪問 JSON 檔案
-            urlCandidates.push('cities_data.json');
-            urlCandidates.push('/cities_data.json');
+            urlCandidates.push('sleepcity.json');
+            urlCandidates.push('/sleepcity.json');
             if (origin) {
-                urlCandidates.push(`${origin.replace(/\/$/, '')}/cities_data.json`);
+                urlCandidates.push(`${origin.replace(/\/$/, '')}/sleepcity.json`);
             }
         } else {
             urlCandidates.push('/api/cities-data');
-            urlCandidates.push('/cities_data.json');
+            urlCandidates.push('/sleepcity.json');
         }
 
         for (const url of [...new Set(urlCandidates)]) {
@@ -277,14 +277,14 @@ class WakeUpMapGame {
                 clearTimeout(timeoutId);
 
                 if (!res.ok) {
-                    console.warn(`cities_data.json 載入失敗 (HTTP ${res.status})，來源: ${url}`);
+                    console.warn(`sleepcity.json 載入失敗 (HTTP ${res.status})，來源: ${url}`);
                     continue;
                 }
 
                 // 檢查 Content-Type
                 const contentType = res.headers.get('content-type');
                 if (contentType && !contentType.includes('application/json')) {
-                    console.warn(`cities_data.json 不是 JSON 格式 (${contentType})，來源: ${url}`);
+                    console.warn(`sleepcity.json 不是 JSON 格式 (${contentType})，來源: ${url}`);
                     continue;
                 }
 
@@ -292,26 +292,44 @@ class WakeUpMapGame {
                 const json = await res.json();
                 const raw = Array.isArray(json) ? json : (json?.cities || []);
                 if (!raw.length) {
-                    console.warn(`cities_data.json 內容為空，來源: ${url}`);
+                    console.warn(`sleepcity.json 內容為空，來源: ${url}`);
                     continue;
                 }
+                // 根據國家名推斷 ISO 代碼的輔助函數
+                const getCountryCode = (country) => {
+                    const countryCodeMap = {
+                        'Taiwan': 'TW', 'Japan': 'JP', 'South Korea': 'KR', 'China': 'CN',
+                        'Thailand': 'TH', 'Singapore': 'SG', 'Malaysia': 'MY', 'Indonesia': 'ID',
+                        'Vietnam': 'VN', 'Philippines': 'PH', 'India': 'IN', 'Sri Lanka': 'LK',
+                        'UAE': 'AE', 'Qatar': 'QA', 'Turkey': 'TR',
+                        'France': 'FR', 'UK': 'GB', 'Netherlands': 'NL', 'Germany': 'DE',
+                        'Italy': 'IT', 'Spain': 'ES', 'Austria': 'AT', 'Czech Republic': 'CZ',
+                        'Sweden': 'SE', 'Denmark': 'DK', 'Norway': 'NO', 'Finland': 'FI', 'Iceland': 'IS',
+                        'USA': 'US', 'Canada': 'CA', 'Mexico': 'MX', 'Australia': 'AU'
+                    };
+                    return countryCodeMap[country] || country?.substring(0, 2).toUpperCase() || 'XX';
+                };
+
                 this.citiesData = raw
-                    .filter(c => c && (c.latitude || c.lat) && (c.longitude || c.lng) && (c.countryCode || c.country_iso_code))
-                    .map(c => ({
-                        id: `${(c.name || c.city || '').trim()}_${(c.country || c.countryName || '').trim()}_${(c.countryCode || c.country_iso_code || '').toUpperCase()}`,
-                        name: c.name || c.city || 'Unknown',
-                        country: c.country || c.countryName || '',
-                        countryCode: (c.countryCode || c.country_iso_code || '').toUpperCase(),
-                        latitude: Number(c.latitude ?? c.lat),
-                        longitude: Number(c.longitude ?? c.lng),
-                        population: Number(c.population || 0),
-                        isCapital: !!(c.capital || c.is_capital)
-                    }));
+                    .filter(c => c && (c.latitude || c.lat) && (c.longitude || c.lng) && c.country)
+                    .map(c => {
+                        const countryCode = c.countryCode || c.country_iso_code || getCountryCode(c.country);
+                        return {
+                            id: `${(c.name || c.city || '').trim()}_${(c.country || c.countryName || '').trim()}_${countryCode.toUpperCase()}`,
+                            name: c.name || c.city || 'Unknown',
+                            country: c.country || c.countryName || '',
+                            countryCode: countryCode.toUpperCase(),
+                            latitude: Number(c.latitude ?? c.lat),
+                            longitude: Number(c.longitude ?? c.lng),
+                            population: Number(c.population || 0),
+                            isCapital: !!(c.capital || c.is_capital)
+                        };
+                    });
                 if (this.citiesData.length) {
                     this.usedCitiesFallback = false;
                     this.citiesDataSource = url;
                     this.buildCountryCandidates();
-                    console.log(`✅ cities_data.json 載入成功：${url}，共 ${this.citiesData.length} 筆`);
+                    console.log(`✅ sleepcity.json 載入成功：${url}，共 ${this.citiesData.length} 筆`);
                     console.log('📊 前 5 個城市範例:', this.citiesData.slice(0, 5).map(c => ({
                         name: c.name,
                         country: c.country,
@@ -326,7 +344,7 @@ class WakeUpMapGame {
             }
         }
 
-        console.warn('⚠️ 無法載入 cities_data.json，改用內建候選清單。');
+        console.warn('⚠️ 無法載入 sleepcity.json，改用內建候選清單。');
         this.usedCitiesFallback = true;
         this.citiesDataSource = 'fallback';
         this.citiesData = fallbackCities;
@@ -956,7 +974,7 @@ class WakeUpMapGame {
                     if (!notice) {
                         notice = document.createElement('div');
                         notice.className = 'destination-warning';
-                        notice.innerHTML = '⚠️ 目前使用預設目的地資料。請確認 cities_data.json 是否成功載入，便可顯示更多城市。';
+                        notice.innerHTML = '⚠️ 目前使用預設目的地資料。請確認 sleepcity.json 是否成功載入，便可顯示更多城市。';
                         gridWrapper.insertBefore(notice, gridWrapper.firstChild);
                     }
                 } else if (notice) {
