@@ -1060,7 +1060,7 @@
         let knobPollInterval = null;
         let lastKnobPosition = null;
         let consecutiveErrors = 0; // 連續錯誤計數
-        const MAX_CONSECUTIVE_ERRORS = 5; // 連續 5 次錯誤後停止輪詢
+        const MAX_CONSECUTIVE_ERRORS = 20; // 連續 20 次錯誤後停止輪詢（增加容錯性）
         let knobMonitoringEnabled = true; // 開關：是否啟用旋鈕監控
         let lastState = null; // 記錄上次狀態，用於檢測狀態變化
         
@@ -1164,8 +1164,22 @@
                     
                     clearTimeout(timeoutId);
                     
+                    // 即使返回 503 或其他錯誤，也嘗試解析 JSON
                     if (!response.ok) {
-                        throw new Error('HTTP ' + response.status);
+                        // 503 錯誤不計入連續錯誤（服務器可能暫時不可用）
+                        if (response.status === 503) {
+                            console.log('⚠️ 旋鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                            return; // 不增加錯誤計數，繼續輪詢
+                        }
+                        // 嘗試解析錯誤響應
+                        try {
+                            const errorData = await response.json();
+                            if (errorData && errorData.success === false) {
+                                throw new Error('HTTP ' + response.status);
+                            }
+                        } catch (e) {
+                            throw new Error('HTTP ' + response.status);
+                        }
                     }
                     
                     const data = await response.json();
@@ -1173,7 +1187,7 @@
                     // 支持新舊兩種 API 格式
                     // 新格式：{success: true, knob_handler_available: true, position: 0-5}
                     // 舊格式：{success: true, position: 0-5, name: "...", task: "..."}
-                    if (data.success && data.position !== undefined) {
+                    if (data && data.success && data.position !== undefined) {
                         // 重置錯誤計數和標記（服務已恢復）
                         consecutiveErrors = 0;
                         if (connectionErrorLogged) {
@@ -1270,7 +1284,7 @@
         let buttonPollInterval = null;
         let lastButtonState = false; // false = 未按下, true = 按下
         let buttonConsecutiveErrors = 0;
-        const MAX_BUTTON_ERRORS = 5;
+        const MAX_BUTTON_ERRORS = 20; // 連續 20 次錯誤後停止輪詢（增加容錯性）
         let buttonMonitoringEnabled = true;
         let preparedAnnouncement = null; // 準備好的 TTS 語音文字
         
@@ -1316,8 +1330,22 @@
                         response = await fetch('http://127.0.0.1:5001/api/button/state?gpio=4', {
                             signal: controller.signal
                         });
+                        // 即使不是 200，也嘗試解析 JSON（可能包含錯誤信息）
+                        if (response.status === 503) {
+                            // 503 錯誤不計入連續錯誤，繼續輪詢
+                            console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                            return;
+                        }
                         if (response.ok) {
                             data = await response.json();
+                        } else {
+                            // 嘗試解析錯誤響應
+                            try {
+                                data = await response.json();
+                            } catch (e) {
+                                // 無法解析，嘗試下一個端點
+                                throw new Error('HTTP ' + response.status);
+                            }
                         }
                     } catch (e) {
                         // 嘗試格式 2: /api/button?gpio=4
@@ -1325,8 +1353,18 @@
                             response = await fetch('http://127.0.0.1:5001/api/button?gpio=4', {
                                 signal: controller.signal
                             });
+                            if (response.status === 503) {
+                                console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                                return;
+                            }
                             if (response.ok) {
                                 data = await response.json();
+                            } else {
+                                try {
+                                    data = await response.json();
+                                } catch (e2) {
+                                    throw new Error('HTTP ' + response.status);
+                                }
                             }
                         } catch (e2) {
                             // 嘗試格式 3: /api/gpio/4
@@ -1334,8 +1372,18 @@
                                 response = await fetch('http://127.0.0.1:5001/api/gpio/4', {
                                     signal: controller.signal
                                 });
+                                if (response.status === 503) {
+                                    console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                                    return;
+                                }
                                 if (response.ok) {
                                     data = await response.json();
+                                } else {
+                                    try {
+                                        data = await response.json();
+                                    } catch (e3) {
+                                        throw new Error('Connection refused');
+                                    }
                                 }
                             } catch (e3) {
                                 throw new Error('Connection refused');
@@ -1345,8 +1393,36 @@
                     
                     clearTimeout(timeoutId);
                     
-                    if (!response || !response.ok) {
-                        throw new Error('HTTP ' + (response ? response.status : 'no response'));
+                    // 即使返回 503 或其他錯誤，也嘗試解析 JSON（服務器可能返回錯誤信息）
+                    if (!response) {
+                        throw new Error('No response');
+                    }
+                    
+                    // 嘗試解析 JSON，即使狀態碼不是 200
+                    if (!data && response.ok) {
+                        try {
+                            data = await response.json();
+                        } catch (e) {
+                            // 忽略 JSON 解析錯誤
+                        }
+                    } else if (!data && !response.ok) {
+                        // 非 200 狀態碼，嘗試解析錯誤響應
+                        try {
+                            data = await response.json();
+                        } catch (e) {
+                            // 如果無法解析，拋出錯誤
+                            throw new Error('HTTP ' + response.status);
+                        }
+                    }
+                    
+                    // 如果響應不成功且沒有有效數據，拋出錯誤
+                    if (!response.ok && (!data || data.success === false)) {
+                        // 503 錯誤不計入連續錯誤（服務器可能暫時不可用）
+                        if (response.status === 503) {
+                            console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                            return; // 不增加錯誤計數，繼續輪詢
+                        }
+                        throw new Error('HTTP ' + response.status);
                     }
                     
                     // 處理多種可能的 API 返回格式
