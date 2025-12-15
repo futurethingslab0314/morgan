@@ -1641,15 +1641,11 @@
                 console.warn('⚠️ TTS 語音文字未準備，跳過 TTS 播放');
             }
             
-            // 3. 播放 takeoff.mp3
-            console.log('3️⃣ 播放 takeoff.mp3...');
-            await playAudioFile('sounds/takeoff.mp3');
-            
-            // 4. 同時播放 takeoff1.mp4 和 loop takeoff2.mp4
-            console.log('4️⃣ 播放起飛影片...');
+            // 3. 播放起飛影片與起飛音效（takeoff.mp3 與 takeoff1.mp4 同步）
+            console.log('3️⃣ 播放起飛影片與起飛音效...');
             await playTakeoffVideos();
             
-            // 5. 進入巡航階段
+            // 4. 進入巡航階段
             console.log('✅ 起飛序列完成，進入巡航階段');
             switchToPhase(Phase.CRUISE);
             
@@ -3833,8 +3829,8 @@
                 initialImage.style.display = 'none';
             }
             
-            // 現在開始正式播放影片
-            console.log('▶️ 開始播放影片');
+            // 現在開始正式播放影片 + 音效
+            console.log('▶️ 開始播放起飛影片與 takeoff.mp3');
             
             const computedStyle = window.getComputedStyle(videoContainer);
             console.log('🎬 影片容器已顯示', {
@@ -3848,8 +3844,11 @@
                 containerLeft: videoContainer.offsetLeft
             });
             
-            // 確保第二個影片也已載入
+            // 準備起飛音效（takeoff.mp3）
+            const takeoffAudio = new Audio('sounds/takeoff.mp3');
+            
             try {
+                // 先確保第二個影片也已載入（避免等一下切過去黑畫面）
                 if (video2.readyState < 2) {
                     console.log('⏳ 等待影片 2 載入...');
                     await new Promise((resolve, reject) => {
@@ -3870,60 +3869,75 @@
                     video1Ready: video1.readyState,
                     video2Ready: video2.readyState
                 });
-            } catch (error) {
-                console.error('❌ 影片載入失敗:', error);
-            }
-            
-            try {
-                // 播放第一個影片（第一幀已經顯示，現在開始播放）
-                console.log('🎬 開始播放 takeoff1.mp4');
                 
-                // 播放第一個影片，並在結束前 1 秒開始交叉淡入淡出
-                await playVideoWithCrossfade(video1, video2, 1000); // 1秒交叉淡入淡出
+                // 1）同時開始播放 takeoff1.mp4 + takeoff.mp3
+                console.log('🎬 開始播放 takeoff1.mp4 ＋ 🎵 takeoff.mp3');
                 
-                // 播放第二個影片，循環 5 次
-                console.log('🎬 開始播放 takeoff2.mp4（循環 5 次）');
-                let currentVideo = video2;
-                let nextVideo = video1;
+                // 先啟動音效（不等待它播完）
+                takeoffAudio.play().catch(err => {
+                    console.warn('⚠️ takeoff.mp3 播放失敗（可能被瀏覽器阻擋）:', err);
+                });
                 
-                for (let i = 0; i < 5; i++) {
-                    console.log('🎬 播放 takeoff2.mp4 第 ' + (i + 1) + '/5 次');
-                    
-                    // 如果不是第一次，重置下一個影片
-                    if (i > 0) {
-                        nextVideo.currentTime = 0;
-                    }
-                    
-                    // 播放當前影片，並在結束前 1 秒開始交叉淡入淡出
-                    await playVideoWithCrossfade(currentVideo, nextVideo, 1000);
-                    
-                    // 交換角色：下一個循環時，nextVideo 變成 currentVideo
-                    const temp = currentVideo;
-                    currentVideo = nextVideo;
-                    nextVideo = temp;
-                }
+                // 播放第一支影片
+                await new Promise((resolve) => {
+                    video1.onended = () => {
+                        console.log('✅ takeoff1.mp4 播放完成');
+                        // 影片 1 結束時，如果音效還在播，就關掉它
+                        try {
+                            if (!takeoffAudio.paused) {
+                                takeoffAudio.pause();
+                                takeoffAudio.currentTime = 0;
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ 停止 takeoff.mp3 時發生小問題，可忽略:', e);
+                        }
+                        resolve();
+                    };
+                    video1.onerror = (error) => {
+                        console.error('❌ takeoff1.mp4 播放失敗:', error);
+                        resolve();
+                    };
+                    video1.play().catch(error => {
+                        console.error('❌ takeoff1.mp4 播放錯誤:', error);
+                        resolve();
+                    });
+                });
                 
-                console.log('✅ 所有起飛影片播放完成');
+                // 2）takeoff1.mp4 完成後，改播 takeoff2.mp4 並無限循環
+                console.log('🎬 切換到 takeoff2.mp4，開始無限循環播放');
+                
+                // 隱藏第一個影片，只保留第二個
+                video1.pause();
+                video1.currentTime = 0;
+                video1.classList.remove('playing');
+                video1.style.display = 'none';
+                
+                video2.loop = true;
+                video2.currentTime = 0;
+                video2.style.display = 'block';
+                video2.classList.add('playing');
+                
+                video2.play().catch(error => {
+                    console.error('❌ takeoff2.mp4 播放錯誤:', error);
+                });
+                
+                // 注意：這裡「不再等待」影片結束，讓 takeoff2.mp4 一直循環播放
+                console.log('✅ takeoff2.mp4 已開始循環播放');
                 
             } catch (error) {
                 console.error('❌ 播放影片時發生錯誤:', error);
             } finally {
-                // 隱藏影片容器，恢復原本內容
-                videoContainer.classList.remove('show');
-                videoContainer.style.display = 'none';
-                if (originalContent) {
-                    originalContent.style.display = 'block';
-                }
-                // 重置影片
-                video1.currentTime = 0;
-                video2.currentTime = 0;
-                video1.pause();
-                video2.pause();
-                video1.classList.remove('playing');
-                video2.classList.remove('playing');
-                video1.style.display = 'none';
-                video2.style.display = 'none';
-                console.log('🎬 影片容器已隱藏');
+                // 這裡只收尾第一支影片與音效，不關掉第二支影片和容器
+                try {
+                    video1.pause();
+                    video1.classList.remove('playing');
+                } catch (e) {}
+                try {
+                    if (!takeoffAudio.paused) {
+                        takeoffAudio.pause();
+                    }
+                } catch (e) {}
+                console.log('🎬 起飛影片流程已完成（takeoff2.mp4 持續循環中）');
             }
         }
 
