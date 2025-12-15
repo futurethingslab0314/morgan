@@ -741,6 +741,8 @@
             
             // 如果切換到時間選擇或氣候帶選擇，立即讀取旋鈕位置
             if (newState === State.TIMER || newState === State.ANGLE) {
+                // 重置 lastKnobPosition，確保能立即讀取並選擇
+                lastKnobPosition = null;
                 // 延遲一點點，確保 UI 已經更新
                 setTimeout(() => {
                     readKnobPositionAndSelect();
@@ -1082,7 +1084,12 @@
                 
                 clearTimeout(timeoutId);
                 
+                // 即使返回 503 也嘗試解析
                 if (!response.ok) {
+                    if (response.status === 503) {
+                        console.log('⚠️ 旋鈕 API 返回 503，稍後重試...');
+                        return;
+                    }
                     return;
                 }
                 
@@ -1091,13 +1098,16 @@
                 // 支持新舊兩種 API 格式
                 // 新格式：{success: true, knob_handler_available: true, position: 0-5}
                 // 舊格式：{success: true, position: 0-5, name: "...", task: "..."}
-                if (data.success && data.position !== undefined) {
+                if (data && data.success && data.position !== undefined) {
                     consecutiveErrors = 0;
                     const position = parseInt(data.position);
                     
-                    // 立即選擇對應位置（即使位置沒改變）
-                    lastKnobPosition = position;
-                    console.log('📍 立即讀取旋鈕位置:', position);
+                    // 重置 lastKnobPosition 為 null，強制觸發選擇
+                    // 這樣即使位置相同，也會觸發 UI 更新
+                    const previousPosition = lastKnobPosition;
+                    lastKnobPosition = null; // 臨時重置
+                    
+                    console.log('📍 立即讀取旋鈕位置:', position, '之前位置:', previousPosition);
                     
                     // 根據當前狀態選擇對應的選項
                     if (currentState === State.TIMER) {
@@ -1105,6 +1115,9 @@
                     } else if (currentState === State.ANGLE) {
                         selectByPosition(position, 'angle');
                     }
+                    
+                    // 設置 lastKnobPosition 為當前位置
+                    lastKnobPosition = position;
                 }
             } catch (error) {
                 // 靜默處理錯誤
@@ -1519,14 +1532,11 @@
                     // 從選擇時長 → 選擇氣候帶
                     if (selectedTimer) {
                         console.log('✅ 按鈕：從時間選擇切換到氣候帶選擇');
+                        // 重置 lastKnobPosition，確保旋鈕位置能立即讀取
+                        lastKnobPosition = null;
                         switchState(State.ANGLE);
                         currentPosition = 0;
-                        // 自動選擇第一個氣候帶選項
-                        setTimeout(() => {
-                            if (selectedDirection === null) {
-                                selectAngle(0);
-                            }
-                        }, 100);
+                        // 不自動選擇，等待旋鈕轉動或手動選擇
                     } else {
                         console.log('⚠️ 請先選擇時長，自動選擇第一個選項');
                         selectTimer(0);
@@ -3369,11 +3379,10 @@
                     destinationClimateEl.textContent = '🌍 ' + selectedClimateZone.name + ' - ' + selectedClimateZone.description;
                 }
                 
-                // 切換到目的地顯示狀態
-                console.log('📍 顯示目的地信息...');
-                switchToPhase(Phase.DESTINATION_SHOW);
+                // 不自動切換到目的地顯示，等待按鈕按下
+                console.log('📍 目的地信息已準備，等待按鈕按下進入準備起航狀態...');
                 
-                // 更新按鈕狀態
+                // 更新按鈕狀態（保持在氣候帶選擇狀態）
                 updateNextButton();
             } catch (error) {
                 console.error('❌ 目的地計算失敗:', error);
