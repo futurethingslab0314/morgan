@@ -245,6 +245,58 @@
             flex-shrink: 0;
         }
 
+        /* 登機／等待機長廣播狀態提示 */
+        .boarding-status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .boarding-status.active {
+            display: flex;
+        }
+
+        .boarding-status-text {
+            letter-spacing: 1px;
+        }
+
+        .boarding-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .boarding-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ff6b35;
+            opacity: 0.3;
+            animation: boarding-bounce 1.2s infinite ease-in-out;
+        }
+
+        .boarding-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .boarding-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes boarding-bounce {
+            0%, 80%, 100% {
+                transform: translateY(0);
+                opacity: 0.3;
+            }
+            40% {
+                transform: translateY(-4px);
+                opacity: 1;
+            }
+        }
+
         /* 選項容器（中間，可滾動） */
         .options-container {
             display: flex !important;
@@ -564,6 +616,15 @@
                 </div>
                 <div id="readyDestinationInfo" style="font-size: 14px; color: #999; margin-top: 15px;">
                     ...
+                </div>
+                <!-- 登機／等待機長廣播的動態提示 -->
+                <div class="boarding-status" id="boardingStatus">
+                    <span class="boarding-status-text">登機中，請舒適入座，等待機長廣播...</span>
+                    <div class="boarding-dots">
+                        <span class="boarding-dot"></span>
+                        <span class="boarding-dot"></span>
+                        <span class="boarding-dot"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1107,20 +1168,21 @@
                     
                     console.log('📍 立即讀取旋鈕位置（狀態切換時）:', position, '之前位置:', previousPosition, '當前狀態:', currentState);
                     
-                    // 只在狀態切換時顯示當前位置，但不設置 lastKnobPosition
-                    // 這樣輪詢邏輯可以檢測到位置變化並更新 UI
-                    // 如果 lastKnobPosition 為 null 或與當前位置不同，才觸發選擇
+                    // 在狀態切換時，立即選擇並設置 lastKnobPosition
+                    // 這樣輪詢邏輯可以正確檢測後續的位置變化
                     if (previousPosition === null || previousPosition !== position) {
-                        // 根據當前狀態選擇對應的選項（只顯示，不設置 lastKnobPosition）
+                        // 根據當前狀態選擇對應的選項
                         if (currentState === State.TIMER) {
+                            console.log('✅ 狀態切換時：選擇時間，位置:', position);
                             selectByPosition(position, 'timer');
                         } else if (currentState === State.ANGLE) {
+                            console.log('✅ 狀態切換時：選擇氣候帶，位置:', position);
                             selectByPosition(position, 'angle');
                         }
                     }
                     
-                    // 重要：不設置 lastKnobPosition，讓輪詢邏輯來處理
-                    // 這樣當用戶轉動旋鈕時，輪詢邏輯可以檢測到變化
+                    // 設置 lastKnobPosition，讓輪詢邏輯可以正確檢測位置變化
+                    lastKnobPosition = position;
                 }
             } catch (error) {
                 // 靜默處理錯誤
@@ -1314,6 +1376,7 @@
         const MAX_BUTTON_ERRORS = 20; // 連續 20 次錯誤後停止輪詢（增加容錯性）
         let buttonMonitoringEnabled = true;
         let preparedAnnouncement = null; // 準備好的 TTS 語音文字
+        let preparedAudioId = null;      // 預先生成的 TTS 音檔 ID（/tts/generate 返回）
         
         function startButtonMonitoring() {
             if (buttonPollInterval) {
@@ -1614,7 +1677,11 @@
                 
                 if (announcement) {
                     preparedAnnouncement = announcement;
+                    preparedAudioId = null; // 重置先前的音檔 ID
                     console.log('✅ TTS 語音已準備完成（等待起飛按鈕）');
+                    
+                    // 嘗試預先生成 TTS 音檔（背景進行，不影響流程）
+                    generateTtsAudio(announcement, 'zh-TW');
                     
                     // 切換到準備起航狀態
                     currentState = State.READY_TO_FLY;
@@ -1629,14 +1696,22 @@
         async function startTakeoffSequence() {
             console.log('🚀 開始起飛序列...');
             
+            // 顯示登機／等待機長廣播的動態提示
+            setBoardingStatus(true, '登機中，請舒適入座，等待機長廣播...');
+            
             // 1. 播放 captain.mp3（只播放前 6 秒）
             console.log('1️⃣ 播放 captain.mp3（6 秒）...');
             await playAudioFile('sounds/captain.mp3', 6);
             console.log('✅ captain.mp3 播放完成');
             
-            // 2. 播放準備好的 TTS 語音（文字已提前生成，現在調用 TTS API 生成並播放）
-            if (preparedAnnouncement) {
-                console.log('2️⃣ 生成並播放 TTS 語音（文字已準備好，只需等待音頻生成）...');
+            // 2. 播放準備好的 TTS 語音
+            if (preparedAudioId) {
+                // 優先使用預先生成的音檔（/tts/generate 產生）
+                console.log('2️⃣ 播放預先生成的 TTS 音檔:', preparedAudioId);
+                await playCachedTts(preparedAudioId);
+            } else if (preparedAnnouncement) {
+                // 沒有預先生成音檔時，退回到即時生成模式
+                console.log('2️⃣ 使用即時 TTS 生成並播放（無快取音檔）...');
                 await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
                     isTakeoff: true,
                     rate: 0.7,
@@ -1658,6 +1733,9 @@
             // 5. 進入巡航階段
             console.log('✅ 起飛序列完成，進入巡航階段');
             switchToPhase(Phase.CRUISE);
+            
+            // 隱藏登機狀態
+            setBoardingStatus(false);
         }
         
         // 播放音頻文件
@@ -3369,6 +3447,87 @@
             }
         }
 
+        // 預先生成 TTS 音檔（使用 /tts/generate，只生成，不播放）
+        async function generateTtsAudio(text, language = 'zh-TW') {
+            if (!text) return;
+            
+            const TTS_BASE = 'http://127.0.0.1:5005';
+            try {
+                console.log('🎵 呼叫 /tts/generate 預先生成 TTS 音檔...');
+                const response = await fetch(TTS_BASE + '/tts/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        languageCode: language === 'zh-TW' ? 'zh' : 'en'
+                    }),
+                    timeout: 20000
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.audio_id) {
+                        preparedAudioId = data.audio_id;
+                        console.log('✅ TTS 音檔預先生成成功，audio_id:', preparedAudioId);
+                    } else {
+                        console.warn('⚠️ /tts/generate 返回錯誤:', data.error);
+                    }
+                } else {
+                    console.warn('⚠️ /tts/generate HTTP 錯誤:', response.status, response.statusText);
+                }
+            } catch (error) {
+                console.warn('⚠️ 呼叫 /tts/generate 失敗:', error.message);
+            }
+        }
+
+        // 播放已預先生成的 TTS 音檔（使用 /tts/play_cached）
+        async function playCachedTts(audioId) {
+            if (!audioId) return;
+            
+            const TTS_BASE = 'http://127.0.0.1:5005';
+            try {
+                console.log('🎵 呼叫 /tts/play_cached 播放預先生成的音檔:', audioId);
+                const response = await fetch(TTS_BASE + '/tts/play_cached', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        audio_id: audioId
+                    }),
+                    timeout: 20000
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        console.log('✅ /tts/play_cached 播放成功');
+                    } else {
+                        console.warn('⚠️ /tts/play_cached 返回錯誤:', data.error);
+                    }
+                } else {
+                    console.warn('⚠️ /tts/play_cached HTTP 錯誤:', response.status, response.statusText);
+                }
+            } catch (error) {
+                console.warn('⚠️ 呼叫 /tts/play_cached 失敗:', error.message);
+            }
+        }
+
+        // 控制登機狀態顯示
+        function setBoardingStatus(active, message) {
+            const el = document.getElementById('boardingStatus');
+            if (!el) return;
+            
+            const textEl = el.querySelector('.boarding-status-text');
+            if (textEl && message) {
+                textEl.textContent = message;
+            }
+            
+            if (active) {
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+        }
+
         // ============================================================================
         // Firebase 儲存整合
         // ============================================================================
@@ -3506,7 +3665,11 @@
                 
                 if (announcement) {
                     preparedAnnouncement = announcement;
+                    preparedAudioId = null; // 重置先前的音檔 ID
                     console.log('✅ TTS 語音文字已準備完成（等待起飛時再生成音頻）');
+                    
+                    // 嘗試預先生成 TTS 音檔（背景進行，不影響流程）
+                    generateTtsAudio(announcement, 'zh-TW');
                 } else {
                     console.warn('⚠️ 語音文字生成失敗');
                 }
