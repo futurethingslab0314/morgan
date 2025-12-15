@@ -39,10 +39,10 @@
             padding: 20px;
         }
 
-        /* 視窗容器：保持 800x980 */
+        /* 視窗容器：保持 800x1080 */
         .window-container {
             width: 800px;
-            height: 980px;
+            height: 1080px;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -57,10 +57,10 @@
             position: relative;
         }
 
-        /* 窗戶區域 - 上方，固定 500px 高 */
+        /* 窗戶區域 - 上方，固定 800px 高 */
         .window-area {
             width: 800px;
-            height: 700px;
+            height: 800px;
             background: #f8f9fa;
             position: relative;
             display: flex;
@@ -70,10 +70,10 @@
             overflow: hidden;
         }
 
-        /* 窗戶框 - 700x700 方形，完全填滿窗戶區域 */
+        /* 窗戶框 - 800x800 方形，完全填滿窗戶區域 */
         .window-frame {
-            width: 700px;
-            height: 700px;
+            width: 800px;
+            height: 800px;
             background: #ffffff;
             border: 4px solid #ff6b35;
             border-radius: 12px;
@@ -100,8 +100,8 @@
 
         /* 初始圖片背景 */
         .initial-image {
-            width: 700px;
-            height: 700px;
+            width: 800px;
+            height: 800px;
             position: absolute;
             top: 0;
             left: 0;
@@ -123,10 +123,10 @@
             filter: blur(8px) brightness(1.2); /* 模糊和亮度增加，製造景深效果 */
         }
 
-        /* 影片容器 - 滿版 700x700 */
+        /* 影片容器 - 滿版 800x800 */
         .video-container {
-            width: 700px;
-            height: 700px;
+            width: 800px;
+            height: 800px;
             position: absolute;
             top: 0;
             left: 0;
@@ -204,10 +204,10 @@
             opacity: 0.6;
         }
 
-        /* 底部資訊 bar - 剩餘空間 280px 高 (980 - 700 = 280) */
+        /* 底部資訊 bar - 剩餘空間 280px 高 (1080 - 800 = 280) */
         .info-bar {
             width: 800px;
-            height: 280px; /* 固定高度：980 - 700 = 280px */
+            height: 280px; /* 固定高度：1080 - 800 = 280px */
             background: #ffffff;
             border-top: 3px solid #ff6b35;
             display: flex;
@@ -435,9 +435,9 @@
     <!-- 嵌入城市數據，避免 file:// 協議下的 fetch 限制 -->
     <script id="sleepcity-embedded-data" type="application/json">{"cities":[{"city":"Taipei","city_zh":"台北","country":"Taiwan","country_zh":"台灣","lat":25.033,"lon":121.565,"region":"East Asia","popular":true},{"city":"Tokyo","city_zh":"東京","country":"Japan","country_zh":"日本","lat":35.676,"lon":139.65,"region":"East Asia","popular":true},{"city":"Osaka","city_zh":"大阪","country":"Japan","country_zh":"日本","lat":34.693,"lon":135.502,"region":"East Asia","popular":true},{"city":"Busan","city_zh":"釜山","country":"South Korea","country_zh":"韓國","lat":35.18,"lon":129.075,"region":"East Asia","popular":false},{"city":"Beijing","city_zh":"北京","country":"China","country_zh":"中國","lat":39.904,"lon":116.407,"region":"East Asia","popular":false},{"city":"Shanghai","city_zh":"上海","country":"China","country_zh":"中國","lat":31.23,"lon":121.474,"region":"East Asia","popular":false},{"city":"Hong Kong","city_zh":"香港","country":"China","country_zh":"中國","lat":22.319,"lon":114.169,"region":"East Asia","popular":true},{"city":"Macau","city_zh":"澳門","country":"China","country_zh":"中國","lat":22.198,"lon":113.544,"region":"East Asia","popular":false},{"city":"Bangkok","city_zh":"曼谷","country":"Thailand","country_zh":"泰國","lat":13.756,"lon":100.502,"region":"Southeast Asia","popular":true},{"city":"Chiang Mai","city_zh":"清邁","country":"Thailand","country_zh":"泰國","lat":18.788,"lon":98.985,"region":"Southeast Asia","popular":false},{"city":"Singapore","city_zh":"新加坡","country":"Singapore","country_zh":"新加坡","lat":1.352,"lon":103.819,"region":"Southeast Asia","popular":true},{"city":"Kuala Lumpur","city_zh":"吉隆坡","country":"Malaysia","country_zh":"馬來西亞","lat":3.139,"lon":101.686,"region":"Southeast Asia","popular":true},{"city":"Jakarta","city_zh":"雅加達","country":"Indonesia","country_zh":"印尼","lat":-6.208,"lon":106.845,"region":"Southeast Asia","popular":false},{"city":"Denpasar","city_zh":"登巴薩","country":"Indonesia","country_zh":"印尼","lat":-8.67,"lon":115.213,"region":"Southeast Asia","popular":true},{"city":"Hanoi","city_zh":"河內","country":"Vietnam","country_zh":"越南","lat":21.028,"lon":105.854,"region":"Southeast Asia","popular":false},{"city":"Ho Chi Minh City","city_zh":"胡志明市","country":"Vietnam","country_zh":"越南","lat":10.823,"lon":106.629,"region":"Southeast Asia","popular":false},{"city":"Manila","city_zh":"馬尼拉","country":"Philippines","country_zh":"菲律賓","lat":14.599,"lon":120.984,"region":"Southeast Asia","popular":false},{"city":"New Delhi","city_zh":"新德里","country":"India","country_zh":"印度","lat":28.614,"lon":77.209,"region":"South Asia","popular":false},{"city":"Mumbai","city_zh":"孟買","country":"India","country_zh":"印度","lat":19.076,"lon":72.877,"region":"South Asia","popular":false},{"city":"Colombo","city_zh":"可倫坡","country":"Sri Lanka","country_zh":"斯里蘭卡","lat":6.927,"lon":79.861,"region":"South Asia","popular":false},{"city":"Dubai","city_zh":"杜拜","country":"UAE","country_zh":"阿拉伯聯合大公國","lat":25.204,"lon":55.271,"region":"Middle East","popular":true},{"city":"Abu Dhabi","city_zh":"阿布達比","country":"UAE","country_zh":"阿拉伯聯合大公國","lat":24.453,"lon":54.377,"region":"Middle East","popular":false},{"city":"Doha","city_zh":"多哈","country":"Qatar","country_zh":"卡達","lat":25.285,"lon":51.531,"region":"Middle East","popular":false},{"city":"Istanbul","city_zh":"伊斯坦堡","country":"Turkey","country_zh":"土耳其","lat":41.008,"lon":28.978,"region":"Europe/Middle East","popular":true},{"city":"Paris","city_zh":"巴黎","country":"France","country_zh":"法國","lat":48.857,"lon":2.352,"region":"Europe","popular":true},{"city":"London","city_zh":"倫敦","country":"UK","country_zh":"英國","lat":51.507,"lon":-0.128,"region":"Europe","popular":true},{"city":"Amsterdam","city_zh":"阿姆斯特丹","country":"Netherlands","country_zh":"荷蘭","lat":52.368,"lon":4.904,"region":"Europe","popular":true},{"city":"Berlin","city_zh":"柏林","country":"Germany","country_zh":"德國","lat":52.52,"lon":13.405,"region":"Europe","popular":true},{"city":"Rome","city_zh":"羅馬","country":"Italy","country_zh":"義大利","lat":41.903,"lon":12.496,"region":"Europe","popular":true},{"city":"Milan","city_zh":"米蘭","country":"Italy","country_zh":"義大利","lat":45.465,"lon":9.19,"region":"Europe","popular":false},{"city":"Barcelona","city_zh":"巴塞隆納","country":"Spain","country_zh":"西班牙","lat":41.387,"lon":2.168,"region":"Europe","popular":true},{"city":"Madrid","city_zh":"馬德里","country":"Spain","country_zh":"西班牙","lat":40.417,"lon":-3.704,"region":"Europe","popular":false},{"city":"Vienna","city_zh":"維也納","country":"Austria","country_zh":"奧地利","lat":48.208,"lon":16.373,"region":"Europe","popular":false},{"city":"Prague","city_zh":"布拉格","country":"Czech Republic","country_zh":"捷克","lat":50.075,"lon":14.437,"region":"Europe","popular":false},{"city":"Stockholm","city_zh":"斯德哥爾摩","country":"Sweden","country_zh":"瑞典","lat":59.329,"lon":18.069,"region":"Nordic","popular":false},{"city":"Copenhagen","city_zh":"哥本哈根","country":"Denmark","country_zh":"丹麥","lat":55.676,"lon":12.568,"region":"Nordic","popular":false},{"city":"Oslo","city_zh":"奧斯陸","country":"Norway","country_zh":"挪威","lat":59.913,"lon":10.752,"region":"Nordic","popular":false},{"city":"Helsinki","city_zh":"赫爾辛基","country":"Finland","country_zh":"芬蘭","lat":60.17,"lon":24.938,"region":"Nordic","popular":false},{"city":"Reykjavik","city_zh":"雷克雅維克","country":"Iceland","country_zh":"冰島","lat":64.146,"lon":-21.942,"region":"Nordic","popular":true},{"city":"New York","city_zh":"紐約","country":"USA","country_zh":"美國","lat":40.713,"lon":-74.006,"region":"North America","popular":true},{"city":"Boston","city_zh":"波士頓","country":"USA","country_zh":"美國","lat":42.36,"lon":-71.058,"region":"North America","popular":false},{"city":"Chicago","city_zh":"芝加哥","country":"USA","country_zh":"美國","lat":41.878,"lon":-87.63,"region":"North America","popular":false},{"city":"Los Angeles","city_zh":"洛杉磯","country":"USA","country_zh":"美國","lat":34.052,"lon":-118.244,"region":"North America","popular":true},{"city":"San Francisco","city_zh":"舊金山","country":"USA","country_zh":"美國","lat":37.774,"lon":-122.419,"region":"North America","popular":true},{"city":"Seattle","city_zh":"西雅圖","country":"USA","country_zh":"美國","lat":47.606,"lon":-122.332,"region":"North America","popular":true},{"city":"Vancouver","city_zh":"溫哥華","country":"Canada","country_zh":"加拿大","lat":49.283,"lon":-123.121,"region":"North America","popular":true},{"city":"Toronto","city_zh":"多倫多","country":"Canada","country_zh":"加拿大","lat":43.653,"lon":-79.383,"region":"North America","popular":true},{"city":"Mexico City","city_zh":"墨西哥市","country":"Mexico","country_zh":"墨西哥","lat":19.433,"lon":-99.133,"region":"North America","popular":false},{"city":"Sydney","city_zh":"雪梨","country":"Australia","country_zh":"澳洲","lat":-33.868,"lon":151.209,"region":"Oceania","popular":true},{"city":"Melbourne","city_zh":"墨爾本","country":"Australia","country_zh":"澳洲","lat":-37.813,"lon":144.963,"region":"Oceania","popular":true},{"city":"Auckland","city_zh":"奧克蘭","country":"New Zealand","country_zh":"紐西蘭","lat":-36.848,"lon":174.763,"region":"Oceania","popular":true},{"city":"Wellington","city_zh":"威靈頓","country":"New Zealand","country_zh":"紐西蘭","lat":-41.286,"lon":174.776,"region":"Oceania","popular":false},{"city":"Cairo","city_zh":"開羅","country":"Egypt","country_zh":"埃及","lat":30.044,"lon":31.235,"region":"Africa","popular":true},{"city":"Cape Town","city_zh":"開普敦","country":"South Africa","country_zh":"南非","lat":-33.925,"lon":18.424,"region":"Africa","popular":true},{"city":"Johannesburg","city_zh":"約翰尼斯堡","country":"South Africa","country_zh":"南非","lat":-26.204,"lon":28.047,"region":"Africa","popular":false},{"city":"Nairobi","city_zh":"奈洛比","country":"Kenya","country_zh":"肯亞","lat":-1.292,"lon":36.822,"region":"Africa","popular":false},{"city":"Casablanca","city_zh":"卡薩布蘭卡","country":"Morocco","country_zh":"摩洛哥","lat":33.573,"lon":-7.589,"region":"Africa","popular":false},{"city":"Lagos","city_zh":"拉哥斯","country":"Nigeria","country_zh":"奈及利亞","lat":6.524,"lon":3.379,"region":"Africa","popular":false},{"city":"Buenos Aires","city_zh":"布宜諾斯艾利斯","country":"Argentina","country_zh":"阿根廷","lat":-34.603,"lon":-58.382,"region":"South America","popular":true},{"city":"Santiago","city_zh":"聖地牙哥","country":"Chile","country_zh":"智利","lat":-33.449,"lon":-70.669,"region":"South America","popular":false},{"city":"Lima","city_zh":"利馬","country":"Peru","country_zh":"秘魯","lat":-12.046,"lon":-77.043,"region":"South America","popular":false},{"city":"Bogota","city_zh":"波哥大","country":"Colombia","country_zh":"哥倫比亞","lat":4.711,"lon":-74.072,"region":"South America","popular":false},{"city":"Sao Paulo","city_zh":"聖保羅","country":"Brazil","country_zh":"巴西","lat":-23.55,"lon":-46.633,"region":"South America","popular":true},{"city":"Rio de Janeiro","city_zh":"里約熱內盧","country":"Brazil","country_zh":"巴西","lat":-22.907,"lon":-43.173,"region":"South America","popular":true},{"city":"Moscow","city_zh":"莫斯科","country":"Russia","country_zh":"俄羅斯","lat":55.755,"lon":37.617,"region":"Europe/Asia","popular":true},{"city":"Saint Petersburg","city_zh":"聖彼得堡","country":"Russia","country_zh":"俄羅斯","lat":59.934,"lon":30.335,"region":"Europe/Asia","popular":false},{"city":"Warsaw","city_zh":"華沙","country":"Poland","country_zh":"波蘭","lat":52.23,"lon":21.012,"region":"Europe","popular":false},{"city":"Budapest","city_zh":"布達佩斯","country":"Hungary","country_zh":"匈牙利","lat":47.497,"lon":19.04,"region":"Europe","popular":false},{"city":"Athens","city_zh":"雅典","country":"Greece","country_zh":"希臘","lat":37.984,"lon":23.728,"region":"Europe","popular":false},{"city":"Lisbon","city_zh":"里斯本","country":"Portugal","country_zh":"葡萄牙","lat":38.722,"lon":-9.139,"region":"Europe","popular":false},{"city":"Dublin","city_zh":"都柏林","country":"Ireland","country_zh":"愛爾蘭","lat":53.349,"lon":-6.26,"region":"Europe","popular":false},{"city":"Edinburgh","city_zh":"愛丁堡","country":"UK","country_zh":"英國","lat":55.953,"lon":-3.188,"region":"Europe","popular":false},{"city":"Brussels","city_zh":"布魯塞爾","country":"Belgium","country_zh":"比利時","lat":50.85,"lon":4.351,"region":"Europe","popular":false},{"city":"Zurich","city_zh":"蘇黎世","country":"Switzerland","country_zh":"瑞士","lat":47.376,"lon":8.541,"region":"Europe","popular":false},{"city":"Geneva","city_zh":"日內瓦","country":"Switzerland","country_zh":"瑞士","lat":46.204,"lon":6.143,"region":"Europe","popular":false},{"city":"Luxembourg","city_zh":"盧森堡","country":"Luxembourg","country_zh":"盧森堡","lat":49.611,"lon":6.13,"region":"Europe","popular":false},{"city":"Monaco","city_zh":"摩納哥","country":"Monaco","country_zh":"摩納哥","lat":43.738,"lon":7.424,"region":"Europe","popular":false},{"city":"Andorra la Vella","city_zh":"安道爾城","country":"Andorra","country_zh":"安道爾","lat":42.507,"lon":1.521,"region":"Europe","popular":false},{"city":"Riyadh","city_zh":"利雅德","country":"Saudi Arabia","country_zh":"沙烏地阿拉伯","lat":24.713,"lon":46.675,"region":"Middle East","popular":false},{"city":"Tehran","city_zh":"德黑蘭","country":"Iran","country_zh":"伊朗","lat":35.689,"lon":51.389,"region":"Middle East","popular":false},{"city":"Baghdad","city_zh":"巴格達","country":"Iraq","country_zh":"伊拉克","lat":33.315,"lon":44.366,"region":"Middle East","popular":false},{"city":"Jerusalem","city_zh":"耶路撒冷","country":"Israel","country_zh":"以色列","lat":31.768,"lon":35.214,"region":"Middle East","popular":false},{"city":"Amman","city_zh":"安曼","country":"Jordan","country_zh":"約旦","lat":31.953,"lon":35.91,"region":"Middle East","popular":false},{"city":"Beirut","city_zh":"貝魯特","country":"Lebanon","country_zh":"黎巴嫩","lat":33.893,"lon":35.502,"region":"Middle East","popular":false},{"city":"Kuwait City","city_zh":"科威特市","country":"Kuwait","country_zh":"科威特","lat":29.375,"lon":47.977,"region":"Middle East","popular":false},{"city":"Muscat","city_zh":"馬斯喀特","country":"Oman","country_zh":"阿曼","lat":23.585,"lon":58.406,"region":"Middle East","popular":false},{"city":"Sanaa","city_zh":"沙那","country":"Yemen","country_zh":"葉門","lat":15.369,"lon":44.191,"region":"Middle East","popular":false},{"city":"Kabul","city_zh":"喀布爾","country":"Afghanistan","country_zh":"阿富汗","lat":34.555,"lon":69.207,"region":"Central Asia","popular":false},{"city":"Tashkent","city_zh":"塔什干","country":"Uzbekistan","country_zh":"烏茲別克","lat":41.299,"lon":69.24,"region":"Central Asia","popular":false},{"city":"Almaty","city_zh":"阿拉木圖","country":"Kazakhstan","country_zh":"哈薩克","lat":43.222,"lon":76.851,"region":"Central Asia","popular":false},{"city":"Bishkek","city_zh":"比什凱克","country":"Kyrgyzstan","country_zh":"吉爾吉斯","lat":42.874,"lon":74.57,"region":"Central Asia","popular":false},{"city":"Dhaka","city_zh":"達卡","country":"Bangladesh","country_zh":"孟加拉","lat":23.81,"lon":90.413,"region":"South Asia","popular":false},{"city":"Kathmandu","city_zh":"加德滿都","country":"Nepal","country_zh":"尼泊爾","lat":27.717,"lon":85.324,"region":"South Asia","popular":false},{"city":"Thimphu","city_zh":"廷布","country":"Bhutan","country_zh":"不丹","lat":27.472,"lon":89.639,"region":"South Asia","popular":false},{"city":"Yangon","city_zh":"仰光","country":"Myanmar","country_zh":"緬甸","lat":16.866,"lon":96.195,"region":"Southeast Asia","popular":false},{"city":"Phnom Penh","city_zh":"金邊","country":"Cambodia","country_zh":"柬埔寨","lat":11.556,"lon":104.928,"region":"Southeast Asia","popular":false},{"city":"Vientiane","city_zh":"永珍","country":"Laos","country_zh":"寮國","lat":17.975,"lon":102.633,"region":"Southeast Asia","popular":false},{"city":"Ulaanbaatar","city_zh":"烏蘭巴托","country":"Mongolia","country_zh":"蒙古","lat":47.886,"lon":106.906,"region":"East Asia","popular":false},{"city":"Pyongyang","city_zh":"平壤","country":"North Korea","country_zh":"北韓","lat":39.039,"lon":125.763,"region":"East Asia","popular":false},{"city":"North Pole","city_zh":"北極點","country":"Arctic","country_zh":"北極","lat":90.0,"lon":0.0,"region":"Arctic","popular":false},{"city":"Svalbard","city_zh":"斯瓦爾巴","country":"Norway","country_zh":"挪威","lat":78.223,"lon":15.626,"region":"Arctic","popular":false},{"city":"Longyearbyen","city_zh":"朗伊爾城","country":"Norway","country_zh":"挪威","lat":78.223,"lon":15.626,"region":"Arctic","popular":false},{"city":"Nuuk","city_zh":"努克","country":"Greenland","country_zh":"格陵蘭","lat":64.181,"lon":-51.694,"region":"Arctic","popular":false},{"city":"Barrow","city_zh":"巴羅","country":"USA","country_zh":"美國","lat":71.291,"lon":-156.789,"region":"Arctic","popular":false},{"city":"South Pole","city_zh":"南極點","country":"Antarctica","country_zh":"南極","lat":-90.0,"lon":0.0,"region":"Antarctica","popular":false},{"city":"McMurdo Station","city_zh":"麥克默多站","country":"Antarctica","country_zh":"南極","lat":-77.841,"lon":166.686,"region":"Antarctica","popular":false},{"city":"Amundsen-Scott Station","city_zh":"阿蒙森-斯科特站","country":"Antarctica","country_zh":"南極","lat":-90.0,"lon":0.0,"region":"Antarctica","popular":false},{"city":"Palmer Station","city_zh":"帕爾默站","country":"Antarctica","country_zh":"南極","lat":-64.774,"lon":-64.053,"region":"Antarctica","popular":false},{"city":"Rothera Station","city_zh":"羅瑟拉站","country":"Antarctica","country_zh":"南極","lat":-67.567,"lon":-68.125,"region":"Antarctica","popular":false}]}</script>
     <div class="main-container">
-        <!-- 視窗容器：800x980 -->
+        <!-- 視窗容器：800x1080 -->
         <div class="window-container">
-            <!-- 窗戶區域 - 上方 700x700 -->
+            <!-- 窗戶區域 - 上方 800x800 -->
             <div class="window-area">
         <div class="window-frame">
             <div class="window-content">
@@ -463,7 +463,7 @@
             </div>
         </div>
             </div>
-            <!-- 底部資訊 bar - 480px 高，完全在 800x980 範圍內 -->
+            <!-- 底部資訊 bar - 280px 高，完全在 800x1080 範圍內 -->
             <div class="info-bar">
         <!-- 狀態1: 國家顯示 -->
         <div class="info-state active" id="stateCountry" style="cursor: pointer;">
@@ -1102,22 +1102,25 @@
                     consecutiveErrors = 0;
                     const position = parseInt(data.position);
                     
-                    // 重置 lastKnobPosition 為 null，強制觸發選擇
-                    // 這樣即使位置相同，也會觸發 UI 更新
+                    // 記錄之前的位置
                     const previousPosition = lastKnobPosition;
-                    lastKnobPosition = null; // 臨時重置
                     
-                    console.log('📍 立即讀取旋鈕位置:', position, '之前位置:', previousPosition);
+                    console.log('📍 立即讀取旋鈕位置（狀態切換時）:', position, '之前位置:', previousPosition, '當前狀態:', currentState);
                     
-                    // 根據當前狀態選擇對應的選項
-                    if (currentState === State.TIMER) {
-                        selectByPosition(position, 'timer');
-                    } else if (currentState === State.ANGLE) {
-                        selectByPosition(position, 'angle');
+                    // 只在狀態切換時顯示當前位置，但不設置 lastKnobPosition
+                    // 這樣輪詢邏輯可以檢測到位置變化並更新 UI
+                    // 如果 lastKnobPosition 為 null 或與當前位置不同，才觸發選擇
+                    if (previousPosition === null || previousPosition !== position) {
+                        // 根據當前狀態選擇對應的選項（只顯示，不設置 lastKnobPosition）
+                        if (currentState === State.TIMER) {
+                            selectByPosition(position, 'timer');
+                        } else if (currentState === State.ANGLE) {
+                            selectByPosition(position, 'angle');
+                        }
                     }
                     
-                    // 設置 lastKnobPosition 為當前位置
-                    lastKnobPosition = position;
+                    // 重要：不設置 lastKnobPosition，讓輪詢邏輯來處理
+                    // 這樣當用戶轉動旋鈕時，輪詢邏輯可以檢測到變化
                 }
             } catch (error) {
                 // 靜默處理錯誤
@@ -1210,21 +1213,41 @@
                         
                         const position = parseInt(data.position);
                         
-                        // 只有當位置改變時才觸發選擇（避免重複觸發）
-                        if (lastKnobPosition !== position) {
+                        // 檢測位置變化：只有當位置改變時才觸發選擇（避免重複觸發）
+                        if (lastKnobPosition === null) {
+                            // 首次讀取到位置，只記錄位置，不觸發任何操作
+                            // 這樣可以確保初始顯示國家時不會自動跳轉
                             lastKnobPosition = position;
-                            console.log('🔄 旋鈕位置改變:', position, '當前狀態:', currentState);
+                            console.log('📍 首次讀取旋鈕位置:', position, '當前狀態:', currentState, '（僅記錄，不觸發操作）');
                             
-                            // 如果還在 Phase 0，轉動旋鈕進入 Phase 1
-                            if (currentPhase === Phase.POST_ARRIVAL) {
+                            // 只有在已經進入 TIMER 或 ANGLE 狀態時，才選擇對應的選項
+                            // 不自動從 POST_ARRIVAL 切換到 TIME_SELECTION（應該由按鈕觸發）
+                            if (currentState === State.TIMER) {
+                                console.log('✅ 首次讀取：選擇時間，位置:', position);
+                                selectByPosition(position, 'timer');
+                            } else if (currentState === State.ANGLE) {
+                                console.log('✅ 首次讀取：選擇氣候帶，位置:', position);
+                                selectByPosition(position, 'angle');
+                            }
+                            // 注意：不處理 POST_ARRIVAL 狀態，讓按鈕來觸發切換
+                        } else if (lastKnobPosition !== position) {
+                            // 位置改變了，更新並觸發選擇
+                            const oldPosition = lastKnobPosition;
+                            lastKnobPosition = position;
+                            console.log('🔄 旋鈕位置改變:', oldPosition, '->', position, '當前狀態:', currentState);
+                            
+                            // 如果還在 Phase 0（POST_ARRIVAL），旋鈕轉動可以進入 Phase 1
+                            // 但只有在用戶主動轉動旋鈕時才觸發（位置改變表示用戶轉動了）
+                            if (currentPhase === Phase.POST_ARRIVAL && currentState === State.COUNTRY) {
                                 console.log('✅ 旋鈕轉動，從 Phase 0 進入 Phase 1');
                                 currentPhase = Phase.TIME_SELECTION;
                                 switchState(State.TIMER);
                                 phase0Initialized = true;
+                                // 選擇對應的時間選項
+                                selectByPosition(position, 'timer');
                             }
-                            
                             // 根據當前狀態選擇對應的選項
-                            if (currentState === State.TIMER) {
+                            else if (currentState === State.TIMER) {
                                 console.log('✅ 旋鈕選擇時間，位置:', position);
                                 selectByPosition(position, 'timer');
                             } else if (currentState === State.ANGLE) {
@@ -1233,17 +1256,8 @@
                             } else {
                                 console.log('⚠️ 旋鈕位置改變，但當前狀態不支援選擇:', currentState);
                             }
-                        } else if (lastKnobPosition === null) {
-                            // 首次讀取到位置，立即選擇
-                            lastKnobPosition = position;
-                            console.log('📍 首次讀取旋鈕位置:', position, '當前狀態:', currentState);
-                            
-                            if (currentState === State.TIMER) {
-                                selectByPosition(position, 'timer');
-                            } else if (currentState === State.ANGLE) {
-                                selectByPosition(position, 'angle');
-                            }
                         }
+                        // 如果位置沒變，不做任何處理（避免重複觸發）
                     } else {
                         consecutiveErrors++;
                     }
@@ -1547,10 +1561,14 @@
                     // 從選擇氣候帶 → 準備起航（不顯示目的地）
                     if (selectedDirection !== null) {
                         console.log('✅ 按鈕：氣候帶已選擇，進入準備起航狀態');
-                        if (destinationData) {
-                            // 直接準備起航（準備 TTS，不播放），不顯示目的地
+                        if (destinationData && preparedAnnouncement) {
+                            // TTS 語音已經在選擇氣候時提前生成，直接進入準備起航狀態
                             currentState = State.READY_TO_FLY;
                             switchState(State.READY_TO_FLY);
+                            console.log('🛫 已準備好起飛，等待按鈕...（TTS 語音已提前生成）');
+                        } else if (destinationData) {
+                            // 如果 TTS 還沒生成，現在生成（備用方案）
+                            console.log('⚠️ TTS 語音尚未生成，現在生成...');
                             prepareForTakeoff();
                         } else {
                             console.log('⚠️ 目的地資料尚未計算，請稍候...');
@@ -1611,19 +1629,22 @@
         async function startTakeoffSequence() {
             console.log('🚀 開始起飛序列...');
             
-            // 1. 播放 captain.mp3
-            console.log('1️⃣ 播放 captain.mp3...');
-            await playAudioFile('sounds/captain.mp3');
+            // 1. 播放 captain.mp3（只播放前 6 秒）
+            console.log('1️⃣ 播放 captain.mp3（6 秒）...');
+            await playAudioFile('sounds/captain.mp3', 6);
+            console.log('✅ captain.mp3 播放完成');
             
-            // 2. 播放準備好的 TTS 語音
+            // 2. 播放準備好的 TTS 語音（文字已提前生成，現在調用 TTS API 生成並播放）
             if (preparedAnnouncement) {
-                console.log('2️⃣ 播放 TTS 語音...');
+                console.log('2️⃣ 生成並播放 TTS 語音（文字已準備好，只需等待音頻生成）...');
                 await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
                     isTakeoff: true,
                     rate: 0.7,
                     pitch: 0.85,
                     volume: 0.9
                 });
+            } else {
+                console.warn('⚠️ TTS 語音文字未準備，跳過 TTS 播放');
             }
             
             // 3. 播放 takeoff.mp3
@@ -1640,15 +1661,32 @@
         }
         
         // 播放音頻文件
-        function playAudioFile(url) {
+        function playAudioFile(url, maxDuration = null) {
             return new Promise((resolve, reject) => {
                 const audio = new Audio(url);
-                audio.onended = () => resolve();
+                
+                // 如果指定了最大播放時長，設置定時器
+                let timeoutId = null;
+                if (maxDuration && maxDuration > 0) {
+                    timeoutId = setTimeout(() => {
+                        audio.pause();
+                        audio.currentTime = 0;
+                        console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止`);
+                        resolve();
+                    }, maxDuration * 1000);
+                }
+                
+                audio.onended = () => {
+                    if (timeoutId) clearTimeout(timeoutId);
+                    resolve();
+                };
                 audio.onerror = (error) => {
+                    if (timeoutId) clearTimeout(timeoutId);
                     console.error('❌ 音頻播放失敗:', url, error);
                     resolve(); // 即使失敗也繼續
                 };
                 audio.play().catch(error => {
+                    if (timeoutId) clearTimeout(timeoutId);
                     console.error('❌ 音頻播放錯誤:', error);
                     resolve();
                 });
@@ -1770,10 +1808,10 @@
 
         // 初始化
         console.log('Focus Flight - New Layout 已載入');
-        console.log('視窗尺寸: 800 x 980px (直式)');
-        console.log('窗戶區域: 700 x 700px (上方)');
+        console.log('視窗尺寸: 800 x 1080px (直式)');
+        console.log('窗戶區域: 800 x 800px (上方)');
         console.log('資訊 bar: 800 x 280px (下方)');
-        console.log('總高度: 700 + 280 = 980px ✓');
+        console.log('總高度: 800 + 280 = 1080px ✓');
         
         // 初始化：確保初始狀態正確顯示
         function initializeApp() {
@@ -3141,6 +3179,7 @@
             const rate = isTakeoffAnnouncement ? 0.7 : (options.rate || 1.0); // 70% 語速（更慢、更有步調）
             const pitch = isTakeoffAnnouncement ? 0.85 : (options.pitch || 1.0); // 稍低音調（更自然，不像機器人）
             const volume = options.volume || 0.9; // 稍微降低音量，更柔和
+            const preloadOnly = options.preloadOnly || false; // 僅預載，不等待播放完成
             
             // 檢查是否有本機 TTS 服務（audioManager）
             const TTS_BASE = 'http://127.0.0.1:5005';
@@ -3150,22 +3189,38 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: text,
-                        language: language === 'zh-TW' ? 'zh' : 'en',
-                        voice: 'nova',
-                        // 起飛語音特殊參數
-                        rate: rate,
-                        pitch: pitch,
-                        volume: volume
+                        languageCode: language === 'zh-TW' ? 'zh' : 'en'  // 修正：使用 languageCode 而不是 language
+                        // 注意：服務器不支援 voice, rate, pitch, volume 參數，已移除
                     }),
                     timeout: 10000
                 });
                 
                 if (response.ok) {
-                    console.log('✅ 本機 TTS 播放成功');
-                    return;
+                    const result = await response.json();
+                    if (result.success) {
+                        if (preloadOnly) {
+                            console.log('✅ 本機 TTS 音頻已預載（後台準備完成）');
+                            return Promise.resolve(); // 預載模式，立即返回，不等待播放
+                        } else {
+                            console.log('✅ 本機 TTS 播放成功');
+                            return;
+                        }
+                    } else {
+                        console.warn('⚠️ 本機 TTS 返回錯誤:', result.error);
+                        throw new Error(result.error || 'TTS 播放失敗');
+                    }
+                } else {
+                    // 嘗試解析錯誤響應
+                    try {
+                        const errorData = await response.json();
+                        console.warn('⚠️ 本機 TTS 返回錯誤:', response.status, errorData);
+                    } catch (e) {
+                        console.warn('⚠️ 本機 TTS 返回錯誤:', response.status, response.statusText);
+                    }
+                    throw new Error(`TTS 服務返回 ${response.status}`);
                 }
             } catch (error) {
-                console.warn('⚠️ 本機 TTS 不可用，使用瀏覽器 TTS');
+                console.warn('⚠️ 本機 TTS 不可用，使用瀏覽器 TTS:', error.message);
             }
             
             // 備用：瀏覽器 TTS
@@ -3248,8 +3303,65 @@
                             resolve();
                         };
                         utterance.onerror = (error) => {
-                            console.warn('⚠️ 語音播放錯誤:', error);
-                            resolve();
+                            console.error('❌ 語音播放錯誤:', error);
+                            console.error('   錯誤類型:', error.error);
+                            console.error('   錯誤詳情:', error);
+                            
+                            // 如果是 synthesis-failed，嘗試縮短文字或使用更簡單的方式
+                            if (error.error === 'synthesis-failed' || error.error === 'network') {
+                                console.warn('⚠️ 語音合成失敗，可能是文字過長或網路問題');
+                                // 嘗試將文字分段播放
+                                const maxLength = 200; // 每段最大長度
+                                if (text.length > maxLength) {
+                                    console.log('📝 文字過長，嘗試分段播放...');
+                                    const segments = [];
+                                    let currentSegment = '';
+                                    const sentences = text.split(/[。！？\n]/);
+                                    
+                                    for (const sentence of sentences) {
+                                        if ((currentSegment + sentence).length <= maxLength) {
+                                            currentSegment += sentence;
+                                        } else {
+                                            if (currentSegment) segments.push(currentSegment);
+                                            currentSegment = sentence;
+                                        }
+                                    }
+                                    if (currentSegment) segments.push(currentSegment);
+                                    
+                                    // 分段播放
+                                    let segmentIndex = 0;
+                                    const playNextSegment = () => {
+                                        if (segmentIndex >= segments.length) {
+                                            resolve();
+                                            return;
+                                        }
+                                        
+                                        const segmentUtterance = new SpeechSynthesisUtterance(segments[segmentIndex]);
+                                        segmentUtterance.lang = utterance.lang;
+                                        segmentUtterance.rate = utterance.rate;
+                                        segmentUtterance.pitch = utterance.pitch;
+                                        segmentUtterance.volume = utterance.volume;
+                                        if (utterance.voice) segmentUtterance.voice = utterance.voice;
+                                        
+                                        segmentUtterance.onend = () => {
+                                            segmentIndex++;
+                                            setTimeout(playNextSegment, 100); // 短暫延遲後播放下一段
+                                        };
+                                        segmentUtterance.onerror = (err) => {
+                                            console.error(`❌ 第 ${segmentIndex + 1} 段播放失敗:`, err);
+                                            segmentIndex++;
+                                            setTimeout(playNextSegment, 100); // 即使失敗也繼續下一段
+                                        };
+                                        
+                                        speechSynthesis.speak(segmentUtterance);
+                                    };
+                                    
+                                    playNextSegment();
+                                    return; // 不執行後面的 resolve
+                                }
+                            }
+                            
+                            resolve(); // 即使失敗也繼續，不阻塞流程
                         };
                         speechSynthesis.speak(utterance);
                     });
@@ -3381,6 +3493,23 @@
                 
                 // 不自動切換到目的地顯示，等待按鈕按下
                 console.log('📍 目的地信息已準備，等待按鈕按下進入準備起航狀態...');
+                
+                // 提前生成 TTS 語音文字（不調用 TTS API，避免提前播放）
+                console.log('🎤 提前生成 TTS 語音文字...');
+                const climateZone = destinationData.climateZone || null;
+                const announcement = generateTakeoffAnnouncement(
+                    destinationData,
+                    destinationData.country,
+                    selectedTimer,
+                    climateZone
+                );
+                
+                if (announcement) {
+                    preparedAnnouncement = announcement;
+                    console.log('✅ TTS 語音文字已準備完成（等待起飛時再生成音頻）');
+                } else {
+                    console.warn('⚠️ 語音文字生成失敗');
+                }
                 
                 // 更新按鈕狀態（保持在氣候帶選擇狀態）
                 updateNextButton();
