@@ -212,15 +212,6 @@
             transition: left 0.5s ease-out;
         }
 
-        .flight-progress-plane {
-            position: absolute;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 16px;
-            pointer-events: none;
-            transition: left 0.5s ease-out;
-            filter: drop-shadow(0 0 4px rgba(0,0,0,0.6));
-        }
 
         .flight-progress-meta {
             display: flex;
@@ -667,8 +658,6 @@
             <div class="flight-progress-bar-bg">
                 <div class="flight-progress-bar-fill" id="flightProgressFill"></div>
                 <div class="flight-progress-glow" id="flightProgressGlow"></div>
-                <!-- 小飛機 icon，跟著進度條前進 -->
-                <div class="flight-progress-plane" id="flightProgressPlane">✈️</div>
             </div>
             <div class="flight-progress-meta">
                 <span id="flightProgressStartLabel">目前位置</span>
@@ -1657,8 +1646,15 @@
                     break;
                     
                 default:
-                    console.log('⚠️ 當前狀態不支援按鈕操作:', currentState);
-                    console.log('   可用狀態:', Object.values(State));
+                    // 檢查是否在降落階段（Phase.DESCENT）
+                    if (currentPhase === Phase.DESCENT && !manualLandingTriggered) {
+                        console.log('🛬 按鈕：在降落階段按下，觸發手動降落');
+                        manualLandingTriggered = true;
+                        triggerManualLanding();
+                    } else {
+                        console.log('⚠️ 當前狀態不支援按鈕操作:', currentState);
+                        console.log('   可用狀態:', Object.values(State));
+                    }
             }
         }
         
@@ -1695,6 +1691,10 @@
         // 開始起飛序列
         async function startTakeoffSequence() {
             console.log('🚀 開始起飛序列...');
+            
+            // 重置降落相關標記
+            descentAnnouncementPlayed = false;
+            manualLandingTriggered = false;
             
             // 顯示登機／等待機長廣播的動態提示
             setBoardingStatus(true, '登機中，請舒適入座，等待機長廣播...');
@@ -4065,14 +4065,12 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 const wrapper = document.getElementById('flightProgressWrapper');
                 const fill = document.getElementById('flightProgressFill');
                 const glow = document.getElementById('flightProgressGlow');
-                const plane = document.getElementById('flightProgressPlane');
                 const startLabel = document.getElementById('flightProgressStartLabel');
                 const endLabel = document.getElementById('flightProgressEndLabel');
-                if (wrapper && fill && glow && plane && startLabel && endLabel) {
+                if (wrapper && fill && glow && startLabel && endLabel) {
                     wrapper.style.display = 'block';
                     fill.style.width = '0%';
                     glow.style.left = '0%';
-                    plane.style.left = '0%';
 
                     // 左邊顯示目前位置（國家名稱），右邊永遠是「???」
                     try {
@@ -4104,10 +4102,6 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         // 讓光暈跟著前端推進，稍微超前一點點看起來更有動感
                         const glowPos = Math.min(100, Math.max(0, progress * 100 + 2));
                         glow.style.left = glowPos + '%';
-
-                        // 小飛機 icon 跟著進度前進，位於填滿部分的最前端
-                        const planePos = Math.min(100, Math.max(0, progress * 100));
-                        plane.style.left = planePos + '%';
                     }, 1000);
                 }
             } catch (e) {
@@ -4125,25 +4119,262 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             }, durationMs);
         }
 
+        // 標記是否已經播放過準備降落語音
+        let descentAnnouncementPlayed = false;
+        // 標記是否已經手動觸發降落
+        let manualLandingTriggered = false;
+
         async function handleDescent() {
             // Phase 5: 降落前 5 分鐘
             console.log('🛬 準備降落（5分鐘前）');
             
-            if (destinationData) {
-                const announcement = await generateAnnouncement('approach',
-                    destinationData.city,
-                    destinationData.country,
-                    destinationData.country_iso_code,
-                    {
-                        durationMinutes: selectedTimer,
-                        language: 'zh-TW'
-                    }
-                );
-                
-                if (announcement) {
-                    await playAnnouncement(announcement, 'zh-TW');
+            // 自動播放準備降落的喚醒語音
+            if (!descentAnnouncementPlayed) {
+                descentAnnouncementPlayed = true;
+                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                if (wakeUpAnnouncement) {
+                    await playAnnouncement(wakeUpAnnouncement, 'zh-TW');
                 }
             }
+        }
+
+        // 生成準備降落的喚醒語音
+        function generateDescentWakeUpAnnouncement() {
+            const templates = [
+                `各位旅客，我們即將在五分鐘後開始降落程序。請您慢慢醒來，輕輕活動一下身體。您可以睜開眼睛，感受一下機艙內的燈光。我們即將抵達目的地，請您準備好回到現實世界。`,
+                `親愛的旅客，我們的旅程即將結束。請您緩緩醒來，輕輕伸展一下。您可以慢慢睜開眼睛，感受周圍的環境。我們正在準備降落，很快您就會回到清醒的狀態。`,
+                `各位旅客，我們即將開始降落。請您慢慢從深層的休息中醒來，輕輕活動您的四肢。您可以睜開眼睛，適應一下光線。我們即將抵達，請您準備好迎接新的開始。`
+            ];
+            return templates[Math.floor(Math.random() * templates.length)];
+        }
+
+        // 手動觸發降落（在降落階段按下按鈕）
+        async function triggerManualLanding() {
+            console.log('🛬 手動觸發降落流程');
+            
+            const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
+            const timeDiff = actualDuration - selectedTimer; // 正數 = 晚，負數 = 早
+            const timeDiffPercent = (timeDiff / selectedTimer) * 100;
+            
+            console.log('📊 實際時長:', actualDuration, '分鐘，預期:', selectedTimer, '分鐘，差異:', timeDiff, '分鐘');
+            
+            // 生成降落語音和圖片
+            const landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
+            
+            // 播放正式降落語音
+            if (landingData.announcement) {
+                await playAnnouncement(landingData.announcement, 'zh-TW');
+            }
+            
+            // 生成並顯示降落圖片
+            if (landingData.destination) {
+                const landingImageUrl = await generateLandingImage(
+                    landingData.destination.city,
+                    landingData.destination.country,
+                    landingData.destination.timezone || 'UTC',
+                    new Date().toISOString()
+                );
+                
+                if (landingImageUrl) {
+                    // 顯示降落圖片
+                    const windowContent = document.querySelector('.window-content');
+                    if (windowContent) {
+                        // 先隱藏影片
+                        const videoContainer = document.getElementById('videoContainer');
+                        if (videoContainer) {
+                            videoContainer.style.display = 'none';
+                        }
+                        
+                        windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                        windowContent.style.backgroundSize = 'cover';
+                        windowContent.style.backgroundPosition = 'center';
+                        console.log('🖼️ 降落圖片已顯示');
+                    }
+                }
+            }
+            
+            // 進入正式降落階段
+            setTimeout(() => {
+                switchToPhase(Phase.LANDING);
+            }, 2000);
+        }
+
+        // 根據時間差生成降落內容（語音和目的地）
+        async function generateLandingContent(timeDiffMinutes, timeDiffPercent, actualDuration) {
+            let announcement = '';
+            let destination = null;
+            
+            // 根據實際時間重新計算最終目的地
+            try {
+                const climateZone = destinationData?.climateZone || null;
+                const punctuality = calculatePunctuality(selectedTimer, actualDuration);
+                
+                destination = await destinationCalculator.findDestination(
+                    actualDuration,
+                    selectedDirection,
+                    punctuality,
+                    climateZone
+                );
+                
+                // 保留氣候帶選項
+                if (climateZone && destination) {
+                    destination.climateZone = climateZone;
+                }
+                
+                console.log('📍 降落目的地計算完成:', destination);
+            } catch (error) {
+                console.warn('⚠️ 計算降落目的地失敗，使用原目的地:', error);
+                destination = destinationData;
+            }
+            
+            // 檢查是否觸發蟲洞（時空錯位）
+            const isWormhole = destination && destination.wormhole === true;
+            
+            // 使用分鐘數判斷（更直觀），並結合蟲洞情況
+            if (isWormhole) {
+                // 蟲洞情況：時空錯位，目的地是意外抵達的
+                if (timeDiffMinutes < -15) {
+                    // 提早 + 蟲洞 = 緊急迫降 + 時空錯位
+                    const templates = [
+                        `各位旅客，我們遇到了一個非常特殊的情況。由於緊急迫降程序，我們意外穿越了時空，降落在了一個意想不到的地方。雖然這不是原計劃的目的地，但請放心，我們已經安全著陸。這可能是一段意外的冒險。`,
+                        `各位旅客，抱歉通知您一個特別的消息。由於緊急情況，我們需要提前降落，但在降落過程中，我們似乎穿越了時空。我們現在在一個完全不同的地方，但請相信，這會是一段有趣的經歷。`,
+                        `各位旅客，我們剛剛經歷了一段不可思議的旅程。由於緊急迫降，我們意外進入了時空錯位，現在降落在了一個計劃外的地點。雖然這很意外，但請放心，我們已經安全抵達。`
+                    ];
+                    announcement = templates[Math.floor(Math.random() * templates.length)];
+                    console.log('🌀🚨 蟲洞 + 迫降情況（提早超過 15 分鐘 + 時空錯位）');
+                } else if (timeDiffMinutes < -5) {
+                    // 提早 + 蟲洞 = 提早抵達 + 時空錯位
+                    const templates = [
+                        `各位旅客，我們比預期時間提早抵達了，但有一個小插曲要告訴您。在飛行途中，我們意外穿越了時空，現在降落在了一個意想不到的地方。雖然這不是原計劃的目的地，但這可能是一段特別的旅程。`,
+                        `各位旅客，好消息是我們提早抵達了，但壞消息是...我們似乎降落在了一個不同的時空。不過別擔心，這可能是一段有趣的冒險。請您慢慢醒來，看看窗外這個意外的目的地。`,
+                        `各位旅客，我們比預期提早了一些，但在降落過程中發生了一件有趣的事。我們意外進入了時空錯位，現在在一個完全不同的地方。雖然這很意外，但請相信，這會是一段難忘的經歷。`
+                    ];
+                    announcement = templates[Math.floor(Math.random() * templates.length)];
+                    console.log('🌀⏰ 蟲洞 + 提早降落（提早 ' + Math.abs(timeDiffMinutes) + ' 分鐘 + 時空錯位）');
+                } else if (timeDiffMinutes <= 5 && timeDiffMinutes >= -5) {
+                    // 準時 + 蟲洞 = 正常降落但時空錯位
+                    const templates = [
+                        `各位旅客，我們已經準時抵達...不過，有個特別的情況要告訴您。在降落過程中，我們意外穿越了時空，現在在一個完全不同的地方。雖然這不是原計劃的目的地，但這可能是一段意外的驚喜。`,
+                        `各位旅客，我們準時開始降落程序，但在降落時發生了一件不可思議的事。我們意外進入了時空錯位，現在降落在了一個意想不到的地方。請您慢慢醒來，看看窗外這個意外的目的地。`,
+                        `各位旅客，我們已經準時抵達目的地附近，但由於時空錯位，我們現在在一個不同的地方。雖然這很意外，但請相信，這會是一段特別的旅程。請您慢慢醒來，準備欣賞這個意外的風景。`
+                    ];
+                    announcement = templates[Math.floor(Math.random() * templates.length)];
+                    console.log('🌀✅ 蟲洞 + 準時降落（差異 ' + timeDiffMinutes + ' 分鐘 + 時空錯位）');
+                } else if (timeDiffMinutes <= 15) {
+                    // 晚到 + 蟲洞 = 風大盤旋 + 時空錯位
+                    const templates = [
+                        `各位旅客，抱歉讓您多等了一會兒。由於上空風勢較大，我們在上方盤旋時，意外進入了時空錯位。現在我們降落在了一個意想不到的地方。雖然這不是原計劃的目的地，但這可能是一段有趣的冒險。`,
+                        `各位旅客，我們剛才因為風勢在上方盤旋了一會兒，但在盤旋過程中，我們意外穿越了時空。現在我們在一個完全不同的地方。請您慢慢醒來，看看窗外這個意外的目的地。`,
+                        `各位旅客，由於天氣因素我們多繞了一會兒，但在這個過程中發生了一件特別的事。我們意外進入了時空錯位，現在降落在了一個計劃外的地點。雖然這很意外，但請相信，這會是一段難忘的經歷。`
+                    ];
+                    announcement = templates[Math.floor(Math.random() * templates.length)];
+                    console.log('🌀💨 蟲洞 + 晚降落（晚 ' + timeDiffMinutes + ' 分鐘 + 時空錯位）');
+                } else {
+                    // 晚很多 + 蟲洞 = 飛錯機場 + 時空錯位
+                    const templates = [
+                        `各位旅客，抱歉讓您久等了。我們的導航系統出了點問題，飛到了另一個機場附近，更糟糕的是，我們還意外穿越了時空。現在我們在一個完全不同的地方。不過別擔心，這可能是一段特別的冒險。`,
+                        `各位旅客，有個有趣的情況要告訴您。由於導航系統的小小誤差，我們飛到了錯誤的方向，更意外的是，我們還進入了時空錯位。現在我們在一個意想不到的地方。雖然這很意外，但請相信，這會是一段難忘的旅程。`,
+                        `各位旅客，抱歉讓您久等了。我們的導航系統剛才出了點問題，把我們帶到了錯誤的地方，更特別的是，我們還意外穿越了時空。現在我們在一個完全不同的目的地。請您慢慢醒來，看看窗外這個意外的風景。`
+                    ];
+                    announcement = templates[Math.floor(Math.random() * templates.length)];
+                    console.log('🌀🌀 蟲洞 + 飛錯機場（晚 ' + timeDiffMinutes + ' 分鐘 + 時空錯位）');
+                }
+            } else {
+                // 正常情況（沒有蟲洞）
+                if (timeDiffMinutes < -15) {
+                    // 提早超過 15 分鐘 = 迫降
+                    announcement = `各位旅客，由於緊急情況，我們需要提前降落。機長已決定進行緊急降落程序，請您保持冷靜。我們即將降落在一個臨時機場。雖然這不是原計劃的目的地，但請放心，我們會確保您的安全。`;
+                    console.log('🚨 迫降情況（提早超過 15 分鐘）');
+                } else if (timeDiffMinutes < -5) {
+                    // 提早 5-15 分鐘 = 機長趕時間
+                    announcement = `各位旅客，由於航路優化，我們比預期時間提早抵達。機長決定提前開始降落程序。請您慢慢醒來，我們即將降落在目的地。`;
+                    console.log('⏰ 提早降落（機長趕時間，提早 ' + Math.abs(timeDiffMinutes) + ' 分鐘）');
+                } else if (timeDiffMinutes <= 5 && timeDiffMinutes >= -5) {
+                    // 準時（±5 分鐘內）
+                    announcement = `各位旅客，我們即將開始降落程序。請您慢慢醒來，輕輕活動一下身體。我們正在接近目的地，很快您就會看到窗外的風景。`;
+                    console.log('✅ 準時降落（差異 ' + timeDiffMinutes + ' 分鐘）');
+                } else if (timeDiffMinutes <= 15) {
+                    // 晚 5-15 分鐘 = 風大盤旋
+                    announcement = `各位旅客，由於上空風勢較大，我們在上方盤旋了一會兒，現在已經調整好航線。請您慢慢醒來，我們即將開始降落程序。`;
+                    console.log('💨 晚降落（風大盤旋，晚 ' + timeDiffMinutes + ' 分鐘）');
+                } else {
+                    // 晚超過 15 分鐘 = 飛錯機場
+                    announcement = `各位旅客，抱歉讓您久等了。由於導航系統的小小誤差，我們剛才飛到了另一個機場附近。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。請您慢慢醒來，我們即將降落。`;
+                    console.log('🌀 晚降落（飛錯機場，晚 ' + timeDiffMinutes + ' 分鐘）');
+                }
+            }
+            
+            return { announcement, destination };
+        }
+
+        // 生成降落圖片（800x800，參考 taipei.png 風格，會根據目的地時區決定是白天或夜晚）
+        async function generateLandingImage(city, country, timezone, wakeUpTime) {
+            try {
+                // 計算當地時間（使用目的地時區）
+                let localTime;
+                if (timezone) {
+                    // 將 ISO 時間轉為目的地時區的本地時間字串，再轉回 Date 方便取 hour
+                    const localString = new Date(wakeUpTime || Date.now()).toLocaleString('en-US', { timeZone: timezone });
+                    localTime = new Date(localString);
+                } else {
+                    // 沒有時區資訊就退回系統時間
+                    localTime = new Date(wakeUpTime || Date.now());
+                }
+                const hour = localTime.getHours();
+                
+                let timeSegment = '';
+                let weatherState = '';
+                let skyFeature = '';
+                
+                if (hour >= 5 && hour < 9) {
+                    timeSegment = '清晨';
+                    weatherState = '清新';
+                    skyFeature = '晨光';
+                } else if (hour >= 9 && hour < 12) {
+                    timeSegment = '早晨';
+                    weatherState = '晴朗';
+                    skyFeature = '藍天';
+                } else if (hour >= 12 && hour < 15) {
+                    timeSegment = '午間';
+                    weatherState = '明亮';
+                    skyFeature = '陽光';
+                } else if (hour >= 15 && hour < 18) {
+                    timeSegment = '午後';
+                    weatherState = '溫暖';
+                    skyFeature = '夕陽';
+                } else if (hour >= 18 && hour < 21) {
+                    timeSegment = '傍晚';
+                    weatherState = '柔和';
+                    skyFeature = '晚霞';
+                } else {
+                    timeSegment = '夜晚';
+                    weatherState = '寧靜';
+                    skyFeature = '星空';
+                }
+                
+                const prompt = '以飛機窗戶內視角為構圖，畫面下方有清楚可辨識的單邊飛機機翼作為前景，保持固定位置與比例，帶有輕微 3D 反射與玻璃質感。\n\n' +
+                    '背景為「' + city + ' / ' + country + '」的城市景觀，呈現「' + weatherState + '」與「' + timeSegment + '」的氛圍，天空具有「' + skyFeature + '」。\n\n' +
+                    '整體畫面風格為 DD 風格：微 3D 卡通渲染、向量色塊分層、乾淨邊緣、柔和光線、Pixar-lite 的立體體積感，畫面清晰、溫暖、具有動畫電影感。\n\n' +
+                    '構圖為正方形，畫面安靜、穩定、帶有「抵達目的地的紀念瞬間」情緒，不需動態模糊，不需誇張透視。';
+                
+                const response = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        size: '800x800'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.imageUrl || data.url;
+                }
+            } catch (error) {
+                console.warn('⚠️ 降落圖片生成失敗:', error);
+            }
+            
+            return null;
         }
 
         async function handleLanding() {
@@ -4163,13 +4394,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 const wrapper = document.getElementById('flightProgressWrapper');
                 const fill = document.getElementById('flightProgressFill');
                 const glow = document.getElementById('flightProgressGlow');
-                const plane = document.getElementById('flightProgressPlane');
                 const startLabel = document.getElementById('flightProgressStartLabel');
                 const endLabel = document.getElementById('flightProgressEndLabel');
-                if (wrapper && fill && glow && plane && startLabel && endLabel) {
+                if (wrapper && fill && glow && startLabel && endLabel) {
                     fill.style.width = '100%';
                     glow.style.left = '100%';
-                    plane.style.left = '100%';
                     // 降落後可以把右側標籤改成「已抵達」，但不顯示具體地點
                     endLabel.textContent = '已抵達';
                     // 稍微停留一下再隱藏，讓使用者看到已經「抵達」
@@ -4183,8 +4412,48 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             
             const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
             const punctuality = calculatePunctuality(selectedTimer, actualDuration);
+            const timeDiff = actualDuration - selectedTimer;
+            const timeDiffPercent = (timeDiff / selectedTimer) * 100;
             
             console.log('📊 實際睡眠時長: ' + actualDuration + ' 分鐘，準時情況: ' + punctuality);
+            console.log('📊 時間差異: ' + timeDiff + ' 分鐘（' + timeDiffPercent.toFixed(1) + '%）');
+            
+            // 如果沒有手動觸發降落，現在生成降落語音和圖片
+            if (!manualLandingTriggered) {
+                const landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
+                
+                // 播放降落語音
+                if (landingData.announcement) {
+                    await playAnnouncement(landingData.announcement, 'zh-TW');
+                }
+                
+                // 生成並顯示降落圖片
+                if (landingData.destination) {
+                    const landingImageUrl = await generateLandingImage(
+                        landingData.destination.city,
+                        landingData.destination.country,
+                        landingData.destination.timezone || 'UTC',
+                        new Date().toISOString()
+                    );
+                    
+                    if (landingImageUrl) {
+                        // 先隱藏影片
+                        const videoContainer = document.getElementById('videoContainer');
+                        if (videoContainer) {
+                            videoContainer.style.display = 'none';
+                        }
+                        
+                        // 顯示降落圖片
+                        const windowContent = document.querySelector('.window-content');
+                        if (windowContent) {
+                            windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                            windowContent.style.backgroundSize = 'cover';
+                            windowContent.style.backgroundPosition = 'center';
+                            console.log('🖼️ 降落圖片已顯示');
+                        }
+                    }
+                }
+            }
             
             // 根據實際時長重新計算最終目的地
             let finalDestination = destinationData;
@@ -4273,7 +4542,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 }
             }
             
-            // 生成降落語音（如果是蟲洞情況，已經播放過特殊語音，這裡播放簡短版本）
+            // 生成降落語音（如果是蟲洞情況，已經播放過特殊語音，這裡生成目的地介紹）
             let announcement = null;
             if (!isWormhole) {
                 // 正常情況才生成標準降落語音
@@ -4288,8 +4557,30 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     }
                 );
             } else {
-                // 蟲洞情況：生成簡短的抵達語音
-                announcement = '我們已經抵達 ' + finalDestination.city + '，' + finalDestination.country + '。';
+                // 蟲洞情況：生成帶有蟲洞概念的目的地介紹語音
+                // 可以調用 API，在 prompt 中加入「時空錯位」、「意外抵達」等概念
+                try {
+                    announcement = await generateAnnouncement('landing',
+                        finalDestination.city,
+                        finalDestination.country,
+                        finalDestination.country_iso_code,
+                        {
+                            durationMinutes: actualDuration,
+                            punctuality: { status: punctuality },
+                            language: 'zh-TW',
+                            wormhole: true, // 標記這是蟲洞情況，讓 API 生成對應的幽默內容
+                            specialNote: '由於時空錯位，我們意外抵達了這個地方。請以機長口吻，用幽默的方式介紹這個意外的目的地，包括當地時間、天氣、特色等。'
+                        }
+                    );
+                    
+                    // 如果 API 失敗，使用備用語音
+                    if (!announcement) {
+                        announcement = `我們已經意外抵達 ${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}。由於時空錯位，這不是我們原計劃的目的地，但這可能是一段特別的冒險。`;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ 生成蟲洞降落語音失敗，使用備用版本:', error);
+                    announcement = `我們已經意外抵達 ${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}。由於時空錯位，這不是我們原計劃的目的地，但這可能是一段特別的冒險。`;
+                }
             }
             
             if (announcement) {
