@@ -32,6 +32,10 @@
     {
       "source": "/api/generateSleepFlightAnnouncement",
       "destination": "/api/generateSleepFlightAnnouncement"
+    },
+    {
+      "source": "/api/get-flight-history",
+      "destination": "/api/get-flight-history"
     }
   ]
 }
