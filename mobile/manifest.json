@@ -2,7 +2,7 @@
   "name": "Sleep Airline - 我的旅程",
   "short_name": "Sleep Airline",
   "description": "查看你的睡眠旅程記錄和飛行路徑",
-  "start_url": "/mobile/",
+  "start_url": "/mobile/index.html",
   "display": "standalone",
   "background_color": "#F5F5F5",
   "theme_color": "#FF6B35",
@@ -15,4 +15,3 @@
     }
   ]
 }
-
