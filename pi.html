@@ -2033,7 +2033,10 @@
                 buttonPressTimeout: buttonPressTimeout ? '存在' : '不存在'
             });
             
-            if (currentPhase === Phase.CRUISE || currentPhase == 5) {
+            // 簡化：直接檢查 currentPhase 是否為 CRUISE（支援數字和枚舉值）
+            const isCruise = currentPhase === Phase.CRUISE || currentPhase === 5 || currentPhase == 5;
+            
+            if (isCruise) {
                 const timeSinceLastPress = lastButtonPressTime > 0 ? currentTime - lastButtonPressTime : Infinity;
                 console.log('✅ [巡航模式] 進入巡航階段處理邏輯');
                 console.log('   時間差:', timeSinceLastPress, 'ms');
@@ -2483,21 +2486,13 @@
                 setBoardingStatus(true, '機長準備廣播中...');
             }
             
-            // 1. 先播放 captain.mp3（只播放前 6 秒），必須完全播放完成後才能繼續
-            console.log('1️⃣ 開始播放 captain.mp3（6 秒）...');
-            try {
-                // 確保 captain.mp3 完全播放完成（包括等待時間）
-                await playAudioFile('sounds/captain.mp3', 6);
-                console.log('✅ captain.mp3 播放完成');
-                
-                // 等待額外時間，確保 captain.mp3 完全停止，音頻系統已清空
-                await new Promise(resolve => setTimeout(resolve, 500));
-                console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
-            } catch (error) {
-                console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
-                // 即使出錯，也等待一段時間再繼續
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
+            // 1. 先播放 captain.mp3（只播放前 6 秒）
+            console.log('1️⃣ 播放 captain.mp3（6 秒）...');
+            await playAudioFile('sounds/captain.mp3', 6);
+            console.log('✅ captain.mp3 播放完成');
+            
+            // 短暫等待，確保音頻系統清空
+            await new Promise(resolve => setTimeout(resolve, 200));
             
             // 2. captain.mp3 播放完成後，才播放準備好的 TTS 語音
             if (preparedAudioId) {
@@ -2646,6 +2641,9 @@
             currentPhase = Phase.CRUISE;
             
             console.log('✅ 已進入巡航階段，進度條和影片已顯示');
+            console.log('   🔍 調試資訊 - currentPhase:', currentPhase, 'Phase.CRUISE:', Phase.CRUISE);
+            console.log('   🔍 調試資訊 - 兩者是否相等:', currentPhase === Phase.CRUISE);
+            console.log('   🔍 調試資訊 - 按鈕監控狀態:', buttonMonitoringEnabled ? '啟用' : '停用');
         }
         
         // 輔助函數：隱藏所有狀態 UI（用於巡航模式）
@@ -2677,73 +2675,42 @@
             });
         }
         
-        // 播放音頻文件
+        // 播放音頻文件（簡化版）
         function playAudioFile(url, maxDuration = null) {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 const audio = new Audio(url);
-                let resolved = false; // 防止重複 resolve
-                
-                // 如果指定了最大播放時長，設置定時器
                 let timeoutId = null;
+                
+                // 設置停止定時器
                 if (maxDuration && maxDuration > 0) {
                     timeoutId = setTimeout(() => {
-                        if (resolved) return;
-                        resolved = true;
-                        try {
-                            // 先暫停，然後重置，避免 AbortError
-                            audio.pause();
-                            audio.currentTime = 0;
-                            console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止`);
-                        } catch (e) {
-                            console.warn('⚠️ 停止音頻時發生錯誤（可忽略）:', e);
-                        }
+                        audio.pause();
+                        audio.currentTime = 0;
+                        console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止`);
                         resolve();
                     }, maxDuration * 1000);
                 }
                 
+                // 播放完成
                 audio.onended = () => {
-                    if (resolved) return;
-                    resolved = true;
                     if (timeoutId) clearTimeout(timeoutId);
-                    console.log('✅ 音頻自然播放完成');
+                    console.log('✅ 音頻播放完成');
                     resolve();
                 };
                 
-                audio.onerror = (error) => {
-                    if (resolved) return;
-                    resolved = true;
+                // 錯誤處理
+                audio.onerror = () => {
                     if (timeoutId) clearTimeout(timeoutId);
-                    console.error('❌ 音頻播放失敗:', url, error);
+                    console.warn('⚠️ 音頻播放失敗:', url);
                     resolve(); // 即使失敗也繼續
                 };
                 
-                // 等待音頻載入完成後再播放
+                // 載入完成後播放
                 audio.addEventListener('loadeddata', () => {
-                    console.log('📥 音頻已載入，開始播放:', url);
-                    audio.play().then(() => {
-                        console.log('▶️ 音頻開始播放:', url);
-                        // 播放成功，但不立即 resolve，等待 onended 或 timeout 才會 resolve
-                    }).catch(error => {
-                        if (resolved) return;
-                        resolved = true;
+                    audio.play().catch(() => {
                         if (timeoutId) clearTimeout(timeoutId);
-                        // 如果是 AbortError，可能是被其他音頻中斷，這是正常的
-                        if (error.name === 'AbortError') {
-                            console.warn('⚠️ 音頻播放被中斷（可能是被其他音頻中斷）:', url);
-                        } else {
-                            console.error('❌ 音頻播放錯誤:', error);
-                        }
                         resolve();
                     });
-                }, { once: true });
-                
-                // 如果載入失敗，也要處理
-                audio.addEventListener('error', (e) => {
-                    if (resolved) return;
-                    resolved = true;
-                    if (timeoutId) clearTimeout(timeoutId);
-                    console.error('❌ 音頻載入失敗:', url, e);
-                    resolve();
                 }, { once: true });
             });
         }
@@ -4289,7 +4256,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                             return Promise.resolve(); // 預載模式，立即返回，不等待播放
                         } else {
                             console.log('✅ 本機 TTS 播放成功');
-                            return;
+                            // 簡化：根據文字長度估算播放時間（每個字約 0.3 秒）
+                            return new Promise((resolve) => {
+                                const duration = Math.max(3000, text.length * 300);
+                                setTimeout(() => {
+                                    console.log('✅ 本機 TTS 播放完成');
+                                    resolve();
+                                }, duration);
+                            });
                         }
                     } else {
                         console.warn('⚠️ 本機 TTS 返回錯誤:', result.error);
