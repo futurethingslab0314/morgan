@@ -71,7 +71,7 @@ export default async function handler(req, res) {
             direction,
             climateZoneName,
             isWormhole,
-            destinationImage,
+            destinationImage, // 降落圖片 URL（前端使用 destinationImage，API 需要映射到 imageUrl）
             announcementText,
             flightFeedback,
             wakeTime
@@ -164,18 +164,18 @@ export default async function handler(req, res) {
             greeting: greeting || '', // 🔧 確保 greeting 儲存到 artifacts
             language: language || '',
             languageCode: languageCode || '',
-            imageUrl: destinationImage || null, // 使用 destinationImage 或 null
-            // 睡眠航班相關字段（如果存在）
-            ...(plannedMinutes !== undefined && { plannedMinutes }),
-            ...(sleepDuration !== undefined && { sleepDuration }),
-            ...(timeDiffMinutes !== undefined && { timeDiffMinutes }),
-            ...(punctuality !== undefined && { punctuality }),
-            ...(direction !== undefined && { direction }),
-            ...(climateZoneName !== undefined && { climateZoneName }),
-            ...(isWormhole !== undefined && { isWormhole }),
-            ...(announcementText !== undefined && { announcementText }),
-            ...(flightFeedback !== undefined && { flightFeedback }),
-            ...(wakeTime !== undefined && { wakeTime })
+            imageUrl: destinationImage || null, // 使用 destinationImage（前端字段名）映射到 imageUrl（API 字段名）
+            // 睡眠航班相關字段（如果存在，全部保存）
+            plannedMinutes: plannedMinutes !== undefined ? plannedMinutes : null,
+            sleepDuration: sleepDuration !== undefined ? sleepDuration : null,
+            timeDiffMinutes: timeDiffMinutes !== undefined ? timeDiffMinutes : null,
+            punctuality: punctuality !== undefined ? punctuality : null,
+            direction: direction !== undefined ? direction : null,
+            climateZoneName: climateZoneName !== undefined ? climateZoneName : null,
+            isWormhole: isWormhole !== undefined ? isWormhole : false,
+            announcementText: announcementText !== undefined ? announcementText : null,
+            flightFeedback: flightFeedback !== undefined ? flightFeedback : null,
+            wakeTime: wakeTime !== undefined ? wakeTime : null
         };
 
         // 準備全域記錄資料
