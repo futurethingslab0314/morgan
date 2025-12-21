@@ -27,7 +27,8 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            padding-top: 0;
         }
 
         /* 主容器：包含視窗和按鈕 */
@@ -39,16 +40,18 @@
             padding: 20px;
         }
 
-        /* 視窗容器：保持 800x1080 */
+        /* 視窗容器：保持 800x1080，視窗與頂部對齊，bar 與底部對齊 */
         .window-container {
             width: 800px;
-            height: 1080px;
+            height: 100vh;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
             position: relative;
             background: #ffffff;
             border-radius: 8px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 0;
         }
 
         body {
@@ -261,10 +264,10 @@
             opacity: 0.6;
         }
 
-        /* 底部資訊 bar - 剩餘空間 280px 高 (1080 - 800 = 280) */
+        /* 底部資訊 bar - 固定高度，與底部對齊 */
         .info-bar {
             width: 800px;
-            height: 280px; /* 固定高度：1080 - 800 = 280px */
+            height: 280px; /* 固定高度 */
             background: #ffffff;
             border-top: 3px solid #ff6b35;
             display: flex;
@@ -274,6 +277,7 @@
             position: relative;
             overflow: hidden;
             flex-shrink: 0;
+            margin-top: auto; /* 推到底部 */
         }
 
         /* 狀態顯示區域 - 一次只顯示一個狀態 */
@@ -858,8 +862,8 @@
     <div class="main-container">
         <!-- 視窗容器：800x1080 -->
         <div class="window-container">
-            <!-- 窗戶區域 - 上方 800x800 -->
-            <div class="window-area">
+    <!-- 窗戶區域 - 上方 800x800 -->
+    <div class="window-area">
         <div class="window-frame">
             <div class="window-content">
                 <!-- 初始圖片背景 -->
@@ -880,12 +884,12 @@
                         <source src="takeoff2.mp4" type="video/mp4">
                         您的瀏覽器不支援影片播放
                     </video>
-                </div>
             </div>
         </div>
+    </div>
             </div>
             <!-- 底部資訊 bar - 280px 高，完全在 800x1080 範圍內 -->
-            <div class="info-bar">
+    <div class="info-bar">
         <!-- 狀態1: 國家顯示 -->
         <div class="info-state active" id="stateCountry" style="cursor: pointer; position: relative;">
             <div class="state-label">📍 所在國家</div>
@@ -970,12 +974,8 @@
             </div>
             <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
                 選擇後點擊按鈕繼續
-            </div>
-            <!-- 顯示旋鈕位置對應的氣候說明 -->
-            <div id="climateKnobInfo" style="font-size: 14px; color: #ccc; margin-top: 6px; text-align: center; pointer-events: none;">
-                旋鈕位置 0 代表 熱帶夢境
-            </div>
         </div>
+    </div>
 
         <!-- 飛行階段進度條（從出發地到未知目的地的旅程進度，不顯示具體時間） -->
         <div class="flight-progress-wrapper" id="flightProgressWrapper">
@@ -1313,7 +1313,7 @@
             } else if (newState === 'TICKET_REVIEW') {
                 stateId = 'stateTicketReview';
             } else {
-                currentState = newState;
+            currentState = newState;
                 // 將狀態名稱轉換為元素 ID：ready_to_fly -> stateReady_to_fly
                 stateId = 'state' + newState.charAt(0).toUpperCase() + newState.slice(1);
                 // 處理下劃線：ready_to_fly -> Ready_to_fly -> stateReady_to_fly
@@ -1477,7 +1477,7 @@
                     currentPhase = Phase.TIME_SELECTION;
                     switchState(State.TIMER);
                     // 預設選擇第一個時間選項
-                    setTimeout(() => {
+            setTimeout(() => {
                         selectTimer(0);
                     }, 100);
                     break;
@@ -1485,8 +1485,8 @@
                     // 從選擇時長 → 選擇氣候帶
                     if (selectedTimer) {
                         console.log('按鈕：從時間選擇切換到氣候帶選擇');
-                        switchState(State.ANGLE);
-                        currentPosition = 0;
+                switchState(State.ANGLE);
+                currentPosition = 0;
                     }
                     break;
                 case State.ANGLE:
@@ -1521,7 +1521,7 @@
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;
             }
-
+            
             console.log('⌨️ 按鍵:', e.key, '當前狀態:', currentState);
 
             // Enter 或 Space：確認/下一步（僅用於測試，實體按鈕優先）
@@ -1541,13 +1541,13 @@
                 
                 if (currentState === State.TIMER) {
                     if (position < timerOptions.length) {
-                        selectTimer(position);
-                    }
+                    selectTimer(position);
+                }
                 } else if (currentState === State.ANGLE) {
                     if (position < climateZoneOptions.length) {
-                        selectAngle(position);
-                    }
+                    selectAngle(position);
                 }
+            }
                 return;
             }
 
@@ -1728,40 +1728,40 @@
                     return;
                 }
                 
-                const data = await response.json();
-                
+                    const data = await response.json();
+                    
                 // 支持新舊兩種 API 格式
                 // 新格式：{success: true, knob_handler_available: true, position: 0-5}
                 // 舊格式：{success: true, position: 0-5, name: "...", task: "..."}
                 if (data && data.success && data.position !== undefined) {
                     consecutiveErrors = 0;
-                    const position = parseInt(data.position);
+                        const position = parseInt(data.position);
                     if (isNaN(position)) return;
 
                     const previousPosition = lastKnobPosition;
                     console.log('📍 立即讀取旋鈕位置（狀態切換時）:', position, '之前位置:', previousPosition, '當前狀態:', currentState);
 
                     // 立刻根據當前狀態選擇對應的選項
-                    if (currentState === State.TIMER) {
+                            if (currentState === State.TIMER) {
                         console.log('✅ 狀態切換時：選擇時間，位置:', position);
-                        selectByPosition(position, 'timer');
-                    } else if (currentState === State.ANGLE) {
+                                selectByPosition(position, 'timer');
+                            } else if (currentState === State.ANGLE) {
                         console.log('✅ 狀態切換時：選擇氣候帶，位置:', position);
-                        selectByPosition(position, 'angle');
+                                selectByPosition(position, 'angle');
                     } else if (currentState === 'TICKET_REVIEW') {
                         // 機票回顧狀態：切換到對應的航程記錄
                         if (position >= 0 && position < flightHistoryRecords.length) {
                             console.log('✅ 狀態切換時：顯示航程記錄，位置:', position);
                             displayFlightRecord(position);
+                            }
                         }
-                    }
 
                     // 同步更新前端穩定判定的狀態
                     lastKnobPosition = position;
                     jsCandidatePosition = position;
                     jsStableCount = JS_POSITION_STABLE_COUNT; // 視為已穩定，下一次變化才會觸發
-                }
-            } catch (error) {
+                    }
+                } catch (error) {
                 // 靜默處理錯誤
             }
         }
@@ -2134,6 +2134,20 @@
                 return;
             }
             
+            // 如果降落確認提示正在顯示，處理確認降落
+            if (landingConfirmActive && currentPhase === Phase.CRUISE) {
+                console.log('✅ 確認提前降落');
+                confirmEarlyLanding();
+                return;
+            }
+            
+            // 檢查是否在飛行中（Phase.CRUISE）- 深夜機上服務（優先處理）
+            if (currentPhase === Phase.CRUISE) {
+                console.log('🍽️ 按鈕：飛行中按下，觸發深夜機上服務');
+                triggerMidnightService();
+                return;
+            }
+            
             switch (currentState) {
                 case State.COUNTRY:
                     // 從國家顯示 → 選擇時長
@@ -2200,20 +2214,6 @@
                     break;
                     
                 default:
-                    // 如果降落確認提示正在顯示，處理確認降落
-                    if (landingConfirmActive && currentPhase === Phase.CRUISE) {
-                        console.log('✅ 確認提前降落');
-                        confirmEarlyLanding();
-                        return;
-                    }
-                    
-                    // 檢查是否在飛行中（Phase.CRUISE）- 深夜機上服務
-                    if (currentPhase === Phase.CRUISE) {
-                        console.log('🍽️ 按鈕：飛行中按下，觸發深夜機上服務');
-                        triggerMidnightService();
-                        return;
-                    }
-                    
                     // 檢查是否在降落階段（Phase.DESCENT）
                     if (currentPhase === Phase.DESCENT && !manualLandingTriggered) {
                         console.log('🛬 按鈕：在降落階段按下，觸發手動降落');
@@ -4649,8 +4649,46 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.warn('⚠️ 記錄深夜服務失敗:', error);
             }
             
-            // 生成飛機餐圖片（暖色調，低飽和度）
-            const serviceImageUrl = await generateMidnightServiceImage();
+            // 同時開始：生成圖片和播放音樂
+            let mealMusic = null;
+            let musicFadeOutInterval = null;
+            
+            // 播放飛機餐背景音樂（隨機選擇 airlinemeal.mp3 或 airlinemeal2.mp3）- 與生成圖片同時開始
+            const musicPromise = (async () => {
+                try {
+                    // 隨機選擇其中一個音樂
+                    const musicFiles = ['airlinemeal.mp3', 'airlinemeal2.mp3'];
+                    const randomMusic = musicFiles[Math.floor(Math.random() * musicFiles.length)];
+                    
+                    mealMusic = new Audio(randomMusic);
+                    mealMusic.volume = 0.6; // 設置初始音量
+                    mealMusic.loop = false; // 不循環
+                    await mealMusic.play();
+                    console.log(`🎵 開始播放飛機餐背景音樂（隨機選擇: ${randomMusic}）`);
+                } catch (error) {
+                    console.warn('⚠️ 無法播放飛機餐音樂:', error);
+                }
+            })();
+            
+            // 同時生成圖片
+            const [serviceImageUrl] = await Promise.all([
+                generateMidnightServiceImage(), // 生成圖片
+                musicPromise // 播放音樂
+            ]);
+            
+            // 暫停 takeoff2.mp4 的播放（如果正在播放）
+            const videoContainer = document.querySelector('.window-area');
+            let pausedVideos = [];
+            if (videoContainer) {
+                const videos = videoContainer.querySelectorAll('video');
+                videos.forEach(video => {
+                    if (!video.paused) {
+                        video.pause();
+                        pausedVideos.push(video);
+                        console.log('⏸️ 暫停影片播放:', video.src);
+                    }
+                });
+            }
             
             // 顯示覆蓋層
             const overlay = document.getElementById('midnightServiceOverlay');
@@ -4678,11 +4716,36 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.warn('⚠️ 無法播放叮聲（可忽略，如果沒有 ding.mp3）:', error);
             }
             
-            // 播放溫柔的機上服務語音
+            // 播放溫柔的機上服務語音（與音樂同時播放）
             const serviceMessage = '乘客您好，現在是航程中段，為您送上一份深夜暖心服務，請稍作休息，祝您繼續享有好夢。';
-            await playAnnouncement(serviceMessage, 'zh-TW');
+            playAnnouncement(serviceMessage, 'zh-TW').catch(error => {
+                console.warn('⚠️ 播放語音失敗:', error);
+            });
             
-            // 15 秒後自動淡出
+            // 1 分鐘後慢慢淡出音樂
+            setTimeout(() => {
+                if (mealMusic) {
+                    console.log('🎵 開始淡出飛機餐音樂...');
+                    const fadeOutDuration = 3000; // 3 秒淡出
+                    const fadeOutInterval = 50; // 每 50ms 降低一次音量
+                    const volumeStep = mealMusic.volume / (fadeOutDuration / fadeOutInterval);
+                    
+                    musicFadeOutInterval = setInterval(() => {
+                        if (mealMusic && mealMusic.volume > 0) {
+                            mealMusic.volume = Math.max(0, mealMusic.volume - volumeStep);
+                        } else {
+                            clearInterval(musicFadeOutInterval);
+                            if (mealMusic) {
+                                mealMusic.pause();
+                                mealMusic = null;
+                            }
+                            console.log('✅ 飛機餐音樂已淡出並停止');
+                        }
+                    }, fadeOutInterval);
+                }
+            }, 60000); // 60 秒後開始淡出
+            
+            // 15 秒後自動淡出覆蓋層（音樂會繼續播放到 1 分鐘後淡出）
             setTimeout(() => {
                 if (overlay) {
                     overlay.classList.remove('show');
@@ -4691,8 +4754,35 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     setTimeout(() => {
                         overlay.style.display = 'none';
                         overlay.classList.remove('fade-out');
-                        midnightServiceActive = false;
-                        console.log('✅ 深夜服務已結束');
+                        console.log('✅ 深夜服務覆蓋層已隱藏（音樂繼續播放）');
+                        
+                        // 等音樂淡出完成後（60秒 + 3秒淡出）再恢復影片
+                        setTimeout(() => {
+                            if (pausedVideos.length > 0) {
+                                pausedVideos.forEach(video => {
+                                    // 只恢復循環播放的 takeoff2.mp4
+                                    if (video.loop && video.src.includes('takeoff2.mp4')) {
+                                        video.play().catch(error => {
+                                            console.warn('⚠️ 恢復影片播放失敗:', error);
+                                        });
+                                        console.log('▶️ 恢復影片播放:', video.src);
+                                    }
+                                });
+                            } else {
+                                // 如果沒有暫停的影片，嘗試找到 takeoff2.mp4 並播放
+                                if (videoContainer) {
+                                    const video2 = videoContainer.querySelector('video[src*="takeoff2.mp4"]');
+                                    if (video2 && video2.loop) {
+                                        video2.play().catch(error => {
+                                            console.warn('⚠️ 恢復影片播放失敗:', error);
+                                        });
+                                        console.log('▶️ 恢復 takeoff2.mp4 播放');
+                                    }
+                                }
+                            }
+                            midnightServiceActive = false;
+                            console.log('✅ 深夜服務已完全結束');
+                        }, 48000); // 等音樂淡出完成後（60秒 - 15秒覆蓋層時間 - 1.5秒淡出 = 43.5秒，取整為48秒，確保音樂已淡出）
                     }, 1500);
                 }
             }, 15000);
@@ -4899,6 +4989,12 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 climateKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${selectedClimateZone.name}`;
             }
 
+            // 移除氣候旋鈕位置說明（已移除副標題）
+            // const climateKnobInfo = document.getElementById('climateKnobInfo');
+            // if (climateKnobInfo) {
+            //     climateKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${selectedClimateZone.name}`;
+            // }
+            
             console.log('✅ 選擇氣候帶:', selectedClimateZone.name, '位置:', position);
             console.log('📊 當前狀態 - Phase:', currentPhase, 'State:', currentState, 'Timer:', selectedTimer);
             
@@ -5494,17 +5590,70 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         let descentAnnouncementPlayed = false;
         // 標記是否已經手動觸發降落
         let manualLandingTriggered = false;
+        // 降落前喚醒音樂相關變數
+        let descentWakeupMusic = null; // 降落前喚醒音樂
+        let descentMusicPlayCount = 0; // 音樂播放次數計數器
+        const DESCENT_MUSIC_PLAY_TIMES = 2; // 播放兩次
 
         async function handleDescent() {
             // Phase 5: 降落前 5 分鐘
             console.log('🛬 準備降落（5分鐘前）');
             
-            // 自動播放準備降落的喚醒語音
+            // 自動播放準備降落的喚醒語音和背景音樂
             if (!descentAnnouncementPlayed) {
                 descentAnnouncementPlayed = true;
-                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
-                if (wakeUpAnnouncement) {
-                    await playAnnouncement(wakeUpAnnouncement, 'zh-TW');
+                descentMusicPlayCount = 0;
+                
+                // 隨機選擇其中一個喚醒音樂
+                const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
+                const randomMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
+                
+                console.log(`🎵 開始播放降落前喚醒音樂（隨機選擇: ${randomMusic}）`);
+                
+                // 創建音樂對象
+                try {
+                    descentWakeupMusic = new Audio(randomMusic);
+                    descentWakeupMusic.volume = 0.6; // 初始音量
+                    descentWakeupMusic.loop = false;
+                    
+                    // 監聽音樂播放結束事件，實現播放兩次
+                    descentWakeupMusic.onended = () => {
+                        descentMusicPlayCount++;
+                        console.log(`🎵 喚醒音樂播放完成（第 ${descentMusicPlayCount} 次）`);
+                        
+                        if (descentMusicPlayCount < DESCENT_MUSIC_PLAY_TIMES) {
+                            // 播放第二次
+                            descentWakeupMusic.currentTime = 0;
+                            descentWakeupMusic.play().catch(error => {
+                                console.warn('⚠️ 播放喚醒音樂失敗:', error);
+                            });
+                        } else {
+                            // 播放兩次完成，停止音樂
+                            console.log('✅ 喚醒音樂已播放兩次，停止播放');
+                            if (descentWakeupMusic) {
+                                descentWakeupMusic.pause();
+                                descentWakeupMusic = null;
+                            }
+                        }
+                    };
+                    
+                    // 開始播放音樂
+                    await descentWakeupMusic.play();
+                    
+                    // 同時播放準備降落的喚醒語音
+                    const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                    if (wakeUpAnnouncement) {
+                        playAnnouncement(wakeUpAnnouncement, 'zh-TW').catch(error => {
+                            console.warn('⚠️ 播放準備降落語音失敗:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.warn('⚠️ 無法播放喚醒音樂:', error);
+                    // 如果音樂播放失敗，仍然播放語音
+                    const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                    if (wakeUpAnnouncement) {
+                        await playAnnouncement(wakeUpAnnouncement, 'zh-TW');
+                    }
                 }
             }
         }
@@ -5523,6 +5672,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         async function triggerManualLanding() {
             console.log('🛬 手動觸發降落流程');
             
+            // 如果在播放喚醒音樂期間按下，將音樂音量調小，繼續播放
+            if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                console.log('🔉 調低喚醒音樂音量，凸顯機長語音');
+                descentWakeupMusic.volume = 0.2; // 從 0.6 調到 0.2
+                // 移除 onended 事件，讓音樂繼續播放直到結束
+                descentWakeupMusic.onended = null;
+            }
+            
             const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
             const timeDiff = actualDuration - selectedTimer; // 正數 = 晚，負數 = 早
             const timeDiffPercent = (timeDiff / selectedTimer) * 100;
@@ -5532,7 +5689,12 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 生成降落語音和圖片
             const landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
             
-            // 播放正式降落語音
+            // 先播放 captain.mp3（6秒），然後播放正式降落語音
+            console.log('1️⃣ 播放 captain.mp3（6 秒）...');
+            await playAudioFile('sounds/captain.mp3', 6);
+            console.log('✅ captain.mp3 播放完成');
+            
+            // 播放正式降落語音（音樂會以較小音量繼續播放作為背景）
             if (landingData.announcement) {
                 await playAnnouncement(landingData.announcement, 'zh-TW');
             }
