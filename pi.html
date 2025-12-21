@@ -2214,9 +2214,17 @@
             console.log('   destinationData:', destinationData);
             console.log('   preparedAnnouncement:', preparedAnnouncement ? '已準備' : '未準備');
             
-            // 如果在降落後狀態，單擊不做任何事（等待雙擊）
-            if (currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) {
-                console.log('ℹ️ 降落後狀態，單擊無效，請快速按兩下開始新旅程');
+            // 如果在降落後狀態且已經顯示了目的地圖片（完成了一次旅程），單擊不做任何事（等待雙擊）
+            // 但如果是首頁（State.COUNTRY 且沒有目的地圖片），允許單擊開始新旅程
+            if ((currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) 
+                && destinationImageUrl && currentState !== State.COUNTRY) {
+                console.log('ℹ️ 降落後狀態（已完成旅程），單擊無效，請快速按兩下開始新旅程');
+                return;
+            }
+            
+            // 如果是在顯示到達資訊狀態（State.ARRIVAL_INFO），單擊無效，等待雙擊
+            if (currentState === 'ARRIVAL_INFO') {
+                console.log('ℹ️ 到達資訊顯示狀態，單擊無效，請快速按兩下開始新旅程');
                 return;
             }
             
@@ -6396,9 +6404,12 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 處理按鈕雙擊（開始新旅程或從機票回顧返回）
         function handleButtonDoubleClick() {
             console.log('🔘 檢測到按鈕雙擊');
+            console.log('   當前狀態:', currentState);
+            console.log('   當前階段:', currentPhase);
+            console.log('   目的地圖片:', destinationImageUrl ? '有' : '無');
             
             // 如果在飛行中（Phase.CRUISE），雙擊詢問是否要提前降落
-            if (currentPhase === Phase.CRUISE) {
+            if (currentPhase === Phase.CRUISE || currentPhase == 5) {
                 console.log('🛬 飛行中雙擊：詢問是否提前降落');
                 showLandingConfirmation();
                 return;
@@ -6415,15 +6426,28 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 return;
             }
             
-            // 只有在降落後狀態才響應雙擊（開始新旅程）
-            if (currentPhase !== Phase.RETURN_WINDOW && currentPhase !== Phase.POST_ARRIVAL) {
-                console.log('ℹ️ 當前不在降落後狀態，雙擊無效');
+            // 在降落後狀態（已完成旅程）或到達資訊顯示狀態，雙擊開始新旅程
+            if ((currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) 
+                && (destinationImageUrl || currentState === 'ARRIVAL_INFO')) {
+                console.log('✅ 降落後狀態：雙擊開始新旅程');
+                // 重置所有狀態
+                selectedTimer = null;
+                selectedDirection = null;
+                selectedAngle = null;
+                destinationData = null;
+                destinationImageUrl = null;
+                preparedAnnouncement = null;
+                preparedAudioId = null;
+                sleepStartTime = null;
+                currentPhase = Phase.POST_ARRIVAL;
+                switchState(State.COUNTRY);
+                console.log('🔄 狀態已重置，返回首頁');
                 return;
             }
             
-            // 重置所有狀態
-            selectedTimer = null;
-            selectedDirection = null;
+            // 如果不在上述狀態，雙擊無效
+            console.log('ℹ️ 當前狀態不支援雙擊，雙擊無效');
+            return;
             destinationData = null;
             destinationImageUrl = null;
             preparedAnnouncement = null;
