@@ -2068,61 +2068,121 @@
             
             const timeSinceLastPress = currentTime - lastButtonPressTime;
             
-            // 如果在雙擊時間閾值內，可能是雙擊，但需要等待看是否有第三次按下
-            if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
-                // 取消之前的單擊/雙擊處理
-                if (buttonPressTimeout) {
-                    clearTimeout(buttonPressTimeout);
-                    buttonPressTimeout = null;
-                }
-                
-                // 計算從第一次按下到現在經過的時間
-                const firstPressTime = buttonPressSequence[0];
-                const elapsedSinceFirst = currentTime - firstPressTime;
-                const remainingTime = TRIPLE_CLICK_THRESHOLD - elapsedSinceFirst;
-                
-                // 等待剩餘時間，看是否有第三次按下
-                // 如果沒有第三次按下，再處理雙擊
-                if (remainingTime > 0) {
-                    buttonPressTimeout = setTimeout(() => {
-                        // 檢查是否真的只有兩次按下（沒有第三次）
-                        const now = Date.now();
-                        const remainingPresses = buttonPressSequence.filter(
-                            time => now - time < TRIPLE_CLICK_THRESHOLD
-                        );
-                        
-                        if (remainingPresses.length === 2) {
-                            console.log('🔘 確認雙擊（無第三次按下）');
-                            handleButtonDoubleClick();
-                        } else if (remainingPresses.length === 3) {
-                            // 如果剛好有三次，但已經過了處理時間，可能是時序問題
-                            console.log('🔘 檢測到三次按下，但已過處理時間');
-                        } else {
-                            console.log('🔘 按鍵序列已變化，不處理雙擊');
-                        }
-                        
-                        buttonPressSequence = []; // 清除記錄
-                        lastButtonPressTime = 0;
+            // 在首頁（State.COUNTRY），雙擊無效，只處理單擊和三擊
+            if (currentState === State.COUNTRY) {
+                // 如果在雙擊時間閾值內，可能是雙擊，但首頁不處理雙擊，繼續等待看是否有第三次按下
+                if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
+                    // 取消之前的單擊處理
+                    if (buttonPressTimeout) {
+                        clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
-                    }, remainingTime);
-                } else {
-                    // 如果已經超過 TRIPLE_CLICK_THRESHOLD，直接處理雙擊
-                    console.log('🔘 超過三擊時間閾值，直接處理雙擊');
-                    handleButtonDoubleClick();
-                    buttonPressSequence = [];
-                    lastButtonPressTime = 0;
+                    }
+                    
+                    // 計算從第一次按下到現在經過的時間
+                    const firstPressTime = buttonPressSequence[0];
+                    const elapsedSinceFirst = currentTime - firstPressTime;
+                    const remainingTime = TRIPLE_CLICK_THRESHOLD - elapsedSinceFirst;
+                    
+                    // 等待剩餘時間，看是否有第三次按下
+                    // 如果沒有第三次按下，忽略雙擊（首頁不處理雙擊）
+                    if (remainingTime > 0) {
+                        buttonPressTimeout = setTimeout(() => {
+                            // 檢查是否真的只有兩次按下（沒有第三次）
+                            const now = Date.now();
+                            const remainingPresses = buttonPressSequence.filter(
+                                time => now - time < TRIPLE_CLICK_THRESHOLD
+                            );
+                            
+                            if (remainingPresses.length === 2) {
+                                console.log('🔘 首頁：檢測到雙擊，但首頁不處理雙擊，忽略');
+                            } else if (remainingPresses.length === 3) {
+                                // 如果剛好有三次，但已經過了處理時間，可能是時序問題
+                                console.log('🔘 檢測到三次按下，但已過處理時間');
+                            } else {
+                                console.log('🔘 按鍵序列已變化，不處理');
+                            }
+                            
+                            buttonPressSequence = []; // 清除記錄
+                            lastButtonPressTime = 0;
+                            buttonPressTimeout = null;
+                        }, remainingTime);
+                    } else {
+                        // 如果已經超過 TRIPLE_CLICK_THRESHOLD，忽略雙擊
+                        console.log('🔘 首頁：超過三擊時間閾值，忽略雙擊');
+                        buttonPressSequence = [];
+                        lastButtonPressTime = 0;
+                    }
+                    
+                    return;
                 }
-                
-                return;
+            } else {
+                // 非首頁狀態：正常處理雙擊
+                if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
+                    // 取消之前的單擊/雙擊處理
+                    if (buttonPressTimeout) {
+                        clearTimeout(buttonPressTimeout);
+                        buttonPressTimeout = null;
+                    }
+                    
+                    // 計算從第一次按下到現在經過的時間
+                    const firstPressTime = buttonPressSequence[0];
+                    const elapsedSinceFirst = currentTime - firstPressTime;
+                    const remainingTime = TRIPLE_CLICK_THRESHOLD - elapsedSinceFirst;
+                    
+                    // 等待剩餘時間，看是否有第三次按下
+                    // 如果沒有第三次按下，再處理雙擊
+                    if (remainingTime > 0) {
+                        buttonPressTimeout = setTimeout(() => {
+                            // 檢查是否真的只有兩次按下（沒有第三次）
+                            const now = Date.now();
+                            const remainingPresses = buttonPressSequence.filter(
+                                time => now - time < TRIPLE_CLICK_THRESHOLD
+                            );
+                            
+                            if (remainingPresses.length === 2) {
+                                console.log('🔘 確認雙擊（無第三次按下）');
+                                handleButtonDoubleClick();
+                            } else if (remainingPresses.length === 3) {
+                                // 如果剛好有三次，但已經過了處理時間，可能是時序問題
+                                console.log('🔘 檢測到三次按下，但已過處理時間');
+                            } else {
+                                console.log('🔘 按鍵序列已變化，不處理雙擊');
+                            }
+                            
+                            buttonPressSequence = []; // 清除記錄
+                            lastButtonPressTime = 0;
+                            buttonPressTimeout = null;
+                        }, remainingTime);
+                    } else {
+                        // 如果已經超過 TRIPLE_CLICK_THRESHOLD，直接處理雙擊
+                        console.log('🔘 超過三擊時間閾值，直接處理雙擊');
+                        handleButtonDoubleClick();
+                        buttonPressSequence = [];
+                        lastButtonPressTime = 0;
+                    }
+                    
+                    return;
+                }
             }
             
             // 記錄按鈕按下時間
             lastButtonPressTime = currentTime;
             
             // 延遲處理單擊（等待可能的第二次/第三次按下）
+            // 但在首頁（State.COUNTRY）或降落後狀態，使用較短的延遲以提升響應速度
             if (buttonPressTimeout) {
                 clearTimeout(buttonPressTimeout);
             }
+            
+            // 根據當前狀態決定等待時間
+            // 在首頁（State.COUNTRY）或降落後狀態，使用較短的等待時間以提升響應速度
+            const waitTime = (currentState === State.COUNTRY || 
+                             currentPhase === Phase.POST_ARRIVAL || 
+                             currentPhase === Phase.RETURN_WINDOW) 
+                             ? DOUBLE_CLICK_THRESHOLD  // 首頁和降落後：只等待雙擊時間（500ms），因為不需要檢測三擊
+                             : TRIPLE_CLICK_THRESHOLD; // 其他狀態：等待三擊時間（600ms）
+            
+            console.log('⏳ 設置單擊等待時間:', waitTime, 'ms, 當前狀態:', currentState, '當前階段:', currentPhase);
             
             buttonPressTimeout = setTimeout(() => {
                 // 檢查是否真的只有一次按下（沒有第二次/第三次）
@@ -2141,7 +2201,7 @@
                 
                 buttonPressSequence = []; // 清除記錄
                 buttonPressTimeout = null;
-            }, TRIPLE_CLICK_THRESHOLD); // 等待完整的 TRIPLE_CLICK_THRESHOLD 時間
+            }, waitTime);
         }
         
         // 處理按鈕單擊
