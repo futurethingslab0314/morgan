@@ -2998,6 +2998,13 @@
             };
             console.log('🔍 按鈕監控狀態檢查:', status);
             
+            // 檢查服務器連接狀態
+            if (buttonConsecutiveErrors > 0) {
+                console.warn('⚠️ 按鈕 API 連接錯誤:', buttonConsecutiveErrors, '次');
+                console.warn('   請確認本地服務器是否運行：http://127.0.0.1:5001');
+                console.warn('   如果服務器未啟動，請啟動後端服務');
+            }
+            
             // 如果輪詢已停止但應該運行，自動重啟
             if (!buttonPollInterval && buttonMonitoringEnabled && buttonConsecutiveErrors < MAX_BUTTON_ERRORS) {
                 console.log('⚠️ 檢測到按鈕輪詢已停止，但應該運行，正在重啟...');
@@ -3006,15 +3013,30 @@
             }
             
             return status;
-            
-            // 如果輪詢已停止但應該運行，自動重啟
-            if (!buttonPollInterval && buttonMonitoringEnabled && buttonConsecutiveErrors < MAX_BUTTON_ERRORS) {
-                console.log('⚠️ 檢測到按鈕輪詢已停止，但應該運行，正在重啟...');
-                startButtonMonitoring();
-                console.log('✅ 按鈕輪詢已重啟');
+        };
+        
+        // 測試函數：檢查服務器連接
+        window.checkServerConnection = async function() {
+            console.log('🔍 檢查服務器連接狀態...');
+            try {
+                const response = await fetch('http://127.0.0.1:5001/api/button/state?gpio=4', {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(2000) // 2秒超時
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ 服務器連接正常:', data);
+                    return true;
+                } else {
+                    console.warn('⚠️ 服務器響應異常:', response.status, response.statusText);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ 服務器連接失敗:', error.message);
+                console.error('   請確認後端服務是否運行在 http://127.0.0.1:5001');
+                console.error('   如果服務器未啟動，請啟動後端服務');
+                return false;
             }
-            
-            return status;
         };
         
         // 鍵盤快捷鍵：按 'B' 鍵模擬按鈕按下（用於測試）
