@@ -1831,13 +1831,25 @@
             let controller = null;
             buttonConsecutiveErrors = 0;
             
+            // 如果已經有輪詢在運行，先清除
+            if (buttonPollInterval) {
+                clearInterval(buttonPollInterval);
+                buttonPollInterval = null;
+            }
+            
             buttonPollInterval = setInterval(async () => {
-                if (!buttonMonitoringEnabled || buttonConsecutiveErrors >= MAX_BUTTON_ERRORS) {
-                    if (buttonConsecutiveErrors >= MAX_BUTTON_ERRORS && buttonPollInterval) {
+                // 如果監控被停用，直接返回（但不清除 interval，以便重新啟用）
+                if (!buttonMonitoringEnabled) {
+                    return;
+                }
+                
+                // 只有當錯誤次數達到上限時才停止輪詢
+                if (buttonConsecutiveErrors >= MAX_BUTTON_ERRORS) {
+                    if (buttonPollInterval) {
                         clearInterval(buttonPollInterval);
                         buttonPollInterval = null;
                         if (!connectionErrorLogged) {
-                            console.log('ℹ️ 按鈕 API 不可用，已停止輪詢（可在控制台執行 window.enableButtonMonitoring() 重新啟用）');
+                            console.log('ℹ️ 按鈕 API 連續錯誤過多，已停止輪詢（可在控制台執行 window.enableButtonMonitoring() 重新啟用）');
                             connectionErrorLogged = true;
                         }
                     }
@@ -2972,7 +2984,7 @@
         
         // 測試函數：檢查按鈕監控狀態
         window.checkButtonStatus = function() {
-            console.log('🔍 按鈕監控狀態檢查:', {
+            const status = {
                 buttonMonitoringEnabled,
                 buttonConsecutiveErrors,
                 MAX_BUTTON_ERRORS,
@@ -2983,7 +2995,26 @@
                 currentState,
                 midnightServiceActive,
                 landingConfirmActive
-            });
+            };
+            console.log('🔍 按鈕監控狀態檢查:', status);
+            
+            // 如果輪詢已停止但應該運行，自動重啟
+            if (!buttonPollInterval && buttonMonitoringEnabled && buttonConsecutiveErrors < MAX_BUTTON_ERRORS) {
+                console.log('⚠️ 檢測到按鈕輪詢已停止，但應該運行，正在重啟...');
+                startButtonMonitoring();
+                console.log('✅ 按鈕輪詢已重啟');
+            }
+            
+            return status;
+            
+            // 如果輪詢已停止但應該運行，自動重啟
+            if (!buttonPollInterval && buttonMonitoringEnabled && buttonConsecutiveErrors < MAX_BUTTON_ERRORS) {
+                console.log('⚠️ 檢測到按鈕輪詢已停止，但應該運行，正在重啟...');
+                startButtonMonitoring();
+                console.log('✅ 按鈕輪詢已重啟');
+            }
+            
+            return status;
         };
         
         // 鍵盤快捷鍵：按 'B' 鍵模擬按鈕按下（用於測試）
@@ -5167,6 +5198,24 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             let mealMusic = null;
             let musicFadeOutInterval = null;
             
+            // 先暫停 takeoff2.mp4 的播放（如果正在播放）
+            const videoContainer = document.querySelector('.window-area');
+            const pausedVideos = [];
+            if (videoContainer) {
+                const videos = videoContainer.querySelectorAll('video');
+                videos.forEach(video => {
+                    if (!video.paused) {
+                        video.pause();
+                        pausedVideos.push(video);
+                        console.log('⏸️ 暫停影片播放:', video.src);
+                    }
+                });
+            }
+            
+            // 獲取覆蓋層和圖片元素（確保在作用域內）
+            const overlay = document.getElementById('midnightServiceOverlay');
+            const imageEl = document.getElementById('midnightServiceImage');
+            
             // 播放飛機餐背景音樂（隨機選擇 airlinemeal.mp3 或 airlinemeal2.mp3）- 固定1分鐘
             const musicPromise = (async () => {
                 try {
@@ -5174,7 +5223,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     const musicFiles = ['airlinemeal.mp3', 'airlinemeal2.mp3'];
                     const randomMusic = musicFiles[Math.floor(Math.random() * musicFiles.length)];
                     
-                    mealMusic = new Audio(randomMusic);
+                    mealMusic = new Audio(`sounds/${randomMusic}`);
                     mealMusic.volume = 0.6; // 設置初始音量
                     mealMusic.loop = false; // 不循環
                     
@@ -5189,23 +5238,52 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             const serviceTimeout = setTimeout(() => {
                 console.log('⏰ 1分鐘時間到，開始結束飛機餐模式');
                 
-                // 停止音樂（如果還在播放）
+                // 重新獲取覆蓋層元素（確保存在）
+                const currentOverlay = document.getElementById('midnightServiceOverlay');
+                
+                // 淡出音樂（如果還在播放）
                 if (mealMusic && !mealMusic.paused) {
-                    mealMusic.pause();
-                    mealMusic.currentTime = 0;
-                    console.log('⏸️ 停止飛機餐音樂');
+                    console.log('🎵 開始淡出飛機餐音樂');
+                    const fadeOutDuration = 1500; // 淡出時長（1.5秒）
+                    const fadeOutInterval = 50; // 每50ms調整一次音量
+                    const volumeStep = mealMusic.volume / (fadeOutDuration / fadeOutInterval);
+                    const initialVolume = mealMusic.volume;
+                    
+                    const fadeOutTimer = setInterval(() => {
+                        if (mealMusic && !mealMusic.paused) {
+                            mealMusic.volume = Math.max(0, mealMusic.volume - volumeStep);
+                            
+                            // 當音量降到0或接近0時，停止音樂
+                            if (mealMusic.volume <= 0.01) {
+                                clearInterval(fadeOutTimer);
+                                mealMusic.pause();
+                                mealMusic.currentTime = 0;
+                                mealMusic.volume = initialVolume; // 恢復原始音量，以便下次使用
+                                console.log('⏸️ 飛機餐音樂已淡出並停止');
+                            }
+                        } else {
+                            clearInterval(fadeOutTimer);
+                        }
+                    }, fadeOutInterval);
                 }
                 
                 // 淡出覆蓋層
-                if (overlay) {
+                if (currentOverlay) {
                     console.log('🌙 開始淡出覆蓋層');
-                    overlay.classList.remove('show');
-                    overlay.classList.add('fade-out');
+                    currentOverlay.classList.remove('show');
+                    currentOverlay.classList.add('fade-out');
+                    
+                    // 強制設置 opacity 為 0（確保淡出）
+                    setTimeout(() => {
+                        currentOverlay.style.opacity = '0';
+                    }, 100);
                     
                     // 等待淡出動畫完成後隱藏覆蓋層
                     setTimeout(() => {
-                        overlay.style.display = 'none';
-                        overlay.classList.remove('fade-out');
+                        currentOverlay.style.display = 'none';
+                        currentOverlay.style.opacity = '0';
+                        currentOverlay.classList.remove('fade-out');
+                        currentOverlay.classList.remove('show');
                         console.log('✅ 深夜服務覆蓋層已隱藏');
                         
                         // 恢復影片播放
@@ -5221,8 +5299,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                             });
                         } else {
                             // 如果沒有暫停的影片，嘗試找到 takeoff2.mp4 並播放
-                            if (videoContainer) {
-                                const video2 = videoContainer.querySelector('video[src*="takeoff2.mp4"]');
+                            const container = document.querySelector('.window-area');
+                            if (container) {
+                                const video2 = container.querySelector('video[src*="takeoff2.mp4"]');
                                 if (video2 && video2.loop) {
                                     video2.play().catch(error => {
                                         console.warn('⚠️ 恢復影片播放失敗:', error);
@@ -5243,23 +5322,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 }
             }, 60000); // 1分鐘 = 60000毫秒
             
-            // 先暫停 takeoff2.mp4 的播放（如果正在播放）
-            const videoContainer = document.querySelector('.window-area');
-            let pausedVideos = [];
-            if (videoContainer) {
-                const videos = videoContainer.querySelectorAll('video');
-                videos.forEach(video => {
-                    if (!video.paused) {
-                        video.pause();
-                        pausedVideos.push(video);
-                        console.log('⏸️ 暫停影片播放:', video.src);
-                    }
-                });
-            }
-            
             // 立即顯示黑色覆蓋層（等待圖片生成）
-            const overlay = document.getElementById('midnightServiceOverlay');
-            const imageEl = document.getElementById('midnightServiceImage');
             
             if (overlay && imageEl) {
                 // 先設置為純黑色背景
