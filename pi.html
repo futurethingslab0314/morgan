@@ -28,7 +28,8 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            padding-top: 0;
+            padding: 0;
+            margin: 0;
         }
 
         /* 主容器：包含視窗和按鈕 */
@@ -52,13 +53,9 @@
             border-radius: 8px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             padding: 0;
+            margin: 0; /* 父容器 body 已經使用 justify-content: center 居中 */
         }
 
-        body {
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
 
         /* 窗戶區域 - 上方，固定 800px 高 */
         .window-area {
@@ -944,32 +941,32 @@
                 <div class="angle-option climate-option" data-position="0">
                     <div class="climate-icon">🌴</div>
                     <div class="climate-name">熱帶夢境</div>
-                    <div class="climate-desc">溫暖的熱帶風情</div>
+                    
                 </div>
                 <div class="angle-option climate-option" data-position="1">
                     <div class="climate-icon">🍃</div>
                     <div class="climate-name">溫帶微風</div>
-                    <div class="climate-desc">舒適的溫帶氣候</div>
+                   
                 </div>
                 <div class="angle-option climate-option" data-position="2">
                     <div class="climate-icon">❄️</div>
                     <div class="climate-name">極地寧靜</div>
-                    <div class="climate-desc">純淨的極地世界</div>
+                
                 </div>
                 <div class="angle-option climate-option" data-position="3">
                     <div class="climate-icon">🏜️</div>
                     <div class="climate-name">沙漠暖陽</div>
-                    <div class="climate-desc">溫暖的沙漠氣息</div>
+                  
                 </div>
                 <div class="angle-option climate-option" data-position="4">
                     <div class="climate-icon">🌊</div>
                     <div class="climate-name">海洋清涼</div>
-                    <div class="climate-desc">清新的海洋微風</div>
+                   
                 </div>
                 <div class="angle-option climate-option" data-position="5">
                     <div class="climate-icon">⛰️</div>
                     <div class="climate-name">山脈清新</div>
-                    <div class="climate-desc">清新的高山空氣</div>
+                
                 </div>
             </div>
             <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
@@ -2041,6 +2038,7 @@
                             lastButtonState = true;
                             console.log('🔘🔘🔘 實體按鈕按下！🔘🔘🔘');
                             console.log('   當前狀態:', currentState);
+                            console.log('   當前階段:', currentPhase);
                             handlePhysicalButtonPress();
                         } else if (lastButtonState && !pressed) {
                             lastButtonState = false;
@@ -2141,9 +2139,11 @@
                 return;
             }
             
-            // 檢查是否在飛行中（Phase.CRUISE）- 深夜機上服務（優先處理）
+            // 檢查是否在飛行中（Phase.CRUISE）- 深夜機上服務（優先處理，必須在 switch 之前）
             if (currentPhase === Phase.CRUISE) {
                 console.log('🍽️ 按鈕：飛行中按下，觸發深夜機上服務');
+                console.log('   當前階段:', currentPhase);
+                console.log('   當前狀態:', currentState);
                 triggerMidnightService();
                 return;
             }
@@ -4618,6 +4618,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
         // 觸發深夜機上服務
         async function triggerMidnightService() {
+            console.log('🍽️ triggerMidnightService 被調用');
+            console.log('   midnightServiceActive:', midnightServiceActive);
+            console.log('   currentPhase:', currentPhase);
+            console.log('   Phase.CRUISE:', Phase.CRUISE);
+            
             if (midnightServiceActive) {
                 console.log('⚠️ 深夜服務已啟動，忽略重複觸發');
                 return;
@@ -5369,15 +5374,31 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     });
                 });
                 
-                // 2）takeoff1.mp4 → takeoff2.mp4：做一次交叉淡入淡出，之後 takeoff2.mp4 持續以 crossfade 方式循環
+                // 2）takeoff1.mp4 → takeoff2.mp4：直接切換到 takeoff2.mp4，之後 takeoff2.mp4 持續以 crossfade 方式循環
                 console.log('🎬 切換到 takeoff2.mp4，開始交叉淡入淡出 + 循環播放');
 
                 // 先確保第二支影片從頭開始，並可見（但 opacity 由 CSS 控制）
                 video2.currentTime = 0;
                 video2.style.display = 'block';
-
-                // 第一次：讓 takeoff1.mp4 交叉淡出到 takeoff2.mp4
-                await playVideoWithCrossfade(video1, video2, 1000); // 1 秒 crossfade
+                
+                // 直接切換：讓 takeoff1.mp4 淡出，takeoff2.mp4 淡入（不做交叉淡入淡出，因為 takeoff1 已經播放完成）
+                video1.classList.remove('playing');
+                video2.classList.add('playing');
+                
+                // 開始播放 takeoff2.mp4（第一次）
+                video2.play().catch(error => {
+                    console.error('❌ takeoff2.mp4 播放錯誤:', error);
+                });
+                
+                // 等待 takeoff2.mp4 第一次播放完成，然後開始循環
+                await new Promise((resolve) => {
+                    const onEnded = () => {
+                        console.log('✅ takeoff2.mp4 第一次播放完成，開始循環');
+                        video2.removeEventListener('ended', onEnded);
+                        resolve();
+                    };
+                    video2.addEventListener('ended', onEnded, { once: true });
+                });
 
                 // 後續：使用 video1 / video2 交替播放 takeoff2.mp4，做無限 crossfade 迴圈（背景執行，不阻塞流程）
                 video1.src = 'takeoff2.mp4';
