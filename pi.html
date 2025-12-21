@@ -322,6 +322,245 @@
             gap: 5px;
         }
         
+        /* 飛行回饋選單（入境登記） */
+        .feedback-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .feedback-modal-content {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .feedback-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .feedback-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .feedback-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .feedback-subtitle {
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .feedback-question {
+            font-size: 20px;
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .feedback-question span {
+            color: #ff6b35;
+            font-weight: bold;
+        }
+        
+        .feedback-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .feedback-option {
+            background: #f8f8f8;
+            border: 3px solid transparent;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-align: left;
+            width: 100%;
+        }
+        
+        .feedback-option:hover {
+            background: #fff5f2;
+            transform: translateX(5px);
+        }
+        
+        .feedback-option.selected {
+            background: #fff5f2;
+            border-color: #ff6b35;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+        }
+        
+        .feedback-option-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+        
+        .feedback-option-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .feedback-hint {
+            text-align: center;
+            font-size: 14px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .feedback-hint .hint-icon {
+            font-size: 16px;
+        }
+        
+        /* 深夜機上服務樣式 */
+        .midnight-service-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95); /* 極暗背景 */
+            z-index: 20000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 1.5s ease-out;
+        }
+        
+        .midnight-service-overlay.show {
+            opacity: 1;
+        }
+        
+        .midnight-service-overlay.fade-out {
+            opacity: 0;
+        }
+        
+        .midnight-service-content {
+            position: relative;
+            width: 800px;
+            height: 800px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .midnight-service-image {
+            width: 800px;
+            height: 800px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 20px;
+            filter: brightness(0.3) saturate(0.6); /* 降低亮度，降低飽和度 */
+            box-shadow: 0 0 60px rgba(255, 140, 0, 0.3); /* 暖橙色光暈 */
+        }
+        
+        .midnight-service-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 140, 0, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); }
+        }
+        
+        /* 降落確認提示樣式 */
+        .landing-confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 20001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .landing-confirm-overlay.show {
+            opacity: 1;
+        }
+        
+        .landing-confirm-content {
+            text-align: center;
+            color: #ff8c00; /* 暖橙色 */
+        }
+        
+        .landing-confirm-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 20px rgba(255, 140, 0, 0.5));
+        }
+        
+        .landing-confirm-text {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #ffa500; /* 琥珀色 */
+        }
+        
+        .landing-confirm-hint {
+            font-size: 18px;
+            color: #cc7700;
+            opacity: 0.8;
+        }
+        
         .button-hint-item .hint-icon {
             font-size: 14px;
         }
@@ -852,6 +1091,39 @@
                     <span class="hint-icon">🔘🔘</span>
                     <span class="hint-text">按兩下：返回</span>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 飛行回饋選單（入境登記） -->
+    <div id="flightFeedbackModal" class="feedback-modal" style="display: none;">
+        <div class="feedback-modal-content">
+            <div class="feedback-header">
+                <div class="feedback-icon">✈️</div>
+                <div class="feedback-title">入境登記</div>
+                <div class="feedback-subtitle">感謝您搭乘 Sleep Airline</div>
+            </div>
+            <div class="feedback-question">
+                抵達 <span id="feedbackDestinationName">目的地</span> 後，<br>
+                您現在的體感狀態是？
+            </div>
+            <div class="feedback-options">
+                <button class="feedback-option" data-feedback="ENERGETIC" id="feedbackOption0">
+                    <div class="feedback-option-icon">⚡</div>
+                    <div class="feedback-option-text">動力滿滿</div>
+                </button>
+                <button class="feedback-option" data-feedback="CONTINUE" id="feedbackOption1">
+                    <div class="feedback-option-icon">🌙</div>
+                    <div class="feedback-option-text">還想續飛</div>
+                </button>
+                <button class="feedback-option" data-feedback="TURBULENCE" id="feedbackOption2">
+                    <div class="feedback-option-icon">🌊</div>
+                    <div class="feedback-option-text">遇上亂流</div>
+                </button>
+            </div>
+            <div class="feedback-hint">
+                <span class="hint-icon">🎛️</span>
+                <span class="hint-text">旋鈕選擇，按鈕確認</span>
             </div>
         </div>
     </div>
@@ -1928,6 +2200,20 @@
                     break;
                     
                 default:
+                    // 如果降落確認提示正在顯示，處理確認降落
+                    if (landingConfirmActive && currentPhase === Phase.CRUISE) {
+                        console.log('✅ 確認提前降落');
+                        confirmEarlyLanding();
+                        return;
+                    }
+                    
+                    // 檢查是否在飛行中（Phase.CRUISE）- 深夜機上服務
+                    if (currentPhase === Phase.CRUISE) {
+                        console.log('🍽️ 按鈕：飛行中按下，觸發深夜機上服務');
+                        triggerMidnightService();
+                        return;
+                    }
+                    
                     // 檢查是否在降落階段（Phase.DESCENT）
                     if (currentPhase === Phase.DESCENT && !manualLandingTriggered) {
                         console.log('🛬 按鈕：在降落階段按下，觸發手動降落');
@@ -3972,7 +4258,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         sleepDuration: record.sleepDuration || record.durationMinutes || 0,
                         punctuality: record.punctuality || null,
                         climateZoneName: record.climateZoneName || null,
-                        announcementText: record.announcementText || ''
+                        announcementText: record.announcementText || '',
+                        flightFeedback: record.flightFeedback || null  // 飛行回饋數據
                     }));
                     
                     console.log(`✅ 載入 ${formattedRecords.length} 筆歷史航程記錄`);
@@ -4029,7 +4316,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         sleepDuration: data.sleepDuration || data.durationMinutes || 0,
                         punctuality: data.punctuality || null,
                         climateZoneName: data.climateZoneName || null,
-                        announcementText: data.announcementText || ''
+                        announcementText: data.announcementText || '',
+                        flightFeedback: data.flightFeedback || null  // 飛行回饋數據
                     });
                 });
                 
@@ -4180,6 +4468,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     destinationImage: sleepData.imageUrl,        // 降落圖片 URL
                     announcementText: sleepData.announcementText, // 降落語音文字
                     
+                    // 飛行回饋（實驗數據）
+                    flightFeedback: sleepData.flightFeedback || null, // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
+                    
                     wakeTime: sleepData.wakeTime,
                     timestamp: new Date().toISOString()
                 };
@@ -4192,6 +4483,361 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 
                 if (response.ok) {
                     console.log('✅ 睡眠記錄已儲存到 Firebase');
+                    return true;
+                } else {
+                    console.error('❌ 儲存失敗:', await response.text());
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ 儲存失敗:', error);
+                return false;
+            }
+        }
+
+        // ============================================================================
+        // 飛行回饋（入境登記）
+        // ============================================================================
+        
+        // 顯示飛行回饋選單並等待用戶選擇
+        function showFlightFeedback(destination) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('flightFeedbackModal');
+                const destinationNameEl = document.getElementById('feedbackDestinationName');
+                const options = document.querySelectorAll('.feedback-option');
+                
+                if (!modal || !destinationNameEl) {
+                    console.warn('⚠️ 飛行回饋選單元素不存在，跳過回饋收集');
+                    resolve(null);
+                    return;
+                }
+                
+                // 更新目的地名稱
+                const destinationName = (destination.city_zh || destination.city) + '，' + (destination.country_zh || destination.country);
+                destinationNameEl.textContent = destinationName;
+                
+                // 顯示選單
+                modal.style.display = 'flex';
+                
+                // 初始化選中狀態（第一個選項）
+                let selectedIndex = 0;
+                let selectedFeedback = 'ENERGETIC';
+                updateSelection(0);
+                
+                // 更新選中狀態
+                function updateSelection(index) {
+                    options.forEach((opt, i) => {
+                        if (i === index) {
+                            opt.classList.add('selected');
+                        } else {
+                            opt.classList.remove('selected');
+                        }
+                    });
+                    selectedIndex = index;
+                    selectedFeedback = options[index].getAttribute('data-feedback');
+                }
+                
+                // 旋鈕選擇邏輯
+                let knobSelectionActive = true;
+                const knobSelectionInterval = setInterval(() => {
+                    if (!knobSelectionActive) return;
+                    
+                    fetch('http://127.0.0.1:5001/api/knob/position')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.position !== undefined) {
+                                const position = data.position;
+                                // 將旋鈕位置（0-5）映射到選項索引（0-2）
+                                const mappedIndex = Math.floor((position / 6) * 3);
+                                const clampedIndex = Math.max(0, Math.min(2, mappedIndex));
+                                if (clampedIndex !== selectedIndex) {
+                                    updateSelection(clampedIndex);
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            // 忽略錯誤，繼續輪詢
+                        });
+                }, 200);
+                
+                // 按鈕確認邏輯
+                let buttonPressHandled = false;
+                const buttonCheckInterval = setInterval(() => {
+                    if (buttonPressHandled) return;
+                    
+                    fetch('http://127.0.0.1:5001/api/button/state?gpio=4')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.pressed) {
+                                buttonPressHandled = true;
+                                knobSelectionActive = false;
+                                
+                                // 清除輪詢
+                                clearInterval(knobSelectionInterval);
+                                clearInterval(buttonCheckInterval);
+                                
+                                // 隱藏選單
+                                modal.style.display = 'none';
+                                
+                                // 返回選擇的回饋
+                                console.log('✅ 飛行回饋已收集:', selectedFeedback);
+                                resolve(selectedFeedback);
+                            }
+                        })
+                        .catch(err => {
+                            // 忽略錯誤，繼續輪詢
+                        });
+                }, 200);
+                
+                // 點擊選項（桌面測試用）
+                options.forEach((opt, index) => {
+                    opt.addEventListener('click', () => {
+                        if (buttonPressHandled) return;
+                        buttonPressHandled = true;
+                        knobSelectionActive = false;
+                        
+                        clearInterval(knobSelectionInterval);
+                        clearInterval(buttonCheckInterval);
+                        
+                        updateSelection(index);
+                        modal.style.display = 'none';
+                        
+                        console.log('✅ 飛行回饋已收集:', selectedFeedback);
+                        resolve(selectedFeedback);
+                    });
+                });
+            });
+        }
+
+        // ============================================================================
+        // 深夜機上服務功能
+        // ============================================================================
+        
+        let midnightServiceActive = false;
+        let landingConfirmActive = false;
+        let landingConfirmTimeout = null;
+
+        // 觸發深夜機上服務
+        async function triggerMidnightService() {
+            if (midnightServiceActive) {
+                console.log('⚠️ 深夜服務已啟動，忽略重複觸發');
+                return;
+            }
+            
+            midnightServiceActive = true;
+            console.log('🍽️ 啟動深夜機上服務...');
+            
+            // 計算當前飛行時間
+            if (!sleepStartTime || !selectedTimer) {
+                console.warn('⚠️ 無法計算飛行時間');
+                midnightServiceActive = false;
+                return;
+            }
+            
+            const elapsedMinutes = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
+            const totalMinutes = selectedTimer;
+            const progressPercent = Math.min(100, (elapsedMinutes / totalMinutes) * 100);
+            
+            // 記錄到 Firebase（睡眠中斷事件）
+            try {
+                await saveMidnightServiceRecord({
+                    elapsedMinutes: elapsedMinutes,
+                    totalMinutes: totalMinutes,
+                    progressPercent: progressPercent,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                console.warn('⚠️ 記錄深夜服務失敗:', error);
+            }
+            
+            // 生成飛機餐圖片（暖色調，低飽和度）
+            const serviceImageUrl = await generateMidnightServiceImage();
+            
+            // 顯示覆蓋層
+            const overlay = document.getElementById('midnightServiceOverlay');
+            const imageEl = document.getElementById('midnightServiceImage');
+            
+            if (overlay && imageEl) {
+                if (serviceImageUrl) {
+                    imageEl.style.backgroundImage = `url(${serviceImageUrl})`;
+                } else {
+                    // 如果圖片生成失敗，使用純色背景（暖橙色）
+                    imageEl.style.background = 'radial-gradient(circle, rgba(255, 140, 0, 0.2) 0%, rgba(0, 0, 0, 0.8) 100%)';
+                }
+                
+                overlay.style.display = 'flex';
+                setTimeout(() => {
+                    overlay.classList.add('show');
+                }, 50);
+            }
+            
+            // 播放輕微的「叮」聲（如果有的話）
+            // 注意：需要準備一個輕微的 ding.mp3 音檔
+            try {
+                await playAudioFile('sounds/ding.mp3', 1); // 只播放 1 秒
+            } catch (error) {
+                console.warn('⚠️ 無法播放叮聲（可忽略，如果沒有 ding.mp3）:', error);
+            }
+            
+            // 播放溫柔的機上服務語音
+            const serviceMessage = '乘客您好，現在是航程中段，為您送上一份深夜暖心服務，請稍作休息，祝您繼續享有好夢。';
+            await playAnnouncement(serviceMessage, 'zh-TW');
+            
+            // 15 秒後自動淡出
+            setTimeout(() => {
+                if (overlay) {
+                    overlay.classList.remove('show');
+                    overlay.classList.add('fade-out');
+                    
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        overlay.classList.remove('fade-out');
+                        midnightServiceActive = false;
+                        console.log('✅ 深夜服務已結束');
+                    }, 1500);
+                }
+            }, 15000);
+        }
+
+        // 生成深夜服務圖片（暖色調，低飽和度，使用窗戶反射邏輯）
+        async function generateMidnightServiceImage() {
+            try {
+                const serviceItems = [
+                    '一杯溫暖的熱可可，放在精緻的陶瓷杯中，旁邊有幾塊小餅乾',
+                    '一杯熱茶，配上一小盤可愛的餅乾和點心',
+                    '一杯溫熱的雞尾酒（無酒精版本），配有小點心',
+                    '溫暖的熱飲和小餅乾，擺放在溫暖的燈光下'
+                ];
+                
+                const randomItem = serviceItems[Math.floor(Math.random() * serviceItems.length)];
+                
+                // 方案 A：窗景的「反射」邏輯
+                // 窗戶玻璃上隱約「倒映」出室內的餐點，同時保持窗外景色的可見性
+                // 保持原始機翼元素和DD風格，但機翼可以很不明顯
+                const prompt = `以飛機窗戶內視角為構圖，畫面下方有單邊飛機機翼作為前景，但機翼非常不明顯、幾乎融入背景，保持固定位置與比例，帶有輕微 3D 反射與玻璃質感。
+
+夜晚機艙內視角，透過飛機窗戶向外看。窗外是深邃的夜空，有稀疏的雲層和星星，保持空間感和深度。
+
+窗戶玻璃上隱約「倒映」出機艙內的景象：${randomItem}，這些餐點以倒影的形式出現在窗戶玻璃上，像是夜晚機艙內燈光在玻璃上的反射。
+
+關鍵視覺特點：
+- 窗外景色（夜空、雲層、星星）依然清晰可見，佔據畫面主要部分
+- 畫面下方有單邊飛機機翼，但非常不明顯、幾乎融入背景，只作為微妙的視覺元素
+- 餐點以「倒影」形式出現在窗戶玻璃上，半透明、模糊、帶有玻璃反射質感
+- 倒影中的餐點使用溫暖的琥珀色或暖橙色光線，低飽和度
+- 禁止使用白色或藍色光
+- 所有顏色必須是低飽和度的暖色調（暖橙色、琥珀色、深棕色、暖黃色）
+- 畫面為 800x800 正方形
+- 整體畫面風格為 DD 風格：微 3D 卡通渲染、向量色塊分層、乾淨邊緣、柔和光線、Pixar-lite 的立體體積感，畫面清晰、溫暖、具有動畫電影感
+- 風格為極簡、安靜、溫暖，適合深夜環境，有助於睡眠
+- 畫面柔和、模糊邊緣，光線柔和擴散
+- 窗戶玻璃有輕微的反射質感和透明度，讓窗外景色和室內倒影同時存在
+
+整體氛圍：使用者依然看得到窗外的星空或雲海（保持空間感），但感官上知道「服務（餐點）」已經送到面前了。機翼作為微妙的視覺元素，幾乎融入背景，不搶奪焦點。`;
+                
+                const response = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        size: '800x800'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.imageUrl || data.url;
+                }
+            } catch (error) {
+                console.warn('⚠️ 生成深夜服務圖片失敗:', error);
+            }
+            
+            return null;
+        }
+
+        // 顯示降落確認提示
+        function showLandingConfirmation() {
+            if (landingConfirmActive) {
+                console.log('⚠️ 降落確認已顯示，忽略重複觸發');
+                return;
+            }
+            
+            landingConfirmActive = true;
+            const overlay = document.getElementById('landingConfirmOverlay');
+            
+            if (overlay) {
+                overlay.style.display = 'flex';
+                setTimeout(() => {
+                    overlay.classList.add('show');
+                }, 50);
+                
+                // 5 秒後自動隱藏
+                landingConfirmTimeout = setTimeout(() => {
+                    hideLandingConfirmation();
+                }, 5000);
+            }
+        }
+
+        // 隱藏降落確認提示
+        function hideLandingConfirmation() {
+            const overlay = document.getElementById('landingConfirmOverlay');
+            
+            if (overlay) {
+                overlay.classList.remove('show');
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    landingConfirmActive = false;
+                }, 500);
+            }
+            
+            if (landingConfirmTimeout) {
+                clearTimeout(landingConfirmTimeout);
+                landingConfirmTimeout = null;
+            }
+        }
+
+        // 確認提前降落（在雙擊後 5 秒內再按一次）
+        function confirmEarlyLanding() {
+            if (!landingConfirmActive) {
+                return; // 如果確認提示已消失，不處理
+            }
+            
+            console.log('🛬 確認提前降落');
+            hideLandingConfirmation();
+            
+            // 清除確認計時器
+            if (landingConfirmTimeout) {
+                clearTimeout(landingConfirmTimeout);
+                landingConfirmTimeout = null;
+            }
+            
+            // 觸發手動降落
+            manualLandingTriggered = true;
+            triggerManualLanding();
+        }
+
+        // 記錄深夜服務事件（睡眠中斷）
+        async function saveMidnightServiceRecord(data) {
+            try {
+                const recordData = {
+                    userDisplayName: 'Pi User',
+                    dataIdentifier: 'midnight_service_' + Date.now(),
+                    groupName: 'Pi',
+                    eventType: 'MID_FLIGHT_WAKEUP',
+                    elapsedMinutes: data.elapsedMinutes,
+                    totalMinutes: data.totalMinutes,
+                    progressPercent: data.progressPercent,
+                    timestamp: data.timestamp,
+                    deviceType: 'raspberry_pi_sleep_flight'
+                };
+                
+                const response = await fetch('https://morgan-orcin.vercel.app/api/save-record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(recordData)
+                });
+                
+                if (response.ok) {
+                    console.log('✅ 深夜服務記錄已儲存到 Firebase');
                     return true;
                 } else {
                     console.error('❌ 儲存失敗:', await response.text());
@@ -5315,7 +5961,6 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 await playAnnouncement(announcement, 'zh-TW');
             }
             
-            // 儲存到 Firebase
             // 優先使用手動觸發時生成的圖片，否則使用最終目的地圖片
             const finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
             
@@ -5324,6 +5969,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 (selectedDirection !== null && climateZoneOptions[selectedDirection] ? 
                     climateZoneOptions[selectedDirection].name : null);
             
+            // 顯示飛行回饋選單（入境登記）
+            const feedbackData = await showFlightFeedback(finalDestination);
+            
+            // 儲存到 Firebase（包含回饋數據）
             await saveSleepRecord({
                 // 時間相關
                 plannedMinutes: selectedTimer,              // 預期時間
@@ -5349,6 +5998,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 // 媒體內容
                 imageUrl: finalImageUrl,                     // 降落圖片 URL（優先使用手動觸發的）
                 announcementText: announcement,             // 降落語音文字
+                
+                // 飛行回饋（實驗數據）
+                flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
                 
                 wakeTime: new Date().toISOString()
             });
@@ -5417,6 +6069,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         function handleButtonDoubleClick() {
             console.log('🔘 檢測到按鈕雙擊');
             
+            // 如果在飛行中（Phase.CRUISE），雙擊詢問是否要提前降落
+            if (currentPhase === Phase.CRUISE) {
+                console.log('🛬 飛行中雙擊：詢問是否提前降落');
+                showLandingConfirmation();
+                return;
+            }
+            
             // 如果在機票回顧狀態，雙擊返回首頁
             if (currentState === 'TICKET_REVIEW') {
                 console.log('🔘 從機票回顧返回首頁');
@@ -5469,6 +6128,207 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         window.startKnobMonitoring = startKnobMonitoring;
         window.destinationCalculator = destinationCalculator;
         window.switchToPhase = switchToPhase;
+
+        // ============================================================================
+        // Console 指令：查看體驗回饋數據
+        // ============================================================================
+
+        // 將函數暴露到全局作用域，方便在 console 中使用
+        window.viewFeedback = async function(limit = 50) {
+            try {
+                console.log('📊 正在載入體驗回饋數據...');
+                
+                const response = await fetch('https://morgan-orcin.vercel.app/api/get-flight-history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userDisplayName: 'Pi User',
+                        limit: limit
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.error('❌ API 請求失敗:', response.status);
+                    return null;
+                }
+                
+                const data = await response.json();
+                const records = data.records || [];
+                
+                // 過濾出有回饋數據的記錄
+                const feedbackRecords = records.filter(r => r.flightFeedback);
+                const noFeedbackRecords = records.filter(r => !r.flightFeedback);
+                
+                console.log('\n📈 ========== 體驗回饋統計 ==========');
+                console.log(`總記錄數: ${records.length}`);
+                console.log(`有回饋: ${feedbackRecords.length}`);
+                console.log(`無回饋: ${noFeedbackRecords.length}`);
+                
+                // 統計各類型回饋
+                const feedbackStats = {
+                    ENERGETIC: feedbackRecords.filter(r => r.flightFeedback === 'ENERGETIC').length,
+                    CONTINUE: feedbackRecords.filter(r => r.flightFeedback === 'CONTINUE').length,
+                    TURBULENCE: feedbackRecords.filter(r => r.flightFeedback === 'TURBULENCE').length
+                };
+                
+                console.log('\n📊 回饋分布:');
+                console.log(`  ⚡ 動力滿滿: ${feedbackStats.ENERGETIC} 次`);
+                console.log(`  🌙 還想續飛: ${feedbackStats.CONTINUE} 次`);
+                console.log(`  🌊 遇上亂流: ${feedbackStats.TURBULENCE} 次`);
+                
+                // 顯示詳細記錄
+                console.log('\n📋 詳細記錄（有回饋）:');
+                feedbackRecords.forEach((record, index) => {
+                    const date = record.wakeTime ? new Date(record.wakeTime).toLocaleString('zh-TW') : '未知';
+                    const feedbackText = {
+                        'ENERGETIC': '⚡ 動力滿滿',
+                        'CONTINUE': '🌙 還想續飛',
+                        'TURBULENCE': '🌊 遇上亂流'
+                    }[record.flightFeedback] || record.flightFeedback;
+                    
+                    console.log(`\n  [${index + 1}] ${record.city_zh || record.city}, ${record.country_zh || record.country}`);
+                    console.log(`      時間: ${date}`);
+                    console.log(`      回饋: ${feedbackText}`);
+                    console.log(`      準時: ${record.punctuality || '未知'}`);
+                    console.log(`      時長: ${record.sleepDuration || 0} 分鐘`);
+                    if (record.climateZoneName) {
+                        console.log(`      氣候: ${record.climateZoneName}`);
+                    }
+                });
+                
+                // 返回數據供進一步分析
+                return {
+                    total: records.length,
+                    withFeedback: feedbackRecords.length,
+                    withoutFeedback: noFeedbackRecords.length,
+                    stats: feedbackStats,
+                    records: feedbackRecords,
+                    allRecords: records
+                };
+                
+            } catch (error) {
+                console.error('❌ 載入回饋數據失敗:', error);
+                return null;
+            }
+        };
+
+        // 快速查看最近的回饋
+        window.viewRecentFeedback = function(count = 10) {
+            return window.viewFeedback(count);
+        };
+
+        // 查看特定回饋類型的記錄
+        window.viewFeedbackByType = async function(type = 'ENERGETIC', limit = 50) {
+            const data = await window.viewFeedback(limit);
+            if (!data) return null;
+            
+            const filtered = data.records.filter(r => r.flightFeedback === type);
+            console.log(`\n🔍 篩選結果（${type}）: ${filtered.length} 筆`);
+            filtered.forEach((record, index) => {
+                const date = record.wakeTime ? new Date(record.wakeTime).toLocaleString('zh-TW') : '未知';
+                console.log(`  [${index + 1}] ${record.city_zh || record.city} - ${date}`);
+            });
+            
+            return filtered;
+        };
+
+        // 查看回饋與準時性的關聯
+        window.viewFeedbackPunctuality = async function(limit = 50) {
+            const data = await window.viewFeedback(limit);
+            if (!data) return null;
+            
+            console.log('\n📊 回饋與準時性關聯分析:');
+            
+            const punctualityMap = {};
+            data.records.forEach(record => {
+                const punctuality = record.punctuality || 'UNKNOWN';
+                const feedback = record.flightFeedback;
+                
+                if (!punctualityMap[punctuality]) {
+                    punctualityMap[punctuality] = { ENERGETIC: 0, CONTINUE: 0, TURBULENCE: 0 };
+                }
+                
+                if (punctualityMap[punctuality][feedback] !== undefined) {
+                    punctualityMap[punctuality][feedback]++;
+                }
+            });
+            
+            Object.keys(punctualityMap).forEach(punctuality => {
+                const stats = punctualityMap[punctuality];
+                console.log(`\n  ${punctuality}:`);
+                console.log(`    ⚡ 動力滿滿: ${stats.ENERGETIC}`);
+                console.log(`    🌙 還想續飛: ${stats.CONTINUE}`);
+                console.log(`    🌊 遇上亂流: ${stats.TURBULENCE}`);
+            });
+            
+            return punctualityMap;
+        };
+
+        // 匯出為 CSV 格式（用於 Excel 分析）
+        window.exportFeedbackCSV = async function(limit = 100) {
+            const data = await window.viewFeedback(limit);
+            if (!data) return null;
+            
+            const csvRows = [];
+            csvRows.push('日期,城市,國家,回饋類型,準時狀態,睡眠時長(分鐘),氣候帶');
+            
+            data.records.forEach(record => {
+                const date = record.wakeTime ? new Date(record.wakeTime).toISOString() : '';
+                const city = (record.city_zh || record.city || '').replace(/,/g, '，');
+                const country = (record.country_zh || record.country || '').replace(/,/g, '，');
+                const feedback = record.flightFeedback || '';
+                const punctuality = record.punctuality || '';
+                const duration = record.sleepDuration || 0;
+                const climate = record.climateZoneName || '';
+                
+                csvRows.push(`${date},${city},${country},${feedback},${punctuality},${duration},${climate}`);
+            });
+            
+            const csv = csvRows.join('\n');
+            console.log('\n📄 CSV 格式數據:');
+            console.log(csv);
+            
+            // 複製到剪貼板（如果瀏覽器支持）
+            if (navigator.clipboard) {
+                try {
+                    await navigator.clipboard.writeText(csv);
+                    console.log('\n✅ CSV 數據已複製到剪貼板！');
+                } catch (err) {
+                    console.log('\n⚠️ 無法自動複製，請手動複製上面的 CSV 數據');
+                }
+            }
+            
+            return csv;
+        };
+
+        console.log('\n✅ 體驗回饋查看指令已載入！');
+        console.log('📝 可用指令:');
+        console.log('  - viewFeedback(limit)          : 查看所有回饋數據（預設 50 筆）');
+        console.log('  - viewRecentFeedback(count)    : 查看最近的回饋（預設 10 筆）');
+        console.log('  - viewFeedbackByType(type, limit): 查看特定類型的回饋');
+        console.log('  - viewFeedbackPunctuality(limit): 分析回饋與準時性的關聯');
+        console.log('  - exportFeedbackCSV(limit)     : 匯出為 CSV 格式（用於 Excel）');
+        console.log('\n💡 範例:');
+        console.log('  viewFeedback(100)');
+        console.log('  viewFeedbackByType("ENERGETIC", 50)');
+        console.log('  exportFeedbackCSV(200)');
     </script>
+
+    <!-- 深夜機上服務覆蓋層 -->
+    <div id="midnightServiceOverlay" class="midnight-service-overlay" style="display: none;">
+        <div class="midnight-service-content">
+            <div id="midnightServiceImage" class="midnight-service-image"></div>
+            <div class="midnight-service-glow"></div>
+        </div>
+    </div>
+
+    <!-- 降落確認提示 -->
+    <div id="landingConfirmOverlay" class="landing-confirm-overlay" style="display: none;">
+        <div class="landing-confirm-content">
+            <div class="landing-confirm-icon">🛬</div>
+            <div class="landing-confirm-text">是否要提前降落？</div>
+            <div class="landing-confirm-hint">5 秒內再按一次確認</div>
+        </div>
+    </div>
 </body>
 </html>

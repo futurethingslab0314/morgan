@@ -67,7 +67,8 @@ export default async function handler(req, res) {
                 punctuality: data.punctuality || null,
                 climateZoneName: data.climateZoneName || null,
                 announcementText: data.announcementText || '',
-                timezone: data.timezone || 'UTC'
+                timezone: data.timezone || 'UTC',
+                flightFeedback: data.flightFeedback || null  // 飛行回饋數據
             });
         });
 
