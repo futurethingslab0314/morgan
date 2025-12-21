@@ -2263,16 +2263,18 @@
                     
                 case State.TIMER:
                     // 從選擇時長 → 選擇氣候帶
+                    // 只有在用戶已經選擇了時間（selectedTimer 不為 null）時才切換
                     if (selectedTimer) {
                         console.log('✅ 按鈕：從時間選擇切換到氣候帶選擇');
+                        console.log('   已選擇時間:', selectedTimer, '分鐘');
                         // 重置 lastKnobPosition，確保旋鈕位置能立即讀取
                         lastKnobPosition = null;
                         switchState(State.ANGLE);
                         currentPosition = 0;
-                        // 不自動選擇，等待旋鈕轉動或手動選擇
                     } else {
-                        console.log('⚠️ 請先選擇時長，自動選擇第一個選項');
-                        selectTimer(0);
+                        // 如果還沒有選擇時間，提示用戶先選擇（不自動選擇）
+                        console.log('⚠️ 請先通過旋鈕選擇時長，然後再按按鈕');
+                        // 可以考慮顯示一個提示訊息給用戶
                     }
                     break;
                     
