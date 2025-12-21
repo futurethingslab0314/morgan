@@ -496,7 +496,7 @@
             background-position: center;
             background-repeat: no-repeat;
             border-radius: 20px;
-            filter: brightness(0.3) saturate(0.6); /* 降低亮度，降低飽和度 */
+            filter: brightness(0.5) saturate(0.7); /* 從 0.3 調到 0.5，讓圖片更明顯 */
             box-shadow: 0 0 60px rgba(255, 140, 0, 0.3); /* 暖橙色光暈 */
         }
         
@@ -711,7 +711,7 @@
             font-size: 16px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
             user-select: none;
             white-space: nowrap;
             min-width: 90px;
@@ -724,7 +724,6 @@
         .timer-option:hover {
             background: #ffe5d9;
             border-color: #ff6b35;
-            transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
         }
 
@@ -734,7 +733,6 @@
             color: #ffffff;
             font-weight: 600;
             box-shadow: 0 4px 16px rgba(255, 107, 53, 0.4);
-            transform: translateY(-2px);
         }
 
         /* 角度選項 - 清爽設計 */
@@ -751,7 +749,7 @@
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
             user-select: none;
             min-width: 90px;
             box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
@@ -760,7 +758,6 @@
         .angle-option:hover {
             background: #ffe5d9;
             border-color: #ff6b35;
-            transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
         }
 
@@ -770,7 +767,6 @@
             color: #ffffff;
             font-weight: 600;
             box-shadow: 0 4px 16px rgba(255, 107, 53, 0.4);
-            transform: translateY(-2px);
         }
 
         .angle-arrow {
@@ -1363,20 +1359,11 @@
                 return;
             }
             
-            // 在選擇時間時，先從 Firebase 讀取上次降落地點作為新的出發地
-            const lastLanding = await loadLastLandingLocation();
-            if (lastLanding) {
-                destinationCalculator.setOrigin(lastLanding.latitude, lastLanding.longitude);
-                console.log(`✈️ 從 ${lastLanding.city}, ${lastLanding.country} 出發`);
-            } else {
-                destinationCalculator.resetToTaipei();
-                console.log('✈️ 從台北出發（首次旅程或無歷史記錄）');
-            }
-            
+            // 立即更新 UI，不等待 Firebase
             currentPosition = position;
             selectedTimer = timerOptions[position];
             
-            // 更新 UI 高亮
+            // 立即更新 UI 高亮（無動畫延遲）
             document.querySelectorAll('.timer-option').forEach((option, idx) => {
                 option.classList.toggle('active', idx === position);
             });
@@ -1392,6 +1379,20 @@
             
             // 更新按鈕狀態
             updateNextButton();
+            
+            // 在背景載入 Firebase 數據（不阻塞 UI）
+            loadLastLandingLocation().then(lastLanding => {
+                if (lastLanding) {
+                    destinationCalculator.setOrigin(lastLanding.latitude, lastLanding.longitude);
+                    console.log(`✈️ 從 ${lastLanding.city}, ${lastLanding.country} 出發`);
+                } else {
+                    destinationCalculator.resetToTaipei();
+                    console.log('✈️ 從台北出發（首次旅程或無歷史記錄）');
+                }
+            }).catch(error => {
+                console.warn('⚠️ 載入上次降落地點失敗，使用預設值:', error);
+                destinationCalculator.resetToTaipei();
+            });
         }
 
         // 選擇角度（保留原函數，但會在下文被覆蓋）
@@ -1808,7 +1809,7 @@
                     // 這裡先靜默錯誤，避免在 Vercel 或非樹莓派環境洗版
                     // console.error('🔴 簡化監控抓旋鈕失敗:', e);
                 }
-            }, 300); // 每 300ms 讀一次
+            }, 100); // 每 100ms 讀一次，提升響應速度
         }
         
         // 提供全局函數來控制旋鈕監控
@@ -2075,7 +2076,8 @@
             );
             
             // 檢查是否為三擊（600ms 內按了三次）
-            if (buttonPressSequence.length === 3) {
+            // 在巡航階段禁用三擊功能
+            if (buttonPressSequence.length === 3 && currentPhase !== Phase.CRUISE) {
                 buttonPressSequence = []; // 清除記錄
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
@@ -2084,6 +2086,13 @@
                 handleButtonTripleClick();
                 lastButtonPressTime = 0;
                 return;
+            }
+            
+            // 如果在巡航階段按了三次，只當作單擊處理（清除記錄，避免誤觸發）
+            if (buttonPressSequence.length === 3 && currentPhase === Phase.CRUISE) {
+                console.log('⚠️ 巡航階段不支援三擊，當作單擊處理');
+                buttonPressSequence = []; // 清除記錄
+                // 繼續執行後續的單擊/雙擊邏輯
             }
             
             const timeSinceLastPress = currentTime - lastButtonPressTime;
@@ -2111,6 +2120,9 @@
             }
             
             buttonPressTimeout = setTimeout(() => {
+                console.log('⏰ 單擊延遲時間到，執行 handleButtonSingleClick');
+                console.log('   當前階段:', currentPhase);
+                console.log('   當前狀態:', currentState);
                 handleButtonSingleClick();
                 buttonPressTimeout = null;
             }, DOUBLE_CLICK_THRESHOLD);
@@ -2140,10 +2152,13 @@
             }
             
             // 檢查是否在飛行中（Phase.CRUISE）- 深夜機上服務（優先處理，必須在 switch 之前）
-            if (currentPhase === Phase.CRUISE) {
+            // 使用 == 而不是 ===，因為 Phase.CRUISE 可能是數字 5
+            if (currentPhase === Phase.CRUISE || currentPhase == 5) {
                 console.log('🍽️ 按鈕：飛行中按下，觸發深夜機上服務');
-                console.log('   當前階段:', currentPhase);
+                console.log('   當前階段:', currentPhase, '(類型:', typeof currentPhase, ')');
+                console.log('   Phase.CRUISE:', Phase.CRUISE, '(類型:', typeof Phase.CRUISE, ')');
                 console.log('   當前狀態:', currentState);
+                console.log('   比較結果:', currentPhase === Phase.CRUISE, currentPhase == 5);
                 triggerMidnightService();
                 return;
             }
@@ -4699,18 +4714,55 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             const overlay = document.getElementById('midnightServiceOverlay');
             const imageEl = document.getElementById('midnightServiceImage');
             
+            console.log('🔍 檢查覆蓋層元素:', {
+                overlay: !!overlay,
+                imageEl: !!imageEl,
+                serviceImageUrl: serviceImageUrl
+            });
+            
             if (overlay && imageEl) {
                 if (serviceImageUrl) {
+                    console.log('✅ 設置圖片背景:', serviceImageUrl);
                     imageEl.style.backgroundImage = `url(${serviceImageUrl})`;
+                    imageEl.style.backgroundSize = 'cover';
+                    imageEl.style.backgroundPosition = 'center';
+                    imageEl.style.backgroundRepeat = 'no-repeat';
                 } else {
+                    console.warn('⚠️ 圖片生成失敗，使用純色背景');
                     // 如果圖片生成失敗，使用純色背景（暖橙色）
-                    imageEl.style.background = 'radial-gradient(circle, rgba(255, 140, 0, 0.2) 0%, rgba(0, 0, 0, 0.8) 100%)';
+                    imageEl.style.background = 'radial-gradient(circle, rgba(255, 140, 0, 0.4) 0%, rgba(0, 0, 0, 0.9) 100%)';
+                    imageEl.style.backgroundImage = 'none'; // 清除可能的圖片
                 }
                 
+                console.log('📺 顯示覆蓋層');
                 overlay.style.display = 'flex';
+                // 強制立即顯示，不使用過渡動畫
+                overlay.style.opacity = '1';
+                overlay.classList.add('show');
+                
+                // 添加調試日誌
                 setTimeout(() => {
-                    overlay.classList.add('show');
-                }, 50);
+                    const computedStyle = window.getComputedStyle(overlay);
+                    console.log('🔍 覆蓋層狀態:', {
+                        display: computedStyle.display,
+                        opacity: computedStyle.opacity,
+                        visibility: computedStyle.visibility,
+                        zIndex: computedStyle.zIndex
+                    });
+                    const imageStyle = window.getComputedStyle(imageEl);
+                    console.log('🔍 圖片元素狀態:', {
+                        backgroundImage: imageStyle.backgroundImage,
+                        background: imageStyle.background,
+                        width: imageStyle.width,
+                        height: imageStyle.height,
+                        display: imageStyle.display
+                    });
+                }, 100);
+            } else {
+                console.error('❌ 找不到覆蓋層或圖片元素:', {
+                    overlay: !!overlay,
+                    imageEl: !!imageEl
+                });
             }
             
             // 播放輕微的「叮」聲（如果有的話）
@@ -4829,6 +4881,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
 整體氛圍：使用者依然看得到窗外的星空或雲海（保持空間感），但感官上知道「服務（餐點）」已經送到面前了。機翼作為微妙的視覺元素，幾乎融入背景，不搶奪焦點。`;
                 
+                console.log('🎨 開始生成深夜服務圖片...');
                 const response = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -4838,15 +4891,22 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     })
                 });
                 
+                console.log('📡 API 響應狀態:', response.status, response.statusText);
+                
                 if (response.ok) {
                     const data = await response.json();
-                    return data.imageUrl || data.url;
+                    const imageUrl = data.imageUrl || data.url;
+                    console.log('✅ 圖片生成成功:', imageUrl);
+                    return imageUrl;
+                } else {
+                    const errorText = await response.text();
+                    console.error('❌ API 返回錯誤:', response.status, errorText);
+                    return null;
                 }
             } catch (error) {
-                console.warn('⚠️ 生成深夜服務圖片失敗:', error);
+                console.error('❌ 生成深夜服務圖片失敗:', error);
+                return null;
             }
-            
-            return null;
         }
 
         // 顯示降落確認提示
@@ -6513,5 +6573,125 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             <div class="landing-confirm-hint">5 秒內再按一次確認</div>
         </div>
     </div>
+    <!-- 快速測試函數（可在控制台調用） -->
+    <script>
+        // 測試深夜機上服務
+        window.testMidnightService = function() {
+            console.log('🧪 測試深夜機上服務');
+            console.log('   當前階段:', currentPhase);
+            console.log('   Phase.CRUISE:', Phase.CRUISE);
+            console.log('   比較結果:', currentPhase === Phase.CRUISE);
+            
+            if (currentPhase === Phase.CRUISE || currentPhase == 5) {
+                console.log('✅ 階段正確，觸發服務');
+                triggerMidnightService();
+            } else {
+                console.warn('⚠️ 當前不在 CRUISE 階段，強制設置為 CRUISE');
+                currentPhase = Phase.CRUISE;
+                triggerMidnightService();
+            }
+        };
+        
+        // 測試按鈕點擊
+        window.testButtonClick = function() {
+            console.log('🧪 測試按鈕點擊');
+            console.log('   當前階段:', currentPhase);
+            console.log('   當前狀態:', currentState);
+            handleButtonSingleClick();
+        };
+        
+        // 測試提早降落（提早 20 分鐘）
+        window.testEarlyLanding = function() {
+            console.log('🧪 測試提早降落（提早 20 分鐘）');
+            currentPhase = Phase.CRUISE;
+            selectedTimer = 360;  // 6 小時
+            sleepStartTime = Date.now() - (selectedTimer - 20) * 60 * 1000;
+            manualLandingTriggered = true;
+            console.log('   設置完成，觸發降落...');
+            triggerManualLanding();
+        };
+        
+        // 測試準時降落
+        window.testOnTimeLanding = function() {
+            console.log('🧪 測試準時降落');
+            currentPhase = Phase.CRUISE;
+            selectedTimer = 360;  // 6 小時
+            sleepStartTime = Date.now() - selectedTimer * 60 * 1000;
+            manualLandingTriggered = true;
+            console.log('   設置完成，觸發降落...');
+            triggerManualLanding();
+        };
+        
+        // 測試延遲降落（延遲 15 分鐘）
+        window.testLateLanding = function() {
+            console.log('🧪 測試延遲降落（延遲 15 分鐘）');
+            currentPhase = Phase.CRUISE;
+            selectedTimer = 360;  // 6 小時
+            sleepStartTime = Date.now() - (selectedTimer + 15) * 60 * 1000;
+            manualLandingTriggered = true;
+            console.log('   設置完成，觸發降落...');
+            triggerManualLanding();
+        };
+        
+        // 測試降落前 5 分鐘喚醒
+        window.testDescent = function() {
+            console.log('🧪 測試降落前 5 分鐘喚醒');
+            currentPhase = Phase.CRUISE;
+            selectedTimer = 360;  // 6 小時
+            sleepStartTime = Date.now() - (selectedTimer - 5) * 60 * 1000;
+            descentAnnouncementPlayed = false;
+            console.log('   設置完成，觸發降落前喚醒...');
+            handleDescent();
+        };
+        
+        // 測試直接降落完成
+        window.testLandingComplete = function() {
+            console.log('🧪 測試直接降落完成');
+            currentPhase = Phase.CRUISE;
+            selectedTimer = 360;  // 6 小時
+            sleepStartTime = Date.now() - selectedTimer * 60 * 1000;
+            console.log('   設置完成，觸發降落完成處理...');
+            handleLanding();
+        };
+        
+        // 測試極早降落（提早超過 15 分鐘，會觸發「迫降」幽默場景）
+        window.testVeryEarlyLanding = function() {
+            console.log('🧪 測試極早降落（提早 20 分鐘，迫降場景）');
+            currentPhase = Phase.CRUISE;
+            selectedTimer = 360;  // 6 小時
+            sleepStartTime = Date.now() - (selectedTimer - 20) * 60 * 1000;
+            manualLandingTriggered = true;
+            console.log('   設置完成，觸發迫降...');
+            triggerManualLanding();
+        };
+        
+        // 測試極晚降落（延遲超過 15 分鐘，會觸發「飛錯機場」幽默場景）
+        window.testVeryLateLanding = function() {
+            console.log('🧪 測試極晚降落（延遲 20 分鐘，飛錯機場場景）');
+            currentPhase = Phase.CRUISE;
+            selectedTimer = 360;  // 6 小時
+            sleepStartTime = Date.now() - (selectedTimer + 20) * 60 * 1000;
+            manualLandingTriggered = true;
+            console.log('   設置完成，觸發飛錯機場...');
+            triggerManualLanding();
+        };
+        
+        // 顯示所有可用的測試函數
+        window.showTestFunctions = function() {
+            console.log('📋 可用的測試函數：');
+            console.log('   testMidnightService()      - 測試深夜機上服務');
+            console.log('   testButtonClick()          - 測試按鈕點擊');
+            console.log('   testEarlyLanding()         - 測試提早降落（提早 20 分鐘）');
+            console.log('   testOnTimeLanding()        - 測試準時降落');
+            console.log('   testLateLanding()          - 測試延遲降落（延遲 15 分鐘）');
+            console.log('   testDescent()              - 測試降落前 5 分鐘喚醒');
+            console.log('   testLandingComplete()      - 測試直接降落完成');
+            console.log('   testVeryEarlyLanding()     - 測試極早降落（迫降場景）');
+            console.log('   testVeryLateLanding()      - 測試極晚降落（飛錯機場場景）');
+        };
+        
+        // 初始化時顯示可用函數
+        console.log('✅ 測試函數已載入！輸入 showTestFunctions() 查看所有可用函數');
+    </script>
 </body>
 </html>
