@@ -2175,28 +2175,46 @@
             }
             
             // 根據當前狀態決定等待時間
-            // 在首頁（State.COUNTRY）或降落後狀態，使用較短的等待時間以提升響應速度
+            // 在首頁（State.COUNTRY）、時間選擇（State.TIMER）、氣候選擇（State.ANGLE）或降落後狀態，使用較短的等待時間
             const waitTime = (currentState === State.COUNTRY || 
+                             currentState === State.TIMER ||
+                             currentState === State.ANGLE ||
                              currentPhase === Phase.POST_ARRIVAL || 
                              currentPhase === Phase.RETURN_WINDOW) 
-                             ? DOUBLE_CLICK_THRESHOLD  // 首頁和降落後：只等待雙擊時間（500ms），因為不需要檢測三擊
+                             ? DOUBLE_CLICK_THRESHOLD  // 這些狀態：只等待雙擊時間（500ms），因為不需要檢測三擊
                              : TRIPLE_CLICK_THRESHOLD; // 其他狀態：等待三擊時間（600ms）
             
             console.log('⏳ 設置單擊等待時間:', waitTime, 'ms, 當前狀態:', currentState, '當前階段:', currentPhase);
             
+            // 保存當前的 buttonPressSequence 快照，避免在等待期間被修改
+            const sequenceSnapshot = [...buttonPressSequence];
+            
             buttonPressTimeout = setTimeout(() => {
                 // 檢查是否真的只有一次按下（沒有第二次/第三次）
-                const remainingPresses = buttonPressSequence.filter(
-                    time => Date.now() - time < TRIPLE_CLICK_THRESHOLD
+                // 使用快照而不是當前的 buttonPressSequence，避免被後續按鍵影響
+                const now = Date.now();
+                const remainingPresses = sequenceSnapshot.filter(
+                    time => now - time < waitTime + 100  // 使用 waitTime + 100 作為緩衝，確保不會因為時間差而誤判
                 );
+                
+                console.log('🔍 檢查按鍵序列:', {
+                    sequenceSnapshot,
+                    remainingPresses,
+                    length: remainingPresses.length,
+                    waitTime,
+                    now
+                });
                 
                 if (remainingPresses.length === 1) {
                     console.log('⏰ 單擊延遲時間到，執行 handleButtonSingleClick');
                     console.log('   當前階段:', currentPhase);
                     console.log('   當前狀態:', currentState);
                     handleButtonSingleClick();
+                } else if (remainingPresses.length === 0) {
+                    console.log('⚠️ 按鍵序列為空，可能是時間過長，不處理單擊');
                 } else {
-                    console.log('🔘 按鍵序列已變化，不處理單擊');
+                    console.log('🔘 按鍵序列已變化（長度:', remainingPresses.length, '），不處理單擊');
+                    console.log('   這可能是因為在等待期間有新的按鍵事件');
                 }
                 
                 buttonPressSequence = []; // 清除記錄
@@ -2263,18 +2281,39 @@
                     
                 case State.TIMER:
                     // 從選擇時長 → 選擇氣候帶
-                    // 只有在用戶已經選擇了時間（selectedTimer 不為 null）時才切換
-                    if (selectedTimer) {
+                    // 旋鈕停在的位置就是「已選擇」，按下按鈕只是「確認並跳轉」
+                    // 如果 selectedTimer 為 null，根據當前旋鈕位置來設置（旋鈕停在的位置就是選擇）
+                    let timerPosition = null;
+                    
+                    if (selectedTimer !== null && selectedTimer !== undefined) {
+                        // 如果已經有選擇，直接使用
+                        timerPosition = currentPosition;
+                        console.log('✅ 按鈕：確認當前選擇的時間（位置', timerPosition, '，', selectedTimer, '分鐘）');
+                    } else {
+                        // 如果沒有選擇，根據 currentPosition 或讀取旋鈕位置
+                        if (currentPosition >= 0 && currentPosition < timerOptions.length) {
+                            timerPosition = currentPosition;
+                            console.log('⚠️ selectedTimer 為 null，使用 currentPosition:', timerPosition);
+                            selectTimer(timerPosition);
+                        } else {
+                            // 如果 currentPosition 也無效，使用預設值（位置 0）
+                            timerPosition = 0;
+                            console.log('⚠️ 使用預設位置 0');
+                            selectTimer(0);
+                        }
+                    }
+                    
+                    // 確認選擇後，切換到氣候帶選擇
+                    if (selectedTimer !== null && selectedTimer !== undefined) {
                         console.log('✅ 按鈕：從時間選擇切換到氣候帶選擇');
-                        console.log('   已選擇時間:', selectedTimer, '分鐘');
+                        console.log('   已選擇時間:', selectedTimer, '分鐘（位置', timerPosition, '）');
                         // 重置 lastKnobPosition，確保旋鈕位置能立即讀取
                         lastKnobPosition = null;
                         switchState(State.ANGLE);
                         currentPosition = 0;
+                        console.log('✅ 已切換到氣候帶選擇狀態');
                     } else {
-                        // 如果還沒有選擇時間，提示用戶先選擇（不自動選擇）
-                        console.log('⚠️ 請先通過旋鈕選擇時長，然後再按按鈕');
-                        // 可以考慮顯示一個提示訊息給用戶
+                        console.error('❌ 無法設置 selectedTimer，請檢查 selectTimer 函數');
                     }
                     break;
                     
