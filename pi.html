@@ -1810,6 +1810,7 @@
         let buttonConsecutiveErrors = 0;
         const MAX_BUTTON_ERRORS = 20; // 連續 20 次錯誤後停止輪詢（增加容錯性）
         let buttonMonitoringEnabled = true;
+        let buttonRecoveryCheckInterval = null; // 服務器恢復檢查定時器
         let preparedAnnouncement = null; // 準備好的 TTS 語音文字
         let preparedAudioId = null;      // 預先生成的 TTS 音檔 ID（/tts/generate 返回）
         
@@ -1849,9 +1850,11 @@
                         clearInterval(buttonPollInterval);
                         buttonPollInterval = null;
                         if (!connectionErrorLogged) {
-                            console.log('ℹ️ 按鈕 API 連續錯誤過多，已停止輪詢（可在控制台執行 window.enableButtonMonitoring() 重新啟用）');
+                            console.log('ℹ️ 按鈕 API 連續錯誤過多，已停止輪詢（將定期檢查服務器恢復）');
                             connectionErrorLogged = true;
                         }
+                        // 啟動服務器恢復檢查
+                        startButtonRecoveryCheck();
                     }
                     return;
                 }
@@ -1999,9 +2002,24 @@
                     }
                     
                     if (data && (data.pressed !== undefined || data.state !== undefined || data.value !== undefined || data.gpio4 !== undefined || data.gpio_4 !== undefined)) {
+                        // 成功連接，重置錯誤計數
+                        const wasStopped = buttonConsecutiveErrors >= MAX_BUTTON_ERRORS;
                         buttonConsecutiveErrors = 0;
+                        
+                        // 如果之前因為錯誤過多而停止，現在服務器恢復了，重新啟動輪詢
+                        if (wasStopped && !buttonPollInterval && buttonMonitoringEnabled) {
+                            console.log('✅ 服務器已恢復，自動重啟按鈕輪詢');
+                            // 清除舊的 interval（如果存在）
+                            if (buttonPollInterval) {
+                                clearInterval(buttonPollInterval);
+                            }
+                            // 重新啟動輪詢
+                            startButtonMonitoring();
+                        }
+                        
                         if (connectionErrorLogged) {
                             // 只在第一次恢復時記錄，避免重複日誌
+                            console.log('✅ 按鈕 API 連接已恢復');
                             connectionErrorLogged = false;
                         }
                         
@@ -2031,7 +2049,21 @@
                         }
                     } else if (data) {
                         // API 返回了數據但格式不匹配，不算錯誤
+                        // 成功連接，重置錯誤計數
+                        const wasStopped = buttonConsecutiveErrors >= MAX_BUTTON_ERRORS;
                         buttonConsecutiveErrors = 0;
+                        
+                        // 如果之前因為錯誤過多而停止，現在服務器恢復了，重新啟動輪詢
+                        if (wasStopped && !buttonPollInterval && buttonMonitoringEnabled) {
+                            console.log('✅ 服務器已恢復，自動重啟按鈕輪詢');
+                            // 停止恢復檢查（如果正在運行）
+                            if (buttonRecoveryCheckInterval) {
+                                clearInterval(buttonRecoveryCheckInterval);
+                                buttonRecoveryCheckInterval = null;
+                            }
+                            // 重新啟動輪詢
+                            startButtonMonitoring();
+                        }
                     } else {
                         buttonConsecutiveErrors++;
                     }
@@ -2088,6 +2120,14 @@
                 console.log('   midnightServiceActive:', midnightServiceActive);
                 console.log('   landingConfirmActive:', landingConfirmActive);
                 
+                // 如果降落確認提示正在顯示，優先處理確認降落（不處理雙擊）
+                if (landingConfirmActive) {
+                    console.log('✅ [巡航模式] 降落確認已顯示，處理確認降落');
+                    confirmEarlyLanding();
+                    lastButtonPressTime = currentTime;
+                    return;
+                }
+                
                 // 如果在雙擊時間閾值內，可能是雙擊（提前降落確認）
                 if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0 && lastButtonPressTime > 0) {
                     // 取消之前的單擊處理
@@ -2101,27 +2141,39 @@
                     } catch (error) {
                         console.error('❌ [巡航模式] 雙擊處理失敗:', error);
                     }
-                    lastButtonPressTime = currentTime; // 更新為當前時間，而不是 0
-                    return;
+                    lastButtonPressTime = currentTime; // 更新為當前時間
+                    return; // 重要：雙擊後直接返回，不處理單擊
                 }
                 
-                // 單擊：立即處理（不需要等待）
+                // 單擊：延遲處理（等待看是否有第二次按下）
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
                     buttonPressTimeout = null;
                 }
+                
                 lastButtonPressTime = currentTime;
-                console.log('🔘 [巡航模式] 單擊，立即處理');
-                console.log('   準備調用 handleButtonSingleClick');
-                console.log('   當前階段:', currentPhase);
-                console.log('   當前狀態:', currentState);
-                try {
-                    handleButtonSingleClick();
-                    console.log('✅ [巡航模式] handleButtonSingleClick() 調用完成');
-                } catch (error) {
-                    console.error('❌ [巡航模式] 單擊處理失敗:', error);
-                    console.error('   錯誤堆疊:', error.stack);
-                }
+                
+                // 設置延遲處理單擊，等待看是否有雙擊
+                buttonPressTimeout = setTimeout(() => {
+                    // 檢查是否在等待期間變成了雙擊（通過檢查 landingConfirmActive）
+                    if (landingConfirmActive) {
+                        console.log('⚠️ [巡航模式] 在等待期間檢測到雙擊，取消單擊處理');
+                        return;
+                    }
+                    
+                    console.log('🔘 [巡航模式] 單擊處理（延遲後）');
+                    console.log('   準備調用 handleButtonSingleClick');
+                    console.log('   當前階段:', currentPhase);
+                    console.log('   當前狀態:', currentState);
+                    try {
+                        handleButtonSingleClick();
+                        console.log('✅ [巡航模式] handleButtonSingleClick() 調用完成');
+                    } catch (error) {
+                        console.error('❌ [巡航模式] 單擊處理失敗:', error);
+                        console.error('   錯誤堆疊:', error.stack);
+                    }
+                }, DOUBLE_CLICK_THRESHOLD + 50); // 等待雙擊閾值 + 50ms 緩衝
+                
                 return;
             }
             
@@ -2323,10 +2375,10 @@
                 console.log('   landingConfirmActive:', landingConfirmActive);
                 console.log('   midnightServiceActive:', midnightServiceActive);
                 
-                // 如果降落確認提示正在顯示，優先處理確認降落
+                // 如果降落確認提示正在顯示，不處理單擊（避免與雙擊衝突）
+                // 注意：確認降落的處理已經在 handlePhysicalButtonPress 中完成
                 if (landingConfirmActive) {
-                    console.log('✅ [CRUISE] 確認提前降落');
-                    confirmEarlyLanding();
+                    console.log('⚠️ [CRUISE] 降落確認已顯示，忽略單擊（避免與雙擊衝突）');
                     return;
                 }
                 
@@ -2934,6 +2986,19 @@
                     video1.style.display = 'none';
                     video2.style.opacity = '1';
                     video2.style.zIndex = '11';
+                    video2.style.display = 'block'; // 確保顯示
+                    
+                    // 確保 video2 持續循環播放
+                    video2.loop = true;
+                    
+                    // 監聽 video2 的 ended 事件，確保循環播放
+                    video2.onended = () => {
+                        console.log('🔄 takeoff2.mp4 播放結束，重新開始循環');
+                        video2.currentTime = 0;
+                        video2.play().catch(err => {
+                            console.error('❌ takeoff2.mp4 循環播放錯誤:', err);
+                        });
+                    };
                     
                     console.log('✅ takeoff1.mp4 播放完成，已切換到 takeoff2.mp4');
                     resolve();
@@ -2960,6 +3025,14 @@
         window.enableButtonMonitoring = function() {
             buttonMonitoringEnabled = true;
             buttonConsecutiveErrors = 0;
+            connectionErrorLogged = false;
+            
+            // 停止恢復檢查（如果正在運行）
+            if (buttonRecoveryCheckInterval) {
+                clearInterval(buttonRecoveryCheckInterval);
+                buttonRecoveryCheckInterval = null;
+            }
+            
             startButtonMonitoring();
             console.log('✅ 按鈕監控已啟用');
         };
@@ -2969,6 +3042,10 @@
             if (buttonPollInterval) {
                 clearInterval(buttonPollInterval);
                 buttonPollInterval = null;
+            }
+            if (buttonRecoveryCheckInterval) {
+                clearInterval(buttonRecoveryCheckInterval);
+                buttonRecoveryCheckInterval = null;
             }
             console.log('⏸️ 按鈕監控已停用');
         };
@@ -2983,7 +3060,7 @@
         };
         
         // 測試函數：檢查按鈕監控狀態
-        window.checkButtonStatus = function() {
+        window.checkButtonStatus = async function() {
             const status = {
                 buttonMonitoringEnabled,
                 buttonConsecutiveErrors,
@@ -3005,11 +3082,33 @@
                 console.warn('   如果服務器未啟動，請啟動後端服務');
             }
             
-            // 如果輪詢已停止但應該運行，自動重啟
-            if (!buttonPollInterval && buttonMonitoringEnabled && buttonConsecutiveErrors < MAX_BUTTON_ERRORS) {
-                console.log('⚠️ 檢測到按鈕輪詢已停止，但應該運行，正在重啟...');
-                startButtonMonitoring();
-                console.log('✅ 按鈕輪詢已重啟');
+            // 如果輪詢已停止，檢查服務器是否恢復
+            if (!buttonPollInterval && buttonMonitoringEnabled) {
+                if (buttonConsecutiveErrors >= MAX_BUTTON_ERRORS) {
+                    // 錯誤過多，嘗試測試服務器連接
+                    console.log('🔍 檢測到輪詢已停止（錯誤過多），測試服務器連接...');
+                    try {
+                        const response = await fetch('http://127.0.0.1:5001/api/button/state?gpio=4', {
+                            method: 'GET',
+                            signal: AbortSignal.timeout(2000)
+                        });
+                        if (response.ok) {
+                            console.log('✅ 服務器已恢復，自動重啟按鈕輪詢');
+                            buttonConsecutiveErrors = 0; // 重置錯誤計數
+                            startButtonMonitoring();
+                            console.log('✅ 按鈕輪詢已重啟');
+                        } else {
+                            console.warn('⚠️ 服務器響應異常，無法自動重啟');
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ 服務器連接測試失敗，無法自動重啟:', error.message);
+                    }
+                } else {
+                    // 錯誤未達上限，直接重啟
+                    console.log('⚠️ 檢測到按鈕輪詢已停止，但應該運行，正在重啟...');
+                    startButtonMonitoring();
+                    console.log('✅ 按鈕輪詢已重啟');
+                }
             }
             
             return status;
@@ -5245,14 +5344,59 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     const musicFiles = ['airlinemeal.mp3', 'airlinemeal2.mp3'];
                     const randomMusic = musicFiles[Math.floor(Math.random() * musicFiles.length)];
                     
-                    mealMusic = new Audio(`sounds/${randomMusic}`);
-                    mealMusic.volume = 0.6; // 設置初始音量
-                    mealMusic.loop = false; // 不循環
+                    // 嘗試多種路徑格式（文件可能在根目錄或 sounds/ 目錄）
+                    const musicPaths = [
+                        randomMusic, // 先嘗試根目錄
+                        `./${randomMusic}`,
+                        `sounds/${randomMusic}`,
+                        `./sounds/${randomMusic}`,
+                        `/sounds/${randomMusic}`
+                    ];
                     
-                    await mealMusic.play();
-                    console.log(`🎵 開始播放飛機餐背景音樂（隨機選擇: ${randomMusic}），將在1分鐘後結束`);
+                    let musicLoaded = false;
+                    for (const musicPath of musicPaths) {
+                        try {
+                            mealMusic = new Audio(musicPath);
+                            mealMusic.volume = 0.6;
+                            mealMusic.loop = false;
+                            
+                            // 等待載入完成
+                            await new Promise((resolve, reject) => {
+                                const timeout = setTimeout(() => {
+                                    reject(new Error('載入超時'));
+                                }, 3000);
+                                
+                                mealMusic.addEventListener('canplaythrough', () => {
+                                    clearTimeout(timeout);
+                                    resolve();
+                                }, { once: true });
+                                
+                                mealMusic.addEventListener('error', (e) => {
+                                    clearTimeout(timeout);
+                                    reject(e);
+                                }, { once: true });
+                                
+                                mealMusic.load();
+                            });
+                            
+                            await mealMusic.play();
+                            console.log(`🎵 開始播放飛機餐背景音樂（路徑: ${musicPath}），將在1分鐘後結束`);
+                            musicLoaded = true;
+                            break;
+                        } catch (e) {
+                            // 繼續嘗試下一個路徑
+                            if (musicPaths.indexOf(musicPath) === musicPaths.length - 1) {
+                                console.warn(`⚠️ 無法載入 ${musicPath}:`, e.message);
+                            }
+                        }
+                    }
+                    
+                    if (!musicLoaded) {
+                        console.warn('⚠️ 無法載入飛機餐音樂（所有路徑都失敗），將繼續執行但不播放音樂');
+                    }
                 } catch (error) {
                     console.warn('⚠️ 無法播放飛機餐音樂:', error);
+                    // 即使音樂無法播放，也繼續執行
                 }
             })();
             
@@ -5309,27 +5453,46 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         console.log('✅ 深夜服務覆蓋層已隱藏');
                         
                         // 恢復影片播放
-                        if (pausedVideos.length > 0) {
-                            pausedVideos.forEach(video => {
-                                // 只恢復循環播放的 takeoff2.mp4
-                                if (video.loop && video.src.includes('takeoff2.mp4')) {
-                                    video.play().catch(error => {
-                                        console.warn('⚠️ 恢復影片播放失敗:', error);
-                                    });
-                                    console.log('▶️ 恢復影片播放:', video.src);
-                                }
-                            });
-                        } else {
-                            // 如果沒有暫停的影片，嘗試找到 takeoff2.mp4 並播放
-                            const container = document.querySelector('.window-area');
-                            if (container) {
-                                const video2 = container.querySelector('video[src*="takeoff2.mp4"]');
-                                if (video2 && video2.loop) {
-                                    video2.play().catch(error => {
-                                        console.warn('⚠️ 恢復影片播放失敗:', error);
-                                    });
-                                    console.log('▶️ 恢復 takeoff2.mp4 播放');
-                                }
+                        const container = document.querySelector('.window-area');
+                        if (container) {
+                            // 優先使用暫停的影片列表
+                            if (pausedVideos.length > 0) {
+                                pausedVideos.forEach(video => {
+                                    // 檢查是否是 takeoff2.mp4（支援多種 src 格式）
+                                    const videoSrc = video.src || video.getAttribute('src') || '';
+                                    if (videoSrc.includes('takeoff2.mp4')) {
+                                        // 確保 loop 屬性設置
+                                        video.loop = true;
+                                        // 確保影片可見
+                                        video.style.display = 'block';
+                                        video.style.opacity = '1';
+                                        video.style.zIndex = '11';
+                                        // 恢復播放
+                                        video.play().catch(error => {
+                                            console.warn('⚠️ 恢復影片播放失敗:', error);
+                                        });
+                                        console.log('▶️ 恢復影片播放:', videoSrc);
+                                    }
+                                });
+                            } else {
+                                // 如果沒有暫停的影片，嘗試找到 takeoff2.mp4 並播放
+                                const allVideos = container.querySelectorAll('video');
+                                allVideos.forEach(video => {
+                                    const videoSrc = video.src || video.getAttribute('src') || '';
+                                    if (videoSrc.includes('takeoff2.mp4')) {
+                                        // 確保 loop 屬性設置
+                                        video.loop = true;
+                                        // 確保影片可見
+                                        video.style.display = 'block';
+                                        video.style.opacity = '1';
+                                        video.style.zIndex = '11';
+                                        // 恢復播放
+                                        video.play().catch(error => {
+                                            console.warn('⚠️ 恢復影片播放失敗:', error);
+                                        });
+                                        console.log('▶️ 恢復 takeoff2.mp4 播放:', videoSrc);
+                                    }
+                                });
                             }
                         }
                         
@@ -5347,9 +5510,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 立即顯示黑色覆蓋層（等待圖片生成）
             
             if (overlay && imageEl) {
-                // 先設置為純黑色背景
-                imageEl.style.background = '#000000';
-                imageEl.style.backgroundImage = 'none';
+                // 先設置為純黑色背景（使用 backgroundColor 而不是 background，避免清除 backgroundImage）
+                imageEl.style.backgroundColor = '#000000';
+                imageEl.style.backgroundImage = 'none'; // 初始時沒有圖片
                 console.log('📺 立即顯示黑色覆蓋層（等待圖片生成）');
                 
                 // 確保覆蓋層在最上層（使用 !important 級別的 z-index）
@@ -5365,6 +5528,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 imageEl.style.display = 'block';
                 imageEl.style.visibility = 'visible';
                 imageEl.style.opacity = '1';
+                imageEl.style.width = '800px';
+                imageEl.style.height = '800px';
                 
                 console.log('✅ 覆蓋層已顯示，z-index:', window.getComputedStyle(overlay).zIndex);
             }
@@ -5389,19 +5554,53 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 
                 if (serviceImageUrl) {
                     console.log('✅ 圖片生成完成，設置圖片背景:', serviceImageUrl);
-                    imageEl.style.backgroundImage = `url(${serviceImageUrl})`;
+                    
+                    // 先清除黑色背景
+                    imageEl.style.backgroundColor = 'transparent';
+                    
+                    // 設置圖片相關屬性（使用引號包裹 URL，確保特殊字符正確處理）
+                    imageEl.style.backgroundImage = `url("${serviceImageUrl}")`;
                     imageEl.style.backgroundSize = 'cover';
                     imageEl.style.backgroundPosition = 'center';
                     imageEl.style.backgroundRepeat = 'no-repeat';
-                    imageEl.style.background = 'none'; // 清除純色背景
+                    
+                    // 確保尺寸正確
                     imageEl.style.width = '800px';
                     imageEl.style.height = '800px';
-                    console.log('✅ 圖片已設置，尺寸: 800x800px，z-index:', window.getComputedStyle(imageEl).zIndex);
+                    
+                    // 強制重新計算樣式並觸發重繪
+                    imageEl.offsetHeight; // 觸發重排
+                    
+                    // 延遲檢查，確保樣式已應用
+                    setTimeout(() => {
+                        const computedStyle = window.getComputedStyle(imageEl);
+                        console.log('✅ 圖片已設置，尺寸: 800x800px，z-index:', computedStyle.zIndex);
+                        console.log('🔍 圖片背景檢查:', {
+                            backgroundImage: computedStyle.backgroundImage,
+                            backgroundSize: computedStyle.backgroundSize,
+                            backgroundColor: computedStyle.backgroundColor,
+                            width: computedStyle.width,
+                            height: computedStyle.height,
+                            display: computedStyle.display,
+                            visibility: computedStyle.visibility,
+                            opacity: computedStyle.opacity
+                        });
+                        
+                        // 如果背景圖片仍然是 none，強制重新設置
+                        if (computedStyle.backgroundImage === 'none' || !computedStyle.backgroundImage.includes('url')) {
+                            console.warn('⚠️ 檢測到背景圖片未正確設置，強制重新設置');
+                            imageEl.style.backgroundImage = `url("${serviceImageUrl}")`;
+                            imageEl.style.backgroundSize = 'cover';
+                            imageEl.style.backgroundPosition = 'center';
+                            imageEl.style.backgroundRepeat = 'no-repeat';
+                        }
+                    }, 100);
                 } else {
                     console.warn('⚠️ 圖片生成失敗，使用純色背景');
                     // 如果圖片生成失敗，使用純色背景（暖橙色）
+                    imageEl.style.backgroundImage = 'none';
+                    imageEl.style.backgroundColor = 'transparent';
                     imageEl.style.background = 'radial-gradient(circle, rgba(255, 140, 0, 0.4) 0%, rgba(0, 0, 0, 0.9) 100%)';
-                    imageEl.style.backgroundImage = 'none'; // 清除可能的圖片
                     imageEl.style.width = '800px';
                     imageEl.style.height = '800px';
                 }
@@ -5440,7 +5639,23 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 播放輕微的「叮」聲（如果有的話）
             // 注意：需要準備一個輕微的 ding.mp3 音檔
             try {
-                await playAudioFile('sounds/ding.mp3', 1); // 只播放 1 秒
+                // 嘗試多種路徑
+                const dingPaths = ['sounds/ding.mp3', './sounds/ding.mp3', '/sounds/ding.mp3'];
+                let dingPlayed = false;
+                
+                for (const path of dingPaths) {
+                    try {
+                        await playAudioFile(path, 1); // 只播放 1 秒
+                        dingPlayed = true;
+                        break;
+                    } catch (e) {
+                        // 繼續嘗試下一個路徑
+                    }
+                }
+                
+                if (!dingPlayed) {
+                    console.warn('⚠️ 無法播放叮聲（可忽略，如果沒有 ding.mp3）');
+                }
             } catch (error) {
                 console.warn('⚠️ 無法播放叮聲（可忽略，如果沒有 ding.mp3）:', error);
             }

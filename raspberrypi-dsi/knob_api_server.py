@@ -78,13 +78,13 @@ def get_knob_position():
                     'success': True,
                     'knob_handler_available': True,
                     'position': last_pos
-                })
-            else:
-                return jsonify({
-                    'success': False,
+            })
+        else:
+            return jsonify({
+                'success': False,
                     'knob_handler_available': True,
-                    'message': '無法讀取旋鈕位置（可能沒有選中任何位置）'
-                })
+                'message': '無法讀取旋鈕位置（可能沒有選中任何位置）'
+            })
     except Exception as e:
         logger.error(f"讀取旋鈕位置失敗: {e}")
         return jsonify({
