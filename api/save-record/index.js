@@ -62,7 +62,19 @@ export default async function handler(req, res) {
             story,
             greeting,
             language,
-            languageCode
+            languageCode,
+            // 睡眠航班相關字段
+            plannedMinutes,
+            sleepDuration,
+            timeDiffMinutes,
+            punctuality,
+            direction,
+            climateZoneName,
+            isWormhole,
+            destinationImage,
+            announcementText,
+            flightFeedback,
+            wakeTime
         } = req.body;
 
         // 驗證必要欄位
@@ -152,7 +164,18 @@ export default async function handler(req, res) {
             greeting: greeting || '', // 🔧 確保 greeting 儲存到 artifacts
             language: language || '',
             languageCode: languageCode || '',
-            imageUrl: null // 將由前端填入
+            imageUrl: destinationImage || null, // 使用 destinationImage 或 null
+            // 睡眠航班相關字段（如果存在）
+            ...(plannedMinutes !== undefined && { plannedMinutes }),
+            ...(sleepDuration !== undefined && { sleepDuration }),
+            ...(timeDiffMinutes !== undefined && { timeDiffMinutes }),
+            ...(punctuality !== undefined && { punctuality }),
+            ...(direction !== undefined && { direction }),
+            ...(climateZoneName !== undefined && { climateZoneName }),
+            ...(isWormhole !== undefined && { isWormhole }),
+            ...(announcementText !== undefined && { announcementText }),
+            ...(flightFeedback !== undefined && { flightFeedback }),
+            ...(wakeTime !== undefined && { wakeTime })
         };
 
         // 準備全域記錄資料
@@ -187,12 +210,26 @@ export default async function handler(req, res) {
         // 主要儲存：artifacts 結構
         try {
             // 儲存到個人檔案結構（對應網頁版個人軌跡）
-            const userProfilePath = `artifacts/${APP_ID}/userProfiles/${sanitizedDisplayName}/clockHistory`;
+            // 檢查是否為睡眠航班記錄（根據 deviceType 或其他標識）
+            const isSleepAirline = deviceType === 'raspberry_pi_sleep_flight' || 
+                                   req.body.sleepDuration !== undefined ||
+                                   req.body.plannedMinutes !== undefined;
+            
+            let userProfilePath;
+            if (isSleepAirline) {
+                // 睡眠航班記錄：存到 sleepAirline 路徑
+                userProfilePath = `artifacts/${APP_ID}/userProfiles/morgan/sleepAirline/sleepAirline`;
+            } else {
+                // 一般記錄：存到原本的 clockHistory 路徑
+                userProfilePath = `artifacts/${APP_ID}/userProfiles/${sanitizedDisplayName}/clockHistory`;
+            }
+            
             const userProfileDocRef = await db.collection(userProfilePath).add({
                 ...baseRecordData,
                 ...artifactsData
             });
             console.log('✅ 個人檔案記錄已儲存到 artifacts，文件 ID:', userProfileDocRef.id);
+            console.log('📁 儲存路徑:', userProfilePath);
 
             // 儲存到公共資料結構（對應網頁版眾人地圖）
             const publicDataPath = `artifacts/${APP_ID}/publicData/allSharedEntries/dailyRecords`;

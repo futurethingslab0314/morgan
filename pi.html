@@ -2017,8 +2017,22 @@
             const currentTime = Date.now();
             
             // 在巡航階段，使用更簡單快速的邏輯
+            console.log('🔍 [按鈕按下] 檢查巡航階段:', {
+                currentPhase,
+                Phase_CRUISE: Phase.CRUISE,
+                isEqual: currentPhase === Phase.CRUISE,
+                isEqualLoose: currentPhase == 5,
+                currentState,
+                lastButtonPressTime,
+                timeSinceLastPress: currentTime - lastButtonPressTime,
+                buttonPressTimeout: buttonPressTimeout ? '存在' : '不存在'
+            });
+            
             if (currentPhase === Phase.CRUISE || currentPhase == 5) {
                 const timeSinceLastPress = currentTime - lastButtonPressTime;
+                console.log('✅ [巡航模式] 進入巡航階段處理邏輯');
+                console.log('   時間差:', timeSinceLastPress, 'ms');
+                console.log('   雙擊閾值:', DOUBLE_CLICK_THRESHOLD, 'ms');
                 
                 // 如果在雙擊時間閾值內，可能是雙擊（提前降落確認）
                 if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
@@ -2027,8 +2041,12 @@
                         clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
                     }
-                    console.log('🔘 巡航階段：檢測到雙擊，觸發提前降落確認');
-                    handleButtonDoubleClick();
+                    console.log('🔘 [巡航模式] 檢測到雙擊，觸發提前降落確認');
+                    try {
+                        handleButtonDoubleClick();
+                    } catch (error) {
+                        console.error('❌ [巡航模式] 雙擊處理失敗:', error);
+                    }
                     lastButtonPressTime = 0;
                     return;
                 }
@@ -2039,8 +2057,13 @@
                     buttonPressTimeout = null;
                 }
                 lastButtonPressTime = currentTime;
-                console.log('🔘 巡航階段：單擊，立即處理');
-                handleButtonSingleClick();
+                console.log('🔘 [巡航模式] 單擊，立即處理');
+                console.log('   準備調用 handleButtonSingleClick');
+                try {
+                    handleButtonSingleClick();
+                } catch (error) {
+                    console.error('❌ [巡航模式] 單擊處理失敗:', error);
+                }
                 return;
             }
             
@@ -2224,7 +2247,7 @@
         
         // 處理按鈕單擊
         function handleButtonSingleClick() {
-            console.log('🔘 處理實體按鈕單擊');
+            console.log('🔘 [單擊] 處理實體按鈕單擊');
             console.log('   當前狀態:', currentState);
             console.log('   當前階段:', currentPhase);
             console.log('   selectedTimer:', selectedTimer);
@@ -2232,38 +2255,64 @@
             console.log('   destinationData:', destinationData);
             console.log('   preparedAnnouncement:', preparedAnnouncement ? '已準備' : '未準備');
             
+            // ============================================================================
+            // 優先級 1: 飛行階段特殊處理（CRUISE, DESCENT, LANDING）
+            // ============================================================================
+            
+            // 1.1 巡航階段（CRUISE）- 深夜機上服務或提前降落確認
+            if (currentPhase === Phase.CRUISE || currentPhase == 5) {
+                // 如果降落確認提示正在顯示，優先處理確認降落
+                if (landingConfirmActive) {
+                    console.log('✅ [CRUISE] 確認提前降落');
+                    confirmEarlyLanding();
+                    return;
+                }
+                // 否則觸發深夜機上服務
+                console.log('🍽️ [CRUISE] 飛行中按下，觸發深夜機上服務');
+                try {
+                    triggerMidnightService();
+                    console.log('✅ [CRUISE] triggerMidnightService() 調用成功');
+                } catch (error) {
+                    console.error('❌ [CRUISE] triggerMidnightService() 調用失敗:', error);
+                }
+                return;
+            }
+            
+            // 1.2 降落階段（DESCENT）- 手動觸發降落
+            if (currentPhase === Phase.DESCENT && !manualLandingTriggered) {
+                console.log('🛬 [DESCENT] 按鈕：在降落階段按下，觸發手動降落');
+                manualLandingTriggered = true;
+                triggerManualLanding();
+                return;
+            }
+            
+            // 1.3 降落完成階段（LANDING）- 單擊無效，等待後續處理
+            if (currentPhase === Phase.LANDING) {
+                console.log('ℹ️ [LANDING] 降落完成階段，單擊無效');
+                return;
+            }
+            
+            // ============================================================================
+            // 優先級 2: 降落後狀態處理（RETURN_WINDOW, POST_ARRIVAL）
+            // ============================================================================
+            
             // 如果在降落後狀態且已經顯示了目的地圖片（完成了一次旅程），單擊不做任何事（等待雙擊）
             // 但如果是首頁（State.COUNTRY 且沒有目的地圖片），允許單擊開始新旅程
             if ((currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) 
                 && destinationImageUrl && currentState !== State.COUNTRY) {
-                console.log('ℹ️ 降落後狀態（已完成旅程），單擊無效，請快速按兩下開始新旅程');
+                console.log('ℹ️ [降落後] 已完成旅程，單擊無效，請快速按兩下開始新旅程');
                 return;
             }
             
             // 如果是在顯示到達資訊狀態（State.ARRIVAL_INFO），單擊無效，等待雙擊
             if (currentState === 'ARRIVAL_INFO') {
-                console.log('ℹ️ 到達資訊顯示狀態，單擊無效，請快速按兩下開始新旅程');
+                console.log('ℹ️ [到達資訊] 單擊無效，請快速按兩下開始新旅程');
                 return;
             }
             
-            // 如果降落確認提示正在顯示，處理確認降落
-            if (landingConfirmActive && currentPhase === Phase.CRUISE) {
-                console.log('✅ 確認提前降落');
-                confirmEarlyLanding();
-                return;
-            }
-            
-            // 檢查是否在飛行中（Phase.CRUISE）- 深夜機上服務（優先處理，必須在 switch 之前）
-            // 使用 == 而不是 ===，因為 Phase.CRUISE 可能是數字 5
-            if (currentPhase === Phase.CRUISE || currentPhase == 5) {
-                console.log('🍽️ 按鈕：飛行中按下，觸發深夜機上服務');
-                console.log('   當前階段:', currentPhase, '(類型:', typeof currentPhase, ')');
-                console.log('   Phase.CRUISE:', Phase.CRUISE, '(類型:', typeof Phase.CRUISE, ')');
-                console.log('   當前狀態:', currentState);
-                console.log('   比較結果:', currentPhase === Phase.CRUISE, currentPhase == 5);
-                triggerMidnightService();
-                return;
-            }
+            // ============================================================================
+            // 優先級 3: 根據 currentState 處理（TIME_SELECTION, DIRECTION_SELECTION, TAKEOFF_PREP）
+            // ============================================================================
             
             switch (currentState) {
                 case State.COUNTRY:
@@ -2356,15 +2405,11 @@
                     break;
                     
                 default:
-                    // 檢查是否在降落階段（Phase.DESCENT）
-                    if (currentPhase === Phase.DESCENT && !manualLandingTriggered) {
-                        console.log('🛬 按鈕：在降落階段按下，觸發手動降落');
-                        manualLandingTriggered = true;
-                        triggerManualLanding();
-                    } else {
-                        console.log('⚠️ 當前狀態不支援按鈕操作:', currentState);
-                        console.log('   可用狀態:', Object.values(State));
-                    }
+                    // 其他狀態或未定義的狀態（DESCENT 階段已在前面處理）
+                    console.log('⚠️ [單擊] 當前狀態不支援按鈕操作:', currentState);
+                    console.log('   當前階段:', currentPhase);
+                    console.log('   可用狀態:', Object.values(State));
+                    console.log('   提示：如果已完成旅程，請使用雙擊開始新旅程');
             }
         }
         
@@ -2417,23 +2462,38 @@
             
             // 1. 播放 captain.mp3（只播放前 6 秒）
             console.log('1️⃣ 播放 captain.mp3（6 秒）...');
-            await playAudioFile('sounds/captain.mp3', 6);
-            console.log('✅ captain.mp3 播放完成');
+            try {
+                await playAudioFile('sounds/captain.mp3', 6);
+                console.log('✅ captain.mp3 播放完成');
+            } catch (error) {
+                console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
+            }
+            
+            // 等待一小段時間，確保 captain.mp3 完全停止
+            await new Promise(resolve => setTimeout(resolve, 200));
             
             // 2. 播放準備好的 TTS 語音
             if (preparedAudioId) {
                 // 優先使用預先生成的音檔（/tts/generate 產生）
                 console.log('2️⃣ 播放預先生成的 TTS 音檔:', preparedAudioId);
-                await playCachedTts(preparedAudioId);
+                try {
+                    await playCachedTts(preparedAudioId);
+                } catch (error) {
+                    console.warn('⚠️ TTS 音檔播放時發生錯誤:', error);
+                }
             } else if (preparedAnnouncement) {
                 // 沒有預先生成音檔時，退回到即時生成模式
                 console.log('2️⃣ 使用即時 TTS 生成並播放（無快取音檔）...');
-                await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
-                    isTakeoff: true,
-                    rate: 0.7,
-                    pitch: 0.85,
-                    volume: 0.9
-                });
+                try {
+                    await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
+                        isTakeoff: true,
+                        rate: 0.7,
+                        pitch: 0.85,
+                        volume: 0.9
+                    });
+                } catch (error) {
+                    console.warn('⚠️ TTS 語音播放時發生錯誤:', error);
+                }
             } else {
                 console.warn('⚠️ TTS 語音文字未準備，跳過 TTS 播放');
             }
@@ -2514,38 +2574,138 @@
             
             // 隱藏登機狀態
             setBoardingStatus(false);
+            
+            // 隱藏準備起航狀態的 UI（右下方的提示文字）
+            const readyToFlyState = document.getElementById('stateReady_to_fly');
+            if (readyToFlyState) {
+                readyToFlyState.style.display = 'none';
+                readyToFlyState.classList.remove('active');
+                console.log('✅ 已隱藏準備起航狀態 UI');
+            }
+            
+            // 確保所有其他狀態 UI 也被隱藏（包括 stateCountry, stateTimer, stateAngle, stateDestination 等）
+            const statesToHide = [
+                'stateCountry',
+                'stateTimer', 
+                'stateAngle',
+                'stateDestination',
+                'stateReady_to_fly',
+                'stateArrivalInfo',
+                'stateTicketReview'
+            ];
+            
+            statesToHide.forEach(stateId => {
+                const stateEl = document.getElementById(stateId);
+                if (stateEl) {
+                    stateEl.style.display = 'none';
+                    stateEl.classList.remove('active');
+                }
+            });
+            
+            // 額外確保所有 .info-state 元素都被隱藏（除了 flightProgressWrapper）
+            document.querySelectorAll('.info-state').forEach(state => {
+                if (state.id !== 'flightProgressWrapper') {
+                    state.style.display = 'none';
+                    state.classList.remove('active');
+                }
+            });
+            
+            console.log('✅ 已隱藏所有狀態 UI 元素（巡航模式）');
+        }
+        
+        // 輔助函數：隱藏所有狀態 UI（用於巡航模式）
+        function hideAllStateUI() {
+            const statesToHide = [
+                'stateCountry',
+                'stateTimer', 
+                'stateAngle',
+                'stateDestination',
+                'stateReady_to_fly',
+                'stateArrivalInfo',
+                'stateTicketReview'
+            ];
+            
+            statesToHide.forEach(stateId => {
+                const stateEl = document.getElementById(stateId);
+                if (stateEl) {
+                    stateEl.style.display = 'none';
+                    stateEl.classList.remove('active');
+                }
+            });
+            
+            // 額外確保所有 .info-state 元素都被隱藏（除了 flightProgressWrapper）
+            document.querySelectorAll('.info-state').forEach(state => {
+                if (state.id !== 'flightProgressWrapper') {
+                    state.style.display = 'none';
+                    state.classList.remove('active');
+                }
+            });
         }
         
         // 播放音頻文件
         function playAudioFile(url, maxDuration = null) {
             return new Promise((resolve, reject) => {
                 const audio = new Audio(url);
+                let resolved = false; // 防止重複 resolve
                 
                 // 如果指定了最大播放時長，設置定時器
                 let timeoutId = null;
                 if (maxDuration && maxDuration > 0) {
                     timeoutId = setTimeout(() => {
-                        audio.pause();
-                        audio.currentTime = 0;
-                        console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止`);
+                        if (resolved) return;
+                        resolved = true;
+                        try {
+                            // 先暫停，然後重置，避免 AbortError
+                            audio.pause();
+                            audio.currentTime = 0;
+                            console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止`);
+                        } catch (e) {
+                            console.warn('⚠️ 停止音頻時發生錯誤（可忽略）:', e);
+                        }
                         resolve();
                     }, maxDuration * 1000);
                 }
                 
                 audio.onended = () => {
+                    if (resolved) return;
+                    resolved = true;
                     if (timeoutId) clearTimeout(timeoutId);
+                    console.log('✅ 音頻自然播放完成');
                     resolve();
                 };
+                
                 audio.onerror = (error) => {
+                    if (resolved) return;
+                    resolved = true;
                     if (timeoutId) clearTimeout(timeoutId);
                     console.error('❌ 音頻播放失敗:', url, error);
                     resolve(); // 即使失敗也繼續
                 };
-                audio.play().catch(error => {
+                
+                // 等待音頻載入完成後再播放
+                audio.addEventListener('loadeddata', () => {
+                    audio.play().catch(error => {
+                        if (resolved) return;
+                        resolved = true;
+                        if (timeoutId) clearTimeout(timeoutId);
+                        // 如果是 AbortError，可能是被其他音頻中斷，這是正常的
+                        if (error.name === 'AbortError') {
+                            console.warn('⚠️ 音頻播放被中斷（可能是被其他音頻中斷）:', url);
+                        } else {
+                            console.error('❌ 音頻播放錯誤:', error);
+                        }
+                        resolve();
+                    });
+                }, { once: true });
+                
+                // 如果載入失敗，也要處理
+                audio.addEventListener('error', (e) => {
+                    if (resolved) return;
+                    resolved = true;
                     if (timeoutId) clearTimeout(timeoutId);
-                    console.error('❌ 音頻播放錯誤:', error);
+                    console.error('❌ 音頻載入失敗:', url, e);
                     resolve();
-                });
+                }, { once: true });
             });
         }
         
@@ -4817,13 +4977,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 }
             })();
             
-            // 同時生成圖片
-            const [serviceImageUrl] = await Promise.all([
-                generateMidnightServiceImage(), // 生成圖片
-                musicPromise // 播放音樂
-            ]);
-            
-            // 暫停 takeoff2.mp4 的播放（如果正在播放）
+            // 先暫停 takeoff2.mp4 的播放（如果正在播放）
             const videoContainer = document.querySelector('.window-area');
             let pausedVideos = [];
             if (videoContainer) {
@@ -4837,23 +4991,35 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 });
             }
             
-            // 顯示覆蓋層
+            // 立即顯示黑色覆蓋層（等待圖片生成）
             const overlay = document.getElementById('midnightServiceOverlay');
             const imageEl = document.getElementById('midnightServiceImage');
             
-            console.log('🔍 檢查覆蓋層元素:', {
-                overlay: !!overlay,
-                imageEl: !!imageEl,
-                serviceImageUrl: serviceImageUrl
-            });
+            if (overlay && imageEl) {
+                // 先設置為純黑色背景
+                imageEl.style.background = '#000000';
+                imageEl.style.backgroundImage = 'none';
+                console.log('📺 立即顯示黑色覆蓋層（等待圖片生成）');
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
+                overlay.classList.add('show');
+            }
             
+            // 同時生成圖片和播放音樂
+            const [serviceImageUrl] = await Promise.all([
+                generateMidnightServiceImage(), // 生成圖片
+                musicPromise // 播放音樂
+            ]);
+            
+            // 圖片生成完成後，更新覆蓋層顯示圖片
             if (overlay && imageEl) {
                 if (serviceImageUrl) {
-                    console.log('✅ 設置圖片背景:', serviceImageUrl);
+                    console.log('✅ 圖片生成完成，設置圖片背景:', serviceImageUrl);
                     imageEl.style.backgroundImage = `url(${serviceImageUrl})`;
                     imageEl.style.backgroundSize = 'cover';
                     imageEl.style.backgroundPosition = 'center';
                     imageEl.style.backgroundRepeat = 'no-repeat';
+                    imageEl.style.background = 'none'; // 清除純色背景
                 } else {
                     console.warn('⚠️ 圖片生成失敗，使用純色背景');
                     // 如果圖片生成失敗，使用純色背景（暖橙色）
@@ -4861,11 +5027,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     imageEl.style.backgroundImage = 'none'; // 清除可能的圖片
                 }
                 
-                console.log('📺 顯示覆蓋層');
-                overlay.style.display = 'flex';
-                // 強制立即顯示，不使用過渡動畫
-                overlay.style.opacity = '1';
-                overlay.classList.add('show');
+                console.log('🔍 檢查覆蓋層元素:', {
+                    overlay: !!overlay,
+                    imageEl: !!imageEl,
+                    serviceImageUrl: serviceImageUrl
+                });
                 
                 // 添加調試日誌
                 setTimeout(() => {
@@ -4929,9 +5095,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 }
             }, 60000); // 60 秒後開始淡出
             
-            // 15 秒後自動淡出覆蓋層（音樂會繼續播放到 1 分鐘後淡出）
+            // 20 秒後自動淡出覆蓋層（音樂會繼續播放到 1 分鐘後淡出）
+            // 增加顯示時間，確保用戶能看到圖片
             setTimeout(() => {
                 if (overlay) {
+                    console.log('🌙 開始淡出覆蓋層，準備回到飛行狀態');
                     overlay.classList.remove('show');
                     overlay.classList.add('fade-out');
                     
@@ -5014,7 +5182,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         prompt: prompt,
-                        size: '800x800'
+                        size: '1024x1024'
                     })
                 });
                 
@@ -5733,8 +5901,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             const wrapper = document.getElementById('flightProgressWrapper');
             if (wrapper && wrapper.style.display === 'block' && sleepStartTime) {
                 console.log('✈️ 進入巡航階段（進度條已顯示，跳過重複設置）');
+                // 確保所有狀態 UI 都被隱藏（防止被重新顯示）
+                hideAllStateUI();
                 return;
             }
+            
+            // 確保所有狀態 UI 都被隱藏
+            hideAllStateUI();
             
             sleepStartTime = Date.now();
             const durationMs = selectedTimer * 60 * 1000;
@@ -6113,13 +6286,26 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         prompt: prompt,
-                        size: '800x800'
+                        size: '1024x1024'
                     })
                 });
                 
+                console.log('📡 API 響應狀態:', response.status, response.statusText);
+                
                 if (response.ok) {
                     const data = await response.json();
-                    return data.imageUrl || data.url;
+                    const imageUrl = data.imageUrl || data.url;
+                    console.log('✅ 降落圖片生成成功:', imageUrl);
+                    return imageUrl;
+                } else {
+                    const errorText = await response.text();
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(errorText);
+                    } catch (e) {
+                        errorData = { error: errorText };
+                    }
+                    console.error('❌ API 返回錯誤:', response.status, errorData);
                 }
             } catch (error) {
                 console.warn('⚠️ 降落圖片生成失敗:', error);
@@ -6444,21 +6630,29 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         
         // 處理按鈕雙擊（開始新旅程或從機票回顧返回）
         function handleButtonDoubleClick() {
-            console.log('🔘 檢測到按鈕雙擊');
+            console.log('🔘 [雙擊] 檢測到按鈕雙擊');
             console.log('   當前狀態:', currentState);
             console.log('   當前階段:', currentPhase);
             console.log('   目的地圖片:', destinationImageUrl ? '有' : '無');
             
+            // ============================================================================
+            // 優先級 1: 飛行階段特殊處理（CRUISE）
+            // ============================================================================
+            
             // 如果在飛行中（Phase.CRUISE），雙擊詢問是否要提前降落
             if (currentPhase === Phase.CRUISE || currentPhase == 5) {
-                console.log('🛬 飛行中雙擊：詢問是否提前降落');
+                console.log('🛬 [CRUISE] 飛行中雙擊：詢問是否提前降落');
                 showLandingConfirmation();
                 return;
             }
             
+            // ============================================================================
+            // 優先級 2: 機票回顧狀態處理
+            // ============================================================================
+            
             // 如果在機票回顧狀態，雙擊返回首頁
             if (currentState === 'TICKET_REVIEW') {
-                console.log('🔘 從機票回顧返回首頁');
+                console.log('🔘 [TICKET_REVIEW] 從機票回顧返回首頁');
                 switchState(State.COUNTRY);
                 currentPhase = Phase.POST_ARRIVAL;
                 // 清除機票回顧相關變數
@@ -6467,10 +6661,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 return;
             }
             
+            // ============================================================================
+            // 優先級 3: 降落後狀態處理（RETURN_WINDOW, POST_ARRIVAL）
+            // ============================================================================
+            
             // 在降落後狀態（已完成旅程）或到達資訊顯示狀態，雙擊開始新旅程
             if ((currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) 
                 && (destinationImageUrl || currentState === 'ARRIVAL_INFO')) {
-                console.log('✅ 降落後狀態：雙擊開始新旅程');
+                console.log('✅ [降落後] 雙擊開始新旅程');
                 // 重置所有狀態
                 selectedTimer = null;
                 selectedDirection = null;
@@ -6482,37 +6680,19 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 sleepStartTime = null;
                 currentPhase = Phase.POST_ARRIVAL;
                 switchState(State.COUNTRY);
-                console.log('🔄 狀態已重置，返回首頁');
+                console.log('🔄 [降落後] 狀態已重置，返回首頁');
                 return;
             }
             
+            // ============================================================================
+            // 其他狀態：雙擊無效
+            // ============================================================================
+            
             // 如果不在上述狀態，雙擊無效
-            console.log('ℹ️ 當前狀態不支援雙擊，雙擊無效');
+            console.log('ℹ️ [雙擊] 當前狀態不支援雙擊，雙擊無效');
+            console.log('   當前階段:', currentPhase);
+            console.log('   當前狀態:', currentState);
             return;
-            destinationData = null;
-            destinationImageUrl = null;
-            preparedAnnouncement = null;
-            preparedAudioId = null;
-            lastButtonPressTime = 0;
-            
-            // 清除城市資訊顯示
-            const cityNameEl = document.getElementById('arrivalCityName');
-            const cityInfoEl = document.getElementById('arrivalCityInfo');
-            if (cityNameEl) cityNameEl.textContent = '';
-            if (cityInfoEl) cityInfoEl.innerHTML = '';
-            
-            // 切換到選時間階段
-            currentPhase = Phase.TIME_SELECTION;
-            switchState(State.TIMER);
-            
-            console.log('✅ 已重置狀態，開始新的旅程選擇');
-            
-            // 自動選擇第一個時間選項
-            setTimeout(() => {
-                if (!selectedTimer) {
-                    selectTimer(0);
-                }
-            }, 100);
         }
         
         // 暴露全局函數供調試
