@@ -1121,57 +1121,6 @@
         </div>
     </div>
 
-    <!-- 測試面板 - 暫時用於測試 whereToGo 函數 -->
-    <div id="testPanel" style="position: fixed; top: 10px; right: 10px; background: white; border: 2px solid #ff6b35; border-radius: 8px; padding: 15px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 400px; max-height: 80vh; overflow-y: auto;">
-        <div style="font-weight: bold; color: #ff6b35; margin-bottom: 10px; font-size: 16px;">🧪 目的地測試工具</div>
-        <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px; font-size: 14px;">出發地（洲/地區）：</label>
-            <select id="testOrigin" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="taipei" selected>🇹🇼 東亞 - 台北, 台灣 (Taipei, Taiwan)</option>
-                <option value="tokyo">🇯🇵 東亞 - 東京, 日本 (Tokyo, Japan)</option>
-                <option value="seoul">🇰🇷 東亞 - 首爾, 韓國 (Seoul, South Korea)</option>
-                <option value="bangkok">🇹🇭 東南亞 - 曼谷, 泰國 (Bangkok, Thailand)</option>
-                <option value="singapore">🇸🇬 東南亞 - 新加坡 (Singapore)</option>
-                <option value="dubai">🇦🇪 中東 - 杜拜, 阿聯 (Dubai, UAE)</option>
-                <option value="istanbul">🇹🇷 中東/歐洲 - 伊斯坦堡, 土耳其 (Istanbul, Turkey)</option>
-                <option value="paris">🇫🇷 歐洲 - 巴黎, 法國 (Paris, France)</option>
-                <option value="london">🇬🇧 歐洲 - 倫敦, 英國 (London, UK)</option>
-                <option value="berlin">🇩🇪 歐洲 - 柏林, 德國 (Berlin, Germany)</option>
-                <option value="moscow">🇷🇺 歐洲/亞洲 - 莫斯科, 俄羅斯 (Moscow, Russia)</option>
-                <option value="reykjavik">🇮🇸 北歐 - 雷克雅維克, 冰島 (Reykjavik, Iceland)</option>
-                <option value="newyork">🇺🇸 北美洲 - 紐約, 美國 (New York, USA)</option>
-                <option value="losangeles">🇺🇸 北美洲 - 洛杉磯, 美國 (Los Angeles, USA)</option>
-                <option value="toronto">🇨🇦 北美洲 - 多倫多, 加拿大 (Toronto, Canada)</option>
-                <option value="mexicocity">🇲🇽 北美洲 - 墨西哥市, 墨西哥 (Mexico City, Mexico)</option>
-                <option value="sydney">🇦🇺 大洋洲 - 雪梨, 澳洲 (Sydney, Australia)</option>
-                <option value="auckland">🇳🇿 大洋洲 - 奧克蘭, 紐西蘭 (Auckland, New Zealand)</option>
-                <option value="cairo">🇪🇬 非洲 - 開羅, 埃及 (Cairo, Egypt)</option>
-                <option value="capetown">🇿🇦 非洲 - 開普敦, 南非 (Cape Town, South Africa)</option>
-                <option value="sao paulo">🇧🇷 南美洲 - 聖保羅, 巴西 (Sao Paulo, Brazil)</option>
-                <option value="buenos aires">🇦🇷 南美洲 - 布宜諾斯艾利斯, 阿根廷 (Buenos Aires, Argentina)</option>
-                <option value="mumbai">🇮🇳 南亞 - 孟買, 印度 (Mumbai, India)</option>
-                <option value="almaty">🇰🇿 中亞 - 阿拉木圖, 哈薩克 (Almaty, Kazakhstan)</option>
-            </select>
-        </div>
-        <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px; font-size: 14px;">時長（分鐘）：</label>
-            <input type="number" id="testDuration" value="180" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
-        </div>
-        <div style="margin-bottom: 10px;">
-            <label style="display: block; margin-bottom: 5px; font-size: 14px;">氣候帶 (0-5)：</label>
-            <select id="testDirection" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                <option value="0">🌴 熱帶夢境 (Tropical Dreams)</option>
-                <option value="1">🍃 溫帶微風 (Temperate Breeze)</option>
-                <option value="2" selected>❄️ 極地寧靜 (Polar Serenity)</option>
-                <option value="3">🏜️ 沙漠暖陽 (Desert Warmth)</option>
-                <option value="4">🌊 海洋清涼 (Ocean Cool)</option>
-                <option value="5">⛰️ 山脈清新 (Mountain Fresh)</option>
-            </select>
-        </div>
-        <button id="testButton" style="width: 100%; padding: 10px; background: #ff6b35; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; margin-bottom: 10px;">測試目的地</button>
-        <button id="closeTestPanel" style="width: 100%; padding: 5px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">關閉測試面板</button>
-        <div id="testResult" style="margin-top: 15px; padding: 10px; background: #f5f5f5; border-radius: 4px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; max-height: 400px; overflow-y: auto; display: none;"></div>
-    </div>
 
     <!-- 下一步按鈕 - 已隱藏，改用實體按鈕 -->
     <button id="nextButton" class="next-button" style="display: none;">下一步</button>
@@ -2067,6 +2016,35 @@
         function handlePhysicalButtonPress() {
             const currentTime = Date.now();
             
+            // 在巡航階段，使用更簡單快速的邏輯
+            if (currentPhase === Phase.CRUISE || currentPhase == 5) {
+                const timeSinceLastPress = currentTime - lastButtonPressTime;
+                
+                // 如果在雙擊時間閾值內，可能是雙擊（提前降落確認）
+                if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
+                    // 取消之前的單擊處理
+                    if (buttonPressTimeout) {
+                        clearTimeout(buttonPressTimeout);
+                        buttonPressTimeout = null;
+                    }
+                    console.log('🔘 巡航階段：檢測到雙擊，觸發提前降落確認');
+                    handleButtonDoubleClick();
+                    lastButtonPressTime = 0;
+                    return;
+                }
+                
+                // 單擊：立即處理（不需要等待）
+                if (buttonPressTimeout) {
+                    clearTimeout(buttonPressTimeout);
+                    buttonPressTimeout = null;
+                }
+                lastButtonPressTime = currentTime;
+                console.log('🔘 巡航階段：單擊，立即處理');
+                handleButtonSingleClick();
+                return;
+            }
+            
+            // 非巡航階段：使用完整的雙擊/三擊檢測邏輯
             // 記錄按鈕按下時間
             buttonPressSequence.push(currentTime);
             
@@ -2076,38 +2054,65 @@
             );
             
             // 檢查是否為三擊（600ms 內按了三次）
-            // 在巡航階段禁用三擊功能
-            if (buttonPressSequence.length === 3 && currentPhase !== Phase.CRUISE) {
+            if (buttonPressSequence.length === 3) {
                 buttonPressSequence = []; // 清除記錄
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
                     buttonPressTimeout = null;
                 }
+                console.log('🔘 檢測到三擊，觸發機票回顧');
                 handleButtonTripleClick();
                 lastButtonPressTime = 0;
                 return;
             }
             
-            // 如果在巡航階段按了三次，只當作單擊處理（清除記錄，避免誤觸發）
-            if (buttonPressSequence.length === 3 && currentPhase === Phase.CRUISE) {
-                console.log('⚠️ 巡航階段不支援三擊，當作單擊處理');
-                buttonPressSequence = []; // 清除記錄
-                // 繼續執行後續的單擊/雙擊邏輯
-            }
-            
             const timeSinceLastPress = currentTime - lastButtonPressTime;
             
-            // 如果在雙擊時間閾值內，可能是雙擊
+            // 如果在雙擊時間閾值內，可能是雙擊，但需要等待看是否有第三次按下
             if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
-                // 取消之前的單擊處理
+                // 取消之前的單擊/雙擊處理
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
                     buttonPressTimeout = null;
                 }
                 
-                // 處理雙擊
-                handleButtonDoubleClick();
-                lastButtonPressTime = 0; // 重置，避免連續三次被當作兩次雙擊
+                // 計算從第一次按下到現在經過的時間
+                const firstPressTime = buttonPressSequence[0];
+                const elapsedSinceFirst = currentTime - firstPressTime;
+                const remainingTime = TRIPLE_CLICK_THRESHOLD - elapsedSinceFirst;
+                
+                // 等待剩餘時間，看是否有第三次按下
+                // 如果沒有第三次按下，再處理雙擊
+                if (remainingTime > 0) {
+                    buttonPressTimeout = setTimeout(() => {
+                        // 檢查是否真的只有兩次按下（沒有第三次）
+                        const now = Date.now();
+                        const remainingPresses = buttonPressSequence.filter(
+                            time => now - time < TRIPLE_CLICK_THRESHOLD
+                        );
+                        
+                        if (remainingPresses.length === 2) {
+                            console.log('🔘 確認雙擊（無第三次按下）');
+                            handleButtonDoubleClick();
+                        } else if (remainingPresses.length === 3) {
+                            // 如果剛好有三次，但已經過了處理時間，可能是時序問題
+                            console.log('🔘 檢測到三次按下，但已過處理時間');
+                        } else {
+                            console.log('🔘 按鍵序列已變化，不處理雙擊');
+                        }
+                        
+                        buttonPressSequence = []; // 清除記錄
+                        lastButtonPressTime = 0;
+                        buttonPressTimeout = null;
+                    }, remainingTime);
+                } else {
+                    // 如果已經超過 TRIPLE_CLICK_THRESHOLD，直接處理雙擊
+                    console.log('🔘 超過三擊時間閾值，直接處理雙擊');
+                    handleButtonDoubleClick();
+                    buttonPressSequence = [];
+                    lastButtonPressTime = 0;
+                }
+                
                 return;
             }
             
@@ -2120,12 +2125,23 @@
             }
             
             buttonPressTimeout = setTimeout(() => {
-                console.log('⏰ 單擊延遲時間到，執行 handleButtonSingleClick');
-                console.log('   當前階段:', currentPhase);
-                console.log('   當前狀態:', currentState);
-                handleButtonSingleClick();
+                // 檢查是否真的只有一次按下（沒有第二次/第三次）
+                const remainingPresses = buttonPressSequence.filter(
+                    time => Date.now() - time < TRIPLE_CLICK_THRESHOLD
+                );
+                
+                if (remainingPresses.length === 1) {
+                    console.log('⏰ 單擊延遲時間到，執行 handleButtonSingleClick');
+                    console.log('   當前階段:', currentPhase);
+                    console.log('   當前狀態:', currentState);
+                    handleButtonSingleClick();
+                } else {
+                    console.log('🔘 按鍵序列已變化，不處理單擊');
+                }
+                
+                buttonPressSequence = []; // 清除記錄
                 buttonPressTimeout = null;
-            }, DOUBLE_CLICK_THRESHOLD);
+            }, TRIPLE_CLICK_THRESHOLD); // 等待完整的 TRIPLE_CLICK_THRESHOLD 時間
         }
         
         // 處理按鈕單擊
@@ -2219,6 +2235,8 @@
                     // 從準備起航 → 開始起飛
                     if (preparedAnnouncement) {
                         console.log('✅ 按鈕：開始起飛！');
+                        // 立即顯示機長準備廣播中的提示
+                        setBoardingStatus(true, '機長準備廣播中...');
                         startTakeoffSequence();
                     } else {
                         console.log('⚠️ 起飛準備未完成，嘗試重新準備...');
@@ -2279,8 +2297,14 @@
             descentAnnouncementPlayed = false;
             manualLandingTriggered = false;
             
-            // 顯示登機／等待機長廣播的動態提示
-            setBoardingStatus(true, '登機中，請舒適入座，等待機長廣播...');
+            // 如果還沒有顯示登機狀態，現在顯示（可能在按鈕處理時已經顯示了）
+            const boardingEl = document.getElementById('boardingStatus');
+            if (!boardingEl || !boardingEl.classList.contains('active')) {
+                setBoardingStatus(true, '機長準備廣播中...');
+            } else {
+                // 更新訊息為機長準備廣播中
+                setBoardingStatus(true, '機長準備廣播中...');
+            }
             
             // 1. 播放 captain.mp3（只播放前 6 秒）
             console.log('1️⃣ 播放 captain.mp3（6 秒）...');
@@ -2305,13 +2329,79 @@
                 console.warn('⚠️ TTS 語音文字未準備，跳過 TTS 播放');
             }
             
-            // 3. 播放起飛影片與起飛音效（takeoff.mp3 與 takeoff1.mp4 同步）
-            console.log('3️⃣ 播放起飛影片與起飛音效...');
+            // 3. 立即顯示進度條並設置開始時間（在播放影片前）
+            console.log('3️⃣ 立即顯示進度條並設置開始時間...');
+            sleepStartTime = Date.now(); // 立即設置開始時間
+            const durationMs = selectedTimer * 60 * 1000;
+            
+            // 立即顯示並初始化飛行進度條
+            try {
+                const wrapper = document.getElementById('flightProgressWrapper');
+                const fill = document.getElementById('flightProgressFill');
+                const glow = document.getElementById('flightProgressGlow');
+                const startLabel = document.getElementById('flightProgressStartLabel');
+                const endLabel = document.getElementById('flightProgressEndLabel');
+                if (wrapper && fill && glow && startLabel && endLabel) {
+                    wrapper.style.display = 'block';
+                    fill.style.width = '0%';
+                    glow.style.left = '0%';
+                    
+                    // 左邊顯示目前位置（國家名稱），右邊永遠是「???」
+                    try {
+                        const countryEl = document.getElementById('currentCountry');
+                        const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
+                        startLabel.textContent = countryText || '目前位置';
+                    } catch (e) {
+                        startLabel.textContent = '目前位置';
+                    }
+                    endLabel.textContent = '???';
+                    
+                    // 先清掉舊的計時器
+                    if (window._flightProgressInterval) {
+                        clearInterval(window._flightProgressInterval);
+                    }
+                    
+                    // 每 1 秒更新一次進度，根據實際經過的時間計算比例
+                    window._flightProgressInterval = setInterval(() => {
+                        if (!sleepStartTime || !selectedTimer) return;
+                        const now = Date.now();
+                        const elapsed = now - sleepStartTime;
+                        let progress = elapsed / durationMs;
+                        if (progress < 0) progress = 0;
+                        if (progress > 1) progress = 1;
+                        
+                        const percent = (progress * 100).toFixed(1);
+                        fill.style.width = percent + '%';
+                        
+                        // 讓光暈跟著前端推進，稍微超前一點點看起來更有動感
+                        const glowPos = Math.min(100, Math.max(0, progress * 100 + 2));
+                        glow.style.left = glowPos + '%';
+                    }, 1000);
+                }
+            } catch (e) {
+                console.warn('⚠️ 更新飛行進度條時發生小問題，可忽略:', e);
+            }
+            
+            // 4. 播放起飛影片與起飛音效（takeoff.mp3 與 takeoff1.mp4 同步）
+            console.log('4️⃣ 播放起飛影片與起飛音效...');
             await playTakeoffVideos();
             
-            // 4. 進入巡航階段
+            // 5. 進入巡航階段（進度條已經顯示，這裡只需要設置降落計時器）
             console.log('✅ 起飛序列完成，進入巡航階段');
-            switchToPhase(Phase.CRUISE);
+            const descentTime = durationMs - (5 * 60 * 1000); // 提前 5 分鐘
+            
+            // 設定降落前 5 分鐘提醒
+            sleepTimer = setTimeout(() => {
+                switchToPhase(Phase.DESCENT);
+            }, descentTime);
+            
+            // 設定降落時間
+            setTimeout(() => {
+                switchToPhase(Phase.LANDING);
+            }, durationMs);
+            
+            // 設置當前階段為 CRUISE（但不調用 handleCruise，因為進度條已經顯示）
+            currentPhase = Phase.CRUISE;
             
             // 隱藏登機狀態
             setBoardingStatus(false);
@@ -3542,78 +3632,6 @@
         window.whereToGo = whereToGo;
 
         // ============================================================================
-        // 測試面板 UI 整合
-        // ============================================================================
-        document.addEventListener('DOMContentLoaded', () => {
-            const testPanel = document.getElementById('testPanel');
-            const testButton = document.getElementById('testButton');
-            const closeTestPanel = document.getElementById('closeTestPanel');
-            const testResult = document.getElementById('testResult');
-            const testDuration = document.getElementById('testDuration');
-            const testDirection = document.getElementById('testDirection');
-            const testOrigin = document.getElementById('testOrigin');
-
-            if (!testPanel || !testButton) return;
-
-            // 測試按鈕點擊事件
-            testButton.addEventListener('click', async () => {
-                const duration = parseInt(testDuration.value);
-                const direction = parseInt(testDirection.value);
-                const originCityKey = testOrigin ? testOrigin.value : 'taipei';
-
-                if (isNaN(duration) || duration <= 0) {
-                    testResult.textContent = '❌ 請輸入有效的時長（分鐘）';
-                    testResult.style.display = 'block';
-                    return;
-                }
-
-                if (isNaN(direction) || direction < 0 || direction > 5) {
-                    testResult.textContent = '❌ 請選擇有效的方位位置 (0-5)';
-                    testResult.style.display = 'block';
-                    return;
-                }
-
-                // 顯示載入中
-                testResult.textContent = '⏳ 計算中...';
-                testResult.style.display = 'block';
-                testButton.disabled = true;
-
-                try {
-                    // 捕獲 console.log 輸出
-                    let output = '';
-                    const originalLog = console.log;
-                    console.log = (...args) => {
-                        output += args.map(arg => 
-                            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-                        ).join(' ') + '\n';
-                        originalLog.apply(console, args);
-                    };
-
-                    // 執行測試（傳遞氣候帶選項和出發地）
-                    const climateZone = typeof climateZoneOptions !== 'undefined' ? climateZoneOptions[direction] : null;
-                    await whereToGo(duration, direction, climateZone, originCityKey);
-
-                    // 恢復 console.log
-                    console.log = originalLog;
-
-                    // 顯示結果
-                    testResult.textContent = output || '✅ 測試完成，請查看控制台';
-                    testResult.style.display = 'block';
-                } catch (error) {
-                    testResult.textContent = `❌ 錯誤：${error.message}\n${error.stack}`;
-                    testResult.style.display = 'block';
-                } finally {
-                    testButton.disabled = false;
-                }
-            });
-
-            // 關閉測試面板
-            if (closeTestPanel) {
-                closeTestPanel.addEventListener('click', () => {
-                    testPanel.style.display = 'none';
-                });
-            }
-        });
 
         // ============================================================================
         // OpenAI API 整合
@@ -5602,6 +5620,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
         function handleCruise() {
             // Phase 4: 開始睡眠計時
+            // 如果進度條已經顯示（在 startTakeoffSequence 中已設置），則跳過重複設置
+            const wrapper = document.getElementById('flightProgressWrapper');
+            if (wrapper && wrapper.style.display === 'block' && sleepStartTime) {
+                console.log('✈️ 進入巡航階段（進度條已顯示，跳過重複設置）');
+                return;
+            }
+            
             sleepStartTime = Date.now();
             const durationMs = selectedTimer * 60 * 1000;
             const descentTime = durationMs - (5 * 60 * 1000); // 提前 5 分鐘
