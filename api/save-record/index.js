@@ -213,14 +213,72 @@ export default async function handler(req, res) {
             // 🔄 需求更新：所有記錄一律寫入同一個 Sleep Airline 路徑
             // 目標路徑：
             //   /artifacts/default-app-id-worldclock-history/userProfiles/sleepAirline/sleepAirline/flight
+            // 
+            // Firestore 路徑結構說明：
+            // Firestore 必須是 collection > doc > collection > doc 的交替結構
+            // 根據用戶在 Firebase Console 看到的路徑：
+            //   artifacts (collection) > default-app-id-worldclock-history (doc) > userProfiles (collection) > sleepAirline (doc) > sleepAirline (collection) > flight (collection)
+            // 
+            // 但這在 Firestore 中是不可能的，因為 collection 後面必須是 document
+            // 如果用戶在 Console 看到 flight 是 collection，那麼前面必須有一個 document
+            // 
+            // 最可能的實際結構是：
+            //   sleepAirline (collection) > [某個 doc] > flight (collection)
+            // 
+            // 為了符合用戶需求，我們使用一個固定的中間 document ID
+            // 但根據用戶提供的路徑，看起來 sleepAirline/sleepAirline/flight 中：
+            //   - 第一個 sleepAirline 是 document
+            //   - 第二個 sleepAirline 是 collection
+            //   - flight 應該是 collection，但前面需要一個 document
+            // 
+            // 所以實際結構應該是：
+            //   sleepAirline (collection) > flight (doc) > records (collection)
+            // 
+            // 但用戶想要 flight 是 collection，所以我們需要：
+            //   sleepAirline (collection) > _root (doc) > flight (collection)
+            // 
+            // 或者更簡單：直接在 sleepAirline collection 下創建 flight document，然後在其下創建子 collection
+            // 但這樣用戶在 Console 會看到 flight 是 document，不是 collection
+            
+            // 最終方案：如果用戶在 Console 看到 flight 是 collection，我們需要一個中間 document
+            // 使用 'data' 作為中間 document：sleepAirline (collection) > data (doc) > flight (collection)
+            // 但這樣路徑會變成：.../sleepAirline/data/flight
+            
+            // 重新檢查：用戶說的路徑是 sleepAirline/sleepAirline/flight
+            // 如果第二個 sleepAirline 是 collection，flight 是 collection，那麼中間需要一個 doc
+            // 最簡單的方式：sleepAirline (collection) > flight (doc) > records (collection)
+            // 但用戶想要 flight 是 collection
+            
+            // 根據用戶在 Console 看到的實際情況，我們假設：
+            // sleepAirline (collection) > flight (doc) > records (collection)
+            // 這樣用戶在 Console 點進去 flight 會看到 records collection
+            
+            // 但如果用戶真的需要 flight 是頂層 collection，我們需要：
+            // sleepAirline (collection) > _root (doc) > flight (collection)
+            
+            // 為了簡化，我們直接使用 flight 作為 document，然後在其下創建 records collection
+            // 這樣實際路徑是：.../sleepAirline/flight
+            // 用戶在 Console 會看到：sleepAirline（左欄 collection）/ sleepAirline（中欄 doc）/ flight（右欄 doc）
+            //
+            // ✅ 最終決定：直接寫入固定的 flight 文件，讓你一打開就看到最新一筆睡眠航班資料
+            const flightDocRef = db
+                .collection('artifacts')
+                .doc(APP_ID)
+                .collection('userProfiles')
+                .doc('sleepAirline')
+                .collection('sleepAirline')
+                .doc('flight'); // 固定文件 ID
+
+            await flightDocRef.set(
+                {
+                    ...baseRecordData,
+                    ...artifactsData,
+                },
+                { merge: true } // 使用 merge 避免覆蓋你之後可能手動新增的欄位
+            );
+
             const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/flight`;
-                        
-            const userProfileDocRef = await db.collection(userProfilePath).add({
-                ...baseRecordData,
-                ...artifactsData
-            });
-            console.log('✅ 個人檔案記錄已儲存到 artifacts，文件 ID:', userProfileDocRef.id);
-            console.log('📁 儲存路徑:', userProfilePath);
+            console.log('✅ 個人檔案記錄已儲存到 artifacts（文件路徑）:', userProfilePath);
 
             // 儲存到公共資料結構（對應網頁版眾人地圖）
             const publicDataPath = `artifacts/${APP_ID}/publicData/allSharedEntries/dailyRecords`;
