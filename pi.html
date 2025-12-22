@@ -1935,8 +1935,11 @@
                             clearInterval(buttonPollInterval);
                         }
                         buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
-                        console.log('✅ 按鈕 API 已恢復，輪詢頻率恢復至正常（100ms）');
-                        connectionErrorLogged = false;
+                        // 只在真正恢復時輸出一次，避免刷屏
+                        if (connectionErrorLogged) {
+                            console.log('✅ 按鈕 API 已恢復，輪詢頻率恢復至正常（100ms）');
+                            connectionErrorLogged = false;
+                        }
                         return;
                     }
                 }
@@ -2073,25 +2076,27 @@
                     }
                     
                     if (data && (data.pressed !== undefined || data.state !== undefined || data.value !== undefined || data.gpio4 !== undefined || data.gpio_4 !== undefined)) {
-                        // 成功連接，重置錯誤計數
-                        const hadErrors = buttonConsecutiveErrors > 0;
-                        buttonConsecutiveErrors = 0;
-                        
-                        // 如果之前有錯誤，現在恢復了，確保輪詢頻率恢復正常
-                        if (hadErrors && currentButtonPollInterval !== MIN_POLL_INTERVAL) {
-                            currentButtonPollInterval = MIN_POLL_INTERVAL;
-                            if (buttonPollInterval) {
-                                clearInterval(buttonPollInterval);
-                            }
-                            buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
-                            console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
+                    // 成功連接，重置錯誤計數
+                    const hadErrors = buttonConsecutiveErrors > 0;
+                    buttonConsecutiveErrors = 0;
+                    
+                    // 如果之前有錯誤，現在恢復了，確保輪詢頻率恢復正常
+                    if (hadErrors && currentButtonPollInterval !== MIN_POLL_INTERVAL) {
+                        currentButtonPollInterval = MIN_POLL_INTERVAL;
+                        if (buttonPollInterval) {
+                            clearInterval(buttonPollInterval);
                         }
-                        
+                        buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
+                        // 只在真正恢復時輸出一次，避免刷屏
                         if (connectionErrorLogged) {
-                            // 只在第一次恢復時記錄，避免重複日誌
-                            console.log('✅ 按鈕 API 連接已恢復');
+                            console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
                             connectionErrorLogged = false;
                         }
+                    } else if (connectionErrorLogged) {
+                        // 只在第一次恢復時記錄，避免重複日誌
+                        console.log('✅ 按鈕 API 連接已恢復');
+                        connectionErrorLogged = false;
+                    }
                         
                         // 檢測按鈕按下（從 false 變為 true）
                         // 按鈕接 3V3 和 GPIO 4，使用下拉電阻（PUD_DOWN）
@@ -2130,7 +2135,15 @@
                                 clearInterval(buttonPollInterval);
                             }
                             buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
-                            console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
+                            // 只在真正恢復時輸出一次，避免刷屏
+                            if (connectionErrorLogged) {
+                                console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
+                                connectionErrorLogged = false;
+                            }
+                        } else if (connectionErrorLogged) {
+                            // 只在第一次恢復時記錄，避免重複日誌
+                            console.log('✅ 按鈕 API 連接已恢復');
+                            connectionErrorLogged = false;
                         }
                     } else {
                         buttonConsecutiveErrors++;
@@ -2219,21 +2232,28 @@
                         buttonPressTimeout = null;
                     }
                     console.log('🔘 [巡航模式] 檢測到雙擊，觸發提前降落確認');
+                    console.log('   時間差:', timeSinceLastPress, 'ms');
                     try {
+                        // 立即設置 landingConfirmActive，防止單擊處理執行
+                        landingConfirmActive = true;
                         handleButtonDoubleClick();
                     } catch (error) {
                         console.error('❌ [巡航模式] 雙擊處理失敗:', error);
+                        landingConfirmActive = false; // 如果失敗，重置標記
                     }
                     lastButtonPressTime = currentTime; // 更新為當前時間
                     return; // 重要：雙擊後直接返回，不處理單擊
                 }
                 
                 // 單擊：延遲處理（等待看是否有第二次按下）
+                // 先取消之前的單擊處理（如果有的話）
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
                     buttonPressTimeout = null;
                 }
                 
+                // 記錄這次按下的時間
+                const thisPressTime = currentTime;
                 lastButtonPressTime = currentTime;
                 
                 // 設置延遲處理單擊，等待看是否有雙擊
@@ -2244,10 +2264,19 @@
                         return;
                     }
                     
+                    // 再次檢查時間差，確保沒有第二次按下
+                    const now = Date.now();
+                    const timeSinceThisPress = now - thisPressTime;
+                    if (timeSinceThisPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > thisPressTime) {
+                        console.log('⚠️ [巡航模式] 在等待期間檢測到第二次按下，取消單擊處理');
+                        return;
+                    }
+                    
                     console.log('🔘 [巡航模式] 單擊處理（延遲後）');
                     console.log('   準備調用 handleButtonSingleClick');
                     console.log('   當前階段:', currentPhase);
                     console.log('   當前狀態:', currentState);
+                    console.log('   landingConfirmActive:', landingConfirmActive);
                     try {
                         handleButtonSingleClick();
                         console.log('✅ [巡航模式] handleButtonSingleClick() 調用完成');
@@ -2255,7 +2284,7 @@
                         console.error('❌ [巡航模式] 單擊處理失敗:', error);
                         console.error('   錯誤堆疊:', error.stack);
                     }
-                }, DOUBLE_CLICK_THRESHOLD + 50); // 等待雙擊閾值 + 50ms 緩衝
+                }, DOUBLE_CLICK_THRESHOLD + 100); // 等待雙擊閾值 + 100ms 緩衝（增加緩衝時間）
                 
                 return;
             }
@@ -3795,6 +3824,18 @@
             
             // 檢查城市是否符合氣候帶選項（基於緯度範圍）
             matchesClimateZone(city, climateZoneOption) {
+                // 檢查 city 是否為 null 或 undefined
+                if (!city) {
+                    console.warn('⚠️ matchesClimateZone: city 為 null 或 undefined');
+                    return false;
+                }
+                
+                // 檢查 climateZoneOption 是否為 null 或 undefined
+                if (!climateZoneOption) {
+                    console.warn('⚠️ matchesClimateZone: climateZoneOption 為 null 或 undefined');
+                    return false;
+                }
+                
                 const cityLat = city.latitude || city.lat;
                 const latitudeRange = climateZoneOption.latitudeRange;
                 
@@ -4996,15 +5037,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                             console.log('✅ 本機 TTS 音頻已預載（後台準備完成）');
                             return Promise.resolve(); // 預載模式，立即返回，不等待播放
                         } else {
-                            console.log('✅ 本機 TTS 播放成功');
-                            // 簡化：根據文字長度估算播放時間（每個字約 0.3 秒）
-                            return new Promise((resolve) => {
-                                const duration = Math.max(3000, text.length * 300);
-                                setTimeout(() => {
-                                    console.log('✅ 本機 TTS 播放完成');
-                                    resolve();
-                                }, duration);
-                            });
+                            console.log('✅ 本機 TTS 播放成功（不等待播放完成，立即繼續）');
+                            // 不等待播放完成，立即返回，讓流程繼續
+                            // 後端 TTS 服務會在背景播放，不會阻塞前端流程
+                            return Promise.resolve();
                         }
                     } else {
                         console.warn('⚠️ 本機 TTS 返回錯誤:', result.error);
@@ -5098,6 +5134,16 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         }
                     }
                     
+                    // 對於起飛語音，不等待播放完成，立即返回，讓流程繼續
+                    // 語音會在背景播放，不會阻塞進入巡航階段
+                    if (isTakeoffAnnouncement) {
+                        console.log('✅ 起飛語音開始播放（不等待完成，立即繼續流程）');
+                        speechSynthesis.speak(utterance);
+                        // 立即返回，不等待播放完成
+                        return Promise.resolve();
+                    }
+                    
+                    // 其他語音（降落等）仍然等待播放完成
                     return new Promise((resolve) => {
                         utterance.onend = () => {
                             console.log('✅ 語音播放完成');
@@ -7414,41 +7460,40 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             console.log('📊 實際睡眠時長: ' + actualDuration + ' 分鐘，準時情況: ' + punctuality);
             console.log('📊 時間差異: ' + timeDiff + ' 分鐘（' + timeDiffPercent.toFixed(1) + '%）');
             
-            // 如果沒有手動觸發降落，現在生成降落語音和圖片
+            // 如果沒有手動觸發降落，現在生成降落語音和圖片，並播放 landing.mp4
             if (!manualLandingTriggered) {
                 const landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
                 
-                // 播放降落語音
+                // 先播放 captain.mp3（6秒），然後播放正式降落語音
+                console.log('1️⃣ 播放 captain.mp3（6 秒）...');
+                await playAudioFile('sounds/captain.mp3', 6);
+                console.log('✅ captain.mp3 播放完成');
+                
+                // 播放正式降落語音
                 if (landingData.announcement) {
                     await playAnnouncement(landingData.announcement, 'zh-TW');
                 }
                 
-                // 生成並顯示降落圖片
+                // 在背景生成降落圖片（與 landing.mp4 並行）
+                let landingImagePromise = Promise.resolve(null);
                 if (landingData.destination) {
-                    const landingImageUrl = await generateLandingImage(
-                        landingData.destination.city,
-                        landingData.destination.country,
-                        landingData.destination.timezone || 'UTC',
-                        new Date().toISOString()
-                    );
-                    
-                    if (landingImageUrl) {
-                        // 先隱藏影片
-                        const videoContainer = document.getElementById('videoContainer');
-                        if (videoContainer) {
-                            videoContainer.style.display = 'none';
+                    landingImagePromise = (async () => {
+                        const url = await generateLandingImage(
+                            landingData.destination.city,
+                            landingData.destination.country,
+                            landingData.destination.timezone || 'UTC',
+                            new Date().toISOString()
+                        );
+                        if (url) {
+                            // 暫存圖片 URL
+                            window._manualLandingImageUrl = url;
                         }
-                        
-                        // 顯示降落圖片
-                        const windowContent = document.querySelector('.window-content');
-                        if (windowContent) {
-                            windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
-                            windowContent.style.backgroundSize = 'cover';
-                            windowContent.style.backgroundPosition = 'center';
-                            console.log('🖼️ 降落圖片已顯示');
-                        }
-                    }
+                        return url;
+                    })();
                 }
+                
+                // 播放 landing.mp4，結束後無縫切換到降落圖片
+                await playLandingVideoAndShowImage(landingImagePromise);
             }
             
             // 根據實際時長重新計算最終目的地
@@ -7511,6 +7556,32 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 if (!finalDestination) {
                     finalDestination = destinationData;
                 }
+                // 如果還是沒有，使用 landingData 中的目的地
+                if (!finalDestination && !manualLandingTriggered) {
+                    try {
+                        const landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
+                        if (landingData && landingData.destination) {
+                            finalDestination = landingData.destination;
+                            console.log('✅ 使用 landingData 中的目的地作為備用');
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ 無法獲取備用目的地:', e);
+                    }
+                }
+            }
+            
+            // 確保 finalDestination 不為 null
+            if (!finalDestination) {
+                console.error('❌ 無法獲取最終目的地，使用預設值');
+                finalDestination = {
+                    city: 'Unknown',
+                    country: 'Unknown',
+                    city_zh: '未知城市',
+                    country_zh: '未知國家',
+                    latitude: 0,
+                    longitude: 0,
+                    timezone: 'UTC'
+                };
             }
             
             // 顯示目的地圖片
@@ -7586,6 +7657,17 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 優先使用手動觸發時生成的圖片，否則使用最終目的地圖片
             const finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
             
+            // 如果圖片還沒顯示，現在顯示（確保圖片已生成）
+            if (finalImageUrl && document.querySelector('.window-content')) {
+                const windowContent = document.querySelector('.window-content');
+                if (!windowContent.style.backgroundImage || !windowContent.style.backgroundImage.includes(finalImageUrl)) {
+                    windowContent.style.backgroundImage = 'url(' + finalImageUrl + ')';
+                    windowContent.style.backgroundSize = 'cover';
+                    windowContent.style.backgroundPosition = 'center';
+                    console.log('🖼️ 降落圖片已顯示（最終確認）');
+                }
+            }
+            
             // 獲取氣候帶名稱
             const climateZoneName = destinationData?.climateZone?.name || 
                 (selectedDirection !== null && climateZoneOptions[selectedDirection] ? 
@@ -7598,8 +7680,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 arrivalInfoEl.style.display = 'none !important';
             }
             
-            // 顯示飛行回饋選單（入境登記）- 必須填寫完才能繼續
+            // 顯示飛行回饋選單（情緒量表）- 必須填寫完才能繼續
+            console.log('📋 顯示情緒量表...');
             const feedbackData = await showFlightFeedback(finalDestination);
+            console.log('✅ 情緒量表作答完成');
             
             // 儲存到 Firebase（包含回饋數據）- 不阻塞流程，即使失敗也繼續
             saveSleepRecord({
