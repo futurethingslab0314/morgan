@@ -498,6 +498,20 @@
             }
         }
 
+        /* 飛機餐（深夜機上服務）狀態 bar 樣式 */
+        #stateMidnightService {
+            background: linear-gradient(135deg, #111111, #333333);
+            color: #ffffff;
+        }
+
+        #stateMidnightService .state-label {
+            color: #ffffff;
+        }
+
+        #stateMidnightService .loading-dots span {
+            background: #ffffff;
+        }
+
         /* 狀態標籤（上方） */
         .state-label {
             font-size: 22px;
@@ -724,6 +738,45 @@
             justify-content: center;
         }
 
+        /* 降落後國家資訊 bar 樣式 */
+        .landing-country-bar {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #fff5f0 0%, #ffe5d9 100%);
+            border: 2px solid #ffb399;
+            border-radius: 20px;
+            box-shadow: 0 4px 16px rgba(255, 107, 53, 0.2);
+        }
+
+        .landing-country-flag {
+            font-size: 48px;
+            line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        .landing-country-text {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .landing-country-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ff6b35;
+            line-height: 1.2;
+        }
+
+        .landing-country-desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.4;
+            opacity: 0.9;
+        }
+
         /* 可點擊狀態的視覺反饋 */
         #stateCountry:hover {
             background: rgba(255, 107, 53, 0.05);
@@ -907,9 +960,9 @@
                 <div style="font-size: 16px; color: #666; margin-bottom: 10px;">
                     請再次按下按鈕開始起飛
                 </div>
-                <div id="readyDestinationInfo" style="font-size: 14px; color: #999; margin-top: 15px;">
+                <!-- <div id="readyDestinationInfo" style="font-size: 14px; color: #999; margin-top: 15px;">
                     ...
-                </div>
+                </div> -->
                 <!-- 登機／等待機長廣播的動態提示 -->
                 <div class="boarding-status" id="boardingStatus">
                     <span class="boarding-status-text">登機中，請舒適入座，等待機長廣播...</span>
@@ -1022,6 +1075,32 @@
         </div>
     </div>
 
+    <!-- 深夜機上餐狀態（飛機餐模式） -->
+    <div class="info-state" id="stateMidnightService" style="display: none;">
+        <div class="state-label">🍽️ 深夜機上餐準備中</div>
+        <div style="margin-top: 18px; text-align: center; font-size: 14px;">
+            <div class="loading-dots" style="justify-content: center;">
+                <span></span><span></span><span></span>
+            </div>
+            <div style="margin-top: 8px; opacity: 0.9;">
+                貴賓您好，空服員正在為你準備機上點心，請稍候片刻…
+            </div>
+        </div>
+    </div>
+
+    <!-- 降落後國家資訊顯示（填寫完情緒量表後顯示） -->
+    <div class="info-state" id="stateLandingCountryInfo" style="display: none;">
+        <div class="landing-country-bar">
+            <div class="landing-country-flag" id="landingCountryFlag">🏳️</div>
+            <div class="landing-country-text">
+                <div class="landing-country-name" id="landingCountryName">國家名稱</div>
+                <div class="landing-country-desc" id="landingCountryDesc">國家描述</div>
+            </div>
+        </div>
+        <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
+            按兩下: 返回首頁
+        </div>
+    </div>
 
     <!-- 下一步按鈕 - 已隱藏，改用實體按鈕 -->
     <button id="nextButton" class="next-button" style="display: none;">下一步</button>
@@ -1246,10 +1325,29 @@
             });
         }
 
-        // 選擇角度（保留原函數，但會在下文被覆蓋）
+        // 選擇角度（僅更新 UI 與選擇，不做目的地計算）
         function selectAngle(position) {
-            // 這個函數會被 onDirectionSelected 覆蓋
-            onDirectionSelected(position);
+            if (position < 0 || position >= climateZoneOptions.length) {
+                console.warn('無效的氣候帶位置:', position);
+                return;
+            }
+            
+            currentPosition = position;
+            selectedDirection = position;
+            const selectedClimateZone = climateZoneOptions[position];
+            
+            // 更新 UI 高亮
+            document.querySelectorAll('.angle-option').forEach((option, idx) => {
+                option.classList.toggle('active', idx === position);
+            });
+
+            // 更新氣候旋鈕位置對應說明
+            const climateKnobInfo = document.getElementById('climateKnobInfo');
+            if (climateKnobInfo) {
+                climateKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${selectedClimateZone.name}`;
+        }
+
+            console.log('✅ 選擇氣候帶（僅更新 UI，尚未計算目的地）:', selectedClimateZone.name, '位置:', position);
         }
 
         // 旋鈕邏輯：根據位置選擇（模擬旋鈕轉動，type 由呼叫端決定）
@@ -1701,8 +1799,11 @@
         let buttonPollInterval = null;
         let lastButtonState = false; // false = 未按下, true = 按下
         let buttonConsecutiveErrors = 0;
-        const MAX_BUTTON_ERRORS = 20; // 連續 20 次錯誤後停止輪詢（增加容錯性）
+        const MAX_BUTTON_ERRORS = 20; // 連續錯誤次數（用於調整輪詢頻率，不再完全停止）
         let buttonMonitoringEnabled = true;
+        let currentButtonPollInterval = 100; // 當前輪詢間隔（毫秒），初始為 100ms
+        const MIN_POLL_INTERVAL = 100; // 最小輪詢間隔（正常狀態）
+        const MAX_POLL_INTERVAL = 2000; // 最大輪詢間隔（錯誤較多時）
         let buttonRecoveryCheckInterval = null; // 服務器恢復檢查定時器
         let preparedAnnouncement = null; // 準備好的 TTS 語音文字
         let preparedAudioId = null;      // 預先生成的 TTS 音檔 ID（/tts/generate 返回）
@@ -1798,27 +1899,46 @@
                 buttonPollInterval = null;
             }
             
-            buttonPollInterval = setInterval(async () => {
+            // 定義輪詢函數（使用命名函數，避免 arguments.callee）
+            const pollButton = async () => {
                 // 如果監控被停用，直接返回（但不清除 interval，以便重新啟用）
                 if (!buttonMonitoringEnabled) {
                     return;
                 }
                 
-                // 只有當錯誤次數達到上限時才停止輪詢
-                if (buttonConsecutiveErrors >= MAX_BUTTON_ERRORS) {
-                    if (buttonPollInterval) {
-                        clearInterval(buttonPollInterval);
-                        buttonPollInterval = null;
-                        if (!connectionErrorLogged) {
-                            console.log('ℹ️ 按鈕 API 連續錯誤過多，已停止輪詢（將定期檢查服務器恢復）');
+                // 根據錯誤次數動態調整輪詢頻率（不再完全停止）
+                // 這樣可以確保即使 API 暫時失效，也不會完全錯過按鈕按下
+                if (buttonConsecutiveErrors > 0) {
+                    // 根據錯誤次數計算新的輪詢間隔（線性退避，但不會完全停止）
+                    const errorRatio = Math.min(buttonConsecutiveErrors / MAX_BUTTON_ERRORS, 1);
+                    const newInterval = Math.floor(MIN_POLL_INTERVAL + (MAX_POLL_INTERVAL - MIN_POLL_INTERVAL) * errorRatio);
+                    
+                    // 如果間隔改變了，重新設置 interval
+                    if (newInterval !== currentButtonPollInterval) {
+                        currentButtonPollInterval = newInterval;
+                        if (buttonPollInterval) {
+                            clearInterval(buttonPollInterval);
+                        }
+                        // 重新啟動輪詢，使用新的間隔
+                        buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
+                        if (buttonConsecutiveErrors >= MAX_BUTTON_ERRORS && !connectionErrorLogged) {
+                            console.log(`ℹ️ 按鈕 API 連續錯誤較多，已降低輪詢頻率至 ${currentButtonPollInterval}ms（繼續監控，不會完全停止）`);
                             connectionErrorLogged = true;
                         }
-                        // 啟動服務器恢復檢查（自動恢復機制）
-                        if (!buttonRecoveryCheckInterval) {
-                            startButtonRecoveryCheck();
-                        }
+                        return; // 這次不執行，等待下次用新間隔執行
                     }
-                    return;
+                } else {
+                    // 沒有錯誤，恢復到正常頻率
+                    if (currentButtonPollInterval !== MIN_POLL_INTERVAL) {
+                        currentButtonPollInterval = MIN_POLL_INTERVAL;
+                        if (buttonPollInterval) {
+                            clearInterval(buttonPollInterval);
+                        }
+                        buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
+                        console.log('✅ 按鈕 API 已恢復，輪詢頻率恢復至正常（100ms）');
+                        connectionErrorLogged = false;
+                        return;
+                    }
                 }
                 
                 if (controller) {
@@ -1841,8 +1961,11 @@
                         });
                         // 即使不是 200，也嘗試解析 JSON（可能包含錯誤信息）
                         if (response.status === 503) {
-                            // 503 錯誤不計入連續錯誤，繼續輪詢
-                            console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                            // 503 錯誤不計入連續錯誤，繼續輪詢（僅在第一次顯示提示，避免洗版）
+                            if (!connectionErrorLogged) {
+                                console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                                connectionErrorLogged = true;
+                            }
                             return;
                         }
                         if (response.ok) {
@@ -1910,7 +2033,11 @@
                     if (!response.ok && (!data || data.success === false)) {
                         // 503 錯誤不計入連續錯誤（服務器可能暫時不可用）
                         if (response.status === 503) {
-                            console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                            // 僅在首次 503 時提示一次，之後安靜重試，避免洗版 console
+                            if (!connectionErrorLogged) {
+                                console.log('⚠️ 按鈕 API 返回 503（服務暫時不可用），繼續重試...');
+                                connectionErrorLogged = true;
+                            }
                             return; // 不增加錯誤計數，繼續輪詢
                         }
                         throw new Error('HTTP ' + response.status);
@@ -1947,18 +2074,17 @@
                     
                     if (data && (data.pressed !== undefined || data.state !== undefined || data.value !== undefined || data.gpio4 !== undefined || data.gpio_4 !== undefined)) {
                         // 成功連接，重置錯誤計數
-                        const wasStopped = buttonConsecutiveErrors >= MAX_BUTTON_ERRORS;
+                        const hadErrors = buttonConsecutiveErrors > 0;
                         buttonConsecutiveErrors = 0;
                         
-                        // 如果之前因為錯誤過多而停止，現在服務器恢復了，重新啟動輪詢
-                        if (wasStopped && !buttonPollInterval && buttonMonitoringEnabled) {
-                            console.log('✅ 服務器已恢復，自動重啟按鈕輪詢');
-                            // 清除舊的 interval（如果存在）
+                        // 如果之前有錯誤，現在恢復了，確保輪詢頻率恢復正常
+                        if (hadErrors && currentButtonPollInterval !== MIN_POLL_INTERVAL) {
+                            currentButtonPollInterval = MIN_POLL_INTERVAL;
                             if (buttonPollInterval) {
                                 clearInterval(buttonPollInterval);
                             }
-                            // 重新啟動輪詢
-                            startButtonMonitoring();
+                            buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
+                            console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
                         }
                         
                         if (connectionErrorLogged) {
@@ -1994,19 +2120,17 @@
                     } else if (data) {
                         // API 返回了數據但格式不匹配，不算錯誤
                         // 成功連接，重置錯誤計數
-                        const wasStopped = buttonConsecutiveErrors >= MAX_BUTTON_ERRORS;
+                        const hadErrors = buttonConsecutiveErrors > 0;
                         buttonConsecutiveErrors = 0;
                         
-                        // 如果之前因為錯誤過多而停止，現在服務器恢復了，重新啟動輪詢
-                        if (wasStopped && !buttonPollInterval && buttonMonitoringEnabled) {
-                            console.log('✅ 服務器已恢復，自動重啟按鈕輪詢');
-                            // 停止恢復檢查（如果正在運行）
-                            if (buttonRecoveryCheckInterval) {
-                                clearInterval(buttonRecoveryCheckInterval);
-                                buttonRecoveryCheckInterval = null;
+                        // 如果之前有錯誤，現在恢復了，確保輪詢頻率恢復正常
+                        if (hadErrors && currentButtonPollInterval !== MIN_POLL_INTERVAL) {
+                            currentButtonPollInterval = MIN_POLL_INTERVAL;
+                            if (buttonPollInterval) {
+                                clearInterval(buttonPollInterval);
                             }
-                            // 重新啟動輪詢
-                            startButtonMonitoring();
+                            buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
+                            console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
                         }
                     } else {
                         buttonConsecutiveErrors++;
@@ -2020,7 +2144,13 @@
                         connectionErrorLogged = true;
                     }
                 }
-            }, 100); // 每 100ms 檢查一次（按鈕需要更快的響應）
+            };
+            
+            // 重置輪詢間隔為正常值
+            currentButtonPollInterval = MIN_POLL_INTERVAL;
+            
+            // 開始輪詢
+            buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
         }
         
         // 處理實體按鈕按下事件（支援雙擊/三擊檢測）
@@ -2309,7 +2439,7 @@
         }
         
         // 處理按鈕單擊
-        function handleButtonSingleClick() {
+        async function handleButtonSingleClick() {
             console.log('🔘 [單擊] 處理實體按鈕單擊');
             console.log('   當前狀態:', currentState);
             console.log('   當前階段:', currentPhase);
@@ -2455,23 +2585,94 @@
                     
                 case State.ANGLE:
                     // 從選擇氣候帶 → 準備起航（不顯示目的地）
-                    if (selectedDirection !== null) {
-                        console.log('✅ 按鈕：氣候帶已選擇，進入準備起航狀態');
-                        if (destinationData && preparedAnnouncement) {
-                            // TTS 語音已經在選擇氣候時提前生成，直接進入準備起航狀態
-                            currentState = State.READY_TO_FLY;
-                            switchState(State.READY_TO_FLY);
-                            console.log('🛫 已準備好起飛，等待按鈕...（TTS 語音已提前生成）');
-                        } else if (destinationData) {
-                            // 如果 TTS 還沒生成，現在生成（備用方案）
-                            console.log('⚠️ TTS 語音尚未生成，現在生成...');
-                            prepareForTakeoff();
-                        } else {
-                            console.log('⚠️ 目的地資料尚未計算，請稍候...');
-                        }
-                    } else {
+                    if (selectedDirection === null) {
                         console.log('⚠️ 請先選擇氣候帶，自動選擇第一個選項');
                         selectAngle(0);
+                    }
+                    
+                    console.log('✅ 按鈕：確認氣候帶選擇，開始計算目的地並準備起航');
+                    
+                    try {
+                        // 只在按鈕確認時計算目的地，避免每次旋鈕變動都計算
+                        const position = selectedDirection !== null ? selectedDirection : 0;
+                        const selectedClimateZone = climateZoneOptions[position];
+                        
+                        if (!selectedClimateZone) {
+                            console.warn('⚠️ 找不到對應的氣候帶選項，無法計算目的地');
+                            break;
+                        }
+                        
+                        // 從 Firebase 讀取上次降落地點作為新的出發地
+                        const lastLanding = await loadLastLandingLocation();
+                        if (lastLanding) {
+                            destinationCalculator.setOrigin(lastLanding.latitude, lastLanding.longitude);
+                            console.log(`✈️ 從 ${lastLanding.city}, ${lastLanding.country} 出發`);
+                        } else {
+                            destinationCalculator.resetToTaipei();
+                            console.log('✈️ 從台北出發（首次旅程或無歷史記錄）');
+                        }
+                        
+                        console.log('🔄 開始計算預期目的地（按鈕確認後）...');
+                        console.log('📋 參數 - 時長:', selectedTimer, '氣候帶:', selectedClimateZone.name);
+                        
+                        const directionPosition = position;
+                        
+                        destinationData = await destinationCalculator.findDestination(
+                            selectedTimer,
+                            directionPosition,
+                            'ON_TIME',
+                            selectedClimateZone
+                        );
+                        
+                        if (!destinationData) {
+                            console.warn('⚠️ 無法取得目的地資料');
+                            break;
+                        }
+                        
+                        destinationData.climateZone = selectedClimateZone;
+                        
+                        console.log('✅ 目的地計算完成（按鈕確認後）:', destinationData);
+                        
+                        // 顯示目的地資訊（僅下方文字，不切換畫面）
+                        const destinationCityEl = document.getElementById('destinationCity');
+                        const destinationCountryEl = document.getElementById('destinationCountry');
+                        const destinationClimateEl = document.getElementById('destinationClimate');
+                        
+                        if (destinationCityEl) {
+                            destinationCityEl.textContent = destinationData.city_zh || destinationData.city || '未知城市';
+                        }
+                        if (destinationCountryEl) {
+                            destinationCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
+                        }
+                        if (destinationClimateEl) {
+                            destinationClimateEl.textContent = '🌍 ' + selectedClimateZone.name + ' - ' + selectedClimateZone.description;
+                        }
+                        
+                        // 提前生成 TTS 語音文字與音檔
+                        console.log('🎤 生成起飛 TTS 語音文字與音檔（按鈕確認後）...');
+                        const climateZone = destinationData.climateZone || null;
+                        const announcement = generateTakeoffAnnouncement(
+                            destinationData,
+                            destinationData.country,
+                            selectedTimer,
+                            climateZone
+                        );
+                        
+                        if (announcement) {
+                            preparedAnnouncement = announcement;
+                            preparedAudioId = null;
+                            generateTtsAudio(announcement, 'zh-TW');
+                            console.log('✅ 起飛語音文字已準備');
+                        } else {
+                            console.warn('⚠️ 起飛語音文字生成失敗');
+                        }
+                        
+                        // 切換到準備起飛狀態
+                        currentState = State.READY_TO_FLY;
+                        switchState(State.READY_TO_FLY);
+                        console.log('🛫 已準備好起飛，等待按鈕開始起飛序列');
+                    } catch (error) {
+                        console.error('❌ 在按鈕確認時計算目的地失敗:', error);
                     }
                     break;
                     
@@ -2749,7 +2950,8 @@
                 'stateDestination',
                 'stateReady_to_fly',
                 'stateArrivalInfo',
-                'stateTicketReview'
+                'stateTicketReview',
+                'stateLandingCountryInfo'  // 也隱藏降落國家資訊（在顯示情緒量表時）
             ];
             
             statesToHide.forEach(stateId => {
@@ -3154,7 +3356,7 @@
         console.log('總高度: 800 + 280 = 1080px ✓');
         
         // 初始化：確保初始狀態正確顯示
-        function initializeApp() {
+        async function initializeApp() {
             console.log('🚀 初始化應用程式...');
             console.log('   初始狀態:', currentState);
             console.log('   初始 Phase:', currentPhase);
@@ -3165,7 +3367,162 @@
             // 更新按鈕狀態
             updateNextButton();
             
+            // 檢查是否在 Phase 0，如果是，嘗試載入最新的 Firebase 記錄
+            if (currentPhase === Phase.POST_ARRIVAL) {
+                console.log('🔄 檢測到 Phase 0，嘗試載入最新的 Firebase 記錄...');
+                await loadLatestDestinationOnInit();
+            }
+            
             console.log('✅ 應用程式初始化完成');
+        }
+        
+        // 在頁面初始化時載入最新的降落記錄
+        async function loadLatestDestinationOnInit() {
+            try {
+                // 從 Firebase 獲取最新的降落記錄
+                const latestRecord = await getLatestFlightRecord();
+                
+                if (latestRecord && latestRecord.imageUrl) {
+                    console.log('✅ 找到最新的降落記錄，載入中...');
+                    
+                    // 更新目的地資料
+                    destinationData = {
+                        city: latestRecord.city || latestRecord.destinationCity,
+                        country: latestRecord.country || latestRecord.destinationCountry,
+                        city_zh: latestRecord.city_zh || latestRecord.destinationCityZh,
+                        country_zh: latestRecord.country_zh || latestRecord.destinationCountryZh,
+                        country_iso_code: latestRecord.country_iso_code || latestRecord.countryCode,
+                        latitude: latestRecord.latitude || latestRecord.destinationLatitude,
+                        longitude: latestRecord.longitude || latestRecord.destinationLongitude,
+                        timezone: latestRecord.timezone
+                    };
+                    
+                    // 更新降落圖片
+                    destinationImageUrl = latestRecord.imageUrl;
+                    
+                    // 顯示降落圖片
+                    const windowContent = document.querySelector('.window-content');
+                    if (windowContent) {
+                        windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                        windowContent.style.backgroundSize = 'cover';
+                        windowContent.style.backgroundPosition = 'center';
+                        console.log('✅ 最新降落圖片已顯示:', destinationImageUrl);
+                    }
+                    
+                    // 顯示國家資訊 bar
+                    await showLandingCountryInfo(destinationData);
+                    
+                    console.log('✅ 已載入最新降落位置:', destinationData.city_zh || destinationData.city, destinationData.country_zh || destinationData.country);
+                } else {
+                    console.log('ℹ️ 沒有找到最新的降落記錄，顯示預設首頁');
+                    // 隱藏國家資訊 bar（如果有的話）
+                    const countryInfoState = document.getElementById('stateLandingCountryInfo');
+                    if (countryInfoState) {
+                        countryInfoState.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('❌ 載入最新降落位置失敗:', error);
+                // 即使失敗也繼續，顯示預設首頁
+            }
+        }
+
+        // 播放降落影片（landing.mp4 一次），結束後無縫切換到降落圖片
+        async function playLandingVideoAndShowImage(landingImagePromise) {
+            const videoContainer = document.querySelector('.window-area');
+            const videoContainerEl = document.getElementById('videoContainer');
+            const windowContent = document.querySelector('.window-content');
+            
+            if (!videoContainer || !windowContent || !videoContainerEl) {
+                console.warn('⚠️ 找不到影片容器或 window-content，直接顯示降落圖片');
+                try {
+                    const landingImageUrl = await landingImagePromise;
+                    if (landingImageUrl) {
+                        windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                        windowContent.style.backgroundSize = 'cover';
+                        windowContent.style.backgroundPosition = 'center';
+                        console.log('🖼️ 降落圖片已顯示（無影片容器）');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 顯示降落圖片失敗:', e);
+                }
+                return;
+            }
+            
+            // 清除之前的影片，但先等 landing.mp4 可以播放再切換，減少空白時間
+            const existingVideos = Array.from(videoContainer.querySelectorAll('video'));
+            
+            // 準備 landing.mp4 影片元素
+            const landingVideo = document.createElement('video');
+            landingVideo.src = 'landing.mp4';
+            landingVideo.className = 'takeoff-video';
+            landingVideo.preload = 'auto';
+            landingVideo.muted = false;
+            landingVideo.playsInline = true;
+            landingVideo.loop = false;
+            landingVideo.style.width = '100%';
+            landingVideo.style.height = '100%';
+            landingVideo.style.objectFit = 'contain';
+            landingVideo.style.position = 'absolute';
+            landingVideo.style.top = '0';
+            landingVideo.style.left = '0';
+            landingVideo.style.opacity = '0';
+            landingVideo.style.zIndex = '20';
+            
+            // 先確保容器可見
+            videoContainerEl.style.display = 'flex';
+            
+            videoContainer.appendChild(landingVideo);
+            
+            // 等待影片可以播放再淡入，避免白屏
+            await new Promise((resolve) => {
+                if (landingVideo.readyState >= 3) {
+                    resolve();
+                } else {
+                    landingVideo.addEventListener('canplaythrough', () => resolve(), { once: true });
+                    landingVideo.addEventListener('error', () => resolve(), { once: true });
+                }
+            });
+            
+            // 此時 landing.mp4 已經可以播放，移除舊影片並淡入新影片
+            existingVideos.forEach(v => v.remove());
+            windowContent.style.backgroundImage = 'none';
+            windowContent.innerHTML = '';
+            
+            landingVideo.style.opacity = '1';
+            landingVideo.style.transition = 'opacity 0.2s';
+            
+            try {
+                await landingVideo.play();
+                console.log('▶️ 開始播放 landing.mp4');
+            } catch (e) {
+                console.warn('⚠️ 無法播放 landing.mp4，直接顯示降落圖片:', e);
+            }
+            
+            // 等待影片結束或錯誤
+            await new Promise((resolve) => {
+                landingVideo.addEventListener('ended', () => resolve(), { once: true });
+                landingVideo.addEventListener('error', () => resolve(), { once: true });
+            });
+            
+            console.log('⏹️ landing.mp4 播放結束，準備顯示降落圖片');
+            
+            // 播放完畢後隱藏影片容器，顯示降落圖片
+            videoContainerEl.style.display = 'none';
+            
+            try {
+                const landingImageUrl = await landingImagePromise;
+                if (landingImageUrl) {
+                    windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                    windowContent.style.backgroundSize = 'cover';
+                    windowContent.style.backgroundPosition = 'center';
+                    console.log('🖼️ 降落圖片已顯示（landing.mp4 之後）');
+                } else {
+                    console.warn('⚠️ 降落圖片 URL 為空，保持當前畫面');
+                }
+            } catch (e) {
+                console.warn('⚠️ 顯示降落圖片失敗:', e);
+            }
         }
         
         // 驗證尺寸
@@ -3485,18 +3842,59 @@
                     // 山地：根據城市名稱或地區關鍵字判斷
                     if (climateZoneOption.climateType === 'mountain') {
                         const cityName = (city.city || '').toLowerCase();
+                        const cityNameZh = (city.city_zh || '').toLowerCase();
                         const countryName = (city.country || '').toLowerCase();
+                        const countryNameZh = (city.country_zh || '').toLowerCase();
                         const regionName = (city.region || '').toLowerCase();
-                        const allText = cityName + ' ' + countryName + ' ' + regionName;
+                        const allText = cityName + ' ' + cityNameZh + ' ' + countryName + ' ' + countryNameZh + ' ' + regionName;
                         
-                        // 檢查是否包含山地關鍵字
-                        if (climateZoneOption.mountainKeywords) {
-                            return climateZoneOption.mountainKeywords.some(keyword => 
-                                allText.includes(keyword.toLowerCase())
-                            );
+                        // 擴大的山地關鍵字列表（包括英文和中文）
+                        const extendedMountainKeywords = [
+                            // 英文關鍵字
+                            'mountain', 'mount', 'alps', 'himalaya', 'rocky', 'andes', 'alpine', 'highland',
+                            'peak', 'summit', 'ridge', 'range', 'hill', 'valley', 'plateau',
+                            // 中文關鍵字
+                            '山', '峰', '嶺', '脈', '高原', '山地', '山區', '山城',
+                            // 常見山脈名稱
+                            'everest', 'k2', 'kilimanjaro', 'fuji', 'denali', 'mckinley',
+                            // 常見山脈城市
+                            'zermatt', 'chamonix', 'interlaken', 'banff', 'aspen', 'vail', 'whistler',
+                            'nepal', 'bhutan', 'switzerland', 'austria', 'tibet', 'xizang'
+                        ];
+                        
+                        // 檢查是否包含山地關鍵字（使用擴大的關鍵字列表）
+                        const keywordsToCheck = climateZoneOption.mountainKeywords || extendedMountainKeywords;
+                        const hasMountainKeyword = keywordsToCheck.some(keyword => 
+                            allText.includes(keyword.toLowerCase())
+                        );
+                        
+                        // 如果找到關鍵字，直接匹配
+                        if (hasMountainKeyword) {
+                            return true;
                         }
-                        // 如果沒有關鍵字，放寬條件（接受所有城市，但優先級較低）
-                        return true;
+                        
+                        // 如果沒有關鍵字，但城市名稱包含常見的山脈相關字詞，也視為匹配
+                        // 這是一個更寬鬆的匹配策略，避免完全找不到城市
+                        const cityNamePatterns = ['berg', 'mont', 'monte', 'sierra', 'cordillera'];
+                        const hasMountainPattern = cityNamePatterns.some(pattern => 
+                            cityName.includes(pattern)
+                        );
+                        
+                        if (hasMountainPattern) {
+                            return true;
+                        }
+                        
+                        // 如果還是找不到，至少接受一些已知的山脈城市（避免完全卡住）
+                        const knownMountainCities = [
+                            'zermatt', 'chamonix', 'interlaken', 'banff', 'aspen', 'vail', 'whistler',
+                            'kathmandu', 'thimphu', 'lhasa', 'cuzco', 'quito', 'la paz', 'bogota'
+                        ];
+                        const isKnownMountainCity = knownMountainCities.some(knownCity => 
+                            cityName.includes(knownCity) || cityNameZh.includes(knownCity)
+                        );
+                        
+                        // 如果完全找不到匹配，返回 false（讓備用方案處理）
+                        return isKnownMountainCity;
                     }
                     return false;
                 }
@@ -3546,7 +3944,7 @@
                         const cityLon = city.longitude || city.lon;
                         
                         if (!cityLat || !cityLon) {
-                            console.warn(`⚠️ 城市 ${city.city} 缺少座標資訊`);
+                            // 靜默過濾缺少座標的城市（不輸出警告，避免洗版）
                             return null;
                         }
                         
@@ -3573,17 +3971,20 @@
                     // 短距離：距離優先（保持邏輯性）
                     distanceWeight = 0.7;
                     climateWeight = 0.3;
-                    console.log(`⚖️  權重調整：短距離飛行（${durationHours.toFixed(1)}小時），距離優先（距離70%，氣候30%）`);
+                    // 簡化 log，避免洗版
+                    // console.log(`⚖️  權重調整：短距離飛行（${durationHours.toFixed(1)}小時），距離優先（距離70%，氣候30%）`);
                 } else if (durationHours < 5) {
                     // 中距離：平衡
                     distanceWeight = 0.5;
                     climateWeight = 0.5;
-                    console.log(`⚖️  權重調整：中距離飛行（${durationHours.toFixed(1)}小時），平衡模式（距離50%，氣候50%）`);
+                    // 簡化 log，避免洗版
+                    // console.log(`⚖️  權重調整：中距離飛行（${durationHours.toFixed(1)}小時），平衡模式（距離50%，氣候50%）`);
                 } else {
                     // 長距離：氣候帶優先（體驗優先）
                     distanceWeight = 0.3;
                     climateWeight = 0.7;
-                    console.log(`⚖️  權重調整：長距離飛行（${durationHours.toFixed(1)}小時），氣候優先（距離30%，氣候70%）`);
+                    // 簡化 log，避免洗版
+                    // console.log(`⚖️  權重調整：長距離飛行（${durationHours.toFixed(1)}小時），氣候優先（距離30%，氣候70%）`);
                 }
                 
                 // 計算每個城市的匹配分數
@@ -3630,7 +4031,8 @@
                         const climateMatched = scoredCities.filter(c => c.climateScore === 100);
                         if (climateMatched.length > 0) {
                             candidates = climateMatched;
-                            console.log(`✅ 找到 ${candidates.length} 個完全匹配氣候帶的城市`);
+                            // 簡化 log，避免洗版
+                            // console.log(`✅ 找到 ${candidates.length} 個完全匹配氣候帶的城市`);
                         } else {
                             // 如果沒有完全匹配的，選擇氣候接近度較高的（≥70分）
                             const climateProximity = scoredCities.filter(c => c.climateScore >= 70);
@@ -3662,10 +4064,11 @@
                 const goodCandidates = candidates.filter(c => c.totalScore > 30);
                 
                 if (goodCandidates.length > 0) {
-                    console.log(`📊 找到 ${goodCandidates.length} 個高品質候選城市`);
+                    // 簡化 log，只顯示最重要的資訊
                     console.log(`🏆 最佳選擇: ${goodCandidates[0].city_zh || goodCandidates[0].city}, ${goodCandidates[0].country_zh || goodCandidates[0].country}`);
-                    console.log(`   分數: ${goodCandidates[0].totalScore.toFixed(1)} (氣候接近度:${goodCandidates[0].climateScore}, 距離:${goodCandidates[0].distanceScore.toFixed(1)})`);
-                    console.log(`   權重: 氣候${(climateWeight * 100).toFixed(0)}%, 距離${(distanceWeight * 100).toFixed(0)}%`);
+                    // console.log(`📊 找到 ${goodCandidates.length} 個高品質候選城市`);
+                    // console.log(`   分數: ${goodCandidates[0].totalScore.toFixed(1)} (氣候接近度:${goodCandidates[0].climateScore}, 距離:${goodCandidates[0].distanceScore.toFixed(1)})`);
+                    // console.log(`   權重: 氣候${(climateWeight * 100).toFixed(0)}%, 距離${(distanceWeight * 100).toFixed(0)}%`);
                     return goodCandidates[0];
                 }
                 
@@ -3785,6 +4188,32 @@
                 // 如果還是找不到符合氣候帶的城市，才使用蟲洞方案
                 if (candidates.length === 0) {
                     console.log('⚠️ 所有階段都找不到符合氣候帶的城市，觸發蟲洞/時空錯位');
+                    
+                    // 對於山脈氣候，如果完全找不到匹配的城市，至少返回一個距離合理的城市（避免卡住）
+                    if (climateZoneOption && climateZoneOption.climateType === 'mountain') {
+                        console.log('⛰️ 山脈氣候特殊處理：放寬條件，至少返回一個距離合理的城市');
+                        const fallbackCandidates = this.citiesData
+                            .map(city => {
+                                const cityLat = city.latitude || city.lat;
+                                const cityLon = city.longitude || city.lon;
+                                if (!cityLat || !cityLon || city.city === 'Taipei') {
+                                    return null;
+                                }
+                                const distance = this.calculateDistance(
+                                    this.originLat, this.originLon,
+                                    cityLat, cityLon
+                                );
+                                return { ...city, distance };
+                            })
+                            .filter(city => city !== null)
+                            .sort((a, b) => Math.abs(a.distance - targetDistance) - Math.abs(b.distance - targetDistance));
+                        
+                        if (fallbackCandidates.length > 0) {
+                            console.log(`✅ 山脈氣候備用方案：返回 ${fallbackCandidates[0].city_zh || fallbackCandidates[0].city}`);
+                            return fallbackCandidates[0];
+                        }
+                    }
+                    
                     return this.findDestinationWithWormhole(directionPosition, climateZoneOption);
                 }
                 
@@ -4356,13 +4785,13 @@
             // 5組不同的起飛語音文字稿模板
             // 要點：
             // 1. 開頭都要有「歡迎搭乘 Sleep Airline」
-            // 2. 不說「在哪起床」，改用「醒來時，就已經在${cityName}上空。」
-            // 3. 要有一個溫暖的結尾，再次感謝搭乘
+            // 2. 不提具體目的地、不說是哪個城市或在哪裡醒來
+            // 3. 只描述這是一段睡眠旅程與感受，有一個溫暖的結尾
             const announcementTemplates = [
                 // 模板 1：經典專業機長風格（精簡版）
                 `各位旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長為您廣播。
 
-我們預計在${timeDescription}起飛，飛行時間約為${durationDescription}，今晚將帶您前往${climateDescription}。
+我們預計在${timeDescription}起飛，這將是一段約${durationDescription}的睡眠旅程。
 
 在起飛前，請您先確認安全事項：請將手機調整為飛航模式，並把螢幕調暗；也可以輕輕拉下窗簾，讓機艙內維持柔和的光線，有助於您入睡與休息。
 
@@ -4374,14 +4803,14 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 在這段${durationDescription}的旅程中，我與全體機組人員會為您守護這片夜空，確保飛行平穩、安全。
 
-當您再次睜開眼睛時，醒來時，就已經在${cityName}上空。
+當您再次睜開眼睛時，已經是嶄新的一刻。
 
 感謝您選擇 Sleep Airline，祝您有一段安穩、深層的睡眠旅程。`,
 
                 // 模板 2：溫柔陪伴風格（精簡版）
                 `晚安，親愛的旅客，歡迎搭乘 Sleep Airline。這裡是您的機長。
 
-今晚我們會陪您飛往${climateDescription}，飛行時間約${durationDescription}。
+今晚我們會陪您經歷一段約${durationDescription}的飛行與睡眠旅程。
 
 在起飛前，請您先幫自己打造一個舒服的睡眠小空間：請將手機調成飛航模式，調暗螢幕亮度；如果方便，也可以把窗簾拉下，讓外面的光線不再打擾您。
 
@@ -4391,14 +4820,14 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 我們會在${timeDescription}起飛，${weatherDescription}為我們鋪好今晚的航路。引擎的穩定聲響、機艙內柔和的燈光，都是為了讓您能好好休息。
 
-在這段飛行中，請把照顧自己的任務交給睡意，把飛行的安全交給我們。醒來時，就已經在${cityName}上空。
+在這段飛行中，請把照顧自己的任務交給睡意，把飛行的安全交給我們。
 
 感謝您搭乘 Sleep Airline，祝您一路好眠。`,
 
                 // 模板 3：簡潔俐落風格（超精簡）
                 `各位旅客晚安，歡迎搭乘 Sleep Airline，我是本次航班的機長。
 
-我們即將從${timeDescription}起飛，前往${climateDescription}，預計飛行時間約${durationDescription}。
+我們即將從${timeDescription}起飛，預計飛行時間約${durationDescription}。
 
 現在請您簡單做三件事：第一，將手機與電子設備調整為飛航模式；第二，調暗螢幕亮度或關閉螢幕；第三，如果您想要更好入睡，可以把窗簾拉下。
 
@@ -4406,14 +4835,14 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 飛機引擎的穩定聲響與機艙內的舒適環境，會一路陪著您休息到目的地。
 
-在整個${durationDescription}的旅程中，請放心將安全交給我們，您只要好好睡一覺就好。醒來時，就已經在${cityName}上空。
+在整個${durationDescription}的旅程中，請放心將安全交給我們，您只要好好睡一覺就好。
 
 感謝您選擇 Sleep Airline，祝您有個安穩的夜晚。`,
 
                 // 模板 4：帶點詩意、但更短的風格
                 `親愛的旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長。
 
-今晚，我們將在${timeDescription}起飛，帶您飛往${climateDescription}，飛行時間約${durationDescription}。
+今晚，我們將在${timeDescription}起飛，展開一段約${durationDescription}的夜航與休息旅程。
 
 在這段旅程開始之前，請先替自己關掉外界的打擾：請將手機調成飛航模式，關閉不必要的通知；也可以把窗簾拉下，讓外面的城市燈火留在玻璃外面。
 
@@ -4421,14 +4850,14 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一個為您準備好的小小夜空。
 
-我們會在駕駛艙裡守護這段航程，確保飛行平穩、安全。您只需要安心地睡一覺，醒來時，就已經在${cityName}上空。
+我們會在駕駛艙裡守護這段航程，確保飛行平穩、安全。您只需要安心地睡一覺。
 
 感謝您搭乘 Sleep Airline，願您今晚睡得很深、很香。`,
 
                 // 模板 5：專業公告＋明確安全提醒風格
                 `各位旅客，您好，歡迎搭乘 Sleep Airline，這裡是本次航班的機長。
 
-稍後我們將從${timeDescription}起飛，前往${climateDescription}，預計飛行時間約${durationDescription}。
+稍後我們將從${timeDescription}起飛，預計飛行時間約${durationDescription}。
 
 在關閉艙門前，再次提醒您幾項事項：請確認安全帶已經繫好，手機與平板已切換到飛航模式，並關閉或靜音通知。如果您希望更好入睡，也可以現在就把窗簾拉下，讓座位周圍變得安靜、柔和。
 
@@ -4436,7 +4865,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
 在整段${durationDescription}的旅程中，我與全體機組人員會專注在飛行與安全上，為您守護這趟夜航。也邀請您，把這段時間完全留給自己，補上一場久違的好眠。
 
-醒來時，就已經在${cityName}上空。代表全體機組，感謝您搭乘 Sleep Airline，祝您有一段安穩、舒適的睡眠旅程。`
+代表全體機組，感謝您搭乘 Sleep Airline，祝您有一段安穩、舒適的睡眠旅程。`
             ];
             
             // 根據氣候帶選擇模板，如果沒有指定則隨機選擇
@@ -5370,6 +5799,59 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             });
         }
 
+        // 顯示降落後國家資訊（填寫完情緒量表後）
+        function showLandingCountryInfo(destination) {
+            return new Promise((resolve) => {
+                const countryInfoState = document.getElementById('stateLandingCountryInfo');
+                const flagEl = document.getElementById('landingCountryFlag');
+                const nameEl = document.getElementById('landingCountryName');
+                const descEl = document.getElementById('landingCountryDesc');
+                
+                if (!countryInfoState || !flagEl || !nameEl || !descEl) {
+                    console.warn('⚠️ 降落國家資訊元素不存在');
+                    resolve();
+                    return;
+                }
+                
+                // 獲取國旗 emoji（根據國家代碼）
+                const countryCode = destination.country_iso_code || '';
+                let flagEmoji = '🏳️'; // 預設國旗
+                
+                // 簡單的國旗 emoji 映射（根據 ISO 3166-1 alpha-2 代碼）
+                if (countryCode && countryCode.length === 2) {
+                    // 將國家代碼轉換為國旗 emoji（使用 Unicode 區域指示符）
+                    const codePoints = countryCode.toUpperCase().split('').map(char => 
+                        0x1F1E6 + char.charCodeAt(0) - 65
+                    );
+                    if (codePoints.length === 2) {
+                        flagEmoji = String.fromCodePoint(...codePoints);
+                    }
+                }
+                
+                // 更新 UI
+                flagEl.textContent = flagEmoji;
+                nameEl.textContent = destination.country_zh || destination.country || '未知國家';
+                
+                // 生成國家描述（一小段 prompt 文字）
+                const cityName = destination.city_zh || destination.city || '';
+                const countryName = destination.country_zh || destination.country || '';
+                const descText = `歡迎來到 ${cityName}，${countryName}。這是一個充滿魅力的目的地，等待您探索。`;
+                descEl.textContent = descText;
+                
+                // 隱藏情緒量表
+                const feedbackState = document.getElementById('stateFlightFeedback');
+                if (feedbackState) {
+                    feedbackState.style.display = 'none';
+                }
+                
+                // 顯示國家資訊 bar
+                countryInfoState.style.display = 'block';
+                
+                console.log('✅ 降落國家資訊已顯示:', cityName, countryName);
+                resolve();
+            });
+        }
+
         // ============================================================================
         // 深夜機上服務功能
         // ============================================================================
@@ -5392,6 +5874,24 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             
             midnightServiceActive = true;
             console.log('🍽️ 啟動深夜機上服務...');
+
+            // 在底部 bar 顯示飛機餐狀態
+            try {
+                const midnightState = document.getElementById('stateMidnightService');
+                if (midnightState) {
+                    // 隱藏其他狀態（保留飛行進度條）
+                    document.querySelectorAll('.info-state').forEach(state => {
+                        if (state.id !== 'stateMidnightService' && state.id !== 'flightProgressWrapper') {
+                            state.style.display = 'none';
+                            state.classList.remove('active');
+                        }
+                    });
+                    midnightState.style.display = 'flex';
+                    midnightState.classList.add('active');
+                }
+            } catch (e) {
+                console.warn('⚠️ 顯示深夜機上餐狀態時發生小問題，可忽略:', e);
+            }
             
             // 計算當前飛行時間
             if (!sleepStartTime || !selectedTimer) {
@@ -5600,11 +6100,33 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         // 重置標記
                         midnightServiceActive = false;
                         console.log('✅ 深夜服務已完全結束（1分鐘時間到）');
+
+                        // 關閉底部飛機餐狀態 bar
+                        try {
+                            const midnightState = document.getElementById('stateMidnightService');
+                            if (midnightState) {
+                                midnightState.style.display = 'none';
+                                midnightState.classList.remove('active');
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ 隱藏深夜機上餐狀態時發生小問題，可忽略:', e);
+                        }
                     }, 1500); // 等待淡出動畫完成（1.5秒）
                 } else {
                     // 如果覆蓋層不存在，直接重置標記
                     midnightServiceActive = false;
                     console.log('✅ 深夜服務已完全結束（無覆蓋層）');
+
+                    // 關閉底部飛機餐狀態 bar
+                    try {
+                        const midnightState = document.getElementById('stateMidnightService');
+                        if (midnightState) {
+                            midnightState.style.display = 'none';
+                            midnightState.classList.remove('active');
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ 隱藏深夜機上餐狀態時發生小問題，可忽略:', e);
+                    }
                 }
             }, 60000); // 1分鐘 = 60000毫秒
             
@@ -5877,119 +6399,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             }
         }
 
-        // 修改選擇氣候帶函數，加入目的地計算
-        async function onDirectionSelected(position) {
-            if (position < 0 || position >= climateZoneOptions.length) {
-                console.warn('無效的氣候帶位置:', position);
-                return;
-            }
-            
-            // 在選擇氣候帶時，先從 Firebase 讀取上次降落地點作為新的出發地
-            const lastLanding = await loadLastLandingLocation();
-            if (lastLanding) {
-                destinationCalculator.setOrigin(lastLanding.latitude, lastLanding.longitude);
-                console.log(`✈️ 從 ${lastLanding.city}, ${lastLanding.country} 出發`);
-            } else {
-                destinationCalculator.resetToTaipei();
-                console.log('✈️ 從台北出發（首次旅程或無歷史記錄）');
-            }
-            
-            currentPosition = position;
-            selectedDirection = position;
-            const selectedClimateZone = climateZoneOptions[position];
-            
-            // 更新 UI
-            document.querySelectorAll('.angle-option').forEach((option, idx) => {
-                option.classList.toggle('active', idx === position);
-            });
-
-            // 更新氣候旋鈕位置對應說明
-            const climateKnobInfo = document.getElementById('climateKnobInfo');
-            if (climateKnobInfo) {
-                climateKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${selectedClimateZone.name}`;
-            }
-
-            // 移除氣候旋鈕位置說明（已移除副標題）
-            // const climateKnobInfo = document.getElementById('climateKnobInfo');
-            // if (climateKnobInfo) {
-            //     climateKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${selectedClimateZone.name}`;
-            // }
-            
-            console.log('✅ 選擇氣候帶:', selectedClimateZone.name, '位置:', position);
-            console.log('📊 當前狀態 - Phase:', currentPhase, 'State:', currentState, 'Timer:', selectedTimer);
-            
-            // 計算預期目的地（僅用於起飛語音，不生成圖片）
-            try {
-                console.log('🔄 開始計算預期目的地...');
-                console.log('📋 參數 - 時長:', selectedTimer, '氣候帶:', selectedClimateZone.name);
-                
-                // 使用氣候帶選項的方向範圍來計算方位位置（用於向後兼容）
-                // 但實際搜尋會使用氣候帶過濾
-                const directionPosition = position; // 保持向後兼容
-                
-                destinationData = await destinationCalculator.findDestination(
-                    selectedTimer,
-                    directionPosition,
-                    'ON_TIME',
-                    selectedClimateZone  // 傳遞氣候帶選項
-                );
-                
-                // 將氣候帶選項附加到目的地資料中，供後續使用
-                destinationData.climateZone = selectedClimateZone;
-                
-                console.log('✅ 預期目的地計算完成:', destinationData);
-                console.log('📍 目的地:', destinationData.city, destinationData.country);
-                console.log('🌍 氣候帶:', selectedClimateZone.name);
-                console.log('ℹ️ 圖片將在降落時根據實際時長生成');
-                
-                // 顯示目的地信息
-                const destinationCityEl = document.getElementById('destinationCity');
-                const destinationCountryEl = document.getElementById('destinationCountry');
-                const destinationClimateEl = document.getElementById('destinationClimate');
-                
-                if (destinationCityEl) {
-                    destinationCityEl.textContent = destinationData.city_zh || destinationData.city || '未知城市';
-                }
-                if (destinationCountryEl) {
-                    destinationCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
-                }
-                if (destinationClimateEl) {
-                    destinationClimateEl.textContent = '🌍 ' + selectedClimateZone.name + ' - ' + selectedClimateZone.description;
-                }
-                
-                // 不自動切換到目的地顯示，等待按鈕按下
-                console.log('📍 目的地信息已準備，等待按鈕按下進入準備起航狀態...');
-                
-                // 提前生成 TTS 語音文字（不調用 TTS API，避免提前播放）
-                console.log('🎤 提前生成 TTS 語音文字...');
-                const climateZone = destinationData.climateZone || null;
-                const announcement = generateTakeoffAnnouncement(
-                    destinationData,
-                    destinationData.country,
-                    selectedTimer,
-                    climateZone
-                );
-                
-                if (announcement) {
-                    preparedAnnouncement = announcement;
-                    preparedAudioId = null; // 重置先前的音檔 ID
-                    console.log('✅ TTS 語音文字已準備完成（等待起飛時再生成音頻）');
-                    
-                    // 嘗試預先生成 TTS 音檔（背景進行，不影響流程）
-                    generateTtsAudio(announcement, 'zh-TW');
-                } else {
-                    console.warn('⚠️ 語音文字生成失敗');
-                }
-                
-                // 更新按鈕狀態（保持在氣候帶選擇狀態）
-                updateNextButton();
-            } catch (error) {
-                console.error('❌ 目的地計算失敗:', error);
-                console.error('錯誤詳情:', error.stack);
-            }
-        }
-
-        // onDirectionSelected 已經定義，selectAngle 會調用它
+        // onDirectionSelected 已定義於其他檔案早期版本，現在改由 selectAngle 直接處理 UI，
+        // 目的地計算改由按鈕確認時觸發。
 
         // Phase 切換函數
         function switchToPhase(phase, options = {}) {
@@ -6582,7 +6993,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         try {
                         console.log(`   🔍 嘗試路徑: ${musicPath}`);
                         descentWakeupMusic = new Audio(musicPath);
-                        descentWakeupMusic.volume = 0.6; // 初始音量
+                        descentWakeupMusic.volume = 0.3; // 初始音量
                         descentWakeupMusic.loop = false;
                         descentWakeupMusic.preload = 'auto';
                         
@@ -6730,7 +7141,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             
             console.log('📊 實際時長:', actualDuration, '分鐘，預期:', selectedTimer, '分鐘，差異:', timeDiff, '分鐘');
             
-            // 生成降落語音和圖片
+            // 生成降落語音和圖片（圖片先在背景生成，之後搭配 landing.mp4 一起顯示）
             const landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
             
             // 先播放 captain.mp3（6秒），然後播放正式降落語音
@@ -6743,35 +7154,26 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 await playAnnouncement(landingData.announcement, 'zh-TW');
             }
             
-            // 生成並顯示降落圖片
+            // 在背景生成降落圖片（與 landing.mp4 並行）
+            let landingImagePromise = Promise.resolve(null);
             if (landingData.destination) {
-                const landingImageUrl = await generateLandingImage(
-                    landingData.destination.city,
-                    landingData.destination.country,
-                    landingData.destination.timezone || 'UTC',
-                    new Date().toISOString()
-                );
-                
-                if (landingImageUrl) {
-                    // 暫存圖片 URL，讓 handleLanding 可以讀取
-                    window._manualLandingImageUrl = landingImageUrl;
-                    
-                    // 顯示降落圖片
-                    const windowContent = document.querySelector('.window-content');
-                    if (windowContent) {
-                        // 先隱藏影片
-                        const videoContainer = document.getElementById('videoContainer');
-                        if (videoContainer) {
-                            videoContainer.style.display = 'none';
-                        }
-                        
-                        windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
-                        windowContent.style.backgroundSize = 'cover';
-                        windowContent.style.backgroundPosition = 'center';
-                        console.log('🖼️ 降落圖片已顯示');
+                landingImagePromise = (async () => {
+                    const url = await generateLandingImage(
+                        landingData.destination.city,
+                        landingData.destination.country,
+                        landingData.destination.timezone || 'UTC',
+                        new Date().toISOString()
+                    );
+                    if (url) {
+                        // 暫存圖片 URL，讓 handleLanding 可以讀取
+                        window._manualLandingImageUrl = url;
                     }
-                }
+                    return url;
+                })();
             }
+            
+            // 播放 landing.mp4，結束後無縫切換到降落圖片
+            await playLandingVideoAndShowImage(landingImagePromise);
             
             // 進入正式降落階段
             setTimeout(() => {
@@ -7189,11 +7591,18 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 (selectedDirection !== null && climateZoneOptions[selectedDirection] ? 
                     climateZoneOptions[selectedDirection].name : null);
             
-            // 顯示飛行回饋選單（入境登記）
+            // 確保所有文字和 icon 都被隱藏（只顯示圖片）
+            hideAllStateUI();
+            const arrivalInfoEl = document.getElementById('stateArrivalInfo');
+            if (arrivalInfoEl) {
+                arrivalInfoEl.style.display = 'none !important';
+            }
+            
+            // 顯示飛行回饋選單（入境登記）- 必須填寫完才能繼續
             const feedbackData = await showFlightFeedback(finalDestination);
             
-            // 儲存到 Firebase（包含回饋數據）
-            await saveSleepRecord({
+            // 儲存到 Firebase（包含回饋數據）- 不阻塞流程，即使失敗也繼續
+            saveSleepRecord({
                 // 時間相關
                 plannedMinutes: selectedTimer,              // 預期時間
                 durationMinutes: actualDuration,            // 實際時間
@@ -7223,6 +7632,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
                 
                 wakeTime: new Date().toISOString()
+            }).catch(error => {
+                // 即使儲存失敗，也不阻塞流程
+                console.warn('⚠️ 儲存到 Firebase 失敗，但不影響流程:', error);
             });
             
             // 清除暫存的圖片 URL
@@ -7230,25 +7642,29 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 delete window._manualLandingImageUrl;
             }
             
-            // 提示使用者打開窗簾
-            console.log('🪟 請打開窗簾');
+            // 填寫完情緒量表後，顯示國家資訊在 bar 上
+            await showLandingCountryInfo(finalDestination);
             
-            // 等待窗簾打開後進入 Phase 7
-            setTimeout(() => {
-                switchToPhase(Phase.RETURN_WINDOW);
-            }, 5000);
+            // 切換到 RETURN_WINDOW 階段（Phase 8），等待雙擊回到 phase 0
+            switchToPhase(Phase.RETURN_WINDOW);
+            console.log('✅ 降落完成，已切換到 Phase 8，等待雙擊返回首頁');
         }
 
         async function handleReturnWindow() {
-            // Phase 7: 回到窗戶存在狀態（Phase 0）
-            console.log('🪟 回到窗戶存在狀態');
+            // Phase 8: 回到窗戶存在狀態（Phase 0）
+            console.log('🪟 [Phase 8] 回到窗戶存在狀態');
+            
+            // 明確設置為 Phase 0 (POST_ARRIVAL)
             currentPhase = Phase.POST_ARRIVAL;
+            currentState = State.COUNTRY;
             
             // 顯示目的地圖片（保持顯示）
             if (destinationImageUrl && document.querySelector('.window-content')) {
                 document.querySelector('.window-content').innerHTML = '';
                 document.querySelector('.window-content').style.backgroundImage = 
                     'url(' + destinationImageUrl + ')';
+                document.querySelector('.window-content').style.backgroundSize = 'cover';
+                document.querySelector('.window-content').style.backgroundPosition = 'center';
             }
             
             // 注意：降落後不顯示任何文字，只顯示圖片（用戶要求）
@@ -7258,11 +7674,21 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 arrivalInfoEl.style.display = 'none';
             }
             
+            // 隱藏所有其他狀態 UI
+            hideAllStateUI();
+            
+            // 確保國家資訊 bar 顯示（如果有的話）
+            const countryInfoState = document.getElementById('stateLandingCountryInfo');
+            if (countryInfoState && destinationImageUrl) {
+                // 國家資訊 bar 應該已經在 handleLanding() 中顯示了
+                // 這裡只是確保它可見
+            }
+            
             // 不切換到 ARRIVAL_INFO 狀態，不顯示任何文字
-            console.log('✅ 降落完成，只顯示圖片，不顯示文字');
+            console.log('✅ [Phase 8] 降落完成，已切換到 Phase 0 (POST_ARRIVAL)，只顯示圖片，不顯示文字');
             
             // 注意：不重置 selectedTimer、selectedDirection、destinationData
-            // 因為我們需要保留這些資訊用於顯示
+            // 因為我們需要保留這些資訊用於顯示，直到用戶雙擊開始新旅程
         }
         
         // 處理按鈕雙擊（開始新旅程或從機票回顧返回）
@@ -7322,7 +7748,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             if ((currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) 
                 && (destinationImageUrl || currentState === 'ARRIVAL_INFO')) {
                 console.log('✅ [降落後] 雙擊開始新旅程');
-                // 重置所有狀態
+                
+                // 隱藏降落國家資訊 bar
+                const countryInfoState = document.getElementById('stateLandingCountryInfo');
+                if (countryInfoState) {
+                    countryInfoState.style.display = 'none';
+                }
+                
+                // 重置所有狀態（清空時長和氣候值）
                 selectedTimer = null;
                 selectedDirection = null;
                 selectedAngle = null;
@@ -7331,9 +7764,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 preparedAnnouncement = null;
                 preparedAudioId = null;
                 sleepStartTime = null;
+                
+                // 切換到 Phase 0，自然接到選時長、選氣候
                 currentPhase = Phase.POST_ARRIVAL;
+                currentState = State.COUNTRY;
                 switchState(State.COUNTRY);
-                console.log('🔄 [降落後] 狀態已重置，返回首頁');
+                
+                console.log('🔄 [降落後] 狀態已重置，返回首頁（時長和氣候已清空）');
                 return;
             }
             
@@ -7619,7 +8056,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試降落前 5 分鐘喚醒
         window.testDescent = function() {
             console.log('🧪 測試降落前 5 分鐘喚醒');
-            currentPhase = Phase.CRUISE;
+            currentPhase = Phase.DESCENT;  // 修正：應該設置為 DESCENT，不是 CRUISE
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - (selectedTimer - 5) * 60 * 1000;
             descentAnnouncementPlayed = false;
