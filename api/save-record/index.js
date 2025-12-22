@@ -210,20 +210,11 @@ export default async function handler(req, res) {
         // 主要儲存：artifacts 結構
         try {
             // 儲存到個人檔案結構（對應網頁版個人軌跡）
-            // 檢查是否為睡眠航班記錄（根據 deviceType 或其他標識）
-            const isSleepAirline = deviceType === 'raspberry_pi_sleep_flight' || 
-                                   req.body.sleepDuration !== undefined ||
-                                   req.body.plannedMinutes !== undefined;
-            
-            let userProfilePath;
-            if (isSleepAirline) {
-                // 睡眠航班記錄：存到 sleepAirline 路徑
-                userProfilePath = `artifacts/${APP_ID}/userProfiles/morgan/sleepAirline/sleepAirline`;
-            } else {
-                // 一般記錄：存到原本的 clockHistory 路徑
-                userProfilePath = `artifacts/${APP_ID}/userProfiles/${sanitizedDisplayName}/clockHistory`;
-            }
-            
+            // 🔄 需求更新：所有記錄一律寫入同一個 Sleep Airline 路徑
+            // 目標路徑：
+            //   /artifacts/default-app-id-worldclock-history/userProfiles/sleepAirline/sleepAirline/flight
+            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/flight`;
+                        
             const userProfileDocRef = await db.collection(userProfilePath).add({
                 ...baseRecordData,
                 ...artifactsData
