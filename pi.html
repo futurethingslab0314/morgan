@@ -2998,6 +2998,17 @@
             
             console.log('✅ takeoff2.mp4 開始循環播放');
         }
+
+        // 提供測試用全域函數，方便在 console 直接測試影片播放狀態
+        window.testTakeoffVideos = async function () {
+            console.log('🧪 測試：手動播放起飛影片序列');
+            try {
+                await playTakeoffVideos();
+                console.log('🧪 測試完成：起飛影片序列已執行');
+            } catch (e) {
+                console.error('❌ 測試起飛影片時發生錯誤:', e);
+            }
+        };
         
         // 提供全局函數來控制按鈕監控
         window.enableButtonMonitoring = function() {
@@ -4342,10 +4353,14 @@
                 : '您此刻想像中的氣候';
             const climateDescription = `一個擁有「${climateName}」氣候的地方`;
             
-            // 5組不同的起飛語音文字稿模板（已整體簡化約 50%，加入專業機長開場與安全提醒）
+            // 5組不同的起飛語音文字稿模板
+            // 要點：
+            // 1. 開頭都要有「歡迎搭乘 Sleep Airline」
+            // 2. 不說「在哪起床」，改用「醒來時，就已經在${cityName}上空。」
+            // 3. 要有一個溫暖的結尾，再次感謝搭乘
             const announcementTemplates = [
                 // 模板 1：經典專業機長風格（精簡版）
-                `各位旅客，晚安。這裡是機長為您廣播。
+                `各位旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長為您廣播。
 
 我們預計在${timeDescription}起飛，飛行時間約為${durationDescription}，今晚將帶您前往${climateDescription}。
 
@@ -4359,10 +4374,12 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 在這段${durationDescription}的旅程中，我與全體機組人員會為您守護這片夜空，確保飛行平穩、安全。
 
-接下來的時間，就交給您的睡意與這趟飛行。祝您有一段安穩、深層的睡眠，抵達時精神飽滿。`,
+當您再次睜開眼睛時，醒來時，就已經在${cityName}上空。
+
+感謝您選擇 Sleep Airline，祝您有一段安穩、深層的睡眠旅程。`,
 
                 // 模板 2：溫柔陪伴風格（精簡版）
-                `晚安，親愛的旅客。這裡是您的機長。
+                `晚安，親愛的旅客，歡迎搭乘 Sleep Airline。這裡是您的機長。
 
 今晚我們會陪您飛往${climateDescription}，飛行時間約${durationDescription}。
 
@@ -4374,10 +4391,12 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 我們會在${timeDescription}起飛，${weatherDescription}為我們鋪好今晚的航路。引擎的穩定聲響、機艙內柔和的燈光，都是為了讓您能好好休息。
 
-在這段飛行中，請把照顧自己的任務交給睡意，把飛行的安全交給我們。祝您一路好眠，醒來時剛好抵達目的地。`,
+在這段飛行中，請把照顧自己的任務交給睡意，把飛行的安全交給我們。醒來時，就已經在${cityName}上空。
+
+感謝您搭乘 Sleep Airline，祝您一路好眠。`,
 
                 // 模板 3：簡潔俐落風格（超精簡）
-                `各位旅客晚安，我是本次航班的機長。
+                `各位旅客晚安，歡迎搭乘 Sleep Airline，我是本次航班的機長。
 
 我們即將從${timeDescription}起飛，前往${climateDescription}，預計飛行時間約${durationDescription}。
 
@@ -4387,10 +4406,12 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 飛機引擎的穩定聲響與機艙內的舒適環境，會一路陪著您休息到目的地。
 
-在整個${durationDescription}的旅程中，請放心將安全交給我們，您只要好好睡一覺就好。祝您有個安穩的夜晚。`,
+在整個${durationDescription}的旅程中，請放心將安全交給我們，您只要好好睡一覺就好。醒來時，就已經在${cityName}上空。
+
+感謝您選擇 Sleep Airline，祝您有個安穩的夜晚。`,
 
                 // 模板 4：帶點詩意、但更短的風格
-                `親愛的旅客，晚安。這裡是機長。
+                `親愛的旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長。
 
 今晚，我們將在${timeDescription}起飛，帶您飛往${climateDescription}，飛行時間約${durationDescription}。
 
@@ -4400,10 +4421,12 @@ ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會�
 
 ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一個為您準備好的小小夜空。
 
-我們會在駕駛艙裡守護這段航程，確保飛行平穩、安全。您只需要安心地睡一覺，醒來時，就已經在${cityName}上空。願您今晚睡得很深、很香。`,
+我們會在駕駛艙裡守護這段航程，確保飛行平穩、安全。您只需要安心地睡一覺，醒來時，就已經在${cityName}上空。
+
+感謝您搭乘 Sleep Airline，願您今晚睡得很深、很香。`,
 
                 // 模板 5：專業公告＋明確安全提醒風格
-                `各位旅客，您好，這裡是本次航班的機長。
+                `各位旅客，您好，歡迎搭乘 Sleep Airline，這裡是本次航班的機長。
 
 稍後我們將從${timeDescription}起飛，前往${climateDescription}，預計飛行時間約${durationDescription}。
 
@@ -4413,7 +4436,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
 在整段${durationDescription}的旅程中，我與全體機組人員會專注在飛行與安全上，為您守護這趟夜航。也邀請您，把這段時間完全留給自己，補上一場久違的好眠。
 
-代表全體機組，祝您有一段安穩、舒適的睡眠旅程。謝謝。`
+醒來時，就已經在${cityName}上空。代表全體機組，感謝您搭乘 Sleep Airline，祝您有一段安穩、舒適的睡眠旅程。`
             ];
             
             // 根據氣候帶選擇模板，如果沒有指定則隨機選擇
@@ -5667,30 +5690,6 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     console.error('❌ 生成深夜服務圖片失敗（Promise）:', error);
                 });
             
-            // 播放輕微的「叮」聲（如果有的話）
-            // 注意：需要準備一個輕微的 ding.mp3 音檔
-            try {
-                // 嘗試多種路徑
-                const dingPaths = ['sounds/ding.mp3', './sounds/ding.mp3', '/sounds/ding.mp3'];
-                let dingPlayed = false;
-                
-                for (const path of dingPaths) {
-                    try {
-                        await playAudioFile(path, 1); // 只播放 1 秒
-                        dingPlayed = true;
-                        break;
-                    } catch (e) {
-                        // 繼續嘗試下一個路徑
-                    }
-                }
-                
-                if (!dingPlayed) {
-                    console.warn('⚠️ 無法播放叮聲（可忽略，如果沒有 ding.mp3）');
-                }
-            } catch (error) {
-                console.warn('⚠️ 無法播放叮聲（可忽略，如果沒有 ding.mp3）:', error);
-            }
-            
             // 播放溫柔的機上服務語音（與音樂同時播放）
             const serviceMessage = '乘客您好，現在是航程中段，為您送上一份深夜暖心服務，請稍作休息，祝您繼續享有好夢。';
             playAnnouncement(serviceMessage, 'zh-TW').catch(error => {
@@ -6559,109 +6558,146 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 descentAnnouncementPlayed = true;
                 descentMusicPlayCount = 0;
                 
-                // 隨機選擇其中一個喚醒音樂（與其他音樂文件路徑保持一致）
-                const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
-                const randomMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
-                
-                console.log(`🎵 [handleDescent] 開始播放降落前喚醒音樂（隨機選擇: ${randomMusic}）`);
-                console.log('   音樂文件路徑:', randomMusic);
-                
-                // 創建音樂對象（使用與其他音樂文件相同的路徑格式）
                 try {
-                    descentWakeupMusic = new Audio(randomMusic);
-                    console.log('✅ [handleDescent] 音樂對象已創建');
-                    descentWakeupMusic.volume = 0.6; // 初始音量
-                    descentWakeupMusic.loop = false;
+                    // 隨機選擇其中一個喚醒音樂（與其他音樂文件路徑保持一致）
+                    const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
+                    const randomMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
                     
-                    // 添加錯誤處理
-                    descentWakeupMusic.addEventListener('error', (e) => {
-                        console.error('❌ 喚醒音樂載入失敗:', randomMusic, e);
-                    });
+                    console.log(`🎵 [handleDescent] 開始播放降落前喚醒音樂（隨機選擇: ${randomMusic}）`);
                     
-                    // 添加載入成功日誌
-                    descentWakeupMusic.addEventListener('loadeddata', () => {
-                        console.log('✅ 喚醒音樂已載入:', randomMusic);
-                    });
+                    // 嘗試多種路徑格式（文件可能在根目錄或 sounds/ 目錄）
+                    const musicPaths = [
+                        randomMusic, // 先嘗試根目錄
+                        `./${randomMusic}`,
+                        `sounds/${randomMusic}`,
+                        `./sounds/${randomMusic}`,
+                        `/sounds/${randomMusic}`
+                    ];
                     
-                    // 監聽音樂播放結束事件，實現播放兩次
-                    descentWakeupMusic.onended = () => {
-                        descentMusicPlayCount++;
-                        console.log(`🎵 喚醒音樂播放完成（第 ${descentMusicPlayCount} 次）`);
+                    let musicLoaded = false;
+                    let musicPathUsed = null;
+                    
+                    // 嘗試多個路徑，找到能載入的音樂文件
+                    for (const musicPath of musicPaths) {
+                        try {
+                        console.log(`   🔍 嘗試路徑: ${musicPath}`);
+                        descentWakeupMusic = new Audio(musicPath);
+                        descentWakeupMusic.volume = 0.6; // 初始音量
+                        descentWakeupMusic.loop = false;
+                        descentWakeupMusic.preload = 'auto';
                         
-                        if (descentMusicPlayCount < DESCENT_MUSIC_PLAY_TIMES) {
-                            // 播放第二次
-                            descentWakeupMusic.currentTime = 0;
-                            descentWakeupMusic.play().catch(error => {
-                                console.warn('⚠️ 播放喚醒音樂失敗:', error);
-                            });
-                        } else {
-                            // 播放兩次完成，停止音樂
-                            console.log('✅ 喚醒音樂已播放兩次，停止播放');
-                            if (descentWakeupMusic) {
-                                descentWakeupMusic.pause();
-                                descentWakeupMusic = null;
+                        // 監聽音樂播放結束事件，實現播放兩次
+                        descentWakeupMusic.onended = () => {
+                            descentMusicPlayCount++;
+                            console.log(`🎵 喚醒音樂播放完成（第 ${descentMusicPlayCount} 次）`);
+                            
+                            if (descentMusicPlayCount < DESCENT_MUSIC_PLAY_TIMES) {
+                                // 播放第二次
+                                descentWakeupMusic.currentTime = 0;
+                                descentWakeupMusic.play().catch(error => {
+                                    console.warn('⚠️ 播放喚醒音樂失敗:', error);
+                                });
+                            } else {
+                                // 播放兩次完成，停止音樂
+                                console.log('✅ 喚醒音樂已播放兩次，停止播放');
+                                if (descentWakeupMusic) {
+                                    descentWakeupMusic.pause();
+                                    descentWakeupMusic = null;
+                                }
                             }
-                        }
-                    };
-                    
-                    // 開始播放音樂（等待載入完成）
-                    console.log('⏳ 等待喚醒音樂載入...');
-                    console.log('   音樂文件:', randomMusic);
-                    console.log('   當前 readyState:', descentWakeupMusic.readyState);
-                    
-                    // 如果已經載入完成，直接播放
-                    if (descentWakeupMusic.readyState >= 3) { // HAVE_FUTURE_DATA
-                        console.log('✅ 喚醒音樂已載入，立即播放');
-                        await descentWakeupMusic.play();
-                    } else {
-                        // 等待載入完成
+                        };
+                        
+                        // 等待載入完成（縮短超時時間到 1.5 秒，更快開始播放）
                         await new Promise((resolve, reject) => {
                             const timeout = setTimeout(() => {
-                                console.warn('⚠️ 喚醒音樂載入超時（3秒），嘗試直接播放');
-                                resolve();
-                            }, 3000);
+                                console.warn(`⚠️ 喚醒音樂載入超時（1.5秒），嘗試直接播放: ${musicPath}`);
+                                resolve(); // 不 reject，繼續嘗試播放
+                            }, 1500);
                             
                             const onCanPlay = () => {
                                 clearTimeout(timeout);
                                 descentWakeupMusic.removeEventListener('canplaythrough', onCanPlay);
+                                descentWakeupMusic.removeEventListener('canplay', onCanPlay);
+                                descentWakeupMusic.removeEventListener('loadeddata', onLoadedData);
                                 descentWakeupMusic.removeEventListener('error', onError);
-                                console.log('✅ 喚醒音樂已準備就緒');
+                                console.log(`✅ 喚醒音樂已準備就緒: ${musicPath}`);
+                                resolve();
+                            };
+                            
+                            const onLoadedData = () => {
+                                clearTimeout(timeout);
+                                descentWakeupMusic.removeEventListener('canplaythrough', onCanPlay);
+                                descentWakeupMusic.removeEventListener('canplay', onCanPlay);
+                                descentWakeupMusic.removeEventListener('loadeddata', onLoadedData);
+                                descentWakeupMusic.removeEventListener('error', onError);
+                                console.log(`✅ 喚醒音樂數據已載入: ${musicPath}`);
                                 resolve();
                             };
                             
                             const onError = (e) => {
                                 clearTimeout(timeout);
                                 descentWakeupMusic.removeEventListener('canplaythrough', onCanPlay);
+                                descentWakeupMusic.removeEventListener('canplay', onCanPlay);
+                                descentWakeupMusic.removeEventListener('loadeddata', onLoadedData);
                                 descentWakeupMusic.removeEventListener('error', onError);
-                                console.error('❌ 喚醒音樂載入錯誤:', e);
+                                console.error(`❌ 喚醒音樂載入錯誤: ${musicPath}`, e);
                                 reject(e);
                             };
                             
+                            // 監聽多個事件，哪個先觸發就用哪個
                             descentWakeupMusic.addEventListener('canplaythrough', onCanPlay, { once: true });
+                            descentWakeupMusic.addEventListener('canplay', onCanPlay, { once: true });
+                            descentWakeupMusic.addEventListener('loadeddata', onLoadedData, { once: true });
                             descentWakeupMusic.addEventListener('error', onError, { once: true });
+                            
+                            // 如果已經載入完成，立即 resolve
+                            if (descentWakeupMusic.readyState >= 2) { // HAVE_CURRENT_DATA
+                                clearTimeout(timeout);
+                                resolve();
+                            }
+                            
+                            // 開始載入
+                            descentWakeupMusic.load();
                         });
                         
-                        console.log('▶️ 開始播放喚醒音樂:', randomMusic);
+                        // 開始播放
+                        console.log(`▶️ 開始播放喚醒音樂: ${musicPath}`);
                         await descentWakeupMusic.play();
-                        console.log('✅ 喚醒音樂已開始播放');
+                        console.log(`✅ 喚醒音樂已開始播放: ${musicPath}`);
+                        
+                        musicLoaded = true;
+                        musicPathUsed = musicPath;
+                        break;
+                    } catch (e) {
+                        // 繼續嘗試下一個路徑
+                        if (musicPaths.indexOf(musicPath) === musicPaths.length - 1) {
+                            console.warn(`⚠️ 無法載入 ${musicPath}:`, e.message);
+                        }
                     }
-                    
-                    // 同時播放準備降落的喚醒語音
-                    const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
-                    if (wakeUpAnnouncement) {
-                        playAnnouncement(wakeUpAnnouncement, 'zh-TW').catch(error => {
-                            console.warn('⚠️ 播放準備降落語音失敗:', error);
-                        });
-                    }
-                } catch (error) {
-                    console.error('❌ 無法播放喚醒音樂:', error);
-                    console.error('   錯誤詳情:', error.message);
-                    console.error('   錯誤堆疊:', error.stack);
-                    // 如果音樂播放失敗，仍然播放語音
-                    const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
-                    if (wakeUpAnnouncement) {
-                        await playAnnouncement(wakeUpAnnouncement, 'zh-TW');
-                    }
+                }
+                
+                if (!musicLoaded) {
+                    console.warn('⚠️ 無法載入喚醒音樂（所有路徑都失敗），將繼續執行但不播放音樂');
+                } else {
+                    console.log(`✅ 喚醒音樂載入成功，使用路徑: ${musicPathUsed}`);
+                }
+                
+                // 同時播放準備降落的喚醒語音
+                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                if (wakeUpAnnouncement) {
+                    playAnnouncement(wakeUpAnnouncement, 'zh-TW').catch(error => {
+                        console.warn('⚠️ 播放準備降落語音失敗:', error);
+                    });
+                }
+            } catch (error) {
+                console.error('❌ 無法播放喚醒音樂:', error);
+                console.error('   錯誤詳情:', error.message);
+                console.error('   錯誤堆疊:', error.stack);
+                // 如果音樂播放失敗，仍然播放語音
+                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                if (wakeUpAnnouncement) {
+                    await playAnnouncement(wakeUpAnnouncement, 'zh-TW');
+                }
                 }
             }
         }
