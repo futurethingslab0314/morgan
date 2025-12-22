@@ -1821,6 +1821,73 @@
         let buttonPressTimeout = null;
         let buttonPressSequence = []; // 記錄按鈕按下時間序列
         
+        // 自動恢復按鈕監控（定期檢查服務器是否恢復）
+        function startButtonRecoveryCheck() {
+            // 如果已經有恢復檢查在運行，不重複啟動
+            if (buttonRecoveryCheckInterval) {
+                return;
+            }
+            
+            console.log('🔄 啟動按鈕 API 服務器恢復檢查（每 5 秒檢查一次）...');
+            
+            buttonRecoveryCheckInterval = setInterval(async () => {
+                // 如果按鈕監控已停用，停止恢復檢查
+                if (!buttonMonitoringEnabled) {
+                    if (buttonRecoveryCheckInterval) {
+                        clearInterval(buttonRecoveryCheckInterval);
+                        buttonRecoveryCheckInterval = null;
+                    }
+                    return;
+                }
+                
+                // 如果按鈕輪詢已經在運行，停止恢復檢查
+                if (buttonPollInterval) {
+                    if (buttonRecoveryCheckInterval) {
+                        clearInterval(buttonRecoveryCheckInterval);
+                        buttonRecoveryCheckInterval = null;
+                    }
+                    return;
+                }
+                
+                // 嘗試連接 API，檢查服務器是否恢復
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 1000);
+                    
+                    const response = await fetch('http://127.0.0.1:5001/api/button/state?gpio=4', {
+                        method: 'GET',
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // 如果成功獲取數據，說明服務器已恢復
+                        if (data && (data.pressed !== undefined || data.state !== undefined || data.value !== undefined || data.gpio4 !== undefined || data.gpio_4 !== undefined)) {
+                            console.log('✅ 檢測到按鈕 API 服務器已恢復，自動重新啟動按鈕監控');
+                            
+                            // 停止恢復檢查
+                            if (buttonRecoveryCheckInterval) {
+                                clearInterval(buttonRecoveryCheckInterval);
+                                buttonRecoveryCheckInterval = null;
+                            }
+                            
+                            // 重置錯誤計數
+                            buttonConsecutiveErrors = 0;
+                            
+                            // 重新啟動按鈕監控
+                            startButtonMonitoring();
+                        }
+                    }
+                } catch (error) {
+                    // 服務器尚未恢復，繼續等待
+                    // 不輸出日誌，避免控制台被刷屏
+                }
+            }, 5000); // 每 5 秒檢查一次
+        }
+        
         function startButtonMonitoring() {
             if (buttonPollInterval) {
                 clearInterval(buttonPollInterval);
@@ -1853,8 +1920,10 @@
                             console.log('ℹ️ 按鈕 API 連續錯誤過多，已停止輪詢（將定期檢查服務器恢復）');
                             connectionErrorLogged = true;
                         }
-                        // 啟動服務器恢復檢查
-                        startButtonRecoveryCheck();
+                        // 啟動服務器恢復檢查（自動恢復機制）
+                        if (!buttonRecoveryCheckInterval) {
+                            startButtonRecoveryCheck();
+                        }
                     }
                     return;
                 }
@@ -2594,7 +2663,10 @@
             }
             
             // 1. 先播放 captain.mp3（只播放前 6 秒），必須完全播放完成後才能繼續
+            // 重要：確保在播放 captain.mp3 之前，沒有任何 TTS 正在播放
             console.log('1️⃣ 開始播放 captain.mp3（只播放前 6 秒）...');
+            console.log('🔍 檢查：preparedAudioId =', preparedAudioId, 'preparedAnnouncement =', preparedAnnouncement ? '已準備' : '未準備');
+            
             try {
                 await playAudioFile('sounds/captain.mp3', 6);
                 console.log('✅ captain.mp3 已播放 6 秒並停止');
@@ -2603,13 +2675,15 @@
             }
             
             // 等待額外時間，確保 captain.mp3 完全停止，音頻系統已清空
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 500)); // 增加到 500ms，確保音頻系統完全清空
             console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
             
             // 2. captain.mp3 播放完成後，才播放準備好的 TTS 語音
+            // 重要：只有在 captain.mp3 完全播放完成後，才開始播放 TTS
             if (preparedAudioId) {
                 // 優先使用預先生成的音檔（/tts/generate 產生）
                 console.log('2️⃣ 播放預先生成的 TTS 音檔:', preparedAudioId);
+                console.log('⏸️ 確保在播放 TTS 之前，captain.mp3 已完全停止');
                 try {
                     await playCachedTts(preparedAudioId);
                     console.log('✅ TTS 音檔播放完成');
@@ -2619,6 +2693,7 @@
             } else if (preparedAnnouncement) {
                 // 沒有預先生成音檔時，退回到即時生成模式
                 console.log('2️⃣ 使用即時 TTS 生成並播放（無快取音檔）...');
+                console.log('⏸️ 確保在播放 TTS 之前，captain.mp3 已完全停止');
                 try {
                     await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
                         isTakeoff: true,
@@ -4793,6 +4868,15 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     const data = await response.json();
                     if (data.success) {
                         console.log('✅ /tts/play_cached 播放成功');
+                        
+                        // 等待 TTS 播放完成（根據音檔長度估算）
+                        // 如果 API 返回了 duration，使用它；否則根據文本長度估算
+                        const estimatedDuration = data.duration || (preparedAnnouncement ? Math.max(preparedAnnouncement.length * 0.12, 5) : 10); // 預設每個字符 0.12 秒，最少 5 秒
+                        console.log(`⏳ 等待 TTS 播放完成（估算時長: ${estimatedDuration.toFixed(1)} 秒）...`);
+                        
+                        // 等待完整的播放時長，確保 TTS 完全播放完成
+                        await new Promise(resolve => setTimeout(resolve, estimatedDuration * 1000 + 1000)); // 額外 1 秒緩衝，確保完全播放完成
+                        console.log('✅ TTS 播放完成');
                     } else {
                         console.warn('⚠️ /tts/play_cached 返回錯誤:', data.error);
                     }
