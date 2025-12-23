@@ -2677,11 +2677,17 @@
                             break;
                         }
                         
-                        // 顯示計算動畫
-                        const calculatingState = document.getElementById('stateCalculating');
+                        // 1. 先隱藏氣候選擇 UI
                         const stateAngle = document.getElementById('stateAngle');
-                        if (calculatingState && stateAngle) {
+                        if (stateAngle) {
                             stateAngle.style.display = 'none';
+                            stateAngle.classList.remove('active');
+                            console.log('✅ 隱藏氣候選擇 UI');
+                        }
+                        
+                        // 2. 顯示計算動畫
+                        const calculatingState = document.getElementById('stateCalculating');
+                        if (calculatingState) {
                             calculatingState.style.display = 'flex';
                             calculatingState.classList.add('active');
                             console.log('🎬 顯示計算動畫');
@@ -2702,7 +2708,7 @@
                         
                         const directionPosition = position;
                         
-                        // 同時進行計算和等待 3 秒動畫
+                        // 3. 同時進行計算和等待 3 秒動畫
                         const [calculatedDestination] = await Promise.all([
                             destinationCalculator.findDestination(
                                 selectedTimer,
@@ -2726,10 +2732,14 @@
                         
                         if (!destinationData) {
                             console.warn('⚠️ 無法取得目的地資料');
-                            // 隱藏計算動畫
+                            // 隱藏計算動畫，恢復氣候選擇 UI
                             if (calculatingState) {
                                 calculatingState.style.display = 'none';
                                 calculatingState.classList.remove('active');
+                            }
+                            if (stateAngle) {
+                                stateAngle.style.display = 'flex';
+                                stateAngle.classList.add('active');
                             }
                             break;
                         }
@@ -2738,10 +2748,11 @@
                         
                         console.log('✅ 目的地計算完成（按鈕確認後）:', destinationData);
                         
-                        // 隱藏計算動畫
+                        // 4. 隱藏計算動畫（在切換到 Phase 3 之前）
                         if (calculatingState) {
                             calculatingState.style.display = 'none';
                             calculatingState.classList.remove('active');
+                            console.log('✅ 隱藏計算動畫');
                         }
                         
                         // 顯示目的地資訊（僅下方文字，不切換畫面）
