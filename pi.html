@@ -2624,8 +2624,13 @@
                     console.log('ℹ️ [LANDING] 降落流程正在執行中，忽略按鈕');
                     return;
                 }
-                // 如果降落流程還沒執行，可能是狀態不一致，記錄警告
-                console.log('⚠️ [LANDING] 降落階段但降落流程未執行，當前狀態:', currentState);
+                // 如果降落流程還沒執行，可能是 handleLanding() 沒有被調用，現在手動觸發
+                console.log('⚠️ [LANDING] 降落階段但降落流程未執行，手動觸發 handleLanding()');
+                console.log('   當前狀態:', currentState, 'landingExecuted:', landingExecuted);
+                // 手動調用 handleLanding() 確保流程繼續
+                handleLanding().catch(error => {
+                    console.error('❌ 手動觸發 handleLanding() 失敗:', error);
+                });
                 return;
             }
             
@@ -7816,7 +7821,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
         async function handleLanding() {
             // Phase 7: 降落完成
-            console.log('🛬 [Phase 7] 降落完成');
+            console.log('🛬 [Phase 7] 降落完成 - handleLanding() 開始執行');
             
             // 檢查是否已經執行過降落流程（防止重複執行）
             if (landingExecuted) {
@@ -7824,33 +7829,26 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 return;
             }
             
-            // 標記已執行，防止重複
+            // 標記已執行，防止重複（在開始時就標記，即使後續出錯也不會重複執行）
             landingExecuted = true;
             
-            if (sleepTimer) {
-                clearTimeout(sleepTimer);
-            }
+            try {
+                if (sleepTimer) {
+                    clearTimeout(sleepTimer);
+                }
 
-            // 結束飛行進度條顯示（條已經滿格，準備回到窗外世界）
+            // 立即結束飛行進度條顯示（Phase 7 時進度條應該立即消失）
             try {
                 if (window._flightProgressInterval) {
                     clearInterval(window._flightProgressInterval);
                     window._flightProgressInterval = null;
+                    console.log('✅ 已停止進度條更新');
                 }
                 const wrapper = document.getElementById('flightProgressWrapper');
-                const fill = document.getElementById('flightProgressFill');
-                const glow = document.getElementById('flightProgressGlow');
-                const startLabel = document.getElementById('flightProgressStartLabel');
-                const endLabel = document.getElementById('flightProgressEndLabel');
-                if (wrapper && fill && glow && startLabel && endLabel) {
-                    fill.style.width = '100%';
-                    glow.style.left = '100%';
-                    // 降落後可以把右側標籤改成「已抵達」，但不顯示具體地點
-                    endLabel.textContent = '已抵達';
-                    // 稍微停留一下再隱藏，讓使用者看到已經「抵達」
-                    setTimeout(() => {
-                        wrapper.style.display = 'none';
-                    }, 3000);
+                if (wrapper) {
+                    // 立即隱藏進度條，不等待
+                    wrapper.style.display = 'none';
+                    console.log('✅ 進度條已立即隱藏');
                 }
             } catch (e) {
                 console.warn('⚠️ 關閉飛行進度條時發生小問題，可忽略:', e);
@@ -7881,25 +7879,51 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     climateZone  // 傳遞氣候帶選項
                 );
                 
+                // 如果找不到目的地，觸發蟲洞效應
+                if (!finalDestination) {
+                    console.log('🌀 找不到目的地，觸發蟲洞效應');
+                    finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
+                }
+                
                 // 保留氣候帶選項
-                if (climateZone) {
+                if (climateZone && finalDestination) {
                     finalDestination.climateZone = climateZone;
                 }
                 
                 // 檢查是否是蟲洞目的地
-                if (finalDestination.wormhole) {
+                if (finalDestination && finalDestination.wormhole) {
                     isWormhole = true;
                     console.log('🌀 檢測到蟲洞/時空錯位目的地');
                 }
                 
-                destinationData = finalDestination;
-                
-                console.log('✅ 最終目的地計算完成:', finalDestination);
-                console.log('📍 目的地: ' + finalDestination.city + ', ' + finalDestination.country);
+                if (finalDestination) {
+                    destinationData = finalDestination;
+                    console.log('✅ 最終目的地計算完成:', finalDestination);
+                    console.log('📍 目的地: ' + finalDestination.city + ', ' + finalDestination.country);
+                }
                 
             } catch (error) {
                 console.error('❌ 計算最終目的地失敗:', error);
-                // 如果失敗，使用原本的目的地
+                // 如果失敗，嘗試觸發蟲洞效應
+                try {
+                    const climateZone = destinationData?.climateZone || null;
+                    console.log('🌀 計算失敗，嘗試觸發蟲洞效應作為備用方案');
+                    finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
+                    if (finalDestination) {
+                        destinationData = finalDestination;
+                        console.log('✅ 蟲洞效應目的地:', finalDestination);
+                    }
+                } catch (wormholeError) {
+                    console.error('❌ 蟲洞效應也失敗:', wormholeError);
+                }
+                
+                // 如果還是沒有目的地，使用原本的目的地或預設值
                 if (!finalDestination) {
                     finalDestination = destinationData;
                 }
@@ -7909,14 +7933,17 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             if (!finalDestination) {
                 console.error('❌ 無法獲取最終目的地，使用預設值');
                 finalDestination = {
-                    city: 'Unknown',
-                    country: 'Unknown',
-                    city_zh: '未知城市',
-                    country_zh: '未知國家',
-                    latitude: 0,
-                    longitude: 0,
-                    timezone: 'UTC'
+                    city: 'Tokyo',
+                    city_zh: '東京',
+                    country: 'Japan',
+                    country_zh: '日本',
+                    country_iso_code: 'JP',
+                    latitude: 35.676,
+                    longitude: 139.650,
+                    timezone: 'Asia/Tokyo',
+                    wormhole: true
                 };
+                isWormhole = true;
             }
             
             // 如果沒有手動觸發降落，現在生成降落語音和圖片，並播放 landing.mp4
@@ -8084,6 +8111,48 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 切換到 RETURN_WINDOW 階段（Phase 8），等待雙擊回到 phase 0
             switchToPhase(Phase.RETURN_WINDOW);
             console.log('✅ 降落完成，已切換到 Phase 8，等待雙擊返回首頁');
+            
+            } catch (error) {
+                // 即使出錯，也確保流程能繼續
+                console.error('❌ [Phase 7] handleLanding() 執行過程中發生錯誤:', error);
+                console.error('   錯誤堆疊:', error.stack);
+                
+                // 確保進度條已隱藏
+                const wrapper = document.getElementById('flightProgressWrapper');
+                if (wrapper) {
+                    wrapper.style.display = 'none';
+                }
+                
+                // 確保情緒量表能顯示（即使其他部分失敗）
+                try {
+                    const feedbackState = document.getElementById('stateFlightFeedback');
+                    if (feedbackState) {
+                        feedbackState.classList.add('active');
+                        feedbackState.style.display = 'flex';
+                        feedbackState.style.zIndex = '100';
+                        
+                        // 使用預設目的地顯示情緒量表
+                        const defaultDestination = finalDestination || destinationData || {
+                            city: 'Tokyo',
+                            city_zh: '東京',
+                            country: 'Japan',
+                            country_zh: '日本'
+                        };
+                        
+                        const feedbackData = await showFlightFeedback(defaultDestination);
+                        console.log('✅ 情緒量表作答完成（錯誤恢復模式）');
+                        
+                        // 顯示國家資訊
+                        await showLandingCountryInfo(defaultDestination);
+                        
+                        // 切換到 Phase 8
+                        switchToPhase(Phase.RETURN_WINDOW);
+                        console.log('✅ 錯誤恢復完成，已切換到 Phase 8');
+                    }
+                } catch (recoveryError) {
+                    console.error('❌ 錯誤恢復也失敗:', recoveryError);
+                }
+            }
         }
 
         async function handleReturnWindow() {
