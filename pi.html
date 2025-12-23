@@ -738,6 +738,53 @@
             justify-content: center;
         }
 
+        /* 計算目的地動畫 */
+        .calculating-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calculating-spinner {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spinner-circle {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            animation: spinner-bounce 1.4s ease-in-out infinite;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+        }
+
+        .spinner-circle:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .spinner-circle:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .spinner-circle:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes spinner-bounce {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.6;
+            }
+            40% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+
         /* 降落後國家資訊 bar 樣式 */
         .landing-country-bar {
             display: flex;
@@ -928,6 +975,24 @@
             <div class="flight-progress-meta">
                 <span id="flightProgressStartLabel">目前位置</span>
                 <span id="flightProgressEndLabel">???</span>
+            </div>
+        </div>
+
+        <!-- 計算目的地動畫 -->
+        <div class="info-state" id="stateCalculating" style="display: none;">
+            <div class="state-label">✈️ 計算目的地中</div>
+            <div class="calculating-content" style="margin-top: 30px; text-align: center;">
+                <div class="calculating-spinner">
+                    <div class="spinner-circle"></div>
+                    <div class="spinner-circle"></div>
+                    <div class="spinner-circle"></div>
+                </div>
+                <div style="font-size: 18px; color: #666; margin-top: 20px; font-weight: 500;">
+                    正在尋找最佳目的地...
+                </div>
+                <div style="font-size: 14px; color: #999; margin-top: 10px;">
+                    請稍候
+                </div>
             </div>
         </div>
 
@@ -2218,13 +2283,19 @@
                 const timeSinceLastPress = lastButtonPressTime > 0 ? currentTime - lastButtonPressTime : Infinity;
                 
                 if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > 0) {
-                    // 雙擊：取消之前的單擊處理，觸發提前降落確認
+                    // 雙擊：立即取消之前的單擊處理，並立即設置 landingConfirmActive
                     if (buttonPressTimeout) {
                         clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
                     }
-                    console.log('🔘 [巡航模式] 檢測到雙擊，觸發提前降落確認');
+                    
+                    // 立即設置 landingConfirmActive，防止單擊處理執行
+                    landingConfirmActive = true;
+                    
+                    console.log('🔘 [巡航模式] 檢測到雙擊，立即觸發提前降落確認');
                     lastButtonPressTime = currentTime;
+                    
+                    // 調用 handleButtonDoubleClick（它會調用 showLandingConfirmation，但 landingConfirmActive 已經設置）
                     handleButtonDoubleClick();
                     return;
                 }
@@ -2232,20 +2303,30 @@
                 // 單擊：延遲處理，等待看是否有第二次按下
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
+                    buttonPressTimeout = null;
                 }
                 
                 lastButtonPressTime = currentTime;
                 
                 buttonPressTimeout = setTimeout(() => {
-                    // 檢查是否在等待期間變成了雙擊
+                    // 檢查是否在等待期間變成了雙擊（landingConfirmActive 已設置）
                     if (landingConfirmActive) {
                         console.log('⚠️ [巡航模式] 在等待期間檢測到雙擊，取消單擊處理');
+                        buttonPressTimeout = null;
+                        return;
+                    }
+                    
+                    // 再次檢查是否仍在巡航階段（防止狀態變化）
+                    if (currentPhase !== Phase.CRUISE && currentPhase !== 5) {
+                        console.log('⚠️ [巡航模式] 階段已變化，取消單擊處理');
+                        buttonPressTimeout = null;
                         return;
                     }
                     
                     console.log('🔘 [巡航模式] 單擊處理：觸發飛機餐');
                     handleButtonSingleClick();
-                }, DOUBLE_CLICK_THRESHOLD);
+                    buttonPressTimeout = null;
+                }, DOUBLE_CLICK_THRESHOLD + 50); // 增加 50ms 緩衝，確保雙擊檢測優先
                 
                 return;
             }
@@ -2474,8 +2555,8 @@
                 return;
             }
             
-            // 1.2 降落階段（DESCENT）- 手動觸發降落
-            // 重要：降落階段不能觸發飛機餐，只能觸發手動降落
+            // 1.2 降落階段（DESCENT）- 單擊觸發手動降落
+            // 重要：降落階段只能觸發手動降落，不能觸發飛機餐
             if (currentPhase === Phase.DESCENT) {
                 // 如果飛機餐正在進行中，不處理（雖然理論上降落階段不應該有飛機餐，但為了安全）
                 if (midnightServiceActive) {
@@ -2483,13 +2564,17 @@
                     return;
                 }
                 
-                if (!manualLandingTriggered) {
-                    console.log('🛬 [DESCENT] 按鈕：在降落階段按下，觸發手動降落');
-                    manualLandingTriggered = true;
-                    triggerManualLanding();
-                } else {
-                    console.log('⚠️ [DESCENT] 手動降落已觸發，忽略重複按鈕');
+                // 如果已經執行過降落，不處理
+                if (landingExecuted) {
+                    console.log('⚠️ [DESCENT] 降落已執行，忽略重複按鈕');
+                    return;
                 }
+                
+                // 單擊觸發手動降落
+                console.log('🛬 [DESCENT] 按鈕：在降落階段按下，觸發手動降落');
+                manualLandingTriggered = true;
+                landingExecuted = true; // 標記已執行，防止重複
+                triggerManualLanding();
                 return;
             }
             
@@ -2592,6 +2677,16 @@
                             break;
                         }
                         
+                        // 顯示計算動畫
+                        const calculatingState = document.getElementById('stateCalculating');
+                        const stateAngle = document.getElementById('stateAngle');
+                        if (calculatingState && stateAngle) {
+                            stateAngle.style.display = 'none';
+                            calculatingState.style.display = 'flex';
+                            calculatingState.classList.add('active');
+                            console.log('🎬 顯示計算動畫');
+                        }
+                        
                         // 從 Firebase 讀取上次降落地點作為新的出發地
                         const lastLanding = await loadLastLandingLocation();
                         if (lastLanding) {
@@ -2607,21 +2702,47 @@
                         
                         const directionPosition = position;
                         
-                        destinationData = await destinationCalculator.findDestination(
-                            selectedTimer,
-                            directionPosition,
-                            'ON_TIME',
-                            selectedClimateZone
-                        );
+                        // 同時進行計算和等待 3 秒動畫
+                        const [calculatedDestination] = await Promise.all([
+                            destinationCalculator.findDestination(
+                                selectedTimer,
+                                directionPosition,
+                                'ON_TIME',
+                                selectedClimateZone
+                            ),
+                            new Promise(resolve => setTimeout(resolve, 3000)) // 等待 3 秒動畫
+                        ]);
+                        
+                        destinationData = calculatedDestination;
+                        
+                        // 如果找不到目的地，觸發蟲洞效應
+                        if (!destinationData) {
+                            console.log('🌀 找不到目的地，觸發蟲洞效應');
+                            destinationData = await destinationCalculator.findDestinationWithWormhole(
+                                directionPosition,
+                                selectedClimateZone
+                            );
+                        }
                         
                         if (!destinationData) {
                             console.warn('⚠️ 無法取得目的地資料');
+                            // 隱藏計算動畫
+                            if (calculatingState) {
+                                calculatingState.style.display = 'none';
+                                calculatingState.classList.remove('active');
+                            }
                             break;
                         }
                         
                         destinationData.climateZone = selectedClimateZone;
                         
                         console.log('✅ 目的地計算完成（按鈕確認後）:', destinationData);
+                        
+                        // 隱藏計算動畫
+                        if (calculatingState) {
+                            calculatingState.style.display = 'none';
+                            calculatingState.classList.remove('active');
+                        }
                         
                         // 顯示目的地資訊（僅下方文字，不切換畫面）
                         const destinationCityEl = document.getElementById('destinationCity');
@@ -2663,6 +2784,12 @@
                         console.log('🛫 已準備好起飛，等待按鈕開始起飛序列');
                     } catch (error) {
                         console.error('❌ 在按鈕確認時計算目的地失敗:', error);
+                        // 隱藏計算動畫（即使出錯）
+                        const calculatingState = document.getElementById('stateCalculating');
+                        if (calculatingState) {
+                            calculatingState.style.display = 'none';
+                            calculatingState.classList.remove('active');
+                        }
                     }
                     break;
                     
@@ -4125,6 +4252,7 @@
             }
             
             // 蟲洞/時空錯位方案：優先選擇符合氣候帶的城市，如果沒有才隨機選擇
+            // 保證一定會返回一個目的地（即使是很遠的位置也沒關係）
             async findDestinationWithWormhole(directionPosition, climateZoneOption = null) {
                 await this.loadCitiesData();
                 
@@ -4134,13 +4262,21 @@
                 }
                 
                 // 排除台北
-                let availableCities = this.citiesData.filter(city => city.city !== 'Taipei');
+                let availableCities = this.citiesData.filter(city => {
+                    const cityLat = city.latitude || city.lat;
+                    const cityLon = city.longitude || city.lon;
+                    return city.city !== 'Taipei' && cityLat && cityLon;
+                });
                 
+                // 如果沒有可用城市，返回一個預設的遠距離城市（蟲洞效果）
                 if (availableCities.length === 0) {
-                    // 如果沒有可用城市，返回一個預設城市
+                    console.log('⚠️ 沒有可用城市，使用預設蟲洞目的地');
                     return {
                         city: 'Tokyo',
+                        city_zh: '東京',
                         country: 'Japan',
+                        country_zh: '日本',
+                        country_iso_code: 'JP',
                         latitude: 35.676,
                         longitude: 139.650,
                         timezone: 'Asia/Tokyo',
@@ -4158,23 +4294,25 @@
                         // 有符合氣候帶的城市，從中隨機選擇
                         const randomIndex = Math.floor(Math.random() * climateMatchedCities.length);
                         const selectedCity = climateMatchedCities[randomIndex];
-                        console.log(`🌀 蟲洞目的地（符合氣候帶）: ${selectedCity.city}, ${selectedCity.country}`);
+                        console.log(`🌀 蟲洞目的地（符合氣候帶）: ${selectedCity.city_zh || selectedCity.city}, ${selectedCity.country_zh || selectedCity.country}`);
                         return {
                             ...selectedCity,
                             wormhole: true
                         };
                     } else {
-                        // 沒有符合氣候帶的城市，但還是要選擇一個
-                        console.log('⚠️ 蟲洞方案：沒有符合氣候帶「' + climateZoneOption.name + '」的城市，從所有城市中隨機選擇');
+                        // 沒有符合氣候帶的城市，但還是要選擇一個（蟲洞效果，遠距離也沒關係）
+                        console.log('⚠️ 蟲洞方案：沒有符合氣候帶「' + climateZoneOption.name + '」的城市，從所有城市中隨機選擇（蟲洞效果）');
                     }
                 }
                 
                 // 沒有氣候帶選項，或沒有符合氣候帶的城市，從所有城市中隨機選擇
+                // 蟲洞效果：選擇一個遠距離的城市也沒關係
                 const randomIndex = Math.floor(Math.random() * availableCities.length);
                 const selectedCity = availableCities[randomIndex];
                 
-                console.log(`🌀 蟲洞目的地: ${selectedCity.city}, ${selectedCity.country}`);
+                console.log(`🌀 蟲洞目的地: ${selectedCity.city_zh || selectedCity.city}, ${selectedCity.country_zh || selectedCity.country}`);
                 
+                // 確保返回的對象包含所有必要字段
                 return {
                     ...selectedCity,
                     wormhole: true // 標記這是蟲洞目的地
@@ -6976,21 +7114,20 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.warn('⚠️ 更新飛行進度條時發生小問題，可忽略:', e);
             }
             
-            // 設定降落前 5 分鐘提醒
+            // 設定降落前 5 分鐘提醒（只切換到 Phase 6，不自動切換到 Phase 7）
             sleepTimer = setTimeout(() => {
                 switchToPhase(Phase.DESCENT);
             }, descentTime);
             
-            // 設定降落時間
-            setTimeout(() => {
-                switchToPhase(Phase.LANDING);
-            }, durationMs);
+            // 注意：不再自動切換到 Phase 7，必須在 Phase 6 時按下按鈕才會觸發降落
         }
 
         // 標記是否已經播放過準備降落語音
         let descentAnnouncementPlayed = false;
         // 標記是否已經手動觸發降落
         let manualLandingTriggered = false;
+        // 標記是否已經執行過降落流程（防止重複執行）
+        let landingExecuted = false;
         // 降落前喚醒音樂相關變數
         let descentWakeupMusic = null; // 降落前喚醒音樂
         let descentMusicPlayCount = 0; // 音樂播放次數計數器
@@ -7002,7 +7139,67 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             console.log('   descentAnnouncementPlayed:', descentAnnouncementPlayed);
             console.log('   currentPhase:', currentPhase);
             
+            // ============================================================================
+            // 立即終止所有 Phase 5 的內容（飛機餐、進度條等）
+            // ============================================================================
+            console.log('🛑 [Phase 6] 終止所有 Phase 5 的內容');
+            
+            // 1. 終止飛機餐（如果正在進行中）
+            if (midnightServiceActive) {
+                console.log('🛑 終止飛機餐服務');
+                midnightServiceActive = false;
+                
+                // 停止飛機餐音樂
+                if (window.mealMusic) {
+                    try {
+                        window.mealMusic.pause();
+                        window.mealMusic.currentTime = 0;
+                        window.mealMusic = null;
+                    } catch (e) {
+                        console.warn('⚠️ 停止飛機餐音樂時發生錯誤:', e);
+                    }
+                }
+                
+                // 隱藏飛機餐相關 UI
+                const overlay = document.getElementById('midnightServiceOverlay');
+                const imageEl = document.getElementById('midnightServiceImage');
+                const loadingBar = document.getElementById('stateMidnightService');
+                
+                if (overlay) {
+                    overlay.style.display = 'none';
+                    overlay.classList.remove('show', 'fade-out');
+                }
+                if (imageEl) {
+                    imageEl.style.display = 'none';
+                }
+                if (loadingBar) {
+                    loadingBar.style.display = 'none';
+                }
+            }
+            
+            // 2. 停止進度條更新
+            if (window._flightProgressInterval) {
+                console.log('🛑 停止飛行進度條更新');
+                clearInterval(window._flightProgressInterval);
+                window._flightProgressInterval = null;
+            }
+            
+            // 3. 清除 sleepTimer（如果還在等待）
+            if (sleepTimer) {
+                console.log('🛑 清除睡眠計時器');
+                clearTimeout(sleepTimer);
+                sleepTimer = null;
+            }
+            
+            // 4. 重置 manualLandingTriggered 和 landingExecuted（為新的降落流程做準備）
+            manualLandingTriggered = false;
+            landingExecuted = false;
+            
+            console.log('✅ [Phase 6] 所有 Phase 5 內容已終止');
+            
+            // ============================================================================
             // 自動播放準備降落的喚醒語音和背景音樂
+            // ============================================================================
             if (!descentAnnouncementPlayed) {
                 console.log('✅ [handleDescent] 開始播放喚醒音樂和語音');
                 descentAnnouncementPlayed = true;
@@ -7271,7 +7468,16 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     climateZone
                 );
                 
-                if (climateZone) {
+                // 如果找不到目的地，觸發蟲洞效應
+                if (!finalDestination) {
+                    console.log('🌀 找不到目的地，觸發蟲洞效應');
+                    finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
+                }
+                
+                if (climateZone && finalDestination) {
                     finalDestination.climateZone = climateZone;
                 }
                 
@@ -7279,8 +7485,24 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.log('✅ 手動降落：最終目的地計算完成:', finalDestination);
             } catch (error) {
                 console.error('❌ 計算最終目的地失敗:', error);
-                if (!finalDestination) {
-                    finalDestination = destinationData;
+                // 如果出錯，也觸發蟲洞效應
+                try {
+                    const climateZone = destinationData?.climateZone || null;
+                    console.log('🌀 計算失敗，觸發蟲洞效應作為備用方案');
+                    finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
+                    if (finalDestination) {
+                        destinationData = finalDestination;
+                    } else if (!finalDestination) {
+                        finalDestination = destinationData;
+                    }
+                } catch (wormholeError) {
+                    console.error('❌ 蟲洞效應也失敗:', wormholeError);
+                    if (!finalDestination) {
+                        finalDestination = destinationData;
+                    }
                 }
             }
             
@@ -7344,6 +7566,15 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     climateZone
                 );
                 
+                // 如果找不到目的地，觸發蟲洞效應
+                if (!destination) {
+                    console.log('🌀 找不到目的地，觸發蟲洞效應');
+                    destination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
+                }
+                
                 // 保留氣候帶選項
                 if (climateZone && destination) {
                     destination.climateZone = climateZone;
@@ -7351,8 +7582,21 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 
                 console.log('📍 降落目的地計算完成:', destination);
             } catch (error) {
-                console.warn('⚠️ 計算降落目的地失敗，使用原目的地:', error);
-                destination = destinationData;
+                console.warn('⚠️ 計算降落目的地失敗，嘗試蟲洞效應:', error);
+                // 如果出錯，也觸發蟲洞效應
+                try {
+                    const climateZone = destinationData?.climateZone || null;
+                    destination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
+                    if (!destination) {
+                        destination = destinationData;
+                    }
+                } catch (wormholeError) {
+                    console.error('❌ 蟲洞效應也失敗，使用原目的地:', wormholeError);
+                    destination = destinationData;
+                }
             }
             
             // 檢查是否觸發蟲洞（時空錯位）
@@ -7360,49 +7604,49 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             
             // 使用分鐘數判斷（更直觀），並結合蟲洞情況
             if (isWormhole) {
-                // 蟲洞情況：時空錯位，目的地是意外抵達的
+                // 蟲洞情況：時空錯位，目的地是意外抵達的（更詼諧的語音）
                 if (timeDiffMinutes < -15) {
                     // 提早 + 蟲洞 = 緊急迫降 + 時空錯位
                     const templates = [
-                        `各位旅客，我們遇到了一個非常特殊的情況。由於緊急迫降程序，我們意外穿越了時空，降落在了一個意想不到的地方。雖然這不是原計劃的目的地，但請放心，我們已經安全著陸。這可能是一段意外的冒險。`,
-                        `各位旅客，抱歉通知您一個特別的消息。由於緊急情況，我們需要提前降落，但在降落過程中，我們似乎穿越了時空。我們現在在一個完全不同的地方，但請相信，這會是一段有趣的經歷。`,
-                        `各位旅客，我們剛剛經歷了一段不可思議的旅程。由於緊急迫降，我們意外進入了時空錯位，現在降落在了一個計劃外的地點。雖然這很意外，但請放心，我們已經安全抵達。`
+                        `各位旅客，哈哈，我們遇到了一個非常有趣的情況！由於緊急迫降程序，我們意外穿越了時空蟲洞，降落在了一個完全意想不到的地方。雖然這不是原計劃的目的地，但請放心，我們已經安全著陸。這可能是一段意外的冒險，就像科幻電影一樣！`,
+                        `各位旅客，抱歉通知您一個特別的消息...其實也不算抱歉，因為這太有趣了！由於緊急情況，我們需要提前降落，但在降落過程中，我們似乎穿越了時空。我們現在在一個完全不同的地方，但請相信，這會是一段非常有趣的經歷。`,
+                        `各位旅客，我們剛剛經歷了一段不可思議的旅程！由於緊急迫降，我們意外進入了時空錯位，現在降落在了一個計劃外的地點。雖然這很意外，但請放心，我們已經安全抵達。這就像一場意外的時空旅行！`
                     ];
                     announcement = templates[Math.floor(Math.random() * templates.length)];
                     console.log('🌀🚨 蟲洞 + 迫降情況（提早超過 15 分鐘 + 時空錯位）');
                 } else if (timeDiffMinutes < -5) {
                     // 提早 + 蟲洞 = 提早抵達 + 時空錯位
                     const templates = [
-                        `各位旅客，我們比預期時間提早抵達了，但有一個小插曲要告訴您。在飛行途中，我們意外穿越了時空，現在降落在了一個意想不到的地方。雖然這不是原計劃的目的地，但這可能是一段特別的旅程。`,
-                        `各位旅客，好消息是我們提早抵達了，但壞消息是...我們似乎降落在了一個不同的時空。不過別擔心，這可能是一段有趣的冒險。請您慢慢醒來，看看窗外這個意外的目的地。`,
-                        `各位旅客，我們比預期提早了一些，但在降落過程中發生了一件有趣的事。我們意外進入了時空錯位，現在在一個完全不同的地方。雖然這很意外，但請相信，這會是一段難忘的經歷。`
+                        `各位旅客，我們比預期時間提早抵達了，但有一個超級有趣的小插曲要告訴您！在飛行途中，我們意外穿越了時空蟲洞，現在降落在了一個完全意想不到的地方。雖然這不是原計劃的目的地，但這可能是一段特別的旅程，就像一場意外的時空冒險！`,
+                        `各位旅客，好消息是我們提早抵達了，但更棒的消息是...我們似乎降落在了一個不同的時空！哈哈，別擔心，這可能是一段超級有趣的冒險。請您慢慢醒來，看看窗外這個意外的目的地，說不定會看到一些驚喜！`,
+                        `各位旅客，我們比預期提早了一些，但在降落過程中發生了一件超級有趣的事！我們意外進入了時空錯位，現在在一個完全不同的地方。雖然這很意外，但請相信，這會是一段難忘的經歷，就像一場意外的時空旅行！`
                     ];
                     announcement = templates[Math.floor(Math.random() * templates.length)];
                     console.log('🌀⏰ 蟲洞 + 提早降落（提早 ' + Math.abs(timeDiffMinutes) + ' 分鐘 + 時空錯位）');
                 } else if (timeDiffMinutes <= 5 && timeDiffMinutes >= -5) {
                     // 準時 + 蟲洞 = 正常降落但時空錯位
                     const templates = [
-                        `各位旅客，我們已經準時抵達...不過，有個特別的情況要告訴您。在降落過程中，我們意外穿越了時空，現在在一個完全不同的地方。雖然這不是原計劃的目的地，但這可能是一段意外的驚喜。`,
-                        `各位旅客，我們準時開始降落程序，但在降落時發生了一件不可思議的事。我們意外進入了時空錯位，現在降落在了一個意想不到的地方。請您慢慢醒來，看看窗外這個意外的目的地。`,
-                        `各位旅客，我們已經準時抵達目的地附近，但由於時空錯位，我們現在在一個不同的地方。雖然這很意外，但請相信，這會是一段特別的旅程。請您慢慢醒來，準備欣賞這個意外的風景。`
+                        `各位旅客，我們已經準時抵達...不過，有個超級特別的情況要告訴您！在降落過程中，我們意外穿越了時空蟲洞，現在在一個完全不同的地方。雖然這不是原計劃的目的地，但這可能是一段意外的驚喜，就像一場時空冒險！`,
+                        `各位旅客，我們準時開始降落程序，但在降落時發生了一件不可思議的事！我們意外進入了時空錯位，現在降落在了一個意想不到的地方。請您慢慢醒來，看看窗外這個意外的目的地，說不定會看到一些驚喜！`,
+                        `各位旅客，我們已經準時抵達目的地附近，但由於時空錯位，我們現在在一個不同的地方。雖然這很意外，但請相信，這會是一段特別的旅程。請您慢慢醒來，準備欣賞這個意外的風景，就像一場時空旅行！`
                     ];
                     announcement = templates[Math.floor(Math.random() * templates.length)];
                     console.log('🌀✅ 蟲洞 + 準時降落（差異 ' + timeDiffMinutes + ' 分鐘 + 時空錯位）');
                 } else if (timeDiffMinutes <= 15) {
                     // 晚到 + 蟲洞 = 風大盤旋 + 時空錯位
                     const templates = [
-                        `各位旅客，抱歉讓您多等了一會兒。由於上空風勢較大，我們在上方盤旋時，意外進入了時空錯位。現在我們降落在了一個意想不到的地方。雖然這不是原計劃的目的地，但這可能是一段有趣的冒險。`,
-                        `各位旅客，我們剛才因為風勢在上方盤旋了一會兒，但在盤旋過程中，我們意外穿越了時空。現在我們在一個完全不同的地方。請您慢慢醒來，看看窗外這個意外的目的地。`,
-                        `各位旅客，由於天氣因素我們多繞了一會兒，但在這個過程中發生了一件特別的事。我們意外進入了時空錯位，現在降落在了一個計劃外的地點。雖然這很意外，但請相信，這會是一段難忘的經歷。`
+                        `各位旅客，抱歉讓您多等了一會兒。由於上空風勢較大，我們在上方盤旋時，意外進入了時空蟲洞！現在我們降落在了一個意想不到的地方。雖然這不是原計劃的目的地，但這可能是一段有趣的冒險，就像一場意外的時空旅行！`,
+                        `各位旅客，我們剛才因為風勢在上方盤旋了一會兒，但在盤旋過程中，我們意外穿越了時空！哈哈，這太有趣了！現在我們在一個完全不同的地方。請您慢慢醒來，看看窗外這個意外的目的地，說不定會看到一些驚喜！`,
+                        `各位旅客，由於天氣因素我們多繞了一會兒，但在這個過程中發生了一件特別的事！我們意外進入了時空錯位，現在降落在了一個計劃外的地點。雖然這很意外，但請相信，這會是一段難忘的經歷，就像一場時空冒險！`
                     ];
                     announcement = templates[Math.floor(Math.random() * templates.length)];
                     console.log('🌀💨 蟲洞 + 晚降落（晚 ' + timeDiffMinutes + ' 分鐘 + 時空錯位）');
                 } else {
                     // 晚很多 + 蟲洞 = 飛錯機場 + 時空錯位
                     const templates = [
-                        `各位旅客，抱歉讓您久等了。我們的導航系統出了點問題，飛到了另一個機場附近，更糟糕的是，我們還意外穿越了時空。現在我們在一個完全不同的地方。不過別擔心，這可能是一段特別的冒險。`,
-                        `各位旅客，有個有趣的情況要告訴您。由於導航系統的小小誤差，我們飛到了錯誤的方向，更意外的是，我們還進入了時空錯位。現在我們在一個意想不到的地方。雖然這很意外，但請相信，這會是一段難忘的旅程。`,
-                        `各位旅客，抱歉讓您久等了。我們的導航系統剛才出了點問題，把我們帶到了錯誤的地方，更特別的是，我們還意外穿越了時空。現在我們在一個完全不同的目的地。請您慢慢醒來，看看窗外這個意外的風景。`
+                        `各位旅客，抱歉讓您久等了。我們的導航系統出了點問題，飛到了另一個機場附近，更糟糕的是...我們還意外穿越了時空蟲洞！哈哈，這太有趣了！現在我們在一個完全不同的地方。不過別擔心，這可能是一段特別的冒險，就像一場時空旅行！`,
+                        `各位旅客，有個超級有趣的情況要告訴您！由於導航系統的小小誤差，我們飛到了錯誤的方向，更意外的是，我們還進入了時空錯位。現在我們在一個意想不到的地方。雖然這很意外，但請相信，這會是一段難忘的旅程，就像一場時空冒險！`,
+                        `各位旅客，抱歉讓您久等了。我們的導航系統剛才出了點問題，把我們帶到了錯誤的地方，更特別的是...我們還意外穿越了時空！哈哈，這太有趣了！現在我們在一個完全不同的目的地。請您慢慢醒來，看看窗外這個意外的風景，說不定會看到一些驚喜！`
                     ];
                     announcement = templates[Math.floor(Math.random() * templates.length)];
                     console.log('🌀🌀 蟲洞 + 飛錯機場（晚 ' + timeDiffMinutes + ' 分鐘 + 時空錯位）');
@@ -7520,8 +7764,17 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         }
 
         async function handleLanding() {
-            // Phase 6: 降落完成
-            console.log('🛬 降落完成');
+            // Phase 7: 降落完成
+            console.log('🛬 [Phase 7] 降落完成');
+            
+            // 檢查是否已經執行過降落流程（防止重複執行）
+            if (landingExecuted) {
+                console.log('⚠️ [Phase 7] 降落流程已執行過，忽略重複調用');
+                return;
+            }
+            
+            // 標記已執行，防止重複
+            landingExecuted = true;
             
             if (sleepTimer) {
                 clearTimeout(sleepTimer);
