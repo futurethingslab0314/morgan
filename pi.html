@@ -2305,7 +2305,11 @@
             });
             
             if (isCruise) {
-                // 簡化邏輯：如果降落確認提示正在顯示，處理確認降落
+                // 巡航階段專用邏輯：
+                // 單擊：顯示「是否提前降落」確認
+                // 雙擊：觸發深夜機上服務（飛機餐）
+                
+                // 如果降落確認提示正在顯示，再按一次視為「確認提前降落」
                 if (landingConfirmActive) {
                     console.log('✅ [巡航模式] 降落確認已顯示，處理確認降落');
                     confirmEarlyLanding();
@@ -2313,24 +2317,33 @@
                     return;
                 }
                 
-                // 檢查是否為雙擊（500ms 內按兩次）
+                // 檢查是否為雙擊（在 DOUBLE_CLICK_THRESHOLD 內按兩次）
                 const timeSinceLastPress = lastButtonPressTime > 0 ? currentTime - lastButtonPressTime : Infinity;
                 
                 if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > 0) {
-                    // 雙擊：立即取消之前的單擊處理，並立即設置 landingConfirmActive
+                    // 雙擊：立即取消之前的單擊處理，改為觸發深夜機上服務
                     if (buttonPressTimeout) {
                         clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
                     }
                     
-                    // 立即設置 landingConfirmActive，防止單擊處理執行
-                    landingConfirmActive = true;
+                    // 如果深夜服務已經在進行，就忽略這次雙擊
+                    if (midnightServiceActive) {
+                        console.log('⚠️ [巡航模式] 深夜機上服務已啟動，忽略雙擊');
+                        lastButtonPressTime = currentTime;
+                        return;
+                    }
                     
-                    console.log('🔘 [巡航模式] 檢測到雙擊，立即觸發提前降落確認');
-                    lastButtonPressTime = currentTime;
+                    console.log('🍽️ [巡航模式] 檢測到雙擊，觸發深夜機上服務');
+                    lastButtonPressTime = 0; // 重置，避免影響之後的判定
                     
-                    // 調用 handleButtonDoubleClick（它會調用 showLandingConfirmation，但 landingConfirmActive 已經設置）
-                    handleButtonDoubleClick();
+                    try {
+                        triggerMidnightService();
+                        console.log('✅ [巡航模式] triggerMidnightService() 調用成功');
+                    } catch (error) {
+                        console.error('❌ [巡航模式] triggerMidnightService() 調用失敗:', error);
+                        console.error('   錯誤堆疊:', error.stack);
+                    }
                     return;
                 }
                 
@@ -2343,9 +2356,9 @@
                 lastButtonPressTime = currentTime;
                 
                 buttonPressTimeout = setTimeout(() => {
-                    // 檢查是否在等待期間變成了雙擊（landingConfirmActive 已設置）
-                    if (landingConfirmActive) {
-                        console.log('⚠️ [巡航模式] 在等待期間檢測到雙擊，取消單擊處理');
+                    // 檢查是否在等待期間變成了雙擊（此時應該已觸發雙擊邏輯）
+                    if (landingConfirmActive || midnightServiceActive) {
+                        console.log('⚠️ [巡航模式] 在等待期間已觸發其他行為（雙擊或降落確認），取消單擊處理');
                         buttonPressTimeout = null;
                         return;
                     }
@@ -2357,8 +2370,8 @@
                         return;
                     }
                     
-                    console.log('🔘 [巡航模式] 單擊處理：觸發飛機餐');
-                    handleButtonSingleClick();
+                    console.log('🛬 [巡航模式] 單擊處理：顯示提前降落確認');
+                    showLandingConfirmation();
                     buttonPressTimeout = null;
                 }, DOUBLE_CLICK_THRESHOLD + 50); // 增加 50ms 緩衝，確保雙擊檢測優先
                 
@@ -2557,35 +2570,11 @@
             // 優先級 1: 飛行階段特殊處理（CRUISE, DESCENT, LANDING）
             // ============================================================================
             
-            // 1.1 巡航階段（CRUISE）- 深夜機上服務或提前降落確認
+            // 1.1 巡航階段（CRUISE）
             if (currentPhase === Phase.CRUISE || currentPhase == 5) {
-                console.log('🔍 [CRUISE] 檢查按鈕處理條件');
-                console.log('   landingConfirmActive:', landingConfirmActive);
-                console.log('   midnightServiceActive:', midnightServiceActive);
-                
-                // 如果降落確認提示正在顯示，不處理單擊（避免與雙擊衝突）
-                // 注意：確認降落的處理已經在 handlePhysicalButtonPress 中完成
-                if (landingConfirmActive) {
-                    console.log('⚠️ [CRUISE] 降落確認已顯示，忽略單擊（避免與雙擊衝突）');
-                    return;
-                }
-                
-                // 如果深夜服務正在進行中，不處理按鈕（避免重複觸發）
-                // 注意：這個檢查應該已經在 handlePhysicalButtonPress 的最開始完成，這裡是雙重保險
-                if (midnightServiceActive) {
-                    console.log('⚠️ [CRUISE] 深夜服務正在進行中，忽略按鈕按下');
-                    return;
-                }
-                
-                // 否則觸發深夜機上服務
-                console.log('🍽️ [CRUISE] 飛行中按下，觸發深夜機上服務');
-                try {
-                    triggerMidnightService();
-                    console.log('✅ [CRUISE] triggerMidnightService() 調用成功');
-                } catch (error) {
-                    console.error('❌ [CRUISE] triggerMidnightService() 調用失敗:', error);
-                    console.error('   錯誤堆疊:', error.stack);
-                }
+                // 巡航階段的單擊/雙擊邏輯完全在 handlePhysicalButtonPress 中處理
+                // 這裡只作為保險，不再觸發任何行為，避免重複或誤判
+                console.log('ℹ️ [CRUISE] 單擊邏輯已由 handlePhysicalButtonPress 處理（此處不再執行動作）');
                 return;
             }
             
@@ -2604,10 +2593,10 @@
                     return;
                 }
                 
-                // 單擊觸發手動降落
+                // 單擊觸發手動降落（僅標記 manualLandingTriggered，由 handleLanding() 統一標記 landingExecuted）
                 console.log('🛬 [DESCENT] 按鈕：在降落階段按下，觸發手動降落');
                 manualLandingTriggered = true;
-                landingExecuted = true; // 標記已執行，防止重複
+                // ⚠️ 不要在這裡把 landingExecuted 設為 true，否則 Phase 7 的 handleLanding() 會直接跳過，不會顯示情緒量表與國家資訊
                 triggerManualLanding();
                 return;
             }
