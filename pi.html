@@ -2612,7 +2612,7 @@
                 return;
             }
             
-            // 1.3 降落完成階段（LANDING）- 檢查是否正在執行降落流程
+            // 1.3 降落完成階段（LANDING）- 檢查是否正在執行降落流程／情緒量表是否顯示
             if (currentPhase === Phase.LANDING) {
                 // 確保進度條已隱藏（即使 handleLanding() 還沒執行）
                 try {
@@ -2631,11 +2631,39 @@
                     console.warn('⚠️ [LANDING] 隱藏進度條時發生小問題:', e);
                 }
                 
-                // 如果降落流程正在執行中，忽略按鈕（防止重複觸發）
-                if (landingExecuted) {
-                    console.log('ℹ️ [LANDING] 降落流程正在執行中，請等待流程完成');
+                const feedbackState = document.getElementById('stateFlightFeedback');
+                const feedbackVisible = feedbackState && (
+                    feedbackState.style.display !== 'none' ||
+                    feedbackState.classList.contains('active')
+                );
+                
+                // 如果降落流程已經執行過，但情緒量表「沒有」顯示，強制打開情緒量表，避免卡死在 Phase 7
+                if (landingExecuted && !feedbackVisible) {
+                    console.log('⚠️ [LANDING] 已完成降落但情緒量表未顯示，強制顯示情緒量表');
+                    const safeDestination = destinationData || {
+                        city: 'Unknown',
+                        country: 'Unknown',
+                        city_zh: '未知城市',
+                        country_zh: '未知國家'
+                    };
+                    try {
+                        showFlightFeedback(safeDestination).then(() => {
+                            console.log('✅ [LANDING] 強制情緒量表已填寫完成（按鈕觸發）');
+                        }).catch(err => {
+                            console.warn('⚠️ [LANDING] 強制顯示情緒量表失敗:', err);
+                        });
+                    } catch (e) {
+                        console.warn('⚠️ [LANDING] 呼叫 showFlightFeedback 時發生錯誤:', e);
+                    }
                     return;
                 }
+                
+                // 如果降落流程正在執行中且情緒量表已經顯示，提示等待即可（防止重複觸發）
+                if (landingExecuted) {
+                    console.log('ℹ️ [LANDING] 降落流程正在執行中或已完成，請先在下方 bar 填寫情緒量表');
+                    return;
+                }
+                
                 // 如果降落流程還沒執行，可能是 handleLanding() 沒有被調用，現在手動觸發
                 console.log('⚠️ [LANDING] 降落階段但降落流程未執行，手動觸發 handleLanding()');
                 console.log('   當前狀態:', currentState, 'landingExecuted:', landingExecuted);
@@ -3041,7 +3069,7 @@
                         isTakeoff: true,
                         rate: 0.7,
                         pitch: 0.85,
-                        volume: 0.9
+                        volume: 1.0   // 起飛語音拉到最大音量
                     });
                     console.log('✅ TTS 語音播放完成');
                 } catch (error) {
@@ -5082,9 +5110,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             
             // 默認選項：起飛語音使用特殊參數（柔和、有步調、自然）
             const isTakeoffAnnouncement = options.isTakeoff || false;
-            const rate = isTakeoffAnnouncement ? 0.7 : (options.rate || 1.0); // 70% 語速（更慢、更有步調）
-            const pitch = isTakeoffAnnouncement ? 0.85 : (options.pitch || 1.0); // 稍低音調（更自然，不像機器人）
-            const volume = options.volume || 0.9; // 稍微降低音量，更柔和
+            const defaultRate = isTakeoffAnnouncement ? 0.7 : 0.85; // 起飛更慢一點，其餘也略微放慢
+            const defaultPitch = isTakeoffAnnouncement ? 0.85 : 0.95; // 稍低音調（更柔和、不刺耳）
+            const rate = (typeof options.rate === 'number') ? options.rate : defaultRate;
+            const pitch = (typeof options.pitch === 'number') ? options.pitch : defaultPitch;
+            const volume = (typeof options.volume === 'number') ? options.volume : 1.0; // 預設語音音量拉到 1.0
             const preloadOnly = options.preloadOnly || false; // 僅預載，不等待播放完成
             
             // 自動處理音樂音量：播放語音時調小音樂，語音結束後調大
@@ -6657,12 +6687,12 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 if (announcement) {
                     console.log('🎤 語音生成完成，開始播放');
                     // 使用 TTS 播放（本地 TTS 服務或瀏覽器 TTS）
-                    // 起飛語音使用特殊參數：柔和、有步調、自然
+                    // 起飛語音使用特殊參數：柔和、有步調、但音量拉高一點
                     await playAnnouncement(announcement, 'zh-TW', { 
                         isTakeoff: true,
                         rate: 0.7,     // 70% 語速（更慢、更有步調）
                         pitch: 0.85,   // 自然音調（不像機器人）
-                        volume: 0.9    // 稍微降低音量，更柔和
+                        volume: 1.0    // 起飛語音拉到最大音量
                     });
                 } else {
                     console.warn('⚠️ 語音生成失敗，繼續播放影片');
