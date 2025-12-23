@@ -37,16 +37,62 @@ export default async function handler(req, res) {
     try {
         const {
             userDisplayName = 'Pi User',
-            limit = 5
+            limit = 50  // 增加限制，允許查看更多歷史記錄
         } = req.body;
 
-        // 查詢最近 N 筆記錄（按時間倒序）
-        const historyQuery = db.collection('wakeup_records')
-            .where('userDisplayName', '==', userDisplayName)
-            .orderBy('timestamp', 'desc')
-            .limit(parseInt(limit));
+        const APP_ID = 'default-app-id-worldclock-history';
 
-        const querySnapshot = await historyQuery.get();
+        // 查詢 sleepAirline/sleepAirline/flight collection 中的所有記錄
+        // 路徑：artifacts/APP_ID/userProfiles/sleepAirline/sleepAirline/flight
+        const flightCollectionRef = db
+            .collection('artifacts')
+            .doc(APP_ID)
+            .collection('userProfiles')
+            .doc('sleepAirline')
+            .collection('sleepAirline')
+            .collection('flight');
+
+        let querySnapshot;
+        
+        // 嘗試按 recordedAt 倒序排列（最新的在前）
+        try {
+            const historyQuery = flightCollectionRef
+                .orderBy('recordedAt', 'desc')
+                .limit(parseInt(limit));
+            
+            querySnapshot = await historyQuery.get();
+        } catch (orderByError) {
+            // 如果 orderBy 失敗（可能是沒有索引或 recordedAt 不存在），改用獲取所有記錄然後在客戶端排序
+            console.warn('⚠️ 無法使用 orderBy，改用獲取所有記錄後排序:', orderByError.message);
+            const allDocs = await flightCollectionRef.limit(parseInt(limit * 2)).get(); // 獲取更多記錄以確保有足夠的數據
+            
+            // 轉換為數組並在客戶端排序
+            const docsArray = [];
+            allDocs.forEach((doc) => {
+                docsArray.push(doc);
+            });
+            
+            // 按 recordedAt 或 wakeTime 排序（降序）
+            docsArray.sort((a, b) => {
+                const aData = a.data();
+                const bData = b.data();
+                const aTime = aData.recordedAt?.toMillis?.() || 
+                            (aData.wakeTime ? new Date(aData.wakeTime).getTime() : 0) ||
+                            (aData.recordedAt ? aData.recordedAt.getTime() : 0);
+                const bTime = bData.recordedAt?.toMillis?.() || 
+                            (bData.wakeTime ? new Date(bData.wakeTime).getTime() : 0) ||
+                            (bData.recordedAt ? bData.recordedAt.getTime() : 0);
+                return bTime - aTime; // 降序
+            });
+            
+            // 只取前 limit 筆
+            querySnapshot = {
+                forEach: (callback) => {
+                    docsArray.slice(0, parseInt(limit)).forEach(callback);
+                },
+                size: Math.min(docsArray.length, parseInt(limit))
+            };
+        }
         const records = [];
 
         querySnapshot.forEach((doc) => {
@@ -57,20 +103,26 @@ export default async function handler(req, res) {
                 city_zh: data.city_zh || data.destinationCityZh || '',
                 country: data.country || data.destinationCountry || '',
                 country_zh: data.country_zh || data.destinationCountryZh || '',
-                latitude: parseFloat(data.latitude) || 0,
-                longitude: parseFloat(data.longitude) || 0,
+                latitude: parseFloat(data.latitude) || parseFloat(data.destinationLatitude) || 0,
+                longitude: parseFloat(data.longitude) || parseFloat(data.destinationLongitude) || 0,
                 imageUrl: data.destinationImage || data.imageUrl || '',
-                wakeTime: data.wakeTime || data.timestamp || data.localTime || data.recordedAt || '',
+                wakeTime: data.wakeTime || data.recordedAt || '',
                 recordedDateString: data.recordedDateString || '',
                 plannedMinutes: data.plannedMinutes || null,
                 sleepDuration: data.sleepDuration || data.durationMinutes || 0,
+                timeDiffMinutes: data.timeDiffMinutes || null,
                 punctuality: data.punctuality || null,
+                direction: data.direction || data.directionPosition || null,
                 climateZoneName: data.climateZoneName || null,
+                isWormhole: data.isWormhole || false,
                 announcementText: data.announcementText || '',
                 timezone: data.timezone || 'UTC',
+                country_iso_code: data.country_iso_code || data.countryCode || '',
                 flightFeedback: data.flightFeedback || null  // 飛行回饋數據
             });
         });
+
+        console.log(`✅ 成功讀取 ${records.length} 筆飛行記錄`);
 
         return res.status(200).json({
             success: true,

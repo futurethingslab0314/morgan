@@ -260,25 +260,26 @@ export default async function handler(req, res) {
             // 這樣實際路徑是：.../sleepAirline/flight
             // 用戶在 Console 會看到：sleepAirline（左欄 collection）/ sleepAirline（中欄 doc）/ flight（右欄 doc）
             //
-            // ✅ 最終決定：直接寫入固定的 flight 文件，讓你一打開就看到最新一筆睡眠航班資料
-            const flightDocRef = db
+            // ✅ 修改：每次保存都創建新的 document，保留所有歷史記錄
+            // 路徑結構：sleepAirline (collection) > sleepAirline (doc) > flight (collection) > [新 document]
+            // 這樣每次保存都會創建一個新的 document，不會覆蓋之前的記錄
+            const flightCollectionRef = db
                 .collection('artifacts')
                 .doc(APP_ID)
                 .collection('userProfiles')
                 .doc('sleepAirline')
                 .collection('sleepAirline')
-                .doc('flight'); // 固定文件 ID
+                .collection('flight'); // flight 是 collection，每次創建新 document
 
-            await flightDocRef.set(
-                {
-                    ...baseRecordData,
-                    ...artifactsData,
-                },
-                { merge: true } // 使用 merge 避免覆蓋你之後可能手動新增的欄位
-            );
+            // 使用 add() 創建新的 document（自動生成 ID）
+            const flightDocRef = await flightCollectionRef.add({
+                ...baseRecordData,
+                ...artifactsData,
+            });
 
-            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/flight`;
-            console.log('✅ 個人檔案記錄已儲存到 artifacts（文件路徑）:', userProfilePath);
+            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/flight/${flightDocRef.id}`;
+            console.log('✅ 個人檔案記錄已儲存到 artifacts（新 document）:', userProfilePath);
+            console.log('   文件 ID:', flightDocRef.id);
 
             // 儲存到公共資料結構（對應網頁版眾人地圖）
             const publicDataPath = `artifacts/${APP_ID}/publicData/allSharedEntries/dailyRecords`;
@@ -301,7 +302,7 @@ export default async function handler(req, res) {
                 success: true,
                 message: '記錄已成功儲存',
                 artifactsIds: {
-                    userProfileId: userProfileDocRef.id,
+                    userProfileId: flightDocRef.id, // 新創建的 flight document ID
                     publicDataId: publicDocRef.id
                 },
                 legacyIds: {  // 棄用
