@@ -288,6 +288,45 @@
             padding: 20px;
             box-sizing: border-box;
         }
+        
+        /* 情緒量表專用樣式 - 確保符合 bar 尺寸 */
+        #stateFlightFeedback {
+            padding: 12px 20px 16px 20px; /* 減少上下 padding，確保內容能完整顯示 */
+            justify-content: flex-start;
+        }
+        
+        #stateFlightFeedback .state-label {
+            margin-bottom: 8px; /* 減少標題下方間距 */
+            font-size: 16px; /* 稍微減小字體 */
+        }
+        
+        #stateFlightFeedback .options-container {
+            flex: 1;
+            padding: 8px 4px; /* 減少 padding */
+            align-items: center; /* 垂直居中 */
+            min-height: 0; /* 允許縮小 */
+        }
+        
+        #stateFlightFeedback .feedback-option {
+            min-width: 100px; /* 稍微減小最小寬度 */
+            max-width: 120px;
+            padding: 12px 8px; /* 減少 padding */
+            font-size: 12px; /* 稍微減小字體 */
+        }
+        
+        #stateFlightFeedback .climate-icon {
+            font-size: 24px; /* 稍微減小圖標 */
+        }
+        
+        #stateFlightFeedback .climate-name {
+            font-size: 13px; /* 稍微減小字體 */
+            margin-top: 4px;
+        }
+        
+        #stateFlightFeedback .climate-desc {
+            font-size: 11px; /* 稍微減小字體 */
+            margin-top: 2px;
+        }
 
         .info-state.active {
             display: flex !important;
@@ -2578,9 +2617,15 @@
                 return;
             }
             
-            // 1.3 降落完成階段（LANDING）- 單擊無效，等待後續處理
+            // 1.3 降落完成階段（LANDING）- 檢查是否正在執行降落流程
             if (currentPhase === Phase.LANDING) {
-                console.log('ℹ️ [LANDING] 降落完成階段，單擊無效');
+                // 如果降落流程正在執行中，忽略按鈕（防止重複觸發）
+                if (landingExecuted) {
+                    console.log('ℹ️ [LANDING] 降落流程正在執行中，忽略按鈕');
+                    return;
+                }
+                // 如果降落流程還沒執行，可能是狀態不一致，記錄警告
+                console.log('⚠️ [LANDING] 降落階段但降落流程未執行，當前狀態:', currentState);
                 return;
             }
             
@@ -3094,15 +3139,12 @@
             console.log('✅ 起飛序列完成，進入巡航階段');
             const descentTime = durationMs - (5 * 60 * 1000); // 提前 5 分鐘
             
-            // 設定降落前 5 分鐘提醒
+            // 設定降落前 5 分鐘提醒（只切換到 Phase 6，不自動切換到 Phase 7）
             sleepTimer = setTimeout(() => {
                 switchToPhase(Phase.DESCENT);
             }, descentTime);
             
-            // 設定降落時間
-            setTimeout(() => {
-                switchToPhase(Phase.LANDING);
-            }, durationMs);
+            // 注意：不再自動切換到 Phase 7，必須在 Phase 6 時按下按鈕才會觸發降落
             
             // 設置當前階段為 CRUISE（但不調用 handleCruise，因為進度條已經顯示）
             currentPhase = Phase.CRUISE;
@@ -5797,6 +5839,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 // 顯示回饋選單（在 bar 上）
                 feedbackState.style.display = 'flex'; // 使用 flex 確保正確顯示
                 feedbackState.style.zIndex = '100'; // 確保在圖片上方
+                feedbackState.classList.add('active'); // 添加 active class 確保顯示
+                console.log('✅ 情緒量表已顯示，display:', feedbackState.style.display, 'zIndex:', feedbackState.style.zIndex, 'active:', feedbackState.classList.contains('active'));
                 
                 // 初始化選中狀態（第一個選項）
                 let selectedIndex = 0;
@@ -7188,12 +7232,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 }
             }
             
-            // 2. 停止進度條更新
-            if (window._flightProgressInterval) {
-                console.log('🛑 停止飛行進度條更新');
-                clearInterval(window._flightProgressInterval);
-                window._flightProgressInterval = null;
-            }
+            // 2. 進度條繼續運行（不停止，直到真正降落）
+            // 注意：進度條應該繼續運行，直到 Phase 7 真正降落時才停止
             
             // 3. 清除 sleepTimer（如果還在等待）
             if (sleepTimer) {
@@ -7981,6 +8021,19 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             
             // 顯示飛行回饋選單（情緒量表）在 bar 上 - 必須填寫完才能繼續
             console.log('📋 顯示情緒量表...');
+            
+            // 確保 stateFlightFeedback 元素存在並準備顯示
+            const feedbackState = document.getElementById('stateFlightFeedback');
+            if (feedbackState) {
+                // 先確保它被添加到 active class，並設置正確的樣式
+                feedbackState.classList.add('active');
+                feedbackState.style.display = 'flex';
+                feedbackState.style.zIndex = '100';
+                console.log('✅ 情緒量表 UI 已準備顯示');
+            } else {
+                console.warn('⚠️ stateFlightFeedback 元素不存在');
+            }
+            
             const feedbackData = await showFlightFeedback(finalDestination);
             console.log('✅ 情緒量表作答完成');
             
