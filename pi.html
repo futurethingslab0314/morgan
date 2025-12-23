@@ -2759,17 +2759,31 @@
             // 1. 先播放 captain.mp3（只播放前 6 秒），必須完全播放完成後才能繼續
             console.log('1️⃣ 開始播放 captain.mp3（只播放前 6 秒）...');
             
-            // 確保沒有任何 TTS 正在播放
+            // 先取消所有 TTS 播放
             if ('speechSynthesis' in window) {
                 speechSynthesis.cancel();
+                console.log('✅ 已取消所有 TTS 播放');
             }
             
             try {
-                // 使用 Promise 確保完全播放完成
+                // 使用 new Audio() 和 Promise 確保完全播放完成
                 const captainAudio = new Audio('sounds/captain.mp3');
                 captainAudio.volume = 1.0;
+                captainAudio.preload = 'auto';
                 
-                await new Promise((resolve, reject) => {
+                // 等待音頻載入完成
+                await new Promise((resolve) => {
+                    if (captainAudio.readyState >= 2) {
+                        resolve();
+                    } else {
+                        captainAudio.addEventListener('canplaythrough', () => resolve(), { once: true });
+                        captainAudio.addEventListener('error', () => resolve(), { once: true });
+                        captainAudio.load();
+                    }
+                });
+                
+                // 播放 captain.mp3，使用 setTimeout 精確控制 6 秒
+                await new Promise((resolve) => {
                     const timeout = setTimeout(() => {
                         captainAudio.pause();
                         captainAudio.currentTime = 0;
@@ -2779,7 +2793,7 @@
                     
                     captainAudio.onended = () => {
                         clearTimeout(timeout);
-                        console.log('✅ captain.mp3 自然播放完成');
+                        console.log('✅ captain.mp3 自然播放完成（但只播放 6 秒）');
                         resolve();
                     };
                     
@@ -2789,7 +2803,9 @@
                         resolve(); // 即使錯誤也繼續
                     };
                     
-                    captainAudio.play().catch(err => {
+                    captainAudio.play().then(() => {
+                        console.log('▶️ captain.mp3 開始播放');
+                    }).catch(err => {
                         clearTimeout(timeout);
                         console.warn('⚠️ captain.mp3 播放失敗:', err);
                         resolve(); // 即使失敗也繼續
@@ -2799,9 +2815,11 @@
                 // 確保音頻完全停止
                 captainAudio.pause();
                 captainAudio.currentTime = 0;
+                captainAudio.src = ''; // 清空音源，確保完全釋放
                 
-                // 等待額外時間，確保音頻系統已清空
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // 完全停止後等待 0ms（立即繼續，不等待）
+                // 注意：雖然是 0ms，但這會讓瀏覽器有機會完成音頻停止操作
+                await new Promise(resolve => setTimeout(resolve, 0));
                 console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
             } catch (error) {
                 console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
