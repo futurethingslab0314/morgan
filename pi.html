@@ -1139,43 +1139,38 @@
         </div>
     </div>
 
-    <!-- 飛行回饋選單（入境登記）- 改為下方 bar 樣式，類似氣候 UI -->
+    <!-- 飛行回饋選單（入境登記）- 下方 bar，1～5 分量表 -->
     <div class="info-state" id="stateFlightFeedback" style="display: none;">
-        <div class="state-label">💭 抵達後，您現在的體感狀態是？</div>
+        <div class="state-label">💭 抵達後，這趟睡眠體驗你會給幾分？（1～5 分）</div>
         <div class="options-container" id="feedbackOptions">
-            <div class="angle-option climate-option feedback-option" data-feedback="VERY_TIRED" data-position="0" id="feedbackOption0">
-                <div class="climate-icon">😵</div>
-                <div class="climate-name">我暈機了</div>
-                <div class="climate-desc">最不舒服</div>
+            <div class="angle-option climate-option feedback-option" data-feedback="1" data-position="0" id="feedbackOption0">
+                <div class="climate-icon">1️⃣</div>
+                <div class="climate-name">1 分</div>
+                <div class="climate-desc">很不舒服／幾乎沒休息到</div>
             </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="TIRED" data-position="1" id="feedbackOption1">
-                <div class="climate-icon">😴</div>
-                <div class="climate-name">需要調一下時差</div>
-                <div class="climate-desc">有點累</div>
+            <div class="angle-option climate-option feedback-option" data-feedback="2" data-position="1" id="feedbackOption1">
+                <div class="climate-icon">2️⃣</div>
+                <div class="climate-name">2 分</div>
+                <div class="climate-desc">普通偏累／狀態不太好</div>
             </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="NEUTRAL" data-position="2" id="feedbackOption2">
-                <div class="climate-icon">😐</div>
-                <div class="climate-name">普通</div>
-                <div class="climate-desc">還可以</div>
+            <div class="angle-option climate-option feedback-option" data-feedback="3" data-position="2" id="feedbackOption2">
+                <div class="climate-icon">3️⃣</div>
+                <div class="climate-name">3 分</div>
+                <div class="climate-desc">還可以／普通狀態</div>
             </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="GOOD" data-position="3" id="feedbackOption3">
-                <div class="climate-icon">🙂</div>
-                <div class="climate-name">不錯</div>
-                <div class="climate-desc">感覺良好</div>
+            <div class="angle-option climate-option feedback-option" data-feedback="4" data-position="3" id="feedbackOption3">
+                <div class="climate-icon">4️⃣</div>
+                <div class="climate-name">4 分</div>
+                <div class="climate-desc">精神不錯／大致休息好</div>
             </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="ENERGETIC" data-position="4" id="feedbackOption4">
-                <div class="climate-icon">😊</div>
-                <div class="climate-name">很有精神</div>
-                <div class="climate-desc">動力滿滿</div>
-            </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="VERY_ENERGETIC" data-position="5" id="feedbackOption5">
-                <div class="climate-icon">⚡</div>
-                <div class="climate-name">超有精神</div>
-                <div class="climate-desc">活力充沛</div>
+            <div class="angle-option climate-option feedback-option" data-feedback="5" data-position="4" id="feedbackOption4">
+                <div class="climate-icon">5️⃣</div>
+                <div class="climate-name">5 分</div>
+                <div class="climate-desc">非常有精神／醒來超舒服</div>
             </div>
         </div>
         <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
-            旋鈕選擇，按鈕確認
+            旋鈕選擇 1～5 分，按一次按鈕或點擊任一分數送出
         </div>
     </div>
 
@@ -5864,10 +5859,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 feedbackState.classList.add('active'); // 添加 active class 確保顯示
                 console.log('✅ 情緒量表已顯示，display:', feedbackState.style.display, 'zIndex:', feedbackState.style.zIndex, 'active:', feedbackState.classList.contains('active'));
                 
-                // 初始化選中狀態（第一個選項）
-                let selectedIndex = 0;
-                let selectedFeedback = 'VERY_TIRED';
-                updateSelection(0);
+                // 初始化選中狀態（預設 3 分）
+                let selectedIndex = 2; // 對應 3 分
+                let selectedFeedback = '3';
+                updateSelection(selectedIndex);
                 
                 // 更新選中狀態（使用 active class，類似氣候選項）
                 function updateSelection(index) {
@@ -5879,11 +5874,16 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         }
                     });
                     selectedIndex = index;
-                    selectedFeedback = options[index].getAttribute('data-feedback');
+                    // data-feedback 目前為 "1" ~ "5"
+                    selectedFeedback = options[index].getAttribute('data-feedback') || String(index + 1);
                 }
                 
-                // 旋鈕選擇邏輯（6 個選項，直接對應旋鈕位置 0-5）
+                // 旋鈕選擇邏輯（5 個選項，直接對應旋鈕位置 0-4）
                 let knobSelectionActive = true;
+                const maxIndex = options.length > 0 ? options.length - 1 : 4;
+                const FEEDBACK_TIMEOUT_MS = 30000; // 最多等待 30 秒
+                let buttonPressHandled = false;
+                
                 const knobSelectionInterval = setInterval(() => {
                     if (!knobSelectionActive) return;
                     
@@ -5892,8 +5892,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         .then(data => {
                             if (data.success && data.position !== undefined) {
                                 const position = data.position;
-                                // 旋鈕位置（0-5）直接對應選項索引（0-5）
-                                const clampedIndex = Math.max(0, Math.min(5, position));
+                                // 旋鈕位置（0-maxIndex）直接對應選項索引
+                                const clampedIndex = Math.max(0, Math.min(maxIndex, position));
                                 if (clampedIndex !== selectedIndex) {
                                     updateSelection(clampedIndex);
                                 }
@@ -5904,8 +5904,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         });
                 }, 200);
                 
-                // 按鈕確認邏輯
-                let buttonPressHandled = false;
+                // 按鈕確認邏輯（仍然使用本地 API，但加上超時保護）
                 const buttonCheckInterval = setInterval(() => {
                     if (buttonPressHandled) return;
                     
@@ -5919,12 +5918,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                                 // 清除輪詢
                                 clearInterval(knobSelectionInterval);
                                 clearInterval(buttonCheckInterval);
+                                clearTimeout(timeoutId);
                                 
                                 // 隱藏選單
                                 feedbackState.style.display = 'none';
                                 
                                 // 返回選擇的回饋
-                                console.log('✅ 飛行回饋已收集:', selectedFeedback);
+                                console.log('✅ 飛行回饋已收集（按鈕確認）:', selectedFeedback);
                                 resolve(selectedFeedback);
                             }
                         })
@@ -5932,6 +5932,20 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                             // 忽略錯誤，繼續輪詢
                         });
                 }, 200);
+                
+                // 超時保護：最多等待 FEEDBACK_TIMEOUT_MS，超時後自動帶入目前選擇
+                const timeoutId = setTimeout(() => {
+                    if (buttonPressHandled) return;
+                    buttonPressHandled = true;
+                    knobSelectionActive = false;
+                    
+                    clearInterval(knobSelectionInterval);
+                    clearInterval(buttonCheckInterval);
+                    
+                    feedbackState.style.display = 'none';
+                    console.log('⏰ 情緒量表等待超時，自動使用目前分數:', selectedFeedback);
+                    resolve(selectedFeedback);
+                }, FEEDBACK_TIMEOUT_MS);
                 
                 // 點擊選項（桌面測試用）
                 options.forEach((opt, index) => {
@@ -5946,12 +5960,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         
                         clearInterval(knobSelectionInterval);
                         clearInterval(buttonCheckInterval);
+                        clearTimeout(timeoutId);
                         
                         updateSelection(index);
                         feedbackState.style.display = 'none';
                         
-                        const feedback = newOpt.getAttribute('data-feedback');
-                        console.log('✅ 飛行回饋已收集:', feedback);
+                        const feedback = newOpt.getAttribute('data-feedback') || String(index + 1);
+                        console.log('✅ 飛行回饋已收集（點擊）:', feedback);
                         resolve(feedback);
                     });
                 });
