@@ -4093,12 +4093,23 @@
                         
                         // 顯示降落圖片到 800x800 視窗
                         const windowContent = document.querySelector('.window-content');
+                        const initialImage = document.getElementById('initialImage');
+                        
                         if (windowContent) {
-                            // 清除任何現有的背景
+                            // 設置新圖片為背景，並確保在 taipei.png 之上
                             windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
                             windowContent.style.backgroundSize = 'cover';
                             windowContent.style.backgroundPosition = 'center';
                             windowContent.style.backgroundRepeat = 'no-repeat';
+                            windowContent.style.zIndex = '6'; // 確保在 initial-image (z-index: 5) 之上
+                            
+                            // 隱藏 taipei.png（initial-image）
+                            if (initialImage) {
+                                initialImage.style.display = 'none';
+                                initialImage.style.opacity = '0';
+                                console.log('✅ 已隱藏 taipei.png，顯示新圖片');
+                            }
+                            
                             // 確保視窗可見
                             windowContent.style.display = 'block';
                             console.log('✅ 最新降落圖片已顯示到 800x800 視窗:', destinationImageUrl);
@@ -4106,7 +4117,54 @@
                             console.warn('⚠️ 找不到 .window-content 元素，無法顯示圖片');
                         }
                     } else {
-                        console.warn('⚠️ Firebase 記錄中沒有圖片 URL');
+                        console.warn('⚠️ Firebase 記錄中沒有圖片 URL，使用預設 taipei.png');
+                        // 如果沒有新圖片，確保 taipei.png 顯示
+                        const initialImage = document.getElementById('initialImage');
+                        if (initialImage) {
+                            initialImage.style.display = 'block';
+                            initialImage.style.opacity = '1';
+                        }
+                    }
+                    
+                    // 從 sleepcity.json 獲取 flag（優先使用 sleepcity.json 的 flag）
+                    let flagEmoji = '🏳️'; // 預設國旗
+                    try {
+                        const sleepCityResponse = await fetch('sleepcity.json');
+                        if (sleepCityResponse.ok) {
+                            const sleepCityData = await sleepCityResponse.json();
+                            const matchingCity = sleepCityData.cities.find(city => 
+                                (city.city === destinationData.city || city.city_zh === destinationData.city_zh) &&
+                                (city.country === destinationData.country || city.country_zh === destinationData.country_zh)
+                            );
+                            if (matchingCity && matchingCity.flag) {
+                                flagEmoji = matchingCity.flag;
+                                console.log('✅ 從 sleepcity.json 獲取國旗:', flagEmoji);
+                            } else {
+                                // 如果找不到匹配的城市，嘗試用國家代碼生成
+                                const countryCode = destinationData.country_iso_code || '';
+                                if (countryCode && countryCode.length === 2) {
+                                    const codePoints = countryCode.toUpperCase().split('').map(char => 
+                                        0x1F1E6 + char.charCodeAt(0) - 65
+                                    );
+                                    if (codePoints.length === 2) {
+                                        flagEmoji = String.fromCodePoint(...codePoints);
+                                        console.log('✅ 使用國家代碼生成國旗:', flagEmoji);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ 無法載入 sleepcity.json，使用預設國旗:', error);
+                        // 如果載入失敗，使用國家代碼生成
+                        const countryCode = destinationData.country_iso_code || '';
+                        if (countryCode && countryCode.length === 2) {
+                            const codePoints = countryCode.toUpperCase().split('').map(char => 
+                                0x1F1E6 + char.charCodeAt(0) - 65
+                            );
+                            if (codePoints.length === 2) {
+                                flagEmoji = String.fromCodePoint(...codePoints);
+                            }
+                        }
                     }
                     
                     // 更新「所在國家」（stateCountry）為新的降落地點
@@ -4119,36 +4177,36 @@
                             console.log('✅ 已更新「所在國家」為:', destinationData.country_zh || destinationData.country);
                         }
                         
-                        // 更新國旗 emoji
+                        // 更新國旗 emoji（使用從 sleepcity.json 獲取的 flag）
                         const countryFlagEl = stateCountry.querySelector('.country-flag');
                         if (countryFlagEl) {
-                            const countryCode = destinationData.country_iso_code || '';
-                            if (countryCode && countryCode.length === 2) {
-                                // 將國家代碼轉換為國旗 emoji
-                                const codePoints = countryCode.toUpperCase().split('').map(char => 
-                                    0x1F1E6 + char.charCodeAt(0) - 65
-                                );
-                                if (codePoints.length === 2) {
-                                    const flagEmoji = String.fromCodePoint(...codePoints);
-                                    countryFlagEl.textContent = flagEmoji;
-                                    console.log('✅ 已更新「所在國家」國旗:', flagEmoji, '國家代碼:', countryCode);
-                                }
-                            }
+                            countryFlagEl.textContent = flagEmoji;
+                            console.log('✅ 已更新「所在國家」國旗:', flagEmoji);
                         }
                     }
                     
-                    // 顯示國家資訊 bar（只在 Phase 0 時顯示）
-                    if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) {
-                        await showLandingCountryInfo(destinationData);
+                    // 只顯示 stateCountry（所在國家），不顯示 stateLandingCountryInfo（統一使用一種 UI）
+                    // 隱藏 stateLandingCountryInfo
+                    const countryInfoState = document.getElementById('stateLandingCountryInfo');
+                    if (countryInfoState) {
+                        countryInfoState.style.display = 'none';
+                        countryInfoState.classList.remove('active');
                     }
                     
                     console.log('✅ 已載入最新降落位置:', destinationData.city_zh || destinationData.city, destinationData.country_zh || destinationData.country);
                 } else {
                     console.log('ℹ️ 沒有找到最新的降落記錄，顯示預設首頁');
+                    // 顯示預設 taipei.png
+                    const initialImage = document.getElementById('initialImage');
+                    if (initialImage) {
+                        initialImage.style.display = 'block';
+                        initialImage.style.opacity = '1';
+                    }
                     // 隱藏國家資訊 bar（如果有的話）
                     const countryInfoState = document.getElementById('stateLandingCountryInfo');
                     if (countryInfoState) {
                         countryInfoState.style.display = 'none';
+                        countryInfoState.classList.remove('active');
                     }
                 }
             } catch (error) {
@@ -6808,43 +6866,78 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         }
 
         // 顯示降落後國家資訊（填寫完情緒量表後）
-        function showLandingCountryInfo(destination) {
-            return new Promise((resolve) => {
-                const countryInfoState = document.getElementById('stateLandingCountryInfo');
-                const flagEl = document.getElementById('landingCountryFlag');
-                const nameEl = document.getElementById('landingCountryName');
-                const descEl = document.getElementById('landingCountryDesc');
-                
-                if (!countryInfoState || !flagEl || !nameEl || !descEl) {
-                    console.warn('⚠️ 降落國家資訊元素不存在');
-                    resolve();
-                    return;
-                }
-                
-                // 獲取國旗 emoji（根據國家代碼）
-                const countryCode = destination.country_iso_code || '';
+        async function showLandingCountryInfo(destination) {
+            return new Promise(async (resolve) => {
+                // 統一使用 stateCountry（所在國家），不再使用 stateLandingCountryInfo
+                // 從 sleepcity.json 獲取 flag（優先使用 sleepcity.json 的 flag）
                 let flagEmoji = '🏳️'; // 預設國旗
-                
-                // 簡單的國旗 emoji 映射（根據 ISO 3166-1 alpha-2 代碼）
-                if (countryCode && countryCode.length === 2) {
-                    // 將國家代碼轉換為國旗 emoji（使用 Unicode 區域指示符）
-                    const codePoints = countryCode.toUpperCase().split('').map(char => 
-                        0x1F1E6 + char.charCodeAt(0) - 65
-                    );
-                    if (codePoints.length === 2) {
-                        flagEmoji = String.fromCodePoint(...codePoints);
+                try {
+                    const sleepCityResponse = await fetch('sleepcity.json');
+                    if (sleepCityResponse.ok) {
+                        const sleepCityData = await sleepCityResponse.json();
+                        const matchingCity = sleepCityData.cities.find(city => 
+                            (city.city === destination.city || city.city_zh === destination.city_zh) &&
+                            (city.country === destination.country || city.country_zh === destination.country_zh)
+                        );
+                        if (matchingCity && matchingCity.flag) {
+                            flagEmoji = matchingCity.flag;
+                            console.log('✅ 從 sleepcity.json 獲取國旗:', flagEmoji);
+                        } else {
+                            // 如果找不到匹配的城市，嘗試用國家代碼生成
+                            const countryCode = destination.country_iso_code || '';
+                            if (countryCode && countryCode.length === 2) {
+                                const codePoints = countryCode.toUpperCase().split('').map(char => 
+                                    0x1F1E6 + char.charCodeAt(0) - 65
+                                );
+                                if (codePoints.length === 2) {
+                                    flagEmoji = String.fromCodePoint(...codePoints);
+                                    console.log('✅ 使用國家代碼生成國旗:', flagEmoji);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('⚠️ 無法載入 sleepcity.json，使用預設國旗:', error);
+                    // 如果載入失敗，使用國家代碼生成
+                    const countryCode = destination.country_iso_code || '';
+                    if (countryCode && countryCode.length === 2) {
+                        const codePoints = countryCode.toUpperCase().split('').map(char => 
+                            0x1F1E6 + char.charCodeAt(0) - 65
+                        );
+                        if (codePoints.length === 2) {
+                            flagEmoji = String.fromCodePoint(...codePoints);
+                        }
                     }
                 }
                 
-                // 更新 UI
-                flagEl.textContent = flagEmoji;
-                nameEl.textContent = destination.country_zh || destination.country || '未知國家';
+                // 更新 stateCountry（所在國家）
+                const stateCountry = document.getElementById('stateCountry');
+                if (stateCountry) {
+                    // 更新國家名稱
+                    const currentCountryEl = document.getElementById('currentCountry');
+                    if (currentCountryEl) {
+                        currentCountryEl.textContent = destination.country_zh || destination.country || '未知國家';
+                    }
+                    
+                    // 更新國旗 emoji（使用從 sleepcity.json 獲取的 flag）
+                    const countryFlagEl = stateCountry.querySelector('.country-flag');
+                    if (countryFlagEl) {
+                        countryFlagEl.textContent = flagEmoji;
+                    }
+                    
+                    // 確保 stateCountry 顯示（只在 Phase 0 時）
+                    if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) {
+                        stateCountry.style.display = 'flex';
+                        stateCountry.classList.add('active');
+                    }
+                }
                 
-                // 生成國家描述（一小段 prompt 文字）
-                const cityName = destination.city_zh || destination.city || '';
-                const countryName = destination.country_zh || destination.country || '';
-                const descText = `歡迎來到 ${cityName}，${countryName}。這是一個充滿魅力的目的地，等待您探索。`;
-                descEl.textContent = descText;
+                // 隱藏 stateLandingCountryInfo（統一使用 stateCountry）
+                const countryInfoState = document.getElementById('stateLandingCountryInfo');
+                if (countryInfoState) {
+                    countryInfoState.style.display = 'none';
+                    countryInfoState.classList.remove('active');
+                }
                 
                 // 隱藏情緒量表
                 const feedbackState = document.getElementById('stateFlightFeedback');
@@ -6853,11 +6946,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     feedbackState.classList.remove('active');
                 }
                 
-                // 顯示國家資訊 bar（在底部 bar 區域，使用 flex 以符合 .info-state 樣式）
-                countryInfoState.style.display = 'flex';
-                countryInfoState.classList.add('active');
-                
-                console.log('✅ 降落國家資訊已顯示:', cityName, countryName);
+                const cityName = destination.city_zh || destination.city || '';
+                const countryName = destination.country_zh || destination.country || '';
+                console.log('✅ 降落國家資訊已更新到 stateCountry:', cityName, countryName);
                 resolve();
             });
         }
