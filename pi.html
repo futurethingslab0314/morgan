@@ -654,11 +654,11 @@
 
         .timer-progress-bar {
             display: flex;
-            gap: 6px;
-            align-items: flex-end;
+            gap: 8px;
+            align-items: center;
             justify-content: center;
-            height: 140px;
-            padding: 0 10px;
+            height: 100px;
+            padding: 0 20px;
         }
 
         .timer-progress-segment {
@@ -668,7 +668,7 @@
             align-items: center;
             position: relative;
             cursor: pointer;
-            max-width: 80px;
+            max-width: 100px;
         }
         
         .timer-progress-segment:hover .timer-segment-fill {
@@ -678,31 +678,19 @@
 
         .timer-segment-fill {
             width: 100%;
-            background: #fff5f0;
+            height: 60px; /* 固定高度，所有格子相同 */
+            background: transparent; /* 預設透明（只有邊框） */
             border: 2px solid #ffb399;
-            border-radius: 8px 8px 0 0;
+            border-radius: 4px;
             transition: all 0.2s ease;
-            min-height: 20px;
             position: relative;
             overflow: hidden;
-            display: flex;
-            align-items: flex-end;
         }
 
         .timer-progress-segment.active .timer-segment-fill {
-            background: linear-gradient(180deg, #ff6b35 0%, #ff8c5a 100%);
+            background: #ff6b35; /* 選中的完全填充橙色 */
             border-color: #ff6b35;
-            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
-        }
-
-        .timer-progress-segment.active .timer-segment-fill::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
         }
 
         .timer-segment-label {
@@ -1160,12 +1148,19 @@
                 <div style="font-size: 20px; font-weight: bold; color: #ff6b35; margin-bottom: 15px;">
                     一切準備就緒
                 </div>
+                
+                <!-- 目的地資訊（橫式排版：國旗 + 城市名稱 + 國家名稱） -->
+                <div id="readyDestinationInfo" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0; padding: 12px 20px; background: #fff5f0; border-radius: 12px; border: 2px solid #ffb399;">
+                    <span id="readyDestinationFlag" style="font-size: 32px; line-height: 1;">🏳️</span>
+                    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                        <span id="readyDestinationCity" style="font-size: 18px; font-weight: 600; color: #ff6b35; line-height: 1.2;">計算中...</span>
+                        <span id="readyDestinationCountry" style="font-size: 14px; color: #666; line-height: 1.2;">目的地</span>
+                    </div>
+                </div>
+                
                 <div style="font-size: 16px; color: #666; margin-bottom: 10px;">
                     請再次按下按鈕開始起飛
                 </div>
-                <!-- <div id="readyDestinationInfo" style="font-size: 14px; color: #999; margin-top: 15px;">
-                    ...
-                </div> -->
                 <!-- 登機／等待機長廣播的動態提示 -->
                 <div class="boarding-status" id="boardingStatus">
                     <span class="boarding-status-text">登機中，請舒適入座，等待機長廣播...</span>
@@ -1244,17 +1239,17 @@
         <div class="options-container" id="feedbackOptions">
             <div class="angle-option climate-option feedback-option" data-feedback="1" data-position="0" id="feedbackOption0">
                 <div class="climate-icon">1️⃣</div>
-                <div class="climate-name">1 分</div>
+              
                 <div class="climate-desc">很不舒服／幾乎沒休息到</div>
             </div>
             <div class="angle-option climate-option feedback-option" data-feedback="2" data-position="1" id="feedbackOption1">
                 <div class="climate-icon">2️⃣</div>
-                <div class="climate-name">2 分</div>
+              
                 <div class="climate-desc">普通偏累／狀態不太好</div>
             </div>
             <div class="angle-option climate-option feedback-option" data-feedback="3" data-position="2" id="feedbackOption2">
                 <div class="climate-icon">3️⃣</div>
-                <div class="climate-name">3 分</div>
+              
                 <div class="climate-desc">還可以／普通狀態</div>
             </div>
             <div class="angle-option climate-option feedback-option" data-feedback="4" data-position="3" id="feedbackOption3">
@@ -1446,11 +1441,36 @@
                 stateElement.classList.add('active');
                 console.log('✅ 成功切換到狀態:', newState, '元素 ID:', stateId);
                 
-                // 如果是準備起航狀態，更新目的地資訊顯示
+                // 如果是準備起航狀態，更新目的地資訊顯示（橫式排版：國旗 + 城市 + 國家）
                 if (newState === State.READY_TO_FLY && destinationData) {
-                    const readyInfo = document.getElementById('readyDestinationInfo');
-                    if (readyInfo) {
-                        readyInfo.textContent = destinationData.city + ', ' + destinationData.country;
+                    const readyFlagEl = document.getElementById('readyDestinationFlag');
+                    const readyCityEl = document.getElementById('readyDestinationCity');
+                    const readyCountryEl = document.getElementById('readyDestinationCountry');
+                    
+                    // 更新城市名稱
+                    if (readyCityEl) {
+                        readyCityEl.textContent = destinationData.city_zh || destinationData.city || '未知城市';
+                    }
+                    
+                    // 更新國家名稱
+                    if (readyCountryEl) {
+                        readyCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
+                    }
+                    
+                    // 更新國旗（根據 country_iso_code 轉 emoji）
+                    if (readyFlagEl) {
+                        const countryCode = destinationData.country_iso_code || '';
+                        let flagEmoji = '🏳️';
+                        if (countryCode && countryCode.length === 2) {
+                            const codePoints = countryCode
+                                .toUpperCase()
+                                .split('')
+                                .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                            if (codePoints.length === 2) {
+                                flagEmoji = String.fromCodePoint(...codePoints);
+                            }
+                        }
+                        readyFlagEl.textContent = flagEmoji;
                     }
                 }
             } else {
@@ -1492,23 +1512,15 @@
             selectedTimer = timerOptions[position];
             
             // 更新進度條：累積效果（選中 position N，前 N+1 個格子都亮）
+            // 所有格子高度相同，選中的填充橙色，未選中的只有邊框
             const segments = document.querySelectorAll('.timer-progress-segment');
-            const maxHeight = 100; // 最大高度（px）
             
             segments.forEach((segment, idx) => {
                 const segmentPosition = parseInt(segment.dataset.position) || idx;
                 const isActive = segmentPosition <= position; // 累積：選中 N，前 N+1 個都亮
                 
-                // 更新 active 狀態
+                // 更新 active 狀態（不需要修改高度，因為 CSS 已經固定高度）
                 segment.classList.toggle('active', isActive);
-                
-                // 更新每個格子的高度（越後面的越高，形成階梯效果）
-                const heightPercent = ((segmentPosition + 1) / segments.length) * 100;
-                const height = (maxHeight * heightPercent) / 100;
-                const fillEl = segment.querySelector('.timer-segment-fill');
-                if (fillEl) {
-                    fillEl.style.height = `${height}px`;
-                }
             });
             
             // 兼容舊的 .timer-option（如果還有其他地方用到）
@@ -2438,38 +2450,53 @@
             });
             
             if (isCruise) {
-                // 巡航階段專用邏輯：
+                // ============================================================================
+                // 巡航階段專用邏輯（完全獨立，不受其他階段邏輯干擾）
                 // 單擊：顯示「是否提前降落」確認
                 // 雙擊：觸發深夜機上服務（飛機餐）
+                // ============================================================================
+                
+                // 清除非巡航階段可能留下的狀態（確保完全獨立）
+                buttonPressSequence = []; // 巡航階段不使用 buttonPressSequence
                 
                 // 如果降落確認提示正在顯示，再按一次視為「確認提前降落」
                 if (landingConfirmActive) {
                     console.log('✅ [巡航模式] 降落確認已顯示，處理確認降落');
                     confirmEarlyLanding();
-                    lastButtonPressTime = currentTime;
+                    // 完全重置按鈕時間追蹤
+                    lastButtonPressTime = 0;
+                    if (buttonPressTimeout) {
+                        clearTimeout(buttonPressTimeout);
+                        buttonPressTimeout = null;
+                    }
                     return;
                 }
                 
-                // 檢查是否為雙擊（在 DOUBLE_CLICK_THRESHOLD 內按兩次）
+                // 如果深夜服務已經在進行，忽略所有按鈕操作
+                if (midnightServiceActive) {
+                    console.log('⚠️ [巡航模式] 深夜機上服務已啟動，忽略按鈕操作');
+                    lastButtonPressTime = 0;
+                    if (buttonPressTimeout) {
+                        clearTimeout(buttonPressTimeout);
+                        buttonPressTimeout = null;
+                    }
+                    return;
+                }
+                
+                // 計算距離上次按下的時間
                 const timeSinceLastPress = lastButtonPressTime > 0 ? currentTime - lastButtonPressTime : Infinity;
                 
+                // 雙擊檢測：在 500ms 內按兩次
                 if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > 0) {
-                    // 雙擊：立即取消之前的單擊處理，改為觸發深夜機上服務
+                    console.log('🍽️ [巡航模式] ✅ 檢測到雙擊（間隔 ' + timeSinceLastPress + 'ms），觸發深夜機上服務');
+                    
+                    // 立即取消任何待處理的單擊（包括非巡航階段可能留下的）
                     if (buttonPressTimeout) {
                         clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
                     }
                     
-                    // 如果深夜服務已經在進行，就忽略這次雙擊
-                    if (midnightServiceActive) {
-                        console.log('⚠️ [巡航模式] 深夜機上服務已啟動，忽略雙擊');
-                        lastButtonPressTime = currentTime;
-                        return;
-                    }
-                    
-                    console.log('🍽️ [巡航模式] 檢測到雙擊，觸發深夜機上服務');
-                    lastButtonPressTime = 0; // 重置，避免影響之後的判定
-                    
+                    // 立即觸發飛機餐
                     try {
                         triggerMidnightService();
                         console.log('✅ [巡航模式] triggerMidnightService() 調用成功');
@@ -2477,41 +2504,102 @@
                         console.error('❌ [巡航模式] triggerMidnightService() 調用失敗:', error);
                         console.error('   錯誤堆疊:', error.stack);
                     }
+                    
+                    // 完全重置按鈕時間追蹤，準備下一次判定
+                    lastButtonPressTime = 0;
+                    buttonPressSequence = []; // 確保清除序列
                     return;
                 }
                 
-                // 單擊：延遲處理，等待看是否有第二次按下
+                // 單擊處理：記錄時間，等待看是否有第二次按下
+                // 清除之前的單擊延遲（包括非巡航階段可能留下的）
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
                     buttonPressTimeout = null;
                 }
                 
+                // 記錄這次按下的時間
                 lastButtonPressTime = currentTime;
                 
+                // 設置延遲，等待看是否有第二次按下
                 buttonPressTimeout = setTimeout(() => {
-                    // 檢查是否在等待期間變成了雙擊（此時應該已觸發雙擊邏輯）
-                    if (landingConfirmActive || midnightServiceActive) {
-                        console.log('⚠️ [巡航模式] 在等待期間已觸發其他行為（雙擊或降落確認），取消單擊處理');
-                        buttonPressTimeout = null;
-                        return;
-                    }
-                    
-                    // 再次檢查是否仍在巡航階段（防止狀態變化）
+                    // 再次確認仍在巡航階段（防止狀態變化）
                     if (currentPhase !== Phase.CRUISE && currentPhase !== 5) {
                         console.log('⚠️ [巡航模式] 階段已變化，取消單擊處理');
                         buttonPressTimeout = null;
+                        lastButtonPressTime = 0;
                         return;
                     }
                     
-                    console.log('🛬 [巡航模式] 單擊處理：顯示提前降落確認');
+                    // 檢查是否在等待期間變成了雙擊（此時應該已觸發雙擊邏輯）
+                    if (midnightServiceActive) {
+                        console.log('⚠️ [巡航模式] 在等待期間檢測到雙擊（飛機餐已觸發），取消單擊處理');
+                        buttonPressTimeout = null;
+                        lastButtonPressTime = 0;
+                        return;
+                    }
+                    
+                    // 確認是單擊，顯示提前降落確認
+                    console.log('🛬 [巡航模式] ✅ 確認單擊（等待 ' + DOUBLE_CLICK_THRESHOLD + 'ms 無第二次按下），顯示提前降落確認');
                     showLandingConfirmation();
                     buttonPressTimeout = null;
-                }, DOUBLE_CLICK_THRESHOLD + 50); // 增加 50ms 緩衝，確保雙擊檢測優先
+                    lastButtonPressTime = 0; // 重置，準備下一次判定
+                }, DOUBLE_CLICK_THRESHOLD); // 等待 500ms，確認沒有第二次按下
                 
-                return;
+                return; // 重要：直接返回，不執行後續的非巡航階段邏輯
+            }
+            
+            // ============================================================================
+            // 優先級 0.5: Phase 7 (LANDING) 情緒量表按鈕處理
+            // ============================================================================
+            if (currentPhase === Phase.LANDING || currentPhase === 7) {
+                // 檢查是否正在等待情緒量表按鈕確認
+                if (window._feedbackWaitingForButton) {
+                    console.log('✅ [LANDING] 檢測到情緒量表等待按鈕確認，處理回饋');
+                    const selectedValue = window._feedbackSelectedValue || '3'; // 預設 3 分
+                    const resolveFunc = window._feedbackResolve;
+                    const cleanupFunc = window._feedbackCleanup;
+                    
+                    // 執行清理
+                    if (cleanupFunc) {
+                        cleanupFunc();
+                    }
+                    
+                    // 隱藏情緒量表
+                    const feedbackState = document.getElementById('stateFlightFeedback');
+                    if (feedbackState) {
+                        feedbackState.style.display = 'none';
+                    }
+                    
+                    // 返回選擇的回饋
+                    if (resolveFunc) {
+                        console.log('✅ 飛行回饋已收集（按鈕確認，全局監控）:', selectedValue);
+                        resolveFunc(selectedValue);
+                    }
+                    
+                    // 清除標記
+                    window._feedbackWaitingForButton = false;
+                    window._feedbackResolve = null;
+                    window._feedbackCleanup = null;
+                    return;
+                }
             }
             
             // 非巡航階段：使用完整的雙擊/三擊檢測邏輯
+            // 確保巡航階段的狀態不會干擾非巡航階段
+            // 如果之前是巡航階段，先清除相關狀態
+            if (lastButtonPressTime > 0) {
+                const timeSinceLastPress = currentTime - lastButtonPressTime;
+                // 如果距離上次按下超過 DOUBLE_CLICK_THRESHOLD，清除狀態（可能是從巡航階段切換過來的）
+                if (timeSinceLastPress > DOUBLE_CLICK_THRESHOLD * 2) {
+                    lastButtonPressTime = 0;
+                    if (buttonPressTimeout) {
+                        clearTimeout(buttonPressTimeout);
+                        buttonPressTimeout = null;
+                    }
+                }
+            }
+            
             // 記錄按鈕按下時間
             buttonPressSequence.push(currentTime);
             
@@ -2754,10 +2842,25 @@
                 }
                 
                 const feedbackState = document.getElementById('stateFlightFeedback');
-                const feedbackVisible = feedbackState && (
-                    feedbackState.style.display !== 'none' ||
-                    feedbackState.classList.contains('active')
-                );
+                // 更準確地檢查情緒量表是否可見（檢查多種可能的情況）
+                let feedbackVisible = false;
+                if (feedbackState) {
+                    const computedStyle = window.getComputedStyle ? window.getComputedStyle(feedbackState) : null;
+                    feedbackVisible = (
+                        (feedbackState.style.display !== 'none' && feedbackState.style.display !== '') ||
+                        feedbackState.classList.contains('active') ||
+                        (computedStyle && computedStyle.display !== 'none')
+                    );
+                }
+                
+                console.log('🔍 [LANDING] 檢查情緒量表狀態:', {
+                    feedbackState: !!feedbackState,
+                    display: feedbackState?.style.display,
+                    active: feedbackState?.classList.contains('active'),
+                    computedDisplay: feedbackState && window.getComputedStyle ? window.getComputedStyle(feedbackState).display : 'N/A',
+                    feedbackVisible,
+                    landingExecuted
+                });
                 
                 // 如果降落流程已經執行過，但情緒量表「沒有」顯示，強制打開情緒量表，避免卡死在 Phase 7
                 if (landingExecuted && !feedbackVisible) {
@@ -2766,22 +2869,52 @@
                         city: 'Unknown',
                         country: 'Unknown',
                         city_zh: '未知城市',
-                        country_zh: '未知國家'
+                        country_zh: '未知國家',
+                        country_iso_code: '',
+                        latitude: 0,
+                        longitude: 0,
+                        timezone: 'UTC'
                     };
+                    
+                    // 強制顯示情緒量表（使用 await 確保執行完成）
                     try {
+                        // 確保 UI 元素正確顯示（多重設置，確保一定顯示）
+                        if (feedbackState) {
+                            feedbackState.classList.add('active');
+                            feedbackState.style.display = 'flex';
+                            feedbackState.style.zIndex = '100';
+                            feedbackState.style.visibility = 'visible';
+                            feedbackState.style.opacity = '1';
+                            console.log('✅ [LANDING] 強制設置情緒量表 UI 顯示（多重設置）');
+                        } else {
+                            console.error('❌ [LANDING] stateFlightFeedback 元素不存在！');
+                            return;
+                        }
+                        
+                        // 調用 showFlightFeedback 並等待完成（使用 await）
                         showFlightFeedback(safeDestination).then(() => {
                             console.log('✅ [LANDING] 強制情緒量表已填寫完成（按鈕觸發）');
                         }).catch(err => {
-                            console.warn('⚠️ [LANDING] 強制顯示情緒量表失敗:', err);
+                            console.error('❌ [LANDING] 強制顯示情緒量表失敗:', err);
+                            // 即使失敗，也確保 UI 至少顯示出來
+                            if (feedbackState) {
+                                feedbackState.style.display = 'flex';
+                                feedbackState.style.zIndex = '100';
+                            }
                         });
                     } catch (e) {
-                        console.warn('⚠️ [LANDING] 呼叫 showFlightFeedback 時發生錯誤:', e);
+                        console.error('❌ [LANDING] 呼叫 showFlightFeedback 時發生錯誤:', e);
+                        // 即使出錯，也確保 UI 至少顯示出來
+                        if (feedbackState) {
+                            feedbackState.style.display = 'flex';
+                            feedbackState.style.zIndex = '100';
+                        }
                     }
                     return;
                 }
                 
                 // 如果降落流程正在執行中且情緒量表已經顯示，提示等待即可（防止重複觸發）
-                if (landingExecuted) {
+                if (landingExecuted && feedbackVisible) {
                     console.log('ℹ️ [LANDING] 降落流程正在執行中或已完成，請先在下方 bar 填寫情緒量表');
                     return;
                 }
@@ -6061,6 +6194,21 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 const FEEDBACK_TIMEOUT_MS = 30000; // 最多等待 30 秒
                 let buttonPressHandled = false;
                 
+                // 設置全局標記，讓 handlePhysicalButtonPress 知道要處理情緒量表
+                window._feedbackWaitingForButton = true;
+                window._feedbackSelectedValue = selectedFeedback;
+                window._feedbackResolve = resolve;
+                window._feedbackCleanup = () => {
+                    clearInterval(knobSelectionInterval);
+                    clearTimeout(timeoutId);
+                    if (buttonCheckInterval) {
+                        clearInterval(buttonCheckInterval);
+                    }
+                    buttonPressHandled = true;
+                    knobSelectionActive = false;
+                    window._feedbackWaitingForButton = false;
+                };
+                
                 const knobSelectionInterval = setInterval(() => {
                     if (!knobSelectionActive) return;
                     
@@ -6073,6 +6221,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                                 const clampedIndex = Math.max(0, Math.min(maxIndex, position));
                                 if (clampedIndex !== selectedIndex) {
                                     updateSelection(clampedIndex);
+                                    // 更新全局標記的選擇值
+                                    window._feedbackSelectedValue = selectedFeedback;
+                                    console.log('🔄 [情緒量表] 旋鈕選擇更新:', selectedFeedback);
                                 }
                             }
                         })
@@ -6081,7 +6232,20 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         });
                 }, 200);
                 
-                // 按鈕確認邏輯（仍然使用本地 API，但加上超時保護）
+                // 按鈕確認邏輯（使用全局按鈕監控的狀態，避免衝突）
+                // 創建一個標記，讓 handlePhysicalButtonPress 知道要處理情緒量表
+                window._feedbackWaitingForButton = true;
+                window._feedbackSelectedValue = null;
+                window._feedbackResolve = resolve;
+                window._feedbackCleanup = () => {
+                    clearInterval(knobSelectionInterval);
+                    clearTimeout(timeoutId);
+                    buttonPressHandled = true;
+                    knobSelectionActive = false;
+                    window._feedbackWaitingForButton = false;
+                };
+                
+                // 備用方案：獨立按鈕輪詢（如果全局監控不可用或失效）
                 const buttonCheckInterval = setInterval(() => {
                     if (buttonPressHandled) return;
                     
@@ -6092,6 +6256,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                                 buttonPressHandled = true;
                                 knobSelectionActive = false;
                                 
+                                // 清除標記
+                                window._feedbackWaitingForButton = false;
+                                
                                 // 清除輪詢
                                 clearInterval(knobSelectionInterval);
                                 clearInterval(buttonCheckInterval);
@@ -6101,7 +6268,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                                 feedbackState.style.display = 'none';
                                 
                                 // 返回選擇的回饋
-                                console.log('✅ 飛行回饋已收集（按鈕確認）:', selectedFeedback);
+                                console.log('✅ 飛行回饋已收集（按鈕確認，獨立輪詢）:', selectedFeedback);
                                 resolve(selectedFeedback);
                             }
                         })
@@ -6684,7 +6851,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 return; // 如果確認提示已消失，不處理
             }
             
-            console.log('🛬 確認提前降落');
+            console.log('🛬 確認提前降落（從 Phase 5 直接跳轉到 Phase 7，跳過 Phase 6）');
             hideLandingConfirmation();
             
             // 清除確認計時器
@@ -6693,9 +6860,70 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 landingConfirmTimeout = null;
             }
             
-            // 觸發手動降落
+            // 設置標記，防止 handleCruise 觸發 Phase 6
             manualLandingTriggered = true;
+            
+            // 標記已提前降落，防止 Phase 6 的邏輯執行
+            window._earlyLandingConfirmed = true;
+            
+            // 隨機選擇並播放 wakeup MP3 音樂（wakeup1.mp3、wakeup2.mp3、wakeup3.mp3 其中一首）
+            console.log('🎵 [提前降落] 開始播放 wakeup 音樂');
+            playWakeupMusicForEarlyLanding().catch(err => {
+                console.warn('⚠️ 播放 wakeup 音樂失敗:', err);
+            });
+            
+            // 觸發手動降落（直接跳轉到 Phase 7）
             triggerManualLanding();
+        }
+        
+        // 為提前降落播放 wakeup 音樂（可選）
+        async function playWakeupMusicForEarlyLanding() {
+            const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
+            const randomMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
+            
+            // 嘗試多個路徑
+            const possiblePaths = [
+                randomMusic,
+                './' + randomMusic,
+                'sounds/' + randomMusic,
+                './sounds/' + randomMusic,
+                '/sounds/' + randomMusic
+            ];
+            
+            let musicUrl = null;
+            for (const path of possiblePaths) {
+                try {
+                    const testAudio = new Audio(path);
+                    await new Promise((resolve, reject) => {
+                        testAudio.oncanplaythrough = resolve;
+                        testAudio.onerror = reject;
+                        testAudio.load();
+                        setTimeout(resolve, 500); // 超時保護
+                    });
+                    musicUrl = path;
+                    break;
+                } catch (e) {
+                    // 繼續嘗試下一個路徑
+                }
+            }
+            
+            if (!musicUrl) {
+                console.warn('⚠️ 找不到 wakeup 音樂文件，跳過播放');
+                return;
+            }
+            
+            console.log('🎵 播放 wakeup 音樂:', musicUrl);
+            const audio = new Audio(musicUrl);
+            audio.volume = 0.6; // 初始音量
+            audio.loop = false;
+            
+            // 播放音樂（不等待結束，讓它作為背景音樂）
+            audio.play().catch(err => {
+                console.warn('⚠️ 播放 wakeup 音樂失敗:', err);
+            });
+            
+            // 保存引用，以便後續調整音量
+            window._earlyLandingWakeupMusic = audio;
         }
 
         // 記錄深夜服務事件（睡眠中斷）
@@ -6755,6 +6983,16 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
         // Phase 切換函數
         function switchToPhase(phase, options = {}) {
+            // 如果切換到巡航階段，清理所有按鈕狀態，確保按鈕判定邏輯完全獨立
+            if (phase === Phase.CRUISE || phase === 5) {
+                console.log('🧹 [切換到巡航階段] 清理所有按鈕狀態，確保按鈕判定邏輯獨立');
+                lastButtonPressTime = 0;
+                buttonPressSequence = [];
+                if (buttonPressTimeout) {
+                    clearTimeout(buttonPressTimeout);
+                    buttonPressTimeout = null;
+                }
+            }
             currentPhase = phase;
             console.log('🔄 切換到 Phase ' + phase);
             
@@ -7404,9 +7642,19 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             }
             
             // 設定降落前 5 分鐘提醒（只切換到 Phase 6，不自動切換到 Phase 7）
-            sleepTimer = setTimeout(() => {
-                switchToPhase(Phase.DESCENT);
-            }, descentTime);
+            // 但如果已經提前降落，則不設置這個定時器
+            if (!window._earlyLandingConfirmed && !manualLandingTriggered) {
+                sleepTimer = setTimeout(() => {
+                    // 再次檢查是否已經提前降落（如果已經提前降落，不觸發 Phase 6）
+                    if (window._earlyLandingConfirmed || manualLandingTriggered) {
+                        console.log('ℹ️ 已提前降落，跳過 Phase 6');
+                        return;
+                    }
+                    switchToPhase(Phase.DESCENT);
+                }, descentTime);
+            } else {
+                console.log('ℹ️ 已提前降落，跳過 Phase 6 的定時器設置');
+            }
             
             // 注意：不再自動切換到 Phase 7，必須在 Phase 6 時按下按鈕才會觸發降落
         }
@@ -7732,6 +7980,12 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 descentWakeupMusic.volume = 0.15; // 調小音量，讓語音更突出
                 // 移除 onended 事件，讓音樂繼續播放直到結束
                 descentWakeupMusic.onended = null;
+            }
+            
+            // 如果在播放提前降落的 wakeup 音樂，也調小音量
+            if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
+                console.log('🔉 調低提前降落 wakeup 音樂音量，凸顯機長語音');
+                window._earlyLandingWakeupMusic.volume = 0.15; // 調小音量，讓語音更突出
             }
             
             const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
@@ -8476,10 +8730,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 優先級 1: 飛行階段特殊處理（CRUISE）
             // ============================================================================
             
-            // 如果在飛行中（Phase.CRUISE），雙擊詢問是否要提前降落
+            // 如果在飛行中（Phase.CRUISE），雙擊邏輯完全由 handlePhysicalButtonPress 處理
+            // 這裡直接返回，避免與 handlePhysicalButtonPress 的邏輯衝突
+            // 在 handlePhysicalButtonPress 中：單擊 = 降落確認，雙擊 = 飛機餐
             if (currentPhase === Phase.CRUISE || currentPhase == 5) {
-                console.log('🛬 [CRUISE] 飛行中雙擊：詢問是否提前降落');
-                showLandingConfirmation();
+                console.log('ℹ️ [CRUISE] 雙擊邏輯已由 handlePhysicalButtonPress 處理（此處不再執行動作）');
                 return;
             }
             
