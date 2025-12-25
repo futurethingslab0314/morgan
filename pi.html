@@ -1145,9 +1145,7 @@
         <div class="info-state" id="stateReady_to_fly">
             <div class="state-label">🛫 準備起航</div>
             <div class="country-display" style="margin-top: 20px; text-align: center;">
-                <div style="font-size: 20px; font-weight: bold; color: #ff6b35; margin-bottom: 15px;">
-                    一切準備就緒
-                </div>
+                
                 
                 <!-- 目的地資訊（橫式排版：國旗 + 城市名稱 + 國家名稱） -->
                 <div id="readyDestinationInfo" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0; padding: 12px 20px; background: #fff5f0; border-radius: 12px; border: 2px solid #ffb399;">
@@ -1991,6 +1989,13 @@
                     console.log('🌀 旋鈕位置變化', old, '→', pos, 'state=', currentState);
 
                     // 根據當前狀態決定如何使用旋鈕位置
+                    // 如果正在等待情緒量表按鈕確認（Phase 7），不處理全局旋鈕監控（由 showFlightFeedback 內部處理）
+                    if (window._feedbackWaitingForButton && (currentPhase === Phase.LANDING || currentPhase === 7)) {
+                        // Phase 7 時的情緒量表旋鈕選擇由 showFlightFeedback 內部的 setInterval 處理
+                        // 這裡不處理，避免衝突
+                        return;
+                    }
+                    
                     if (currentState === State.TIMER) {
                         selectTimer(pos);
                     } else if (currentState === State.ANGLE) {
@@ -3399,6 +3404,13 @@
             sleepStartTime = Date.now(); // 立即設置開始時間
             const durationMs = selectedTimer * 60 * 1000;
             
+            // 隱藏 stateCountry（所在國家）在 Phase 5 時
+            const stateCountry = document.getElementById('stateCountry');
+            if (stateCountry) {
+                stateCountry.style.display = 'none';
+                stateCountry.classList.remove('active');
+            }
+            
             // 立即顯示並初始化飛行進度條
             try {
                 const wrapper = document.getElementById('flightProgressWrapper');
@@ -3411,7 +3423,7 @@
                     fill.style.width = '0%';
                     glow.style.left = '0%';
                     
-                    // 左邊顯示目前位置（國家名稱），右邊永遠是「???」
+                    // 左邊顯示目前位置（國家名稱），右邊顯示預設目的地
                     try {
                         const countryEl = document.getElementById('currentCountry');
                         const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
@@ -3419,7 +3431,14 @@
                     } catch (e) {
                         startLabel.textContent = '目前位置';
                     }
-                    endLabel.textContent = '???';
+                    
+                    // 右邊顯示預設目的地（如果有 destinationData）
+                    if (destinationData) {
+                        const destinationName = destinationData.city_zh || destinationData.city || destinationData.country_zh || destinationData.country || '???';
+                        endLabel.textContent = destinationName;
+                    } else {
+                        endLabel.textContent = '???';
+                    }
                     
                     // 先清掉舊的計時器
                     if (window._flightProgressInterval) {
@@ -6176,6 +6195,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 
                 // 更新選中狀態（使用 active class，類似氣候選項）
                 function updateSelection(index) {
+                    if (index < 0 || index >= options.length) {
+                        console.warn('⚠️ [情緒量表] 無效的索引:', index);
+                        return;
+                    }
+                    
                     options.forEach((opt, i) => {
                         if (i === index) {
                             opt.classList.add('active');
@@ -6186,6 +6210,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     selectedIndex = index;
                     // data-feedback 目前為 "1" ~ "5"
                     selectedFeedback = options[index].getAttribute('data-feedback') || String(index + 1);
+                    
+                    // 立即更新全局標記的選擇值（確保同步）
+                    window._feedbackSelectedValue = selectedFeedback;
+                    console.log('🔄 [情緒量表] updateSelection: 索引', index, '→ 分數', selectedFeedback);
                 }
                 
                 // 旋鈕選擇邏輯（5 個選項，直接對應旋鈕位置 0-4）
@@ -6194,9 +6222,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 const FEEDBACK_TIMEOUT_MS = 30000; // 最多等待 30 秒
                 let buttonPressHandled = false;
                 
-                // 設置全局標記，讓 handlePhysicalButtonPress 知道要處理情緒量表
+                // 設置全局標記，讓 handlePhysicalButtonPress 知道要處理情緒量表（只設置一次）
                 window._feedbackWaitingForButton = true;
-                window._feedbackSelectedValue = selectedFeedback;
+                window._feedbackSelectedValue = selectedFeedback; // 初始值為預設的 3 分
                 window._feedbackResolve = resolve;
                 window._feedbackCleanup = () => {
                     clearInterval(knobSelectionInterval);
@@ -6221,9 +6249,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                                 const clampedIndex = Math.max(0, Math.min(maxIndex, position));
                                 if (clampedIndex !== selectedIndex) {
                                     updateSelection(clampedIndex);
-                                    // 更新全局標記的選擇值
+                                    // 更新全局標記的選擇值（確保同步）
                                     window._feedbackSelectedValue = selectedFeedback;
-                                    console.log('🔄 [情緒量表] 旋鈕選擇更新:', selectedFeedback);
+                                    console.log('🔄 [情緒量表] 旋鈕選擇更新: 位置', clampedIndex, '→ 分數', selectedFeedback);
                                 }
                             }
                         })
@@ -6231,19 +6259,6 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                             // 忽略錯誤，繼續輪詢
                         });
                 }, 200);
-                
-                // 按鈕確認邏輯（使用全局按鈕監控的狀態，避免衝突）
-                // 創建一個標記，讓 handlePhysicalButtonPress 知道要處理情緒量表
-                window._feedbackWaitingForButton = true;
-                window._feedbackSelectedValue = null;
-                window._feedbackResolve = resolve;
-                window._feedbackCleanup = () => {
-                    clearInterval(knobSelectionInterval);
-                    clearTimeout(timeoutId);
-                    buttonPressHandled = true;
-                    knobSelectionActive = false;
-                    window._feedbackWaitingForButton = false;
-                };
                 
                 // 備用方案：獨立按鈕輪詢（如果全局監控不可用或失效）
                 const buttonCheckInterval = setInterval(() => {
@@ -7025,6 +7040,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     break;
                 case Phase.LANDING:
                     // Phase 7: 降落完成
+                    // 設置正確的狀態（避免 currentState 還是 country）
+                    currentState = 'ready_to_fly'; // 或設置為其他合適的狀態
+                    console.log('🔄 [Phase 7] 設置 currentState:', currentState);
+                    
                     // 立即隱藏進度條（在 handleLanding() 之前）
                     try {
                         if (window._flightProgressInterval) {
@@ -7584,8 +7603,15 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 return;
             }
             
-            // 確保所有狀態 UI 都被隱藏
+            // 確保所有狀態 UI 都被隱藏（包括 stateCountry）
             hideAllStateUI();
+            
+            // 特別確保 stateCountry 在 Phase 5 時被隱藏
+            const stateCountry = document.getElementById('stateCountry');
+            if (stateCountry) {
+                stateCountry.style.display = 'none';
+                stateCountry.classList.remove('active');
+            }
             
             sleepStartTime = Date.now();
             const durationMs = selectedTimer * 60 * 1000;
@@ -7605,7 +7631,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     fill.style.width = '0%';
                     glow.style.left = '0%';
 
-                    // 左邊顯示目前位置（國家名稱），右邊永遠是「???」
+                    // 左邊顯示目前位置（國家名稱），右邊顯示預設目的地
                     try {
                         const countryEl = document.getElementById('currentCountry');
                         const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
@@ -7613,7 +7639,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     } catch (e) {
                         startLabel.textContent = '目前位置';
                     }
-                    endLabel.textContent = '???';
+                    
+                    // 右邊顯示預設目的地（如果有 destinationData）
+                    if (destinationData) {
+                        const destinationName = destinationData.city_zh || destinationData.city || destinationData.country_zh || destinationData.country || '???';
+                        endLabel.textContent = destinationName;
+                    } else {
+                        endLabel.textContent = '???';
+                    }
 
                     // 先清掉舊的計時器
                     if (window._flightProgressInterval) {
@@ -8604,11 +8637,48 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             }
             
             // 填寫完情緒量表後，顯示國家資訊在 bar 上
-            await showLandingCountryInfo(finalDestination);
+            console.log('📋 情緒量表填寫完成，準備顯示國家資訊...');
+            console.log('   當前階段:', currentPhase);
+            console.log('   當前狀態:', currentState);
             
-            // 切換到 RETURN_WINDOW 階段（Phase 8），等待雙擊回到 phase 0
-            switchToPhase(Phase.RETURN_WINDOW);
-            console.log('✅ 降落完成，已切換到 Phase 8，等待雙擊返回首頁');
+            // showLandingCountryInfo 會隱藏情緒量表並顯示國家資訊
+            await showLandingCountryInfo(finalDestination);
+            console.log('✅ 國家資訊已顯示，情緒量表已隱藏');
+            
+            // 直接切換到 Phase 0 (POST_ARRIVAL)，而不是 Phase 8 (RETURN_WINDOW)
+            console.log('🔄 準備切換到 Phase 0 (POST_ARRIVAL)...');
+            console.log('   切換前 - 當前階段:', currentPhase, '當前狀態:', currentState);
+            currentPhase = Phase.POST_ARRIVAL;
+            currentState = State.COUNTRY;
+            console.log('   切換後 - 當前階段:', currentPhase, '當前狀態:', currentState);
+            
+            // 確保目的地圖片顯示
+            if (destinationImageUrl && document.querySelector('.window-content')) {
+                const windowContent = document.querySelector('.window-content');
+                windowContent.innerHTML = '';
+                windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                windowContent.style.backgroundSize = 'cover';
+                windowContent.style.backgroundPosition = 'center';
+                console.log('✅ 目的地圖片已顯示');
+            }
+            
+            // 確保 stateArrivalInfo 隱藏（不顯示文字）
+            const arrivalInfoElFinal = document.getElementById('stateArrivalInfo');
+            if (arrivalInfoElFinal) {
+                arrivalInfoElFinal.style.display = 'none';
+            }
+            
+            // 隱藏所有其他狀態 UI（但不隱藏 stateLandingCountryInfo）
+            hideAllStateUI();
+            
+            // 確保國家資訊 bar 顯示
+            const countryInfoState = document.getElementById('stateLandingCountryInfo');
+            if (countryInfoState) {
+                countryInfoState.style.display = 'block';
+                console.log('✅ 國家資訊 bar 已確保顯示');
+            }
+            
+            console.log('✅ 降落完成，已切換到 Phase 0 (POST_ARRIVAL)，顯示目的地圖片和國家資訊');
             
             } catch (error) {
                 // 即使出錯，也確保流程能繼續
