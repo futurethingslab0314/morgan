@@ -1323,8 +1323,7 @@
             TAKEOFF_PREP: 4,      // Phase 4: 起飛準備（拉下窗簾）
             CRUISE: 5,            // Phase 5: 巡航（主要睡眠段）
             DESCENT: 6,           // Phase 6: 降落前五分鐘
-            LANDING: 7,           // Phase 7: 降落完成（打開窗簾）
-            RETURN_WINDOW: 8      // Phase 8: 回到窗戶存在狀態
+            LANDING: 7            // Phase 7: 降落完成（打開窗簾）
         };
 
         // 狀態管理（保留舊的 State 以兼容現有代碼）
@@ -1454,7 +1453,7 @@
             // 隱藏所有狀態（除了 stateCountry，它已經在上面處理了）
             document.querySelectorAll('.info-state').forEach(state => {
                 if (state.id !== 'stateCountry') {
-                    state.classList.remove('active');
+                state.classList.remove('active');
                 }
             });
 
@@ -1565,7 +1564,7 @@
                                     }
                                     readyOriginFlagEl.textContent = flagEmoji;
                                 }
-                            } else {
+            } else {
                                 // 使用預設台北作為出發地
                                 if (readyOriginCityEl) {
                                     readyOriginCityEl.textContent = '台北';
@@ -2502,14 +2501,14 @@
                             clearInterval(buttonPollInterval);
                         }
                         buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
-                        // 只在真正恢復時輸出一次，避免刷屏
+                        // 只在真正恢復時輸出一次，避免刷屏（已移除日誌，減少 console 洗版）
                         if (connectionErrorLogged) {
-                            console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
+                            // console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
                             connectionErrorLogged = false;
                         }
                     } else if (connectionErrorLogged) {
-                        // 只在第一次恢復時記錄，避免重複日誌
-                        console.log('✅ 按鈕 API 連接已恢復');
+                        // 只在第一次恢復時記錄，避免重複日誌（已移除日誌，減少 console 洗版）
+                        // console.log('✅ 按鈕 API 連接已恢復');
                         connectionErrorLogged = false;
                     }
                         
@@ -2550,14 +2549,14 @@
                                 clearInterval(buttonPollInterval);
                             }
                             buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
-                            // 只在真正恢復時輸出一次，避免刷屏
+                            // 只在真正恢復時輸出一次，避免刷屏（已移除日誌，減少 console 洗版）
                             if (connectionErrorLogged) {
-                                console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
+                                // console.log('✅ 按鈕 API 連接已恢復，輪詢頻率恢復至正常（100ms）');
                                 connectionErrorLogged = false;
                             }
                         } else if (connectionErrorLogged) {
-                            // 只在第一次恢復時記錄，避免重複日誌
-                            console.log('✅ 按鈕 API 連接已恢復');
+                            // 只在第一次恢復時記錄，避免重複日誌（已移除日誌，減少 console 洗版）
+                            // console.log('✅ 按鈕 API 連接已恢復');
                             connectionErrorLogged = false;
                         }
                     } else {
@@ -2755,7 +2754,7 @@
             
             // ============================================================================
             // Phase 7 (LANDING) 專用邏輯（完全獨立，不受其他階段邏輯干擾）
-            // 處理情緒量表按鈕確認
+            // 處理情緒量表按鈕確認，或完成後跳轉回 Phase 0
             // ============================================================================
             if (currentPhase === Phase.LANDING || currentPhase === 7) {
                 console.log('📋 [Phase 7] 檢測到按鈕按下，檢查情緒量表狀態');
@@ -2800,8 +2799,22 @@
                     window._feedbackSelectedValue = null;
                     return; // 重要：直接返回，不執行後續的邏輯
                 } else {
-                    console.log('⚠️ [Phase 7] 不在等待情緒量表確認，忽略按鈕操作');
-                    return; // 重要：直接返回，不執行後續的邏輯
+                    // 情緒量表已完成，檢查是否已顯示國家資訊（表示降落流程已完成）
+                    const countryInfoState = document.getElementById('stateLandingCountryInfo');
+                    const isCountryInfoVisible = countryInfoState && 
+                                                 countryInfoState.style.display !== 'none' && 
+                                                 countryInfoState.classList.contains('active');
+                    
+                    if (isCountryInfoVisible) {
+                        // 降落流程已完成，按鈕跳轉回 Phase 0
+                        console.log('✅ [Phase 7] 降落流程已完成，按鈕跳轉回 Phase 0');
+                        handleReturnToPhase0();
+                        return;
+                    } else {
+                        // 降落流程還在進行中，忽略按鈕操作
+                        console.log('⚠️ [Phase 7] 降落流程還在進行中，忽略按鈕操作');
+                        return;
+                    }
                 }
             }
             
@@ -2956,8 +2969,7 @@
             const waitTime = (currentState === State.COUNTRY || 
                              currentState === State.TIMER ||
                              currentState === State.ANGLE ||
-                             currentPhase === Phase.POST_ARRIVAL || 
-                             currentPhase === Phase.RETURN_WINDOW) 
+                            currentPhase === Phase.POST_ARRIVAL)
                              ? DOUBLE_CLICK_THRESHOLD  // 這些狀態：只等待雙擊時間（500ms），因為不需要檢測三擊
                              : TRIPLE_CLICK_THRESHOLD; // 其他狀態：等待三擊時間（600ms）
             
@@ -3035,7 +3047,7 @@
                 return;
             }
             
-            // 1.3 Phase 7 (LANDING) - 處理情緒量表按鈕確認
+            // 1.3 Phase 7 (LANDING) - 處理情緒量表按鈕確認，或完成後跳轉回 Phase 0
             if (currentPhase === Phase.LANDING || currentPhase === 7) {
                 // 完全清除所有全局按鈕狀態（確保完全獨立）
                 buttonPressSequence = [];
@@ -3078,18 +3090,31 @@
                     return;
                 }
                 
-                // 如果不在等待情緒量表確認，則忽略按鈕（降落程序正在執行或已完成）
-                console.log('⚠️ [Phase 7] 不在等待情緒量表確認，忽略按鈕操作');
-                return;
+                // 情緒量表已完成，檢查是否已顯示國家資訊（表示降落流程已完成）
+                const countryInfoState = document.getElementById('stateLandingCountryInfo');
+                const isCountryInfoVisible = countryInfoState && 
+                                             countryInfoState.style.display !== 'none' && 
+                                             countryInfoState.classList.contains('active');
+                
+                if (isCountryInfoVisible) {
+                    // 降落流程已完成，按鈕跳轉回 Phase 0
+                    console.log('✅ [Phase 7] 降落流程已完成，按鈕跳轉回 Phase 0');
+                    handleReturnToPhase0();
+                    return;
+                } else {
+                    // 降落流程還在進行中，忽略按鈕操作
+                    console.log('⚠️ [Phase 7] 降落流程還在進行中，忽略按鈕操作');
+                    return;
+                }
             }
             
             // ============================================================================
-            // 優先級 2: 降落後狀態處理（RETURN_WINDOW, POST_ARRIVAL）
+            // 優先級 2: 降落後狀態處理（POST_ARRIVAL）
             // ============================================================================
             
             // 如果在降落後狀態且已經顯示了目的地圖片（完成了一次旅程），單擊不做任何事（等待雙擊）
             // 但如果是首頁（State.COUNTRY 且沒有目的地圖片），允許單擊開始新旅程
-            if ((currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) 
+            if (currentPhase === Phase.POST_ARRIVAL 
                 && destinationImageUrl && currentState !== State.COUNTRY) {
                 console.log('ℹ️ [降落後] 已完成旅程，單擊無效，請快速按兩下開始新旅程');
                 return;
@@ -3341,12 +3366,7 @@
                     
                 default:
                     // 其他狀態或未定義的狀態（DESCENT 階段已在前面處理）
-                    // 特別處理 Phase 8 (RETURN_WINDOW)：按一次按鈕回到 Phase 0，並顯示最新的降落位置
-                    if (currentPhase === Phase.RETURN_WINDOW) {
-                        console.log('✅ [Phase 8] 降落後狀態，按鈕：回到 Phase 0 並顯示最新降落位置');
-                        handleReturnToPhase0();
-                        return;
-                    }
+                    // Phase 8 已移除，不再需要特殊處理
                     
                     console.log('⚠️ [單擊] 當前狀態不支援按鈕操作:', currentState);
                     console.log('   當前階段:', currentPhase);
@@ -3694,12 +3714,14 @@
             
             // 額外確保所有 .info-state 元素都被隱藏（除了 flightProgressWrapper、stateFlightFeedback、stateLandingCountryInfo 和 stateCountry）
             // 重要：在 Phase 0 (POST_ARRIVAL) 時，確保 stateLandingCountryInfo 和 stateCountry 不被隱藏
+            // 但在 Phase 5/6/7 時，必須隱藏 stateLandingCountryInfo
             document.querySelectorAll('.info-state').forEach(state => {
                 const stateId = state.id;
+                const isPhase0 = (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0);
                 const shouldKeepVisible = 
                     stateId === 'flightProgressWrapper' || 
                     stateId === 'stateFlightFeedback' || 
-                    stateId === 'stateLandingCountryInfo' ||
+                    (stateId === 'stateLandingCountryInfo' && isPhase0) || // 只在 Phase 0 時保持可見
                     (stateId === 'stateCountry' && (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0));
                 
                 if (!shouldKeepVisible) {
@@ -3707,7 +3729,7 @@
                     state.classList.remove('active');
                 } else {
                     // 確保應該顯示的元素確實顯示
-                    if (stateId === 'stateLandingCountryInfo') {
+                    if (stateId === 'stateLandingCountryInfo' && isPhase0) {
                         state.style.display = 'flex';
                         state.classList.add('active');
                     } else if (stateId === 'stateCountry' && (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0)) {
@@ -4062,10 +4084,9 @@
                 return;
             }
             
-            // 立即停止 Phase 5 的影片（takeoff2.mp4）和相關檢查
-            console.log('🛑 [landing.mp4] 停止 Phase 5 的影片播放...');
+            // 停止 takeoff2.mp4 的可見性檢查（如果還在運行）
+            console.log('🛑 [landing.mp4] 停止 Phase 5 的影片可見性檢查...');
             try {
-                // 停止 takeoff2.mp4 的可見性檢查
                 if (window._takeoff2VisibilityCheck) {
                     clearInterval(window._takeoff2VisibilityCheck);
                     window._takeoff2VisibilityCheck = null;
@@ -4075,21 +4096,9 @@
                 console.warn('⚠️ [landing.mp4] 停止可見性檢查時發生錯誤:', e);
             }
             
-            // 清除之前的影片（takeoff1.mp4, takeoff2.mp4），但先等 landing.mp4 可以播放再切換，減少空白時間
+            // 找到舊影片（takeoff1.mp4, takeoff2.mp4），但不立即移除，等到 landing.mp4 可以播放時再移除
             const existingVideos = Array.from(videoContainer.querySelectorAll('video'));
-            console.log('🛑 [landing.mp4] 找到', existingVideos.length, '個舊影片，準備移除');
-            
-            // 立即停止並移除所有舊影片
-            existingVideos.forEach(video => {
-                try {
-                    video.pause();
-                    video.currentTime = 0;
-                    video.remove();
-                    console.log('✅ [landing.mp4] 已停止並移除舊影片:', video.src || '未知來源');
-                } catch (e) {
-                    console.warn('⚠️ [landing.mp4] 移除舊影片時發生錯誤:', e);
-                }
-            });
+            console.log('🔍 [landing.mp4] 找到', existingVideos.length, '個舊影片，將在 landing.mp4 開始播放時移除（避免空窗期）');
             
             // 準備 landing.mp4 影片元素
             const landingVideo = document.createElement('video');
@@ -4133,7 +4142,25 @@
                 }
             });
             
-            // 此時 landing.mp4 已經可以播放，清除 window-content 的背景
+            // 此時 landing.mp4 已經可以播放，現在才移除舊影片（takeoff2.mp4），避免空窗期
+            console.log('🔄 [landing.mp4] landing.mp4 已準備就緒，現在移除舊影片（takeoff2.mp4）...');
+            existingVideos.forEach(video => {
+                try {
+                    // 使用淡出效果，讓切換更平滑
+                    video.style.transition = 'opacity 0.3s';
+                    video.style.opacity = '0';
+                    setTimeout(() => {
+                        video.pause();
+                        video.currentTime = 0;
+                        video.remove();
+                        console.log('✅ [landing.mp4] 已移除舊影片:', video.src || '未知來源');
+                    }, 300); // 等待淡出動畫完成
+                } catch (e) {
+                    console.warn('⚠️ [landing.mp4] 移除舊影片時發生錯誤:', e);
+                }
+            });
+            
+            // 清除 window-content 的背景
             windowContent.style.backgroundImage = 'none';
             windowContent.innerHTML = '';
             
@@ -4143,7 +4170,7 @@
             
             try {
                 await landingVideo.play();
-                console.log('▶️ [landing.mp4] 開始播放 landing.mp4');
+                console.log('▶️ [landing.mp4] 開始播放 landing.mp4（舊影片已移除，無空窗期）');
             } catch (e) {
                 console.warn('⚠️ [landing.mp4] 無法播放 landing.mp4，直接顯示降落圖片:', e);
             }
@@ -6207,9 +6234,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         }
         
         // 處理按鈕三擊（開啟機票回顧）
-        // 從 Phase 8 回到 Phase 0，並顯示最新的降落位置
+        // 回到 Phase 0，並顯示最新的降落位置
         async function handleReturnToPhase0() {
-            console.log('🔄 [Phase 8 → Phase 0] 回到首頁並顯示最新降落位置');
+            console.log('🔄 [回到 Phase 0] 回到首頁並顯示最新降落位置');
             
             try {
                 // 從 Firebase 獲取最新的降落記錄
@@ -6245,7 +6272,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     console.log('ℹ️ 沒有找到最新的降落記錄，保持當前狀態');
                 }
                 
-                // 切換到 Phase 0（從 Phase 8 回到 Phase 0，這是允許的）
+                // 切換到 Phase 0
                 switchToPhase(Phase.POST_ARRIVAL);
                 currentState = State.COUNTRY;
                 switchState(State.COUNTRY);
@@ -6253,7 +6280,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.log('✅ 已回到 Phase 0 (POST_ARRIVAL)');
             } catch (error) {
                 console.error('❌ 載入最新降落位置失敗:', error);
-                // 即使失敗也切換到 Phase 0（從 Phase 8 回到 Phase 0，這是允許的）
+                // 即使失敗也切換到 Phase 0
                 switchToPhase(Phase.POST_ARRIVAL);
                 currentState = State.COUNTRY;
                 switchState(State.COUNTRY);
@@ -6307,8 +6334,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         async function handleButtonTripleClick() {
             console.log('🔘 檢測到按鈕三擊，開啟機票回顧');
             
-            // 在 Phase 0 或 Phase 8 都可以響應三擊
-            if (currentPhase !== Phase.POST_ARRIVAL && currentPhase !== Phase.RETURN_WINDOW) {
+            // 在 Phase 0 可以響應三擊
+            if (currentPhase !== Phase.POST_ARRIVAL) {
                 console.log('ℹ️ 當前不在首頁或降落後狀態，三擊無效');
                 return;
             }
@@ -7356,21 +7383,22 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             const force = options.force === true;
             
             if (!force) {
-                // Phase 不可逆檢查：只能前進或保持在當前 phase，除非是 Phase 8 回到 Phase 0
-                const isReturnToPhase0 = (phase === Phase.POST_ARRIVAL || phase === 0) && 
-                                         (currentPhase === Phase.RETURN_WINDOW || currentPhase === 8);
+                // Phase 不可逆檢查：只能前進或保持在當前 phase
                 const isPhaseAdvance = phase > maxReachedPhase;
                 const isPhaseStay = phase === currentPhase;
                 const isEarlyLanding = (phase === Phase.LANDING || phase === 7) && 
                                        (currentPhase === Phase.CRUISE || currentPhase === 5) &&
                                        window._earlyLandingConfirmed;
+                // 允許從 Phase 7 回到 Phase 0（降落完成後回到首頁）
+                const isLandingToPhase0 = (phase === Phase.POST_ARRIVAL || phase === 0) && 
+                                          (currentPhase === Phase.LANDING || currentPhase === 7);
                 
                 // 允許的情況：
-                // 1. Phase 8 回到 Phase 0（特殊情況）
+                // 1. 從 Phase 7 回到 Phase 0（降落完成後回到首頁）
                 // 2. 前進到新的 phase（phase > maxReachedPhase）
                 // 3. 保持在當前 phase（phase === currentPhase）
                 // 4. 提前降落（從 Phase 5 跳到 Phase 7）
-                if (!isReturnToPhase0 && !isPhaseAdvance && !isPhaseStay && !isEarlyLanding) {
+                if (!isLandingToPhase0 && !isPhaseAdvance && !isPhaseStay && !isEarlyLanding) {
                     console.warn('⚠️ [Phase 不可逆] 嘗試回退到 Phase ' + phase + '，但當前已到達 Phase ' + maxReachedPhase + '，拒絕切換');
                     console.warn('   當前 Phase:', currentPhase, '目標 Phase:', phase, '最高已到達 Phase:', maxReachedPhase);
                     return; // 拒絕切換
@@ -7382,10 +7410,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     console.log('📈 [Phase 不可逆] 更新最高已到達 Phase:', maxReachedPhase);
                 }
                 
-                // 如果是 Phase 8 回到 Phase 0，重置最高 phase 為 0（允許重新開始）
-                if (isReturnToPhase0) {
+                // 如果是從 Phase 7 回到 Phase 0，重置最高 phase 為 0（允許重新開始）
+                if (isLandingToPhase0) {
                     maxReachedPhase = Phase.POST_ARRIVAL;
-                    console.log('🔄 [Phase 不可逆] Phase 8 回到 Phase 0，重置最高 phase 為 0（允許重新開始）');
+                    console.log('🔄 [Phase 不可逆] Phase 7 回到 Phase 0，重置最高 phase 為 0（允許重新開始）');
                 }
             } else {
                 console.log('⚠️ [Phase 切換] 使用 force 模式，跳過不可逆檢查（測試模式）');
@@ -7420,11 +7448,29 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 }
             }
             
-            // 隱藏所有狀態（除了 stateCountry，它已經在上面處理了）
-            document.querySelectorAll('.info-state').forEach(state => {
-                if (state.id !== 'stateCountry') {
-                    state.classList.remove('active');
+            // 控制 stateLandingCountryInfo（降落後國家資訊）的顯示：只在 Phase 0 顯示
+            const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
+            if (stateLandingCountryInfo) {
+                if (phase === Phase.POST_ARRIVAL || phase === 0) {
+                    // Phase 0: 可以顯示（但需要根據實際情況決定，這裡不強制顯示）
+                    // 由其他邏輯（如 showLandingCountryInfo）控制
+                } else {
+                    // Phase 5/6/7 等其他 Phase: 明確隱藏 stateLandingCountryInfo
+                    stateLandingCountryInfo.style.display = 'none';
+                    stateLandingCountryInfo.classList.remove('active');
+                    console.log('✅ [Phase ' + phase + '] 已隱藏 stateLandingCountryInfo');
                 }
+            }
+            
+            // 隱藏所有狀態（除了 stateCountry 和特定 phase 需要的元素）
+            document.querySelectorAll('.info-state').forEach(state => {
+                const stateId = state.id;
+                // stateCountry 和 stateLandingCountryInfo 已經在上面處理了
+                if (stateId === 'stateCountry' || stateId === 'stateLandingCountryInfo') {
+                    return;
+                }
+                // 其他狀態：移除 active class（但保留 display，由具體邏輯控制）
+                state.classList.remove('active');
             });
             
             switch (phase) {
@@ -7463,6 +7509,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     break;
                 case Phase.CRUISE:
                     // Phase 5: 開始睡眠計時
+                    // 明確隱藏 stateLandingCountryInfo（降落後國家資訊不應該在 Phase 5 顯示）
+                    const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
+                    if (stateLandingCountryInfo) {
+                        stateLandingCountryInfo.style.display = 'none';
+                        stateLandingCountryInfo.classList.remove('active');
+                        console.log('✅ [Phase 5] 已隱藏 stateLandingCountryInfo');
+                    }
                     handleCruise();
                     break;
                 case Phase.DESCENT:
@@ -7495,10 +7548,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     // 然後調用 handleLanding()
                     handleLanding();
                     break;
-                case Phase.RETURN_WINDOW:
-                    // Phase 8: 回到窗戶存在狀態
-                    handleReturnWindow();
-                    break;
+                // Phase 8 已移除，不再需要
             }
         }
 
@@ -8139,6 +8189,22 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.log('✈️ 進入巡航階段（進度條已顯示，跳過重複設置）');
                 // 確保所有狀態 UI 都被隱藏（防止被重新顯示）
                 hideAllStateUI();
+                
+                // 方案一：即使早期返回，也確保暫停影片（提高按鈕檢測穩定性）
+                try {
+                    const takeoffVideo2 = document.getElementById('takeoffVideo2');
+                    if (takeoffVideo2 && !takeoffVideo2.paused) {
+                        takeoffVideo2.pause();
+                        console.log('✅ [Phase 5] 已暫停 takeoff2.mp4（早期返回路徑）');
+                    }
+                    if (window._takeoff2VisibilityCheck) {
+                        clearInterval(window._takeoff2VisibilityCheck);
+                        window._takeoff2VisibilityCheck = null;
+                    }
+                } catch (e) {
+                    // 忽略錯誤
+                }
+                
                 return;
             }
             
@@ -8150,6 +8216,27 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             if (stateCountry && currentPhase !== Phase.POST_ARRIVAL && currentPhase !== 0) {
                 stateCountry.style.display = 'none';
                 stateCountry.classList.remove('active');
+            }
+            
+            // 方案一：暫停 takeoff2.mp4 播放，只顯示最後一幀（減少資源佔用，提高按鈕檢測穩定性）
+            try {
+                const takeoffVideo2 = document.getElementById('takeoffVideo2');
+                if (takeoffVideo2) {
+                    // 如果影片正在播放，暫停它（保持當前幀顯示）
+                    if (!takeoffVideo2.paused) {
+                        takeoffVideo2.pause();
+                        console.log('✅ [Phase 5] 已暫停 takeoff2.mp4，提高按鈕檢測穩定性');
+                    }
+                    
+                    // 停止可見性檢查（不再需要，因為影片已暫停）
+                    if (window._takeoff2VisibilityCheck) {
+                        clearInterval(window._takeoff2VisibilityCheck);
+                        window._takeoff2VisibilityCheck = null;
+                        console.log('✅ [Phase 5] 已停止 takeoff2.mp4 可見性檢查');
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ [Phase 5] 暫停影片時發生小問題，可忽略:', e);
             }
             
             sleepStartTime = Date.now();
@@ -8805,40 +8892,18 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 標記已執行，防止重複（在開始時就標記，即使後續出錯也不會重複執行）
             landingExecuted = true;
             
-            // 立即停止 Phase 5 的影片（takeoff2.mp4）和相關檢查
-            console.log('🛑 [Phase 7] 停止 Phase 5 的影片播放...');
+            // 只停止 takeoff2.mp4 的可見性檢查，但不立即移除影片（等到 landing.mp4 開始播放時再移除，避免空窗期）
+            console.log('🛑 [Phase 7] 停止 Phase 5 的影片可見性檢查（保留影片直到 landing.mp4 開始播放）...');
             try {
                 // 停止 takeoff2.mp4 的可見性檢查
                 if (window._takeoff2VisibilityCheck) {
                     clearInterval(window._takeoff2VisibilityCheck);
                     window._takeoff2VisibilityCheck = null;
-                    console.log('✅ [Phase 7] 已停止 takeoff2.mp4 可見性檢查');
+                    console.log('✅ [Phase 7] 已停止 takeoff2.mp4 可見性檢查（影片繼續播放，避免空窗期）');
                 }
-                
-                // 停止所有正在播放的影片（takeoff1.mp4, takeoff2.mp4）
-                const videoContainer = document.querySelector('.window-area');
-                const videoContainerEl = document.getElementById('videoContainer');
-                if (videoContainer) {
-                    const allVideos = Array.from(videoContainer.querySelectorAll('video'));
-                    allVideos.forEach(video => {
-                        try {
-                            video.pause();
-                            video.currentTime = 0;
-                            video.remove();
-                            console.log('✅ [Phase 7] 已停止並移除影片:', video.src);
-                        } catch (e) {
-                            console.warn('⚠️ [Phase 7] 停止影片時發生錯誤:', e);
-                        }
-                    });
-                }
-                
-                // 隱藏影片容器
-                if (videoContainerEl) {
-                    videoContainerEl.style.display = 'none';
-                    console.log('✅ [Phase 7] 已隱藏影片容器');
-                }
+                // 注意：不立即停止或移除 takeoff2.mp4，讓它繼續播放直到 landing.mp4 開始播放
             } catch (e) {
-                console.warn('⚠️ [Phase 7] 停止 Phase 5 影片時發生小問題:', e);
+                console.warn('⚠️ [Phase 7] 停止可見性檢查時發生小問題:', e);
             }
             
             // 立即結束飛行進度條顯示（Phase 7 時進度條應該立即消失）
@@ -9177,10 +9242,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             await showLandingCountryInfo(finalDestination);
             console.log('✅ 國家資訊已顯示在底部 bar，情緒量表已隱藏');
             
-            // 直接切換到 Phase 0 (POST_ARRIVAL)，而不是 Phase 8 (RETURN_WINDOW)
+            // 直接切換到 Phase 0 (POST_ARRIVAL)
             console.log('🔄 準備切換到 Phase 0 (POST_ARRIVAL)...');
             console.log('   切換前 - 當前階段:', currentPhase, '當前狀態:', currentState);
-            switchToPhase(Phase.POST_ARRIVAL); // 從 Phase 8 回到 Phase 0，這是允許的
+            switchToPhase(Phase.POST_ARRIVAL); // 從 Phase 7 回到 Phase 0，這是允許的
             currentState = State.COUNTRY;
             console.log('   切換後 - 當前階段:', currentPhase, '當前狀態:', currentState);
             
@@ -9301,50 +9366,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             }
         }
 
-        async function handleReturnWindow() {
-            // Phase 8: 回到窗戶存在狀態（Phase 0）
-            console.log('🪟 [Phase 8] 回到窗戶存在狀態');
-            
-            // 明確設置為 Phase 0 (POST_ARRIVAL)（從 Phase 8 回到 Phase 0，這是允許的）
-            switchToPhase(Phase.POST_ARRIVAL);
-            currentState = State.COUNTRY;
-            
-            // 顯示目的地圖片（保持顯示）
-            if (destinationImageUrl && document.querySelector('.window-content')) {
-                document.querySelector('.window-content').innerHTML = '';
-                document.querySelector('.window-content').style.backgroundImage = 
-                    'url(' + destinationImageUrl + ')';
-                document.querySelector('.window-content').style.backgroundSize = 'cover';
-                document.querySelector('.window-content').style.backgroundPosition = 'center';
-            }
-            
-            // 注意：降落後不顯示任何文字，只顯示圖片（用戶要求）
-            // 確保 stateArrivalInfo 完全隱藏
-            const arrivalInfoEl = document.getElementById('stateArrivalInfo');
-            if (arrivalInfoEl) {
-                arrivalInfoEl.style.display = 'none';
-            }
-            
-            // 隱藏所有其他狀態 UI（但不隱藏 stateLandingCountryInfo，因為它應該在降落後顯示）
-            hideAllStateUI();
-            
-            // 確保國家資訊 bar 顯示（如果有的話）
-            const countryInfoState = document.getElementById('stateLandingCountryInfo');
-            if (countryInfoState && destinationImageUrl) {
-                // 國家資訊 bar 應該已經在 handleLanding() 中顯示了
-                // 這裡確保它可見（如果被 hideAllStateUI 隱藏了，重新顯示）
-                if (countryInfoState.style.display === 'none') {
-                    countryInfoState.style.display = 'block';
-                    console.log('✅ 重新顯示降落國家資訊 bar');
-                }
-            }
-            
-            // 不切換到 ARRIVAL_INFO 狀態，不顯示任何文字
-            console.log('✅ [Phase 8] 降落完成，已切換到 Phase 0 (POST_ARRIVAL)，只顯示圖片，不顯示文字');
-            
-            // 注意：不重置 selectedTimer、selectedDirection、destinationData
-            // 因為我們需要保留這些資訊用於顯示，直到用戶雙擊開始新旅程
-        }
+        // Phase 8 (handleReturnWindow) 已移除，不再需要
         
         // 處理按鈕雙擊（開始新旅程或從機票回顧返回）
         function handleButtonDoubleClick() {
@@ -9397,11 +9419,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             }
             
             // ============================================================================
-            // 優先級 3: 降落後狀態處理（RETURN_WINDOW, POST_ARRIVAL）
+            // 優先級 3: 降落後狀態處理（POST_ARRIVAL）
             // ============================================================================
             
             // 在降落後狀態（已完成旅程）或到達資訊顯示狀態，雙擊開始新旅程
-            if ((currentPhase === Phase.RETURN_WINDOW || currentPhase === Phase.POST_ARRIVAL) 
+            if (currentPhase === Phase.POST_ARRIVAL 
                 && (destinationImageUrl || currentState === 'ARRIVAL_INFO')) {
                 console.log('✅ [降落後] 雙擊開始新旅程');
                 

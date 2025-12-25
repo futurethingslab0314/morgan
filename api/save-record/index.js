@@ -278,9 +278,7 @@ export default async function handler(req, res) {
                 .doc(APP_ID)
                 .collection('userProfiles')
                 .doc('sleepAirline')
-                .collection('sleepAirline')
-                .doc('sleepAirline') // 添加中間 document，讓 flight 可以成為 collection
-                .collection('flight'); // flight 是 collection
+                .collection('flight'); // flight 是 collection，直接包含 flight2025-12-25 等 documents
 
             // 生成 document ID：flight + 日期（例如：flight2025-12-23）
             // 如果同一天有多筆記錄，加上時間戳來區分（例如：flight2025-12-23_143052）
@@ -305,10 +303,10 @@ export default async function handler(req, res) {
                 ...artifactsData,
             }, { merge: false }); // 使用 set() 而不是 add()，merge: false 表示完全覆蓋（如果已存在）
 
-            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/sleepAirline/flight/${flightDocId}`;
+            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/flight/${flightDocId}`;
             console.log('✅ 個人檔案記錄已儲存到 artifacts（document ID: ' + flightDocId + '）:', userProfilePath);
             console.log('   文件 ID:', flightDocId);
-            console.log('   實際 Firestore 路徑: artifacts > ' + APP_ID + ' > userProfiles > sleepAirline > sleepAirline > sleepAirline > flight > ' + flightDocId);
+            console.log('   實際 Firestore 路徑: artifacts > ' + APP_ID + ' > userProfiles > sleepAirline > flight > ' + flightDocId);
 
             // 儲存到公共資料結構（對應網頁版眾人地圖）
             const publicDataPath = `artifacts/${APP_ID}/publicData/allSharedEntries/dailyRecords`;

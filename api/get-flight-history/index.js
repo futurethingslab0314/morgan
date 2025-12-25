@@ -42,56 +42,113 @@ export default async function handler(req, res) {
 
         const APP_ID = 'default-app-id-worldclock-history';
 
-        // 查詢 sleepAirline/sleepAirline/flight collection 中的所有記錄
-        // 路徑：artifacts/APP_ID/userProfiles/sleepAirline/sleepAirline/flight
-        const flightCollectionRef = db
-            .collection('artifacts')
-            .doc(APP_ID)
-            .collection('userProfiles')
-            .doc('sleepAirline')
-            .collection('sleepAirline')
-            .collection('flight');
-
+        // 查詢 sleepAirline/flight collection 中的所有記錄
+        // 新路徑：artifacts/APP_ID/userProfiles/sleepAirline/flight
+        // 舊路徑（已棄用）：artifacts/APP_ID/userProfiles/sleepAirline/sleepAirline/sleepAirline/flight
+        let flightCollectionRef;
         let querySnapshot;
-        
-        // 嘗試按 recordedAt 倒序排列（最新的在前）
+
         try {
-            const historyQuery = flightCollectionRef
-                .orderBy('recordedAt', 'desc')
-                .limit(parseInt(limit));
-            
-            querySnapshot = await historyQuery.get();
-        } catch (orderByError) {
-            // 如果 orderBy 失敗（可能是沒有索引或 recordedAt 不存在），改用獲取所有記錄然後在客戶端排序
-            console.warn('⚠️ 無法使用 orderBy，改用獲取所有記錄後排序:', orderByError.message);
-            const allDocs = await flightCollectionRef.limit(parseInt(limit * 2)).get(); // 獲取更多記錄以確保有足夠的數據
-            
-            // 轉換為數組並在客戶端排序
-            const docsArray = [];
-            allDocs.forEach((doc) => {
-                docsArray.push(doc);
-            });
-            
-            // 按 recordedAt 或 wakeTime 排序（降序）
-            docsArray.sort((a, b) => {
-                const aData = a.data();
-                const bData = b.data();
-                const aTime = aData.recordedAt?.toMillis?.() || 
-                            (aData.wakeTime ? new Date(aData.wakeTime).getTime() : 0) ||
-                            (aData.recordedAt ? aData.recordedAt.getTime() : 0);
-                const bTime = bData.recordedAt?.toMillis?.() || 
-                            (bData.wakeTime ? new Date(bData.wakeTime).getTime() : 0) ||
-                            (bData.recordedAt ? bData.recordedAt.getTime() : 0);
-                return bTime - aTime; // 降序
-            });
-            
-            // 只取前 limit 筆
-            querySnapshot = {
-                forEach: (callback) => {
-                    docsArray.slice(0, parseInt(limit)).forEach(callback);
-                },
-                size: Math.min(docsArray.length, parseInt(limit))
-            };
+            // 優先嘗試新路徑
+            flightCollectionRef = db
+                .collection('artifacts')
+                .doc(APP_ID)
+                .collection('userProfiles')
+                .doc('sleepAirline')
+                .collection('flight');
+
+            console.log('📂 嘗試從新路徑讀取: artifacts/' + APP_ID + '/userProfiles/sleepAirline/flight');
+
+            // 嘗試按 recordedAt 倒序排列（最新的在前）
+            try {
+                const historyQuery = flightCollectionRef
+                    .orderBy('recordedAt', 'desc')
+                    .limit(parseInt(limit));
+
+                querySnapshot = await historyQuery.get();
+                console.log('✅ 從新路徑成功讀取 ' + querySnapshot.size + ' 筆記錄');
+            } catch (orderByError) {
+                // 如果 orderBy 失敗（可能是沒有索引或 recordedAt 不存在），改用獲取所有記錄然後在客戶端排序
+                console.warn('⚠️ 無法使用 orderBy，改用獲取所有記錄後排序:', orderByError.message);
+                const allDocs = await flightCollectionRef.limit(parseInt(limit * 2)).get(); // 獲取更多記錄以確保有足夠的數據
+
+                // 轉換為數組並在客戶端排序
+                const docsArray = [];
+                allDocs.forEach((doc) => {
+                    docsArray.push(doc);
+                });
+
+                // 按 recordedAt 或 wakeTime 排序（降序）
+                docsArray.sort((a, b) => {
+                    const aData = a.data();
+                    const bData = b.data();
+                    const aTime = aData.recordedAt?.toMillis?.() ||
+                        (aData.wakeTime ? new Date(aData.wakeTime).getTime() : 0) ||
+                        (aData.recordedAt ? aData.recordedAt.getTime() : 0);
+                    const bTime = bData.recordedAt?.toMillis?.() ||
+                        (bData.wakeTime ? new Date(bData.wakeTime).getTime() : 0) ||
+                        (bData.recordedAt ? bData.recordedAt.getTime() : 0);
+                    return bTime - aTime; // 降序
+                });
+
+                // 只取前 limit 筆
+                querySnapshot = {
+                    forEach: (callback) => {
+                        docsArray.slice(0, parseInt(limit)).forEach(callback);
+                    },
+                    size: Math.min(docsArray.length, parseInt(limit))
+                };
+                console.log('✅ 從新路徑成功讀取並排序 ' + querySnapshot.size + ' 筆記錄');
+            }
+        } catch (newPathError) {
+            // 如果新路徑失敗，嘗試舊路徑（向後兼容）
+            console.warn('⚠️ 新路徑讀取失敗，嘗試舊路徑:', newPathError.message);
+            try {
+                flightCollectionRef = db
+                    .collection('artifacts')
+                    .doc(APP_ID)
+                    .collection('userProfiles')
+                    .doc('sleepAirline')
+                    .collection('sleepAirline')
+                    .doc('sleepAirline')
+                    .collection('flight');
+
+                console.log('📂 嘗試從舊路徑讀取: artifacts/' + APP_ID + '/userProfiles/sleepAirline/sleepAirline/sleepAirline/flight');
+
+                const allDocs = await flightCollectionRef.limit(parseInt(limit * 2)).get();
+                const docsArray = [];
+                allDocs.forEach((doc) => {
+                    docsArray.push(doc);
+                });
+
+                // 按 recordedAt 或 wakeTime 排序（降序）
+                docsArray.sort((a, b) => {
+                    const aData = a.data();
+                    const bData = b.data();
+                    const aTime = aData.recordedAt?.toMillis?.() ||
+                        (aData.wakeTime ? new Date(aData.wakeTime).getTime() : 0) ||
+                        (aData.recordedAt ? aData.recordedAt.getTime() : 0);
+                    const bTime = bData.recordedAt?.toMillis?.() ||
+                        (bData.wakeTime ? new Date(bData.wakeTime).getTime() : 0) ||
+                        (bData.recordedAt ? bData.recordedAt.getTime() : 0);
+                    return bTime - aTime; // 降序
+                });
+
+                querySnapshot = {
+                    forEach: (callback) => {
+                        docsArray.slice(0, parseInt(limit)).forEach(callback);
+                    },
+                    size: Math.min(docsArray.length, parseInt(limit))
+                };
+                console.log('✅ 從舊路徑成功讀取 ' + querySnapshot.size + ' 筆記錄');
+            } catch (oldPathError) {
+                // 如果兩個路徑都失敗，返回空數組
+                console.error('❌ 新舊路徑都讀取失敗:', oldPathError.message);
+                querySnapshot = {
+                    forEach: () => { },
+                    size: 0
+                };
+            }
         }
         const records = [];
 
