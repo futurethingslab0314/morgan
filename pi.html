@@ -1147,29 +1147,49 @@
             <div class="country-display" style="margin-top: 20px; text-align: center;">
                 
                 
-                <!-- 航線資訊（左右佈局：原有位置 → 飛機箭頭 → 新位置） -->
-                <div id="readyDestinationInfo" style="display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 20px 0; padding: 16px 24px; background: #fff5f0; border-radius: 12px; border: 2px solid #ffb399; max-width: 600px; margin-left: auto; margin-right: auto;">
+                <!-- 航線資訊（左右佈局：原有位置 → 點點連接線 → 飛機箭頭 → 點點連接線 → 新位置） -->
+                <div id="readyDestinationInfo" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0; padding: 20px 32px; background: #fff5f0; border-radius: 16px; border: 2px solid #ffb399; max-width: 90%; width: 100%; margin-left: auto; margin-right: auto;">
                     <!-- 左邊：原有位置（出發地） -->
-                    <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                        <span id="readyOriginFlag" style="font-size: 28px; line-height: 1;">🏳️</span>
-                        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
-                            <span id="readyOriginCity" style="font-size: 16px; font-weight: 600; color: #ff6b35; line-height: 1.2;">台灣</span>
-                            <span id="readyOriginCountry" style="font-size: 12px; color: #666; line-height: 1.2;">出發地</span>
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-width: 120px;">
+                        <span id="readyOriginFlag" style="font-size: 32px; line-height: 1;">🏳️</span>
+                        <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px;">
+                            <span id="readyOriginCity" style="font-size: 18px; font-weight: 600; color: #ff6b35; line-height: 1.2;">台灣</span>
+                            <span id="readyOriginCountry" style="font-size: 13px; color: #666; line-height: 1.2;">出發地</span>
                         </div>
+                    </div>
+                    
+                    <!-- 點點連接線（左） -->
+                    <div class="route-dots" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 60px; max-width: 120px; padding: 0 8px;">
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
                     </div>
                     
                     <!-- 中間：飛機箭頭 -->
-                    <div style="display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <span style="font-size: 32px; line-height: 1;">✈️</span>
+                    <div style="display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0 12px;">
+                        <span style="font-size: 38px; line-height: 1;">✈️</span>
+                    </div>
+                    
+                    <!-- 點點連接線（右） -->
+                    <div class="route-dots" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; min-width: 60px; max-width: 120px; padding: 0 8px;">
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
+                        <span style="width: 5px; height: 5px; border-radius: 50%; background: #ffb399; opacity: 0.7;"></span>
                     </div>
                     
                     <!-- 右邊：新位置（目的地） -->
-                    <div style="display: flex; align-items: center; gap: 8px; flex: 1; justify-content: flex-end;">
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
-                            <span id="readyDestinationCity" style="font-size: 16px; font-weight: 600; color: #ff6b35; line-height: 1.2;">計算中...</span>
-                            <span id="readyDestinationCountry" style="font-size: 12px; color: #666; line-height: 1.2;">目的地</span>
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-width: 120px; justify-content: flex-end;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 3px;">
+                            <span id="readyDestinationCity" style="font-size: 18px; font-weight: 600; color: #ff6b35; line-height: 1.2;">計算中...</span>
+                            <span id="readyDestinationCountry" style="font-size: 13px; color: #666; line-height: 1.2;">目的地</span>
                         </div>
-                        <span id="readyDestinationFlag" style="font-size: 28px; line-height: 1;">🏳️</span>
+                        <span id="readyDestinationFlag" style="font-size: 32px; line-height: 1;">🏳️</span>
                     </div>
                 </div>
                 
@@ -3586,6 +3606,17 @@
                 stateCountry.classList.remove('active');
             }
             
+            // 清除之前的降落圖片（確保新的飛行不會顯示舊的圖片）
+            const windowContent = document.querySelector('.window-content');
+            if (windowContent) {
+                const bgImage = windowContent.style.backgroundImage;
+                if (bgImage && bgImage !== 'none' && bgImage !== '') {
+                    windowContent.style.backgroundImage = 'none';
+                    windowContent.style.backgroundColor = 'transparent';
+                    console.log('✅ [起飛] 已清除之前的降落圖片');
+                }
+            }
+            
             // 立即顯示並初始化飛行進度條
             try {
                 const wrapper = document.getElementById('flightProgressWrapper');
@@ -3981,16 +4012,21 @@
             console.log('   初始狀態:', currentState);
             console.log('   初始 Phase:', currentPhase);
             
-            // 確保初始狀態正確顯示
-            switchState(State.COUNTRY);
-            
-            // 更新按鈕狀態
-            updateNextButton();
-            
-            // 檢查是否在 Phase 0，如果是，嘗試載入最新的 Firebase 記錄
-            if (currentPhase === Phase.POST_ARRIVAL) {
+            // 重要：只有在 Phase 0 時才設置初始狀態，避免覆蓋用戶已切換的狀態
+            if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) {
+                // 確保初始狀態正確顯示
+                switchState(State.COUNTRY);
+                
+                // 更新按鈕狀態
+                updateNextButton();
+                
+                // 檢查是否在 Phase 0，如果是，嘗試載入最新的 Firebase 記錄
                 console.log('🔄 檢測到 Phase 0，嘗試載入最新的 Firebase 記錄...');
                 await loadLatestDestinationOnInit();
+            } else {
+                // 如果已經不在 Phase 0，不修改狀態，只更新按鈕
+                console.log('ℹ️ 當前不在 Phase 0（Phase:', currentPhase, '），跳過初始狀態設置');
+                updateNextButton();
             }
             
             console.log('✅ 應用程式初始化完成');
@@ -4039,6 +4075,34 @@
                         windowContent.style.backgroundSize = 'cover';
                         windowContent.style.backgroundPosition = 'center';
                         console.log('✅ 最新降落圖片已顯示:', destinationImageUrl);
+                    }
+                    
+                    // 更新「所在國家」（stateCountry）為新的降落地點
+                    const stateCountry = document.getElementById('stateCountry');
+                    if (stateCountry) {
+                        // 更新國家名稱
+                        const currentCountryEl = document.getElementById('currentCountry');
+                        if (currentCountryEl) {
+                            currentCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
+                            console.log('✅ 已更新「所在國家」為:', destinationData.country_zh || destinationData.country);
+                        }
+                        
+                        // 更新國旗 emoji
+                        const countryFlagEl = stateCountry.querySelector('.country-flag');
+                        if (countryFlagEl) {
+                            const countryCode = destinationData.country_iso_code || '';
+                            if (countryCode && countryCode.length === 2) {
+                                // 將國家代碼轉換為國旗 emoji
+                                const codePoints = countryCode.toUpperCase().split('').map(char => 
+                                    0x1F1E6 + char.charCodeAt(0) - 65
+                                );
+                                if (codePoints.length === 2) {
+                                    const flagEmoji = String.fromCodePoint(...codePoints);
+                                    countryFlagEl.textContent = flagEmoji;
+                                    console.log('✅ 已更新「所在國家」國旗:', flagEmoji, '國家代碼:', countryCode);
+                                }
+                            }
+                        }
                     }
                     
                     // 顯示國家資訊 bar（只在 Phase 0 時顯示）
@@ -7414,6 +7478,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 if (isLandingToPhase0) {
                     maxReachedPhase = Phase.POST_ARRIVAL;
                     console.log('🔄 [Phase 不可逆] Phase 7 回到 Phase 0，重置最高 phase 為 0（允許重新開始）');
+                    
+                    // 重置所有布林值和狀態變數，準備新的飛行
+                    resetFlightState();
                 }
             } else {
                 console.log('⚠️ [Phase 切換] 使用 force 模式，跳過不可逆檢查（測試模式）');
@@ -8218,6 +8285,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 stateCountry.classList.remove('active');
             }
             
+            // 清除之前的降落圖片（確保 Phase 5 時不會顯示舊的降落圖片）
+            const windowContent = document.querySelector('.window-content');
+            if (windowContent && windowContent.style.backgroundImage && windowContent.style.backgroundImage !== 'none') {
+                windowContent.style.backgroundImage = 'none';
+                windowContent.style.backgroundColor = 'transparent';
+                console.log('✅ [Phase 5] 已清除之前的降落圖片');
+            }
+            
             // 方案一：暫停 takeoff2.mp4 播放，只顯示最後一幀（減少資源佔用，提高按鈕檢測穩定性）
             try {
                 const takeoffVideo2 = document.getElementById('takeoffVideo2');
@@ -8324,6 +8399,107 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         let manualLandingTriggered = false;
         // 標記是否已經執行過降落流程（防止重複執行）
         let landingExecuted = false;
+        
+        // 重置飛行狀態函數（當回到 Phase 0 時調用）
+        function resetFlightState() {
+            console.log('🔄 [重置狀態] 重置所有飛行相關的布林值和狀態變數');
+            
+            // 重置布林值
+            landingExecuted = false;
+            midnightServiceActive = false;
+            manualLandingTriggered = false;
+            descentAnnouncementPlayed = false;
+            landingConfirmActive = false;
+            window._earlyLandingConfirmed = false;
+            
+            // 清除按鈕相關狀態
+            lastButtonPressTime = 0;
+            buttonPressSequence = [];
+            if (buttonPressTimeout) {
+                clearTimeout(buttonPressTimeout);
+                buttonPressTimeout = null;
+            }
+            
+            // 清除定時器
+            if (sleepTimer) {
+                clearTimeout(sleepTimer);
+                sleepTimer = null;
+            }
+            if (window._flightProgressInterval) {
+                clearInterval(window._flightProgressInterval);
+                window._flightProgressInterval = null;
+            }
+            
+            // 清除影片相關狀態
+            if (window._takeoff2VisibilityCheck) {
+                clearInterval(window._takeoff2VisibilityCheck);
+                window._takeoff2VisibilityCheck = null;
+            }
+            
+            // 清除音頻相關狀態
+            if (window._earlyLandingWakeupMusic) {
+                try {
+                    window._earlyLandingWakeupMusic.pause();
+                    window._earlyLandingWakeupMusic = null;
+                } catch (e) {
+                    // 忽略錯誤
+                }
+            }
+            
+            // 清除準備好的語音
+            preparedAnnouncement = null;
+            preparedAnnouncementGender = 'male';
+            
+            // 清除目的地圖片（讓新的飛行可以顯示新的圖片）
+            const windowContent = document.querySelector('.window-content');
+            if (windowContent) {
+                // 清除背景圖片，但不影響新的飛行
+                // destinationImageUrl 會在載入新記錄時更新，或在新的飛行時生成
+            }
+            
+            // 清除進度條
+            const wrapper = document.getElementById('flightProgressWrapper');
+            if (wrapper) {
+                wrapper.style.display = 'none';
+                wrapper.style.visibility = 'hidden';
+                wrapper.style.opacity = '0';
+            }
+            
+            // 清除影片元素（如果有的話）
+            const takeoffVideo1 = document.getElementById('takeoffVideo1');
+            const takeoffVideo2 = document.getElementById('takeoffVideo2');
+            if (takeoffVideo1) {
+                try {
+                    takeoffVideo1.pause();
+                    takeoffVideo1.currentTime = 0;
+                } catch (e) {
+                    // 忽略錯誤
+                }
+            }
+            if (takeoffVideo2) {
+                try {
+                    takeoffVideo2.pause();
+                    takeoffVideo2.currentTime = 0;
+                } catch (e) {
+                    // 忽略錯誤
+                }
+            }
+            
+            // 清除情緒量表相關狀態
+            window._feedbackWaitingForButton = false;
+            window._feedbackSelectedValue = null;
+            window._feedbackResolve = null;
+            window._feedbackCleanup = null;
+            
+            // 清除時間和方向選擇（讓用戶可以重新選擇）
+            // 注意：不重置 selectedTimer 和 selectedDirection，因為用戶可能想要保留
+            // 但如果需要完全重置，可以取消下面的註釋
+            // selectedTimer = null;
+            // selectedDirection = null;
+            // destinationData = null;
+            
+            console.log('✅ [重置狀態] 所有飛行狀態已重置');
+        }
         // 降落前喚醒音樂相關變數
         let descentWakeupMusic = null; // 降落前喚醒音樂
         let descentMusicPlayCount = 0; // 音樂播放次數計數器
