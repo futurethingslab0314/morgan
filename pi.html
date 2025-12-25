@@ -2676,14 +2676,24 @@
                 // 計算距離上次按下的時間
                 const timeSinceLastPress = lastButtonPressTime > 0 ? currentTime - lastButtonPressTime : Infinity;
                 
+                console.log('🔍 [Phase 5] 按鈕按下檢測:', {
+                    timeSinceLastPress: timeSinceLastPress === Infinity ? 'Infinity（首次按下）' : timeSinceLastPress + 'ms',
+                    lastButtonPressTime: lastButtonPressTime > 0 ? lastButtonPressTime : '未設置',
+                    DOUBLE_CLICK_THRESHOLD: DOUBLE_CLICK_THRESHOLD + 'ms',
+                    isDoubleClick: timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > 0,
+                    buttonPressTimeout: buttonPressTimeout ? '存在（待處理）' : '不存在'
+                });
+                
                 // 雙擊檢測：在 500ms 內按兩次（必須在 Phase 5 且 lastButtonPressTime > 0）
+                // 重要：優先檢測雙擊，在設置單擊 timeout 之前
                 if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > 0) {
-                    console.log('🍽️ [Phase 5] ✅ 檢測到雙擊（間隔 ' + timeSinceLastPress + 'ms），觸發深夜機上服務');
+                    console.log('🍽️ [Phase 5] ✅✅✅ 檢測到雙擊（間隔 ' + timeSinceLastPress + 'ms < ' + DOUBLE_CLICK_THRESHOLD + 'ms），觸發深夜機上服務');
                     
-                    // 立即取消任何待處理的單擊
+                    // 立即取消任何待處理的單擊 timeout（防止單擊邏輯執行）
                     if (buttonPressTimeout) {
                         clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
+                        console.log('✅ [Phase 5] 已取消待處理的單擊 timeout');
                     }
                     
                     // 立即觸發飛機餐
@@ -2697,6 +2707,7 @@
                     // 完全重置，準備下一次判定
                     lastButtonPressTime = 0;
                     buttonPressSequence = [];
+                    console.log('🔄 [Phase 5] 雙擊處理完成，已重置所有按鈕狀態');
                     return;
                 }
                 
@@ -2705,10 +2716,18 @@
                 if (buttonPressTimeout) {
                     clearTimeout(buttonPressTimeout);
                     buttonPressTimeout = null;
+                    console.log('🧹 [Phase 5] 清除之前的單擊 timeout（準備記錄新的按下時間）');
                 }
                 
-                // 記錄這次按下的時間
+                // 記錄這次按下的時間（重要：在清除 timeout 之後才記錄，避免被覆蓋）
+                const previousLastButtonPressTime = lastButtonPressTime;
                 lastButtonPressTime = currentTime;
+                console.log('📝 [Phase 5] 記錄按下時間:', {
+                    之前: previousLastButtonPressTime > 0 ? previousLastButtonPressTime : '未設置',
+                    現在: lastButtonPressTime,
+                    等待時間: DOUBLE_CLICK_THRESHOLD + 'ms',
+                    說明: '如果 ' + DOUBLE_CLICK_THRESHOLD + 'ms 內有第二次按下，將觸發雙擊'
+                });
                 
                 // 設置延遲，等待看是否有第二次按下
                 buttonPressTimeout = setTimeout(() => {
