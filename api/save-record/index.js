@@ -260,15 +260,26 @@ export default async function handler(req, res) {
             // 這樣實際路徑是：.../sleepAirline/flight
             // 用戶在 Console 會看到：sleepAirline（左欄 collection）/ sleepAirline（中欄 doc）/ flight（右欄 doc）
             //
-            // ✅ 修改：使用 flight+日期 作為 document ID，便於識別和查看
-            // 路徑結構：sleepAirline (collection) > sleepAirline (doc) > flight (collection) > flightYYYY-MM-DD (document)
-            // 如果同一天有多筆記錄，會在 document ID 後加上時間戳來區分
+            // ✅ 修正：Firestore 路徑結構必須是 collection > doc > collection > doc 的交替結構
+            // 目標路徑：/artifacts/default-app-id-worldclock-history/userProfiles/sleepAirline/sleepAirline/flight
+            // 實際 Firestore 結構：
+            //   artifacts (collection) > default-app-id-worldclock-history (doc) > userProfiles (collection) > sleepAirline (doc) > sleepAirline (collection) > [中間 doc] > flight (collection)
+            // 
+            // 為了讓用戶在 Console 看到 sleepAirline/sleepAirline/flight，我們使用 'data' 作為中間 document
+            // 實際路徑：.../sleepAirline/data/flight
+            // 但為了符合用戶需求，我們直接使用 sleepAirline 作為中間 document ID
+            // 這樣路徑會是：.../sleepAirline/sleepAirline/flight（但 sleepAirline 既是 collection 名稱也是 doc ID）
+            // 
+            // 更好的方案：使用固定的中間 document ID，例如 'data' 或 'root'
+            // 但用戶明確要求 sleepAirline/sleepAirline/flight，所以我們使用 'sleepAirline' 作為中間 doc ID
+            // 注意：這會導致路徑變成 .../sleepAirline/sleepAirline/flight，但第二個 sleepAirline 是 document
             const flightCollectionRef = db
                 .collection('artifacts')
                 .doc(APP_ID)
                 .collection('userProfiles')
                 .doc('sleepAirline')
                 .collection('sleepAirline')
+                .doc('sleepAirline') // 添加中間 document，讓 flight 可以成為 collection
                 .collection('flight'); // flight 是 collection
 
             // 生成 document ID：flight + 日期（例如：flight2025-12-23）
@@ -294,9 +305,10 @@ export default async function handler(req, res) {
                 ...artifactsData,
             }, { merge: false }); // 使用 set() 而不是 add()，merge: false 表示完全覆蓋（如果已存在）
 
-            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/flight/${flightDocId}`;
+            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/sleepAirline/flight/${flightDocId}`;
             console.log('✅ 個人檔案記錄已儲存到 artifacts（document ID: ' + flightDocId + '）:', userProfilePath);
             console.log('   文件 ID:', flightDocId);
+            console.log('   實際 Firestore 路徑: artifacts > ' + APP_ID + ' > userProfiles > sleepAirline > sleepAirline > sleepAirline > flight > ' + flightDocId);
 
             // 儲存到公共資料結構（對應網頁版眾人地圖）
             const publicDataPath = `artifacts/${APP_ID}/publicData/allSharedEntries/dailyRecords`;

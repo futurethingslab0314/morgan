@@ -1338,6 +1338,7 @@
 
         let currentPhase = Phase.POST_ARRIVAL;
         let currentState = State.COUNTRY;
+        let maxReachedPhase = Phase.POST_ARRIVAL; // 記錄已到達的最高 phase，確保不可逆
         let selectedTimer = null;
         let selectedAngle = null;
         let isTakeoffSequenceRunning = false; // 防止起飛序列重複觸發
@@ -1766,7 +1767,7 @@
                 case State.COUNTRY:
                     // 從國家顯示 → 選擇時長
                     console.log('按鈕：從國家顯示切換到時間選擇');
-                    currentPhase = Phase.TIME_SELECTION;
+                    switchToPhase(Phase.TIME_SELECTION);
                     switchState(State.TIMER);
                     // 預設選擇第一個時間選項
             setTimeout(() => {
@@ -2021,9 +2022,19 @@
                 const timeoutId = setTimeout(() => controller.abort(), 500);
                 
                 const response = await fetch('http://127.0.0.1:5001/api/knob/position', {
-                    signal: controller.signal
-                }).catch(() => {
-                    throw new Error('Connection refused');
+                    cache: 'no-cache', // 禁用緩存，避免 ERR_CACHE_RACE
+                    signal: controller.signal,
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    }
+                }).catch((error) => {
+                    clearTimeout(timeoutId);
+                    // 靜默處理網絡錯誤（ERR_CACHE_RACE, ERR_CONNECTION_REFUSED 等）
+                    if (error.name === 'AbortError' || error.message?.includes('ERR_CACHE_RACE') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
+                        return null; // 返回 null 表示請求失敗，但不拋出錯誤
+                    }
+                    throw error;
                 });
                 
                 clearTimeout(timeoutId);
@@ -2089,7 +2100,34 @@
                 }
 
                 try {
-                    const res = await fetch('http://127.0.0.1:5001/api/knob/position');
+                    // 添加 cache: 'no-cache' 和 AbortController 來避免 ERR_CACHE_RACE 錯誤
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 500);
+                    
+                    const res = await fetch('http://127.0.0.1:5001/api/knob/position', {
+                        cache: 'no-cache', // 禁用緩存，避免 ERR_CACHE_RACE
+                        signal: controller.signal,
+                        headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache'
+                        }
+                    }).catch((error) => {
+                        clearTimeout(timeoutId);
+                        // 靜默處理網絡錯誤（ERR_CACHE_RACE, ERR_CONNECTION_REFUSED 等）
+                        if (error.name === 'AbortError' || error.message?.includes('ERR_CACHE_RACE') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
+                            // 這些是預期的錯誤（API 未運行或緩存競爭），不輸出警告
+                            return null;
+                        }
+                        throw error;
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    // 如果請求失敗或被中止，直接返回
+                    if (!res || res.status !== 200) {
+                        return;
+                    }
+                    
                     const data = await res.json();
                     // console.log('📡 簡化監控 API 回傳:', data, 'currentState=', currentState); // 預設關閉，避免洗版
 
@@ -2124,8 +2162,12 @@
                         }
                     }
                 } catch (e) {
-                    // 這裡先靜默錯誤，避免在 Vercel 或非樹莓派環境洗版
-                    // console.error('🔴 簡化監控抓旋鈕失敗:', e);
+                    // 靜默處理錯誤，避免在 Vercel 或非樹莓派環境洗版
+                    // ERR_CACHE_RACE 和 ERR_CONNECTION_REFUSED 是預期的錯誤，不需要警告
+                    if (e.name !== 'AbortError' && !e.message?.includes('ERR_CACHE_RACE') && !e.message?.includes('ERR_CONNECTION_REFUSED')) {
+                        // 只有非預期的錯誤才記錄（可選）
+                        // console.error('🔴 簡化監控抓旋鈕失敗:', e);
+                    }
                 }
             }, 100); // 每 100ms 讀一次，提升響應速度
         }
@@ -2678,6 +2720,92 @@
             }
             
             // ============================================================================
+            // Phase 6 (DESCENT) 專用邏輯（完全獨立，不受其他階段邏輯干擾）
+            // 單擊：觸發手動降落
+            // ============================================================================
+            if (currentPhase === Phase.DESCENT || currentPhase === 6) {
+                console.log('🛬 [Phase 6] 檢測到按鈕按下，準備觸發手動降落');
+                
+                // 完全清除所有全局按鈕狀態（確保完全獨立）
+                buttonPressSequence = [];
+                lastButtonPressTime = 0;
+                if (buttonPressTimeout) {
+                    clearTimeout(buttonPressTimeout);
+                    buttonPressTimeout = null;
+                }
+                
+                // 如果飛機餐正在進行中，不處理
+                if (midnightServiceActive) {
+                    console.log('⚠️ [Phase 6] 飛機餐正在進行中，忽略按鈕按下');
+                    return;
+                }
+                
+                // 如果已經執行過降落，不處理
+                if (landingExecuted) {
+                    console.log('⚠️ [Phase 6] 降落已執行，忽略重複按鈕');
+                    return;
+                }
+                
+                // 立即觸發手動降落（不需要等待單擊延遲）
+                console.log('🛬 [Phase 6] ✅ 按鈕按下，立即觸發手動降落');
+                manualLandingTriggered = true;
+                triggerManualLanding();
+                return; // 重要：直接返回，不執行後續的邏輯
+            }
+            
+            // ============================================================================
+            // Phase 7 (LANDING) 專用邏輯（完全獨立，不受其他階段邏輯干擾）
+            // 處理情緒量表按鈕確認
+            // ============================================================================
+            if (currentPhase === Phase.LANDING || currentPhase === 7) {
+                console.log('📋 [Phase 7] 檢測到按鈕按下，檢查情緒量表狀態');
+                
+                // 完全清除所有全局按鈕狀態（確保完全獨立）
+                buttonPressSequence = [];
+                lastButtonPressTime = 0;
+                if (buttonPressTimeout) {
+                    clearTimeout(buttonPressTimeout);
+                    buttonPressTimeout = null;
+                }
+                
+                // 檢查是否正在等待情緒量表按鈕確認
+                if (window._feedbackWaitingForButton) {
+                    console.log('✅ [Phase 7] 檢測到情緒量表等待按鈕確認，處理回饋');
+                    const selectedValue = window._feedbackSelectedValue || '3'; // 預設 3 分
+                    const resolveFunc = window._feedbackResolve;
+                    const cleanupFunc = window._feedbackCleanup;
+                    
+                    // 執行清理
+                    if (cleanupFunc) {
+                        cleanupFunc();
+                    }
+                    
+                    // 隱藏情緒量表
+                    const feedbackState = document.getElementById('stateFlightFeedback');
+                    if (feedbackState) {
+                        feedbackState.style.display = 'none';
+                        feedbackState.classList.remove('active');
+                    }
+                    
+                    // 返回選擇的回饋
+                    if (resolveFunc) {
+                        console.log('✅ 飛行回饋已收集（按鈕確認，全局監控）:', selectedValue);
+                        resolveFunc(selectedValue);
+                    }
+                    
+                    // 清除標記
+                    window._feedbackWaitingForButton = false;
+                    window._feedbackResolve = null;
+                    window._feedbackCleanup = null;
+                    window._feedbackSelectedValue = null;
+                    return; // 重要：直接返回，不執行後續的邏輯
+                } else {
+                    console.log('⚠️ [Phase 7] 不在等待情緒量表確認，忽略按鈕操作');
+                    return; // 重要：直接返回，不執行後續的邏輯
+                }
+            }
+            
+            // ============================================================================
             // 非 Phase 5/6/7 階段：使用完整的雙擊/三擊檢測邏輯
             // ============================================================================
             
@@ -2894,32 +3022,16 @@
             }
             
             // 1.2 Phase 6 (DESCENT) - 單擊觸發手動降落
-            // 重要：Phase 6 只能觸發手動降落，不能觸發飛機餐
+            // 注意：Phase 6 的按鈕處理已經在 handlePhysicalButtonPress 中直接處理，這裡不再重複處理
+            // 如果執行到這裡，說明 handlePhysicalButtonPress 沒有正確處理 Phase 6，記錄警告
             if (currentPhase === Phase.DESCENT || currentPhase === 6) {
-                // 完全清除所有全局按鈕狀態（確保完全獨立）
-                buttonPressSequence = [];
-                lastButtonPressTime = 0;
-                if (buttonPressTimeout) {
-                    clearTimeout(buttonPressTimeout);
-                    buttonPressTimeout = null;
+                console.warn('⚠️ [Phase 6] handleButtonSingleClick 收到 Phase 6 的按鈕，但應該在 handlePhysicalButtonPress 中處理');
+                // 作為備用處理，仍然觸發手動降落
+                if (!midnightServiceActive && !landingExecuted) {
+                    console.log('🛬 [Phase 6] 備用處理：觸發手動降落');
+                    manualLandingTriggered = true;
+                    triggerManualLanding();
                 }
-                
-                // 如果飛機餐正在進行中，不處理
-                if (midnightServiceActive) {
-                    console.log('⚠️ [Phase 6] 飛機餐正在進行中，忽略按鈕按下');
-                    return;
-                }
-                
-                // 如果已經執行過降落，不處理
-                if (landingExecuted) {
-                    console.log('⚠️ [Phase 6] 降落已執行，忽略重複按鈕');
-                    return;
-                }
-                
-                // 單擊觸發手動降落
-                console.log('🛬 [Phase 6] 按鈕按下，觸發手動降落');
-                manualLandingTriggered = true;
-                triggerManualLanding();
                 return;
             }
             
@@ -2997,7 +3109,7 @@
                 case State.COUNTRY:
                     // 從國家顯示 → 選擇時長
                     console.log('✅ 按鈕：從國家顯示切換到時間選擇');
-                    currentPhase = Phase.TIME_SELECTION;
+                    switchToPhase(Phase.TIME_SELECTION);
                     switchState(State.TIMER);
                     // 自動選擇第一個時間選項
                     setTimeout(() => {
@@ -3341,7 +3453,13 @@
                     
                     captainAudio.onerror = (e) => {
                         clearTimeout(timeout);
-                        console.warn('⚠️ captain.mp3 播放錯誤:', e);
+                        // 檢查是否是預期的停止操作（6秒後手動停止可能觸發 error 事件）
+                        // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
+                        if (captainAudio.currentTime > 0) {
+                            console.log('ℹ️ captain.mp3 播放過程中觸發 error 事件（可能是預期的停止操作）');
+                        } else {
+                            console.warn('⚠️ captain.mp3 播放錯誤（載入失敗）:', e);
+                        }
                         resolve(); // 即使錯誤也繼續
                     };
                     
@@ -3522,7 +3640,7 @@
             // 注意：不再自動切換到 Phase 7，必須在 Phase 6 時按下按鈕才會觸發降落
             
             // 設置當前階段為 CRUISE（但不調用 handleCruise，因為進度條已經顯示）
-            currentPhase = Phase.CRUISE;
+            switchToPhase(Phase.CRUISE);
             
             console.log('✅ 已進入巡航階段，進度條和影片已顯示');
             console.log('   🔍 調試資訊 - currentPhase:', currentPhase, 'Phase.CRUISE:', Phase.CRUISE);
@@ -3638,11 +3756,18 @@
                 }
                 
                 // 錯誤處理
-                audio.onerror = () => {
+                audio.onerror = (e) => {
                     if (resolved) return;
                     resolved = true;
                     if (timeoutId) clearTimeout(timeoutId);
-                    console.warn('⚠️ 音頻播放失敗:', url);
+                    // 檢查是否是預期的停止操作（maxDuration 時手動停止可能觸發 error 事件）
+                    // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
+                    if (maxDuration && audio.currentTime > 0 && audio.currentTime >= maxDuration * 0.9) {
+                        // 已經播放了接近完整的時長，這可能是預期的停止操作
+                        console.log(`ℹ️ 音頻播放過程中觸發 error 事件（已播放 ${audio.currentTime.toFixed(1)} 秒，可能是預期的停止操作）:`, url);
+                    } else {
+                        console.warn('⚠️ 音頻播放失敗:', url);
+                    }
                     resolve(); // 即使失敗也繼續
                 };
                 
@@ -3937,8 +4062,34 @@
                 return;
             }
             
-            // 清除之前的影片，但先等 landing.mp4 可以播放再切換，減少空白時間
+            // 立即停止 Phase 5 的影片（takeoff2.mp4）和相關檢查
+            console.log('🛑 [landing.mp4] 停止 Phase 5 的影片播放...');
+            try {
+                // 停止 takeoff2.mp4 的可見性檢查
+                if (window._takeoff2VisibilityCheck) {
+                    clearInterval(window._takeoff2VisibilityCheck);
+                    window._takeoff2VisibilityCheck = null;
+                    console.log('✅ [landing.mp4] 已停止 takeoff2.mp4 可見性檢查');
+                }
+            } catch (e) {
+                console.warn('⚠️ [landing.mp4] 停止可見性檢查時發生錯誤:', e);
+            }
+            
+            // 清除之前的影片（takeoff1.mp4, takeoff2.mp4），但先等 landing.mp4 可以播放再切換，減少空白時間
             const existingVideos = Array.from(videoContainer.querySelectorAll('video'));
+            console.log('🛑 [landing.mp4] 找到', existingVideos.length, '個舊影片，準備移除');
+            
+            // 立即停止並移除所有舊影片
+            existingVideos.forEach(video => {
+                try {
+                    video.pause();
+                    video.currentTime = 0;
+                    video.remove();
+                    console.log('✅ [landing.mp4] 已停止並移除舊影片:', video.src || '未知來源');
+                } catch (e) {
+                    console.warn('⚠️ [landing.mp4] 移除舊影片時發生錯誤:', e);
+                }
+            });
             
             // 準備 landing.mp4 影片元素
             const landingVideo = document.createElement('video');
@@ -3955,36 +4106,46 @@
             landingVideo.style.top = '0';
             landingVideo.style.left = '0';
             landingVideo.style.opacity = '0';
-            landingVideo.style.zIndex = '20';
+            landingVideo.style.zIndex = '30'; // 確保在最上層
             
             // 先確保容器可見
             videoContainerEl.style.display = 'flex';
+            videoContainerEl.style.zIndex = '30'; // 確保容器在最上層
             
             videoContainer.appendChild(landingVideo);
+            console.log('✅ [landing.mp4] landing.mp4 元素已創建並添加到容器');
             
             // 等待影片可以播放再淡入，避免白屏
             await new Promise((resolve) => {
                 if (landingVideo.readyState >= 3) {
+                    console.log('✅ [landing.mp4] landing.mp4 已準備就緒');
                     resolve();
                 } else {
-                    landingVideo.addEventListener('canplaythrough', () => resolve(), { once: true });
-                    landingVideo.addEventListener('error', () => resolve(), { once: true });
+                    landingVideo.addEventListener('canplaythrough', () => {
+                        console.log('✅ [landing.mp4] landing.mp4 canplaythrough 事件觸發');
+                        resolve();
+                    }, { once: true });
+                    landingVideo.addEventListener('error', (e) => {
+                        console.warn('⚠️ [landing.mp4] landing.mp4 載入錯誤:', e);
+                        resolve(); // 即使錯誤也繼續
+                    }, { once: true });
+                    landingVideo.load(); // 確保開始載入
                 }
             });
             
-            // 此時 landing.mp4 已經可以播放，移除舊影片並淡入新影片
-            existingVideos.forEach(v => v.remove());
+            // 此時 landing.mp4 已經可以播放，清除 window-content 的背景
             windowContent.style.backgroundImage = 'none';
             windowContent.innerHTML = '';
             
             landingVideo.style.opacity = '1';
-            landingVideo.style.transition = 'opacity 0.2s';
+            landingVideo.style.transition = 'opacity 0.3s';
+            console.log('✅ [landing.mp4] landing.mp4 已淡入，準備播放');
             
             try {
                 await landingVideo.play();
-                console.log('▶️ 開始播放 landing.mp4');
+                console.log('▶️ [landing.mp4] 開始播放 landing.mp4');
             } catch (e) {
-                console.warn('⚠️ 無法播放 landing.mp4，直接顯示降落圖片:', e);
+                console.warn('⚠️ [landing.mp4] 無法播放 landing.mp4，直接顯示降落圖片:', e);
             }
             
             // 等待影片結束或錯誤
@@ -6084,16 +6245,16 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     console.log('ℹ️ 沒有找到最新的降落記錄，保持當前狀態');
                 }
                 
-                // 切換到 Phase 0
-                currentPhase = Phase.POST_ARRIVAL;
+                // 切換到 Phase 0（從 Phase 8 回到 Phase 0，這是允許的）
+                switchToPhase(Phase.POST_ARRIVAL);
                 currentState = State.COUNTRY;
                 switchState(State.COUNTRY);
                 
                 console.log('✅ 已回到 Phase 0 (POST_ARRIVAL)');
             } catch (error) {
                 console.error('❌ 載入最新降落位置失敗:', error);
-                // 即使失敗也切換到 Phase 0
-                currentPhase = Phase.POST_ARRIVAL;
+                // 即使失敗也切換到 Phase 0（從 Phase 8 回到 Phase 0，這是允許的）
+                switchToPhase(Phase.POST_ARRIVAL);
                 currentState = State.COUNTRY;
                 switchState(State.COUNTRY);
             }
@@ -6266,9 +6427,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         function showFlightFeedback(destination) {
             return new Promise((resolve) => {
                 const feedbackState = document.getElementById('stateFlightFeedback');
-                const options = document.querySelectorAll('#feedbackOptions .feedback-option');
                 
-                if (!feedbackState || !options || options.length === 0) {
+                if (!feedbackState) {
                     console.warn('⚠️ 飛行回饋選單元素不存在，跳過回饋收集');
                     resolve(null);
                     return;
@@ -6283,33 +6443,74 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 feedbackState.classList.add('active'); // 添加 active class 確保顯示
                 console.log('✅ 情緒量表已顯示，display:', feedbackState.style.display, 'zIndex:', feedbackState.style.zIndex, 'active:', feedbackState.classList.contains('active'));
                 
+                // 在顯示後重新查詢 options，確保獲取到最新的 DOM 元素
+                // 重要：必須在 feedbackState 顯示後再查詢，因為可能之前被隱藏或替換
+                const options = document.querySelectorAll('#feedbackOptions .feedback-option');
+                
+                if (!options || options.length === 0) {
+                    console.error('❌ [情緒量表] 無法找到選項元素，options:', options, 'length:', options?.length);
+                    console.error('   feedbackState:', feedbackState);
+                    console.error('   #feedbackOptions:', document.getElementById('feedbackOptions'));
+                    resolve(null);
+                    return;
+                }
+                
+                console.log('✅ [情緒量表] 找到', options.length, '個選項');
+                
                 // 初始化選中狀態（預設 3 分）
                 let selectedIndex = 2; // 對應 3 分
                 let selectedFeedback = '3';
-                updateSelection(selectedIndex);
                 
                 // 更新選中狀態（使用 active class，類似氣候選項）
                 function updateSelection(index) {
                     if (index < 0 || index >= options.length) {
-                        console.warn('⚠️ [情緒量表] 無效的索引:', index);
+                        console.warn('⚠️ [情緒量表] 無效的索引:', index, 'options.length:', options.length);
                         return;
                     }
                     
-                    options.forEach((opt, i) => {
-                        if (i === index) {
-                            opt.classList.add('active');
-                        } else {
-                            opt.classList.remove('active');
-                        }
-                    });
+                    // 重新查詢 options，確保獲取到最新的 DOM 元素（防止元素被替換）
+                    const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
+                    if (currentOptions.length !== options.length) {
+                        console.warn('⚠️ [情緒量表] 選項數量變化，重新查詢');
+                        // 如果數量變化，使用新的查詢結果
+                        currentOptions.forEach((opt, i) => {
+                            if (i === index) {
+                                opt.classList.add('active');
+                                opt.style.opacity = '1';
+                                opt.style.transform = 'scale(1.05)';
+                            } else {
+                                opt.classList.remove('active');
+                                opt.style.opacity = '0.6';
+                                opt.style.transform = 'scale(1)';
+                            }
+                        });
+                    } else {
+                        // 正常情況：使用原始 options
+                        options.forEach((opt, i) => {
+                            if (i === index) {
+                                opt.classList.add('active');
+                                opt.style.opacity = '1';
+                                opt.style.transform = 'scale(1.05)';
+                            } else {
+                                opt.classList.remove('active');
+                                opt.style.opacity = '0.6';
+                                opt.style.transform = 'scale(1)';
+                            }
+                        });
+                    }
+                    
                     selectedIndex = index;
-                    // data-feedback 目前為 "1" ~ "5"
-                    selectedFeedback = options[index].getAttribute('data-feedback') || String(index + 1);
+                    // 使用當前選中的元素獲取 data-feedback
+                    const selectedOption = currentOptions.length === options.length ? options[index] : currentOptions[index];
+                    selectedFeedback = selectedOption?.getAttribute('data-feedback') || String(index + 1);
                     
                     // 立即更新全局標記的選擇值（確保同步）
                     window._feedbackSelectedValue = selectedFeedback;
-                    console.log('🔄 [情緒量表] updateSelection: 索引', index, '→ 分數', selectedFeedback);
+                    console.log('🔄 [情緒量表] updateSelection: 索引', index, '→ 分數', selectedFeedback, '選項元素:', selectedOption);
                 }
+                
+                // 先執行一次更新，確保初始狀態正確
+                updateSelection(selectedIndex);
                 
                 // 旋鈕選擇邏輯（5 個選項，直接對應旋鈕位置 0-4）
                 let knobSelectionActive = true;
@@ -6333,27 +6534,83 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 };
                 
                 const knobSelectionInterval = setInterval(() => {
-                    if (!knobSelectionActive) return;
+                    if (!knobSelectionActive || !window._feedbackWaitingForButton) {
+                        // 如果已經處理完畢或不再等待，停止輪詢
+                        if (!window._feedbackWaitingForButton) {
+                            clearInterval(knobSelectionInterval);
+                        }
+                        return;
+                    }
                     
-                    fetch('http://127.0.0.1:5001/api/knob/position')
-                        .then(res => res.json())
+                    fetch('http://127.0.0.1:5001/api/knob/position', {
+                        cache: 'no-cache',
+                        headers: {
+                            'Cache-Control': 'no-cache, no-store, must-revalidate',
+                            'Pragma': 'no-cache'
+                        }
+                    })
+                        .then(res => {
+                            if (!res.ok) {
+                                throw new Error('API 響應錯誤: ' + res.status);
+                            }
+                            return res.json();
+                        })
                         .then(data => {
-                            if (data.success && data.position !== undefined) {
-                                const position = data.position;
+                            if (data && data.success && data.position !== undefined) {
+                                const position = parseInt(data.position);
+                                if (isNaN(position)) {
+                                    console.warn('⚠️ [情緒量表] 無效的旋鈕位置:', data.position);
+                                    return;
+                                }
+                                
                                 // 旋鈕位置（0-maxIndex）直接對應選項索引
                                 const clampedIndex = Math.max(0, Math.min(maxIndex, position));
+                                console.log('🔍 [情緒量表] 旋鈕位置檢查: position=', position, 'clampedIndex=', clampedIndex, 'selectedIndex=', selectedIndex, 'maxIndex=', maxIndex);
+                                
                                 if (clampedIndex !== selectedIndex) {
+                                    console.log('✅ [情緒量表] 檢測到變化，準備更新 UI: 從索引', selectedIndex, '→', clampedIndex);
                                     updateSelection(clampedIndex);
                                     // 更新全局標記的選擇值（確保同步）
                                     window._feedbackSelectedValue = selectedFeedback;
-                                    console.log('🔄 [情緒量表] 旋鈕選擇更新: 位置', clampedIndex, '→ 分數', selectedFeedback);
+                                    console.log('🔄 [情緒量表] 旋鈕選擇更新完成: 位置', position, '→ 索引', clampedIndex, '→ 分數', selectedFeedback);
+                                    
+                                    // 驗證 UI 是否真的更新了
+                                    const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
+                                    const activeCount = Array.from(currentOptions).filter(opt => opt.classList.contains('active')).length;
+                                    console.log('🔍 [情緒量表] UI 驗證: 總選項數=', currentOptions.length, 'active 數量=', activeCount, '應該只有 1 個 active');
+                                    
+                                    if (activeCount !== 1) {
+                                        console.error('❌ [情緒量表] UI 更新異常！應該只有 1 個 active，但發現', activeCount, '個');
+                                        // 強制修復
+                                        currentOptions.forEach((opt, i) => {
+                                            if (i === clampedIndex) {
+                                                opt.classList.add('active');
+                                                opt.style.opacity = '1';
+                                                opt.style.transform = 'scale(1.05)';
+                                            } else {
+                                                opt.classList.remove('active');
+                                                opt.style.opacity = '0.6';
+                                                opt.style.transform = 'scale(1)';
+                                            }
+                                        });
+                                        console.log('🔧 [情緒量表] 已強制修復 UI');
+                                    }
+                                } else {
+                                    console.log('ℹ️ [情緒量表] 索引未變化，跳過更新');
                                 }
+                            } else {
+                                console.warn('⚠️ [情緒量表] API 返回無效數據:', data);
                             }
                         })
                         .catch(err => {
-                            // 忽略錯誤，繼續輪詢
+                            // 只在非預期錯誤時記錄（ERR_CONNECTION_REFUSED 等是預期的）
+                            if (!err.message?.includes('ERR_CONNECTION_REFUSED') && 
+                                !err.message?.includes('ERR_CACHE_RACE') &&
+                                !err.message?.includes('Failed to fetch')) {
+                                console.warn('⚠️ [情緒量表] 旋鈕 API 錯誤:', err.message);
+                            }
                         });
-                }, 200);
+                }, 150); // 降低到 150ms，提升響應速度
                 
                 // 備用方案：獨立按鈕輪詢（如果全局監控不可用或失效）
                 const buttonCheckInterval = setInterval(() => {
@@ -7095,6 +7352,45 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
 
         // Phase 切換函數
         function switchToPhase(phase, options = {}) {
+            // 如果 options.force 為 true，則跳過不可逆檢查（用於測試函數或特殊情況）
+            const force = options.force === true;
+            
+            if (!force) {
+                // Phase 不可逆檢查：只能前進或保持在當前 phase，除非是 Phase 8 回到 Phase 0
+                const isReturnToPhase0 = (phase === Phase.POST_ARRIVAL || phase === 0) && 
+                                         (currentPhase === Phase.RETURN_WINDOW || currentPhase === 8);
+                const isPhaseAdvance = phase > maxReachedPhase;
+                const isPhaseStay = phase === currentPhase;
+                const isEarlyLanding = (phase === Phase.LANDING || phase === 7) && 
+                                       (currentPhase === Phase.CRUISE || currentPhase === 5) &&
+                                       window._earlyLandingConfirmed;
+                
+                // 允許的情況：
+                // 1. Phase 8 回到 Phase 0（特殊情況）
+                // 2. 前進到新的 phase（phase > maxReachedPhase）
+                // 3. 保持在當前 phase（phase === currentPhase）
+                // 4. 提前降落（從 Phase 5 跳到 Phase 7）
+                if (!isReturnToPhase0 && !isPhaseAdvance && !isPhaseStay && !isEarlyLanding) {
+                    console.warn('⚠️ [Phase 不可逆] 嘗試回退到 Phase ' + phase + '，但當前已到達 Phase ' + maxReachedPhase + '，拒絕切換');
+                    console.warn('   當前 Phase:', currentPhase, '目標 Phase:', phase, '最高已到達 Phase:', maxReachedPhase);
+                    return; // 拒絕切換
+                }
+                
+                // 更新最高已到達的 phase（只記錄前進的情況，不包括回退）
+                if (phase > maxReachedPhase) {
+                    maxReachedPhase = phase;
+                    console.log('📈 [Phase 不可逆] 更新最高已到達 Phase:', maxReachedPhase);
+                }
+                
+                // 如果是 Phase 8 回到 Phase 0，重置最高 phase 為 0（允許重新開始）
+                if (isReturnToPhase0) {
+                    maxReachedPhase = Phase.POST_ARRIVAL;
+                    console.log('🔄 [Phase 不可逆] Phase 8 回到 Phase 0，重置最高 phase 為 0（允許重新開始）');
+                }
+            } else {
+                console.log('⚠️ [Phase 切換] 使用 force 模式，跳過不可逆檢查（測試模式）');
+            }
+            
             // 切換到任何 Phase 5/6/7 時，都清理所有按鈕狀態，確保按鈕判定邏輯完全獨立
             if (phase === Phase.CRUISE || phase === 5 || 
                 phase === Phase.DESCENT || phase === 6 ||
@@ -7108,7 +7404,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 }
             }
             currentPhase = phase;
-            console.log('🔄 切換到 Phase ' + phase);
+            console.log('🔄 切換到 Phase ' + phase + '（最高已到達: ' + maxReachedPhase + '）');
             
             // 控制 stateCountry（所在國家）的顯示：只在 Phase 0 顯示
             const stateCountry = document.getElementById('stateCountry');
@@ -7591,6 +7887,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 // 先確保第二支影片從頭開始，並設置為循環播放
                 video2.currentTime = 0;
                 video2.loop = true; // 設置循環播放
+                // 優化：降低影片解碼負擔，提升按鈕響應
+                video2.playsInline = true; // 確保內聯播放
+                video2.muted = true; // 確保靜音（背景影片不需要聲音）
+                video2.preload = 'auto'; // 預載入
+                // 降低播放品質以減少 CPU 負擔（如果瀏覽器支持）
+                if (video2.requestVideoFrameCallback) {
+                    // 使用 requestVideoFrameCallback 可以更精確控制，但這裡我們優先按鈕響應
+                }
                 video2.style.display = 'block';
                 video2.style.opacity = '1'; // 確保可見
                 video2.style.zIndex = '10'; // 確保在上層
@@ -7614,62 +7918,37 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 // 開始播放 takeoff2.mp4（循環播放）
                 try {
                     await video2.play();
-                    console.log('✅ takeoff2.mp4 開始循環播放');
+                    console.log('✅ takeoff2.mp4 開始循環播放（背景影片，低優先級）');
                     
-                    // 優化：減少檢查頻率並添加防抖，避免干擾按鈕偵測
-                    // 使用較長的間隔（2秒）和條件檢查，減少 DOM 操作
-                    let lastVideoState = null;
+                    // 優化：大幅簡化影片檢查邏輯，優先保證按鈕響應精確性
+                    // takeoff2.mp4 只是背景影片，不需要頻繁檢查，只在真正需要時才檢查
+                    // 使用非常長的間隔（30秒）和最小化檢查，避免干擾按鈕偵測
+                    let lastCheckTime = Date.now();
                     const checkVideoVisibility = setInterval(() => {
                         if (!video2) return;
                         
-                        const isPlaying = !video2.paused;
-                        const currentState = {
-                            playing: isPlaying,
-                            opacity: video2.style.opacity,
-                            display: video2.style.display
-                        };
+                        const now = Date.now();
+                        // 每 30 秒才檢查一次，大幅減少主線程負擔
+                        if (now - lastCheckTime < 30000) return;
+                        lastCheckTime = now;
                         
-                        // 只在狀態真正改變時才更新 DOM（減少不必要的操作）
-                        if (JSON.stringify(currentState) !== JSON.stringify(lastVideoState)) {
-                            if (isPlaying) {
-                                // 只在需要時才更新樣式
-                                if (video2.style.opacity !== '1') {
-                                    video2.style.opacity = '1';
-                                }
-                                if (video2.style.display !== 'block') {
-                                    video2.style.display = 'block';
-                                }
-                                if (video2.style.zIndex !== '10') {
-                                    video2.style.zIndex = '10';
-                                }
-                                if (videoContainer) {
-                                    if (videoContainer.style.display !== 'flex') {
-                                        videoContainer.style.display = 'flex';
-                                    }
-                                    if (videoContainer.style.opacity !== '1') {
-                                        videoContainer.style.opacity = '1';
-                                    }
-                                }
-                            }
-                            lastVideoState = currentState;
-                        }
-                        
-                        // 如果暫停了，使用防抖機制避免頻繁重試
-                        if (!isPlaying && !video2._isRetrying) {
+                        // 只在影片真的停止播放時才嘗試重新播放（不檢查樣式，減少 DOM 操作）
+                        if (video2.paused && !video2._isRetrying) {
                             video2._isRetrying = true;
                             video2.play().catch(err => {
-                                console.warn('⚠️ 重新播放 takeoff2.mp4 失敗:', err);
+                                // 靜默處理錯誤，不輸出警告（背景影片失敗不影響功能）
                             }).finally(() => {
-                                // 延遲重置重試標記，避免頻繁重試（2秒後才能再次重試）
+                                // 延遲重置重試標記（5秒後才能再次重試）
                                 setTimeout(() => {
                                     video2._isRetrying = false;
-                                }, 2000);
+                                }, 5000);
                             });
                         }
-                    }, 2000); // 增加到 2 秒，減少檢查頻率，降低對按鈕偵測的干擾
+                    }, 10000); // 每 10 秒檢查一次，但內部邏輯會進一步過濾到每 30 秒才真正執行
                     
                     // 存儲 interval ID，以便在需要時清除
                     window._takeoff2VisibilityCheck = checkVideoVisibility;
+                    console.log('✅ [Phase 5] takeoff2.mp4 可見性檢查已啟動（極簡化：每 30 秒檢查一次，優先保證按鈕響應）');
                     
                     // 優化：添加防抖機制，避免頻繁觸發
                     let pauseRetryTimeout = null;
@@ -8526,6 +8805,42 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 標記已執行，防止重複（在開始時就標記，即使後續出錯也不會重複執行）
             landingExecuted = true;
             
+            // 立即停止 Phase 5 的影片（takeoff2.mp4）和相關檢查
+            console.log('🛑 [Phase 7] 停止 Phase 5 的影片播放...');
+            try {
+                // 停止 takeoff2.mp4 的可見性檢查
+                if (window._takeoff2VisibilityCheck) {
+                    clearInterval(window._takeoff2VisibilityCheck);
+                    window._takeoff2VisibilityCheck = null;
+                    console.log('✅ [Phase 7] 已停止 takeoff2.mp4 可見性檢查');
+                }
+                
+                // 停止所有正在播放的影片（takeoff1.mp4, takeoff2.mp4）
+                const videoContainer = document.querySelector('.window-area');
+                const videoContainerEl = document.getElementById('videoContainer');
+                if (videoContainer) {
+                    const allVideos = Array.from(videoContainer.querySelectorAll('video'));
+                    allVideos.forEach(video => {
+                        try {
+                            video.pause();
+                            video.currentTime = 0;
+                            video.remove();
+                            console.log('✅ [Phase 7] 已停止並移除影片:', video.src);
+                        } catch (e) {
+                            console.warn('⚠️ [Phase 7] 停止影片時發生錯誤:', e);
+                        }
+                    });
+                }
+                
+                // 隱藏影片容器
+                if (videoContainerEl) {
+                    videoContainerEl.style.display = 'none';
+                    console.log('✅ [Phase 7] 已隱藏影片容器');
+                }
+            } catch (e) {
+                console.warn('⚠️ [Phase 7] 停止 Phase 5 影片時發生小問題:', e);
+            }
+            
             // 立即結束飛行進度條顯示（Phase 7 時進度條應該立即消失）
             // 在 try-catch 之前就執行，確保即使後續出錯也會隱藏
             try {
@@ -8865,7 +9180,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 直接切換到 Phase 0 (POST_ARRIVAL)，而不是 Phase 8 (RETURN_WINDOW)
             console.log('🔄 準備切換到 Phase 0 (POST_ARRIVAL)...');
             console.log('   切換前 - 當前階段:', currentPhase, '當前狀態:', currentState);
-            currentPhase = Phase.POST_ARRIVAL;
+            switchToPhase(Phase.POST_ARRIVAL); // 從 Phase 8 回到 Phase 0，這是允許的
             currentState = State.COUNTRY;
             console.log('   切換後 - 當前階段:', currentPhase, '當前狀態:', currentState);
             
@@ -8974,8 +9289,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         // 顯示國家資訊
                         await showLandingCountryInfo(defaultDestination);
                         
-                        // 切換到 Phase 0 (POST_ARRIVAL)
-                        currentPhase = Phase.POST_ARRIVAL;
+                        // 切換到 Phase 0 (POST_ARRIVAL)（錯誤恢復時允許切換）
+                        switchToPhase(Phase.POST_ARRIVAL, { force: true });
                         currentState = State.COUNTRY;
                         switchState(State.COUNTRY);
                         console.log('✅ 錯誤恢復完成，已切換到 Phase 0');
@@ -8990,8 +9305,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // Phase 8: 回到窗戶存在狀態（Phase 0）
             console.log('🪟 [Phase 8] 回到窗戶存在狀態');
             
-            // 明確設置為 Phase 0 (POST_ARRIVAL)
-            currentPhase = Phase.POST_ARRIVAL;
+            // 明確設置為 Phase 0 (POST_ARRIVAL)（從 Phase 8 回到 Phase 0，這是允許的）
+            switchToPhase(Phase.POST_ARRIVAL);
             currentState = State.COUNTRY;
             
             // 顯示目的地圖片（保持顯示）
@@ -9074,7 +9389,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             if (currentState === 'TICKET_REVIEW') {
                 console.log('🔘 [TICKET_REVIEW] 從機票回顧返回首頁');
                 switchState(State.COUNTRY);
-                currentPhase = Phase.POST_ARRIVAL;
+                switchToPhase(Phase.POST_ARRIVAL, { force: true }); // 機票回顧是特殊功能，允許回到 Phase 0
                 // 清除機票回顧相關變數
                 flightHistoryRecords = [];
                 currentReviewIndex = 0;
@@ -9347,8 +9662,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.log('✅ 階段正確，觸發服務');
                 triggerMidnightService();
             } else {
-                console.warn('⚠️ 當前不在 CRUISE 階段，強制設置為 CRUISE');
-                currentPhase = Phase.CRUISE;
+                console.warn('⚠️ 當前不在 CRUISE 階段，強制設置為 CRUISE（測試模式）');
+                switchToPhase(Phase.CRUISE, { force: true }); // 測試函數允許強制設置
                 triggerMidnightService();
             }
         };
@@ -9364,7 +9679,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試提早降落（提早 20 分鐘）
         window.testEarlyLanding = function() {
             console.log('🧪 測試提早降落（提早 20 分鐘）');
-            currentPhase = Phase.CRUISE;
+            switchToPhase(Phase.CRUISE, { force: true }); // 測試函數允許強制設置
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - (selectedTimer - 20) * 60 * 1000;
             manualLandingTriggered = true;
@@ -9375,7 +9690,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試準時降落
         window.testOnTimeLanding = function() {
             console.log('🧪 測試準時降落');
-            currentPhase = Phase.CRUISE;
+            switchToPhase(Phase.CRUISE, { force: true }); // 測試函數允許強制設置
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - selectedTimer * 60 * 1000;
             manualLandingTriggered = true;
@@ -9386,7 +9701,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試延遲降落（延遲 15 分鐘）
         window.testLateLanding = function() {
             console.log('🧪 測試延遲降落（延遲 15 分鐘）');
-            currentPhase = Phase.CRUISE;
+            switchToPhase(Phase.CRUISE, { force: true }); // 測試函數允許強制設置
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - (selectedTimer + 15) * 60 * 1000;
             manualLandingTriggered = true;
@@ -9397,7 +9712,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試降落前 5 分鐘喚醒
         window.testDescent = function() {
             console.log('🧪 測試降落前 5 分鐘喚醒');
-            currentPhase = Phase.DESCENT;  // 修正：應該設置為 DESCENT，不是 CRUISE
+            switchToPhase(Phase.DESCENT, { force: true }); // 測試函數允許強制設置
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - (selectedTimer - 5) * 60 * 1000;
             descentAnnouncementPlayed = false;
@@ -9408,7 +9723,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試直接降落完成
         window.testLandingComplete = function() {
             console.log('🧪 測試直接降落完成');
-            currentPhase = Phase.CRUISE;
+            switchToPhase(Phase.CRUISE, { force: true }); // 測試函數允許強制設置
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - selectedTimer * 60 * 1000;
             console.log('   設置完成，觸發降落完成處理...');
@@ -9418,7 +9733,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試極早降落（提早超過 15 分鐘，會觸發「迫降」幽默場景）
         window.testVeryEarlyLanding = function() {
             console.log('🧪 測試極早降落（提早 20 分鐘，迫降場景）');
-            currentPhase = Phase.DESCENT;  // 先進入降落前階段，播放 wakeup 音樂
+            switchToPhase(Phase.DESCENT, { force: true }); // 測試函數允許強制設置
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - (selectedTimer - 20) * 60 * 1000;
             descentAnnouncementPlayed = false;  // 重置，確保會播放 wakeup 音樂
@@ -9436,7 +9751,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         // 測試極晚降落（延遲超過 15 分鐘，會觸發「飛錯機場」幽默場景）
         window.testVeryLateLanding = function() {
             console.log('🧪 測試極晚降落（延遲 20 分鐘，飛錯機場場景）');
-            currentPhase = Phase.DESCENT;  // 先進入降落前階段，播放 wakeup 音樂
+            switchToPhase(Phase.DESCENT, { force: true }); // 測試函數允許強制設置
             selectedTimer = 360;  // 6 小時
             sleepStartTime = Date.now() - (selectedTimer + 20) * 60 * 1000;
             descentAnnouncementPlayed = false;  // 重置，確保會播放 wakeup 音樂
