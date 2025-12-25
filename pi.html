@@ -4254,6 +4254,17 @@
             const existingVideos = Array.from(videoContainer.querySelectorAll('video'));
             console.log('🔍 [landing.mp4] 找到', existingVideos.length, '個舊影片，將在 landing.mp4 開始播放時移除（避免空窗期）');
             
+            // 立即暫停所有舊影片，避免繼續循環播放
+            existingVideos.forEach(video => {
+                try {
+                    video.pause();
+                    video.currentTime = 0;
+                    console.log('✅ [landing.mp4] 已暫停舊影片:', video.src || '未知來源');
+                } catch (e) {
+                    console.warn('⚠️ [landing.mp4] 暫停舊影片時發生錯誤:', e);
+                }
+            });
+            
             // 準備 landing.mp4 影片元素
             const landingVideo = document.createElement('video');
             landingVideo.src = 'landing.mp4';
@@ -5876,20 +5887,41 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                             console.log('✅ 本機 TTS 音頻已預載（後台準備完成）');
                             return Promise.resolve(); // 預載模式，立即返回，不等待播放
                         } else {
-                            console.log('✅ 本機 TTS 播放成功（不等待播放完成，立即繼續）');
-                            // 不等待播放完成，立即返回，讓流程繼續
-                            // 後端 TTS 服務會在背景播放，不會阻塞前端流程
+                            // 檢查是否需要等待播放完成
+                            const waitForCompletion = options.waitForCompletion || false;
                             
-                            // 如果調小了音樂音量，估算語音時長後調回
-                            if (originalMusicVolume !== null && descentWakeupMusic && !descentWakeupMusic.paused) {
-                                // 根據文字長度估算播放時長（每個字約 0.3 秒）
-                                const estimatedDuration = Math.max(3000, text.length * 300);
-                                setTimeout(() => {
-                                    fadeMusicVolumeBack(originalMusicVolume);
-                                }, estimatedDuration);
+                            if (waitForCompletion) {
+                                // 需要等待播放完成：根據文字長度估算播放時長
+                                const estimatedDuration = Math.max(3000, text.length * 300) + 1000; // 每個字約 0.3 秒 + 1 秒緩衝
+                                console.log('⏳ 等待 TTS 播放完成（估算時長:', estimatedDuration, 'ms）...');
+                                
+                                // 如果調小了音樂音量，在播放完成後調回
+                                if (originalMusicVolume !== null && descentWakeupMusic && !descentWakeupMusic.paused) {
+                                    setTimeout(() => {
+                                        fadeMusicVolumeBack(originalMusicVolume);
+                                    }, estimatedDuration);
+                                }
+                                
+                                // 等待估算的播放時長
+                                await new Promise(resolve => setTimeout(resolve, estimatedDuration));
+                                console.log('✅ 本機 TTS 播放完成（已等待）');
+                                return Promise.resolve();
+                            } else {
+                                console.log('✅ 本機 TTS 播放成功（不等待播放完成，立即繼續）');
+                                // 不等待播放完成，立即返回，讓流程繼續
+                                // 後端 TTS 服務會在背景播放，不會阻塞前端流程
+                                
+                                // 如果調小了音樂音量，估算語音時長後調回
+                                if (originalMusicVolume !== null && descentWakeupMusic && !descentWakeupMusic.paused) {
+                                    // 根據文字長度估算播放時長（每個字約 0.3 秒）
+                                    const estimatedDuration = Math.max(3000, text.length * 300);
+                                    setTimeout(() => {
+                                        fadeMusicVolumeBack(originalMusicVolume);
+                                    }, estimatedDuration);
+                                }
+                                
+                                return Promise.resolve();
                             }
-                            
-                            return Promise.resolve();
                         }
                     } else {
                         console.warn('⚠️ 本機 TTS 返回錯誤:', result.error);
@@ -9191,18 +9223,40 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 標記已執行，防止重複（在開始時就標記，即使後續出錯也不會重複執行）
             landingExecuted = true;
             
-            // 只停止 takeoff2.mp4 的可見性檢查，但不立即移除影片（等到 landing.mp4 開始播放時再移除，避免空窗期）
-            console.log('🛑 [Phase 7] 停止 Phase 5 的影片可見性檢查（保留影片直到 landing.mp4 開始播放）...');
+            // 立即停止並移除所有 takeoff 影片（takeoff1.mp4, takeoff2.mp4）
+            console.log('🛑 [Phase 7] 立即停止並移除所有 takeoff 影片...');
             try {
                 // 停止 takeoff2.mp4 的可見性檢查
                 if (window._takeoff2VisibilityCheck) {
                     clearInterval(window._takeoff2VisibilityCheck);
                     window._takeoff2VisibilityCheck = null;
-                    console.log('✅ [Phase 7] 已停止 takeoff2.mp4 可見性檢查（影片繼續播放，避免空窗期）');
+                    console.log('✅ [Phase 7] 已停止 takeoff2.mp4 可見性檢查');
                 }
-                // 注意：不立即停止或移除 takeoff2.mp4，讓它繼續播放直到 landing.mp4 開始播放
+                
+                // 立即停止並移除所有 takeoff 影片
+                const videoContainer = document.querySelector('.window-area');
+                const videoContainerEl = document.getElementById('videoContainer');
+                if (videoContainer) {
+                    const allVideos = Array.from(videoContainer.querySelectorAll('video'));
+                    allVideos.forEach(video => {
+                        try {
+                            video.pause();
+                            video.currentTime = 0;
+                            video.remove();
+                            console.log('✅ [Phase 7] 已停止並移除影片:', video.src || '未知來源');
+                        } catch (e) {
+                            console.warn('⚠️ [Phase 7] 移除影片時發生錯誤:', e);
+                        }
+                    });
+                }
+                
+                // 隱藏影片容器
+                if (videoContainerEl) {
+                    videoContainerEl.style.display = 'none';
+                    console.log('✅ [Phase 7] 已隱藏影片容器');
+                }
             } catch (e) {
-                console.warn('⚠️ [Phase 7] 停止可見性檢查時發生小問題:', e);
+                console.warn('⚠️ [Phase 7] 停止影片時發生小問題:', e);
             }
             
             // 立即結束飛行進度條顯示（Phase 7 時進度條應該立即消失）
@@ -9359,18 +9413,20 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             await playAudioFile('sounds/captain.mp3', 6);
             console.log('✅ captain.mp3 播放完成');
             
-            // 播放正式降落語音
+            // 播放正式降落語音（必須等待完成）
             if (landingData && landingData.announcement) {
                 console.log('2️⃣ 播放降落語音...');
                 await playAnnouncement(landingData.announcement, 'zh-TW', {
-                    volume: 1.0 // 語音最大音量
+                    volume: 1.0, // 語音最大音量
+                    waitForCompletion: true // 強制等待播放完成
                 });
                 console.log('✅ 降落語音播放完成');
             } else if (announcementText) {
                 // 如果 landingData 沒有生成，使用 announcementText
                 console.log('2️⃣ 播放降落語音（使用預設文字）...');
                 await playAnnouncement(announcementText, 'zh-TW', {
-                    volume: 1.0
+                    volume: 1.0,
+                    waitForCompletion: true // 強制等待播放完成
                 });
                 console.log('✅ 降落語音播放完成');
             }
@@ -9398,10 +9454,30 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 })();
             }
             
-            // 播放 landing.mp4，結束後無縫切換到降落圖片
-            console.log('4️⃣ 播放 landing.mp4...');
-            await playLandingVideoAndShowImage(landingImagePromise);
-            console.log('✅ landing.mp4 播放完成，已切換到降落圖片');
+            // 播放 landing.mp4，結束後無縫切換到降落圖片（必須在 TTS 完成後）
+            console.log('4️⃣ 播放 landing.mp4（TTS 已完成）...');
+            try {
+                await playLandingVideoAndShowImage(landingImagePromise);
+                console.log('✅ landing.mp4 播放完成，已切換到降落圖片');
+            } catch (error) {
+                console.error('❌ landing.mp4 播放失敗:', error);
+                // 即使 landing.mp4 播放失敗，也繼續流程，直接顯示圖片
+                try {
+                    const landingImageUrl = await landingImagePromise;
+                    if (landingImageUrl) {
+                        const windowContent = document.querySelector('.window-content');
+                        if (windowContent) {
+                            windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                            windowContent.style.backgroundSize = 'cover';
+                            windowContent.style.backgroundPosition = 'center';
+                            windowContent.style.backgroundRepeat = 'no-repeat';
+                            console.log('✅ 直接顯示降落圖片（landing.mp4 播放失敗）');
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 顯示降落圖片也失敗:', e);
+                }
+            }
             
             // 如果提前降落，恢復 wakeup 音樂音量（如果還在播放）
             if (isEarlyLanding && window._earlyLandingWakeupMusic) {
@@ -9478,18 +9554,37 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             
             // 確保 stateFlightFeedback 元素存在並準備顯示
             const feedbackState = document.getElementById('stateFlightFeedback');
-            if (feedbackState) {
+            if (!feedbackState) {
+                console.error('❌ stateFlightFeedback 元素不存在，無法顯示情緒量表');
+            } else {
                 // 先確保它被添加到 active class，並設置正確的樣式
                 feedbackState.classList.add('active');
                 feedbackState.style.display = 'flex';
                 feedbackState.style.zIndex = '100';
+                feedbackState.style.visibility = 'visible';
+                feedbackState.style.opacity = '1';
                 console.log('✅ 情緒量表 UI 已準備顯示');
-            } else {
-                console.warn('⚠️ stateFlightFeedback 元素不存在');
+                
+                // 確保其他 UI 已隱藏
+                hideAllStateUI();
+                
+                // 強制顯示情緒量表
+                setTimeout(() => {
+                    feedbackState.style.display = 'flex';
+                    feedbackState.classList.add('active');
+                    console.log('✅ 情緒量表已強制顯示');
+                }, 100);
             }
             
-            const feedbackData = await showFlightFeedback(finalDestination);
-            console.log('✅ 情緒量表作答完成');
+            let feedbackData = null;
+            try {
+                feedbackData = await showFlightFeedback(finalDestination);
+                console.log('✅ 情緒量表作答完成，回饋數據:', feedbackData);
+            } catch (error) {
+                console.error('❌ 顯示情緒量表失敗:', error);
+                // 即使失敗也繼續流程
+                feedbackData = '3'; // 預設值
+            }
             
             // 儲存到 Firebase（包含回饋數據）- 不阻塞流程，即使失敗也繼續
             saveSleepRecord({
