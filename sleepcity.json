@@ -9,7 +9,9 @@
             "lon": 121.565,
             "region": "East Asia",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "TW",
+            "flag": "🇹🇼"
         },
         {
             "city": "Tokyo",
@@ -20,7 +22,9 @@
             "lon": 139.65,
             "region": "East Asia",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "JP",
+            "flag": "🇯🇵"
         },
         {
             "city": "Osaka",
@@ -31,7 +35,9 @@
             "lon": 135.502,
             "region": "East Asia",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "JP",
+            "flag": "🇯🇵"
         },
         {
             "city": "Busan",
@@ -42,7 +48,9 @@
             "lon": 129.075,
             "region": "East Asia",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "KR",
+            "flag": "🇰🇷"
         },
         {
             "city": "Beijing",
@@ -53,7 +61,9 @@
             "lon": 116.407,
             "region": "East Asia",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CN",
+            "flag": "🇨🇳"
         },
         {
             "city": "Shanghai",
@@ -64,7 +74,9 @@
             "lon": 121.474,
             "region": "East Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "CN",
+            "flag": "🇨🇳"
         },
         {
             "city": "Hong Kong",
@@ -75,7 +87,9 @@
             "lon": 114.169,
             "region": "East Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "CN",
+            "flag": "🇨🇳"
         },
         {
             "city": "Macau",
@@ -86,7 +100,9 @@
             "lon": 113.544,
             "region": "East Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "CN",
+            "flag": "🇨🇳"
         },
         {
             "city": "Bangkok",
@@ -97,7 +113,9 @@
             "lon": 100.502,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TH",
+            "flag": "🇹🇭"
         },
         {
             "city": "Chiang Mai",
@@ -108,7 +126,9 @@
             "lon": 98.985,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TH",
+            "flag": "🇹🇭"
         },
         {
             "city": "Singapore",
@@ -119,7 +139,9 @@
             "lon": 103.819,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "SG",
+            "flag": "🇸🇬"
         },
         {
             "city": "Kuala Lumpur",
@@ -130,7 +152,9 @@
             "lon": 101.686,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MY",
+            "flag": "🇲🇾"
         },
         {
             "city": "Jakarta",
@@ -141,7 +165,9 @@
             "lon": 106.845,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "ID",
+            "flag": "🇮🇩"
         },
         {
             "city": "Denpasar",
@@ -152,7 +178,9 @@
             "lon": 115.213,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "ID",
+            "flag": "🇮🇩"
         },
         {
             "city": "Hanoi",
@@ -163,7 +191,9 @@
             "lon": 105.854,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "VN",
+            "flag": "🇻🇳"
         },
         {
             "city": "Ho Chi Minh City",
@@ -174,7 +204,9 @@
             "lon": 106.629,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "VN",
+            "flag": "🇻🇳"
         },
         {
             "city": "Manila",
@@ -185,7 +217,9 @@
             "lon": 120.984,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PH",
+            "flag": "🇵🇭"
         },
         {
             "city": "New Delhi",
@@ -196,7 +230,9 @@
             "lon": 77.209,
             "region": "South Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "IN",
+            "flag": "🇮🇳"
         },
         {
             "city": "Mumbai",
@@ -207,7 +243,9 @@
             "lon": 72.877,
             "region": "South Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "IN",
+            "flag": "🇮🇳"
         },
         {
             "city": "Colombo",
@@ -218,7 +256,9 @@
             "lon": 79.861,
             "region": "South Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "LK",
+            "flag": "🇱🇰"
         },
         {
             "city": "Dubai",
@@ -229,7 +269,9 @@
             "lon": 55.271,
             "region": "Middle East",
             "popular": true,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "AE",
+            "flag": "🇦🇪"
         },
         {
             "city": "Abu Dhabi",
@@ -240,7 +282,9 @@
             "lon": 54.377,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AE",
+            "flag": "🇦🇪"
         },
         {
             "city": "Doha",
@@ -251,7 +295,9 @@
             "lon": 51.531,
             "region": "Middle East",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "QA",
+            "flag": "🇶🇦"
         },
         {
             "city": "Istanbul",
@@ -262,7 +308,9 @@
             "lon": 28.978,
             "region": "Europe/Middle East",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "TR",
+            "flag": "🇹🇷"
         },
         {
             "city": "Paris",
@@ -273,7 +321,9 @@
             "lon": 2.352,
             "region": "Europe",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "FR",
+            "flag": "🇫🇷"
         },
         {
             "city": "London",
@@ -284,7 +334,9 @@
             "lon": -0.128,
             "region": "Europe",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "GB",
+            "flag": "🇬🇧"
         },
         {
             "city": "Amsterdam",
@@ -295,7 +347,9 @@
             "lon": 4.904,
             "region": "Europe",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NL",
+            "flag": "🇳🇱"
         },
         {
             "city": "Berlin",
@@ -306,7 +360,9 @@
             "lon": 13.405,
             "region": "Europe",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "DE",
+            "flag": "🇩🇪"
         },
         {
             "city": "Rome",
@@ -317,7 +373,9 @@
             "lon": 12.496,
             "region": "Europe",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "IT",
+            "flag": "🇮🇹"
         },
         {
             "city": "Milan",
@@ -328,7 +386,9 @@
             "lon": 9.19,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "IT",
+            "flag": "🇮🇹"
         },
         {
             "city": "Barcelona",
@@ -339,7 +399,9 @@
             "lon": 2.168,
             "region": "Europe",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "ES",
+            "flag": "🇪🇸"
         },
         {
             "city": "Madrid",
@@ -350,7 +412,9 @@
             "lon": -3.704,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "ES",
+            "flag": "🇪🇸"
         },
         {
             "city": "Vienna",
@@ -361,7 +425,9 @@
             "lon": 16.373,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "AT",
+            "flag": "🇦🇹"
         },
         {
             "city": "Prague",
@@ -372,7 +438,9 @@
             "lon": 14.437,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CZ",
+            "flag": "🇨🇿"
         },
         {
             "city": "Stockholm",
@@ -383,7 +451,9 @@
             "lon": 18.069,
             "region": "Nordic",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "SE",
+            "flag": "🇸🇪"
         },
         {
             "city": "Copenhagen",
@@ -394,7 +464,9 @@
             "lon": 12.568,
             "region": "Nordic",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "DK",
+            "flag": "🇩🇰"
         },
         {
             "city": "Oslo",
@@ -405,7 +477,9 @@
             "lon": 10.752,
             "region": "Nordic",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NO",
+            "flag": "🇳🇴"
         },
         {
             "city": "Helsinki",
@@ -416,7 +490,9 @@
             "lon": 24.938,
             "region": "Nordic",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "FI",
+            "flag": "🇫🇮"
         },
         {
             "city": "Reykjavik",
@@ -427,7 +503,9 @@
             "lon": -21.942,
             "region": "Nordic",
             "popular": true,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "IS",
+            "flag": "🇮🇸"
         },
         {
             "city": "New York",
@@ -438,7 +516,9 @@
             "lon": -74.006,
             "region": "North America",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Boston",
@@ -449,7 +529,9 @@
             "lon": -71.058,
             "region": "North America",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Chicago",
@@ -460,7 +542,9 @@
             "lon": -87.63,
             "region": "North America",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Los Angeles",
@@ -471,7 +555,9 @@
             "lon": -118.244,
             "region": "North America",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "San Francisco",
@@ -482,7 +568,9 @@
             "lon": -122.419,
             "region": "North America",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Seattle",
@@ -493,7 +581,9 @@
             "lon": -122.332,
             "region": "North America",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Vancouver",
@@ -504,7 +594,9 @@
             "lon": -123.121,
             "region": "North America",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Toronto",
@@ -515,7 +607,9 @@
             "lon": -79.383,
             "region": "North America",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Mexico City",
@@ -526,7 +620,9 @@
             "lon": -99.133,
             "region": "North America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MX",
+            "flag": "🇲🇽"
         },
         {
             "city": "Sydney",
@@ -537,7 +633,9 @@
             "lon": 151.209,
             "region": "Oceania",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Melbourne",
@@ -548,7 +646,9 @@
             "lon": 144.963,
             "region": "Oceania",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Auckland",
@@ -559,7 +659,9 @@
             "lon": 174.763,
             "region": "Oceania",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NZ",
+            "flag": "🇳🇿"
         },
         {
             "city": "Wellington",
@@ -570,7 +672,9 @@
             "lon": 174.776,
             "region": "Oceania",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NZ",
+            "flag": "🇳🇿"
         },
         {
             "city": "Cairo",
@@ -581,7 +685,9 @@
             "lon": 31.235,
             "region": "Africa",
             "popular": true,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "EG",
+            "flag": "🇪🇬"
         },
         {
             "city": "Cape Town",
@@ -592,7 +698,9 @@
             "lon": 18.424,
             "region": "Africa",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "ZA",
+            "flag": "🇿🇦"
         },
         {
             "city": "Johannesburg",
@@ -603,7 +711,9 @@
             "lon": 28.047,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "ZA",
+            "flag": "🇿🇦"
         },
         {
             "city": "Nairobi",
@@ -614,7 +724,9 @@
             "lon": 36.822,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "KE",
+            "flag": "🇰🇪"
         },
         {
             "city": "Casablanca",
@@ -625,7 +737,9 @@
             "lon": -7.589,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "MA",
+            "flag": "🇲🇦"
         },
         {
             "city": "Lagos",
@@ -636,7 +750,9 @@
             "lon": 3.379,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "NG",
+            "flag": "🇳🇬"
         },
         {
             "city": "Buenos Aires",
@@ -647,7 +763,9 @@
             "lon": -58.382,
             "region": "South America",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AR",
+            "flag": "🇦🇷"
         },
         {
             "city": "Santiago",
@@ -658,7 +776,9 @@
             "lon": -70.669,
             "region": "South America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "CL",
+            "flag": "🇨🇱"
         },
         {
             "city": "Lima",
@@ -669,7 +789,9 @@
             "lon": -77.043,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PE",
+            "flag": "🇵🇪"
         },
         {
             "city": "Bogota",
@@ -680,7 +802,9 @@
             "lon": -74.072,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "CO",
+            "flag": "🇨🇴"
         },
         {
             "city": "Sao Paulo",
@@ -691,7 +815,9 @@
             "lon": -46.633,
             "region": "South America",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Rio de Janeiro",
@@ -702,7 +828,9 @@
             "lon": -43.173,
             "region": "South America",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Moscow",
@@ -713,7 +841,9 @@
             "lon": 37.617,
             "region": "Europe/Asia",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "RU",
+            "flag": "🇷🇺"
         },
         {
             "city": "Saint Petersburg",
@@ -724,7 +854,9 @@
             "lon": 30.335,
             "region": "Europe/Asia",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "RU",
+            "flag": "🇷🇺"
         },
         {
             "city": "Warsaw",
@@ -735,7 +867,9 @@
             "lon": 21.012,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "PL",
+            "flag": "🇵🇱"
         },
         {
             "city": "Budapest",
@@ -746,7 +880,9 @@
             "lon": 19.04,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "HU",
+            "flag": "🇭🇺"
         },
         {
             "city": "Athens",
@@ -757,7 +893,9 @@
             "lon": 23.728,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "GR",
+            "flag": "🇬🇷"
         },
         {
             "city": "Lisbon",
@@ -768,7 +906,9 @@
             "lon": -9.139,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "PT",
+            "flag": "🇵🇹"
         },
         {
             "city": "Dublin",
@@ -779,7 +919,9 @@
             "lon": -6.26,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "IE",
+            "flag": "🇮🇪"
         },
         {
             "city": "Edinburgh",
@@ -790,7 +932,9 @@
             "lon": -3.188,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "GB",
+            "flag": "🇬🇧"
         },
         {
             "city": "Brussels",
@@ -801,7 +945,9 @@
             "lon": 4.351,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "BE",
+            "flag": "🇧🇪"
         },
         {
             "city": "Zurich",
@@ -812,7 +958,9 @@
             "lon": 8.541,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CH",
+            "flag": "🇨🇭"
         },
         {
             "city": "Geneva",
@@ -823,7 +971,9 @@
             "lon": 6.143,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CH",
+            "flag": "🇨🇭"
         },
         {
             "city": "Luxembourg",
@@ -834,7 +984,9 @@
             "lon": 6.13,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "LU",
+            "flag": "🇱🇺"
         },
         {
             "city": "Monaco",
@@ -845,7 +997,9 @@
             "lon": 7.424,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "MC",
+            "flag": "🇲🇨"
         },
         {
             "city": "Andorra la Vella",
@@ -856,7 +1010,9 @@
             "lon": 1.521,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "AD",
+            "flag": "🇦🇩"
         },
         {
             "city": "Riyadh",
@@ -867,7 +1023,9 @@
             "lon": 46.675,
             "region": "Middle East",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "SA",
+            "flag": "🇸🇦"
         },
         {
             "city": "Tehran",
@@ -878,7 +1036,9 @@
             "lon": 51.389,
             "region": "Middle East",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "IR",
+            "flag": "🇮🇷"
         },
         {
             "city": "Baghdad",
@@ -889,7 +1049,9 @@
             "lon": 44.366,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "IQ",
+            "flag": "🇮🇶"
         },
         {
             "city": "Jerusalem",
@@ -900,7 +1062,9 @@
             "lon": 35.214,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "IL",
+            "flag": "🇮🇱"
         },
         {
             "city": "Amman",
@@ -911,7 +1075,9 @@
             "lon": 35.91,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "JO",
+            "flag": "🇯🇴"
         },
         {
             "city": "Beirut",
@@ -922,7 +1088,9 @@
             "lon": 35.502,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "LB",
+            "flag": "🇱🇧"
         },
         {
             "city": "Kuwait City",
@@ -933,7 +1101,9 @@
             "lon": 47.977,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "KW",
+            "flag": "🇰🇼"
         },
         {
             "city": "Muscat",
@@ -944,7 +1114,9 @@
             "lon": 58.406,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "OM",
+            "flag": "🇴🇲"
         },
         {
             "city": "Sanaa",
@@ -955,7 +1127,9 @@
             "lon": 44.191,
             "region": "Middle East",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "YE",
+            "flag": "🇾🇪"
         },
         {
             "city": "Kabul",
@@ -966,7 +1140,9 @@
             "lon": 69.207,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AF",
+            "flag": "🇦🇫"
         },
         {
             "city": "Tashkent",
@@ -977,7 +1153,9 @@
             "lon": 69.24,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "UZ",
+            "flag": "🇺🇿"
         },
         {
             "city": "Almaty",
@@ -988,7 +1166,9 @@
             "lon": 76.851,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "KZ",
+            "flag": "🇰🇿"
         },
         {
             "city": "Bishkek",
@@ -999,7 +1179,9 @@
             "lon": 74.57,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "KG",
+            "flag": "🇰🇬"
         },
         {
             "city": "Dhaka",
@@ -1010,7 +1192,9 @@
             "lon": 90.413,
             "region": "South Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "BD",
+            "flag": "🇧🇩"
         },
         {
             "city": "Kathmandu",
@@ -1021,7 +1205,9 @@
             "lon": 85.324,
             "region": "South Asia",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "NP",
+            "flag": "🇳🇵"
         },
         {
             "city": "Thimphu",
@@ -1032,7 +1218,9 @@
             "lon": 89.639,
             "region": "South Asia",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "BT",
+            "flag": "🇧🇹"
         },
         {
             "city": "Yangon",
@@ -1043,7 +1231,9 @@
             "lon": 96.195,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MM",
+            "flag": "🇲🇲"
         },
         {
             "city": "Phnom Penh",
@@ -1054,7 +1244,9 @@
             "lon": 104.928,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "KH",
+            "flag": "🇰🇭"
         },
         {
             "city": "Vientiane",
@@ -1065,7 +1257,9 @@
             "lon": 102.633,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "LA",
+            "flag": "🇱🇦"
         },
         {
             "city": "Ulaanbaatar",
@@ -1076,7 +1270,9 @@
             "lon": 106.906,
             "region": "East Asia",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "MN",
+            "flag": "🇲🇳"
         },
         {
             "city": "Pyongyang",
@@ -1087,18 +1283,22 @@
             "lon": 125.763,
             "region": "East Asia",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "KP",
+            "flag": "🇰🇵"
         },
         {
             "city": "North Pole",
             "city_zh": "北極點",
             "country": "Arctic",
             "country_zh": "北極",
-            "lat": 90.0,
-            "lon": 0.0,
+            "lat": 90,
+            "lon": 0,
             "region": "Arctic",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "AQ",
+            "flag": "🇦🇶"
         },
         {
             "city": "Svalbard",
@@ -1109,7 +1309,9 @@
             "lon": 15.626,
             "region": "Arctic",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "NO",
+            "flag": "🇳🇴"
         },
         {
             "city": "Longyearbyen",
@@ -1120,7 +1322,9 @@
             "lon": 15.626,
             "region": "Arctic",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "NO",
+            "flag": "🇳🇴"
         },
         {
             "city": "Nuuk",
@@ -1131,7 +1335,9 @@
             "lon": -51.694,
             "region": "Arctic",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "GL",
+            "flag": "🇬🇱"
         },
         {
             "city": "Barrow",
@@ -1142,18 +1348,22 @@
             "lon": -156.789,
             "region": "Arctic",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "South Pole",
             "city_zh": "南極點",
             "country": "Antarctica",
             "country_zh": "南極",
-            "lat": -90.0,
-            "lon": 0.0,
+            "lat": -90,
+            "lon": 0,
             "region": "Antarctica",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "AQ",
+            "flag": "🇦🇶"
         },
         {
             "city": "McMurdo Station",
@@ -1164,18 +1374,22 @@
             "lon": 166.686,
             "region": "Antarctica",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "AQ",
+            "flag": "🇦🇶"
         },
         {
             "city": "Amundsen-Scott Station",
             "city_zh": "阿蒙森-斯科特站",
             "country": "Antarctica",
             "country_zh": "南極",
-            "lat": -90.0,
-            "lon": 0.0,
+            "lat": -90,
+            "lon": 0,
             "region": "Antarctica",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "AQ",
+            "flag": "🇦🇶"
         },
         {
             "city": "Palmer Station",
@@ -1186,7 +1400,9 @@
             "lon": -64.053,
             "region": "Antarctica",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "AQ",
+            "flag": "🇦🇶"
         },
         {
             "city": "Rothera Station",
@@ -1197,7 +1413,9 @@
             "lon": -68.125,
             "region": "Antarctica",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "AQ",
+            "flag": "🇦🇶"
         },
         {
             "city": "Honolulu",
@@ -1208,7 +1426,9 @@
             "lon": -157.858,
             "region": "Oceania",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Bali",
@@ -1219,7 +1439,9 @@
             "lon": 115.092,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "ID",
+            "flag": "🇮🇩"
         },
         {
             "city": "Phuket",
@@ -1230,7 +1452,9 @@
             "lon": 98.392,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TH",
+            "flag": "🇹🇭"
         },
         {
             "city": "Maldives",
@@ -1241,7 +1465,9 @@
             "lon": 73.509,
             "region": "South Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MV",
+            "flag": "🇲🇻"
         },
         {
             "city": "Seychelles",
@@ -1252,7 +1478,9 @@
             "lon": 55.492,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "SC",
+            "flag": "🇸🇨"
         },
         {
             "city": "Mauritius",
@@ -1263,7 +1491,9 @@
             "lon": 57.552,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MU",
+            "flag": "🇲🇺"
         },
         {
             "city": "Fiji",
@@ -1274,7 +1504,9 @@
             "lon": 178.45,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "FJ",
+            "flag": "🇫🇯"
         },
         {
             "city": "Tahiti",
@@ -1285,7 +1517,9 @@
             "lon": -149.426,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PF",
+            "flag": "🇵🇫"
         },
         {
             "city": "Marrakech",
@@ -1296,7 +1530,9 @@
             "lon": -7.981,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "MA",
+            "flag": "🇲🇦"
         },
         {
             "city": "Tunis",
@@ -1307,7 +1543,9 @@
             "lon": 10.181,
             "region": "Africa",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "TN",
+            "flag": "🇹🇳"
         },
         {
             "city": "Algiers",
@@ -1318,7 +1556,9 @@
             "lon": 3.059,
             "region": "Africa",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "DZ",
+            "flag": "🇩🇿"
         },
         {
             "city": "Las Vegas",
@@ -1329,7 +1569,9 @@
             "lon": -115.14,
             "region": "North America",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Phoenix",
@@ -1340,7 +1582,9 @@
             "lon": -112.074,
             "region": "North America",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Quito",
@@ -1351,7 +1595,9 @@
             "lon": -78.468,
             "region": "South America",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "EC",
+            "flag": "🇪🇨"
         },
         {
             "city": "La Paz",
@@ -1362,7 +1608,9 @@
             "lon": -68.15,
             "region": "South America",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "BO",
+            "flag": "🇧🇴"
         },
         {
             "city": "Cusco",
@@ -1373,7 +1621,9 @@
             "lon": -71.967,
             "region": "South America",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "PE",
+            "flag": "🇵🇪"
         },
         {
             "city": "Zermatt",
@@ -1384,7 +1634,9 @@
             "lon": 7.749,
             "region": "Europe",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "CH",
+            "flag": "🇨🇭"
         },
         {
             "city": "Interlaken",
@@ -1395,7 +1647,9 @@
             "lon": 7.863,
             "region": "Europe",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "CH",
+            "flag": "🇨🇭"
         },
         {
             "city": "Chamonix",
@@ -1406,7 +1660,9 @@
             "lon": 6.869,
             "region": "Europe",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "FR",
+            "flag": "🇫🇷"
         },
         {
             "city": "Innsbruck",
@@ -1417,7 +1673,9 @@
             "lon": 11.404,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "AT",
+            "flag": "🇦🇹"
         },
         {
             "city": "Banff",
@@ -1428,7 +1686,9 @@
             "lon": -115.571,
             "region": "North America",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Queenstown",
@@ -1439,7 +1699,9 @@
             "lon": 168.663,
             "region": "Oceania",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NZ",
+            "flag": "🇳🇿"
         },
         {
             "city": "Tromso",
@@ -1450,7 +1712,9 @@
             "lon": 18.955,
             "region": "Arctic",
             "popular": false,
-            "climateType": "polar"
+            "climateType": "polar",
+            "country_iso_code": "NO",
+            "flag": "🇳🇴"
         },
         {
             "city": "Fairbanks",
@@ -1461,7 +1725,9 @@
             "lon": -147.716,
             "region": "Arctic",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Yellowknife",
@@ -1472,7 +1738,9 @@
             "lon": -114.372,
             "region": "Arctic",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Ushuaia",
@@ -1483,7 +1751,9 @@
             "lon": -68.303,
             "region": "Antarctica",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "AR",
+            "flag": "🇦🇷"
         },
         {
             "city": "Bora Bora",
@@ -1494,7 +1764,9 @@
             "lon": -151.741,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PF",
+            "flag": "🇵🇫"
         },
         {
             "city": "Santorini",
@@ -1505,7 +1777,9 @@
             "lon": 25.461,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "GR",
+            "flag": "🇬🇷"
         },
         {
             "city": "Mykonos",
@@ -1516,7 +1790,9 @@
             "lon": 25.329,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "GR",
+            "flag": "🇬🇷"
         },
         {
             "city": "Porto",
@@ -1527,7 +1803,9 @@
             "lon": -8.629,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "PT",
+            "flag": "🇵🇹"
         },
         {
             "city": "Seoul",
@@ -1538,7 +1816,9 @@
             "lon": 126.978,
             "region": "East Asia",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "KR",
+            "flag": "🇰🇷"
         },
         {
             "city": "Kyoto",
@@ -1549,7 +1829,9 @@
             "lon": 135.768,
             "region": "East Asia",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "JP",
+            "flag": "🇯🇵"
         },
         {
             "city": "Fukuoka",
@@ -1560,7 +1842,9 @@
             "lon": 130.402,
             "region": "East Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "JP",
+            "flag": "🇯🇵"
         },
         {
             "city": "Guangzhou",
@@ -1571,7 +1855,9 @@
             "lon": 113.264,
             "region": "East Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "CN",
+            "flag": "🇨🇳"
         },
         {
             "city": "Shenzhen",
@@ -1582,7 +1868,9 @@
             "lon": 114.058,
             "region": "East Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "CN",
+            "flag": "🇨🇳"
         },
         {
             "city": "Chengdu",
@@ -1593,7 +1881,9 @@
             "lon": 104.066,
             "region": "East Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "CN",
+            "flag": "🇨🇳"
         },
         {
             "city": "Kuala Lumpur",
@@ -1604,7 +1894,9 @@
             "lon": 101.686,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MY",
+            "flag": "🇲🇾"
         },
         {
             "city": "Penang",
@@ -1615,7 +1907,9 @@
             "lon": 100.332,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MY",
+            "flag": "🇲🇾"
         },
         {
             "city": "Cebu",
@@ -1626,7 +1920,9 @@
             "lon": 123.885,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PH",
+            "flag": "🇵🇭"
         },
         {
             "city": "Boracay",
@@ -1637,7 +1933,9 @@
             "lon": 121.927,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PH",
+            "flag": "🇵🇭"
         },
         {
             "city": "Hoi An",
@@ -1648,7 +1946,9 @@
             "lon": 108.338,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "VN",
+            "flag": "🇻🇳"
         },
         {
             "city": "Da Nang",
@@ -1659,7 +1959,9 @@
             "lon": 108.202,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "VN",
+            "flag": "🇻🇳"
         },
         {
             "city": "Krabi",
@@ -1670,7 +1972,9 @@
             "lon": 98.916,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TH",
+            "flag": "🇹🇭"
         },
         {
             "city": "Koh Samui",
@@ -1678,10 +1982,12 @@
             "country": "Thailand",
             "country_zh": "泰國",
             "lat": 9.512,
-            "lon": 100.0,
+            "lon": 100,
             "region": "Southeast Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TH",
+            "flag": "🇹🇭"
         },
         {
             "city": "Yogyakarta",
@@ -1692,7 +1998,9 @@
             "lon": 110.369,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "ID",
+            "flag": "🇮🇩"
         },
         {
             "city": "Medan",
@@ -1703,7 +2011,9 @@
             "lon": 98.672,
             "region": "Southeast Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "ID",
+            "flag": "🇮🇩"
         },
         {
             "city": "Kolkata",
@@ -1714,7 +2024,9 @@
             "lon": 88.364,
             "region": "South Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "IN",
+            "flag": "🇮🇳"
         },
         {
             "city": "Chennai",
@@ -1725,7 +2037,9 @@
             "lon": 80.283,
             "region": "South Asia",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "IN",
+            "flag": "🇮🇳"
         },
         {
             "city": "Goa",
@@ -1736,7 +2050,9 @@
             "lon": 74.124,
             "region": "South Asia",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "IN",
+            "flag": "🇮🇳"
         },
         {
             "city": "Baku",
@@ -1747,7 +2063,9 @@
             "lon": 49.867,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AZ",
+            "flag": "🇦🇿"
         },
         {
             "city": "Tbilisi",
@@ -1758,7 +2076,9 @@
             "lon": 44.827,
             "region": "Europe/Asia",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "GE",
+            "flag": "🇬🇪"
         },
         {
             "city": "Yerevan",
@@ -1769,7 +2089,9 @@
             "lon": 44.514,
             "region": "Europe/Asia",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "AM",
+            "flag": "🇦🇲"
         },
         {
             "city": "Bucharest",
@@ -1780,7 +2102,9 @@
             "lon": 26.102,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "RO",
+            "flag": "🇷🇴"
         },
         {
             "city": "Sofia",
@@ -1791,7 +2115,9 @@
             "lon": 23.322,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "BG",
+            "flag": "🇧🇬"
         },
         {
             "city": "Belgrade",
@@ -1802,7 +2128,9 @@
             "lon": 20.457,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "RS",
+            "flag": "🇷🇸"
         },
         {
             "city": "Zagreb",
@@ -1813,7 +2141,9 @@
             "lon": 15.982,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "HR",
+            "flag": "🇭🇷"
         },
         {
             "city": "Dubrovnik",
@@ -1824,7 +2154,9 @@
             "lon": 18.094,
             "region": "Europe",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "HR",
+            "flag": "🇭🇷"
         },
         {
             "city": "Split",
@@ -1835,7 +2167,9 @@
             "lon": 16.44,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "HR",
+            "flag": "🇭🇷"
         },
         {
             "city": "Ljubljana",
@@ -1846,7 +2180,9 @@
             "lon": 14.505,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "SI",
+            "flag": "🇸🇮"
         },
         {
             "city": "Tallinn",
@@ -1857,7 +2193,9 @@
             "lon": 24.753,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "EE",
+            "flag": "🇪🇪"
         },
         {
             "city": "Riga",
@@ -1868,7 +2206,9 @@
             "lon": 24.105,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "LV",
+            "flag": "🇱🇻"
         },
         {
             "city": "Vilnius",
@@ -1879,7 +2219,9 @@
             "lon": 25.28,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "LT",
+            "flag": "🇱🇹"
         },
         {
             "city": "Bratislava",
@@ -1890,7 +2232,9 @@
             "lon": 17.107,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "SK",
+            "flag": "🇸🇰"
         },
         {
             "city": "Valletta",
@@ -1901,7 +2245,9 @@
             "lon": 14.513,
             "region": "Europe",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "MT",
+            "flag": "🇲🇹"
         },
         {
             "city": "Nicosia",
@@ -1912,7 +2258,9 @@
             "lon": 33.382,
             "region": "Europe/Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "CY",
+            "flag": "🇨🇾"
         },
         {
             "city": "Limassol",
@@ -1923,7 +2271,9 @@
             "lon": 33.022,
             "region": "Europe/Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "CY",
+            "flag": "🇨🇾"
         },
         {
             "city": "Astana",
@@ -1934,7 +2284,9 @@
             "lon": 71.449,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "KZ",
+            "flag": "🇰🇿"
         },
         {
             "city": "Dushanbe",
@@ -1945,7 +2297,9 @@
             "lon": 68.787,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "TJ",
+            "flag": "🇹🇯"
         },
         {
             "city": "Ashgabat",
@@ -1956,7 +2310,9 @@
             "lon": 58.383,
             "region": "Central Asia",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "TM",
+            "flag": "🇹🇲"
         },
         {
             "city": "Manama",
@@ -1967,7 +2323,9 @@
             "lon": 50.557,
             "region": "Middle East",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "BH",
+            "flag": "🇧🇭"
         },
         {
             "city": "Abu Dhabi",
@@ -1978,7 +2336,9 @@
             "lon": 54.377,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AE",
+            "flag": "🇦🇪"
         },
         {
             "city": "Sharjah",
@@ -1989,7 +2349,9 @@
             "lon": 55.403,
             "region": "Middle East",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "AE",
+            "flag": "🇦🇪"
         },
         {
             "city": "Muscat",
@@ -2000,7 +2362,9 @@
             "lon": 58.406,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "OM",
+            "flag": "🇴🇲"
         },
         {
             "city": "Tel Aviv",
@@ -2011,7 +2375,9 @@
             "lon": 34.782,
             "region": "Middle East",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "IL",
+            "flag": "🇮🇱"
         },
         {
             "city": "Haifa",
@@ -2022,7 +2388,9 @@
             "lon": 34.989,
             "region": "Middle East",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "IL",
+            "flag": "🇮🇱"
         },
         {
             "city": "Eilat",
@@ -2033,7 +2401,9 @@
             "lon": 34.948,
             "region": "Middle East",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "IL",
+            "flag": "🇮🇱"
         },
         {
             "city": "Alexandria",
@@ -2044,7 +2414,9 @@
             "lon": 29.917,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "EG",
+            "flag": "🇪🇬"
         },
         {
             "city": "Luxor",
@@ -2055,7 +2427,9 @@
             "lon": 32.64,
             "region": "Africa",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "EG",
+            "flag": "🇪🇬"
         },
         {
             "city": "Aswan",
@@ -2066,7 +2440,9 @@
             "lon": 32.9,
             "region": "Africa",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "EG",
+            "flag": "🇪🇬"
         },
         {
             "city": "Marrakech",
@@ -2077,7 +2453,9 @@
             "lon": -7.981,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "MA",
+            "flag": "🇲🇦"
         },
         {
             "city": "Fez",
@@ -2085,10 +2463,12 @@
             "country": "Morocco",
             "country_zh": "摩洛哥",
             "lat": 34.033,
-            "lon": -5.0,
+            "lon": -5,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "MA",
+            "flag": "🇲🇦"
         },
         {
             "city": "Tangier",
@@ -2099,7 +2479,9 @@
             "lon": -5.834,
             "region": "Africa",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "MA",
+            "flag": "🇲🇦"
         },
         {
             "city": "Dakar",
@@ -2110,7 +2492,9 @@
             "lon": -17.447,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "SN",
+            "flag": "🇸🇳"
         },
         {
             "city": "Accra",
@@ -2121,7 +2505,9 @@
             "lon": -0.187,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "GH",
+            "flag": "🇬🇭"
         },
         {
             "city": "Dar es Salaam",
@@ -2132,7 +2518,9 @@
             "lon": 39.208,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TZ",
+            "flag": "🇹🇿"
         },
         {
             "city": "Zanzibar",
@@ -2143,7 +2531,9 @@
             "lon": 39.199,
             "region": "Africa",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TZ",
+            "flag": "🇹🇿"
         },
         {
             "city": "Addis Ababa",
@@ -2154,7 +2544,9 @@
             "lon": 38.766,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "ET",
+            "flag": "🇪🇹"
         },
         {
             "city": "Kigali",
@@ -2165,7 +2557,9 @@
             "lon": 30.06,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "RW",
+            "flag": "🇷🇼"
         },
         {
             "city": "Kampala",
@@ -2176,7 +2570,9 @@
             "lon": 32.583,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "UG",
+            "flag": "🇺🇬"
         },
         {
             "city": "Windhoek",
@@ -2187,7 +2583,9 @@
             "lon": 17.098,
             "region": "Africa",
             "popular": false,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "NA",
+            "flag": "🇳🇦"
         },
         {
             "city": "Gaborone",
@@ -2198,7 +2596,9 @@
             "lon": 25.923,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "BW",
+            "flag": "🇧🇼"
         },
         {
             "city": "Harare",
@@ -2209,7 +2609,9 @@
             "lon": 31.052,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "ZW",
+            "flag": "🇿🇼"
         },
         {
             "city": "Lusaka",
@@ -2220,7 +2622,9 @@
             "lon": 28.323,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "ZM",
+            "flag": "🇿🇲"
         },
         {
             "city": "Maputo",
@@ -2231,7 +2635,9 @@
             "lon": 32.573,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MZ",
+            "flag": "🇲🇿"
         },
         {
             "city": "Antananarivo",
@@ -2242,7 +2648,9 @@
             "lon": 47.508,
             "region": "Africa",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "MG",
+            "flag": "🇲🇬"
         },
         {
             "city": "Port Louis",
@@ -2253,7 +2661,9 @@
             "lon": 57.498,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MU",
+            "flag": "🇲🇺"
         },
         {
             "city": "Victoria",
@@ -2264,7 +2674,9 @@
             "lon": 55.455,
             "region": "Africa",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "SC",
+            "flag": "🇸🇨"
         },
         {
             "city": "Miami",
@@ -2275,7 +2687,9 @@
             "lon": -80.192,
             "region": "North America",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Orlando",
@@ -2286,7 +2700,9 @@
             "lon": -81.379,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Atlanta",
@@ -2297,7 +2713,9 @@
             "lon": -84.388,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Nashville",
@@ -2308,7 +2726,9 @@
             "lon": -86.782,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "New Orleans",
@@ -2319,7 +2739,9 @@
             "lon": -90.072,
             "region": "North America",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Houston",
@@ -2330,7 +2752,9 @@
             "lon": -95.369,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Dallas",
@@ -2341,7 +2765,9 @@
             "lon": -96.797,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Austin",
@@ -2352,7 +2778,9 @@
             "lon": -97.743,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Denver",
@@ -2363,7 +2791,9 @@
             "lon": -104.99,
             "region": "North America",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Salt Lake City",
@@ -2374,7 +2804,9 @@
             "lon": -111.891,
             "region": "North America",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Portland",
@@ -2385,7 +2817,9 @@
             "lon": -122.679,
             "region": "North America",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "San Diego",
@@ -2396,7 +2830,9 @@
             "lon": -117.161,
             "region": "North America",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Las Vegas",
@@ -2407,7 +2843,9 @@
             "lon": -115.14,
             "region": "North America",
             "popular": true,
-            "climateType": "desert"
+            "climateType": "desert",
+            "country_iso_code": "US",
+            "flag": "🇺🇸"
         },
         {
             "city": "Montreal",
@@ -2418,7 +2856,9 @@
             "lon": -73.567,
             "region": "North America",
             "popular": true,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Quebec City",
@@ -2429,7 +2869,9 @@
             "lon": -71.208,
             "region": "North America",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Ottawa",
@@ -2440,7 +2882,9 @@
             "lon": -75.697,
             "region": "North America",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Calgary",
@@ -2451,7 +2895,9 @@
             "lon": -114.071,
             "region": "North America",
             "popular": false,
-            "climateType": "mountain"
+            "climateType": "mountain",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Edmonton",
@@ -2462,7 +2908,9 @@
             "lon": -113.49,
             "region": "North America",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Winnipeg",
@@ -2473,7 +2921,9 @@
             "lon": -97.138,
             "region": "North America",
             "popular": false,
-            "climateType": "temperate"
+            "climateType": "temperate",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Halifax",
@@ -2484,7 +2934,9 @@
             "lon": -63.575,
             "region": "North America",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "CA",
+            "flag": "🇨🇦"
         },
         {
             "city": "Cancun",
@@ -2495,7 +2947,9 @@
             "lon": -86.852,
             "region": "North America",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MX",
+            "flag": "🇲🇽"
         },
         {
             "city": "Tulum",
@@ -2506,7 +2960,9 @@
             "lon": -87.465,
             "region": "North America",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MX",
+            "flag": "🇲🇽"
         },
         {
             "city": "Playa del Carmen",
@@ -2517,7 +2973,9 @@
             "lon": -87.073,
             "region": "North America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "MX",
+            "flag": "🇲🇽"
         },
         {
             "city": "Guadalajara",
@@ -2528,7 +2986,9 @@
             "lon": -103.349,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "MX",
+            "flag": "🇲🇽"
         },
         {
             "city": "Monterrey",
@@ -2539,7 +2999,9 @@
             "lon": -100.316,
             "region": "North America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "MX",
+            "flag": "🇲🇽"
         },
         {
             "city": "Cartagena",
@@ -2550,7 +3012,9 @@
             "lon": -75.479,
             "region": "South America",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "CO",
+            "flag": "🇨🇴"
         },
         {
             "city": "Medellin",
@@ -2561,7 +3025,9 @@
             "lon": -75.566,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "CO",
+            "flag": "🇨🇴"
         },
         {
             "city": "Caracas",
@@ -2572,7 +3038,9 @@
             "lon": -66.903,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "",
+            "flag": ""
         },
         {
             "city": "Georgetown",
@@ -2583,7 +3051,9 @@
             "lon": -58.155,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "GY",
+            "flag": "🇬🇾"
         },
         {
             "city": "Paramaribo",
@@ -2594,7 +3064,9 @@
             "lon": -55.204,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "SR",
+            "flag": "🇸🇷"
         },
         {
             "city": "Cayenne",
@@ -2605,7 +3077,9 @@
             "lon": -52.313,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "GF",
+            "flag": "🇬🇫"
         },
         {
             "city": "Fortaleza",
@@ -2616,7 +3090,9 @@
             "lon": -38.526,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Salvador",
@@ -2627,7 +3103,9 @@
             "lon": -38.501,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Recife",
@@ -2638,7 +3116,9 @@
             "lon": -34.951,
             "region": "South America",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Brasilia",
@@ -2649,7 +3129,9 @@
             "lon": -47.882,
             "region": "South America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Curitiba",
@@ -2660,7 +3142,9 @@
             "lon": -49.273,
             "region": "South America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Florianopolis",
@@ -2671,7 +3155,9 @@
             "lon": -48.548,
             "region": "South America",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "BR",
+            "flag": "🇧🇷"
         },
         {
             "city": "Montevideo",
@@ -2682,7 +3168,9 @@
             "lon": -56.164,
             "region": "South America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "UY",
+            "flag": "🇺🇾"
         },
         {
             "city": "Asuncion",
@@ -2693,7 +3181,9 @@
             "lon": -57.576,
             "region": "South America",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "PY",
+            "flag": "🇵🇾"
         },
         {
             "city": "Brisbane",
@@ -2704,7 +3194,9 @@
             "lon": 153.026,
             "region": "Oceania",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Perth",
@@ -2715,7 +3207,9 @@
             "lon": 115.86,
             "region": "Oceania",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Adelaide",
@@ -2726,7 +3220,9 @@
             "lon": 138.601,
             "region": "Oceania",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Darwin",
@@ -2737,7 +3233,9 @@
             "lon": 130.845,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Cairns",
@@ -2748,7 +3246,9 @@
             "lon": 145.778,
             "region": "Oceania",
             "popular": true,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Gold Coast",
@@ -2759,7 +3259,9 @@
             "lon": 153.4,
             "region": "Oceania",
             "popular": true,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "AU",
+            "flag": "🇦🇺"
         },
         {
             "city": "Christchurch",
@@ -2770,7 +3272,9 @@
             "lon": 172.636,
             "region": "Oceania",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NZ",
+            "flag": "🇳🇿"
         },
         {
             "city": "Dunedin",
@@ -2781,7 +3285,9 @@
             "lon": 170.504,
             "region": "Oceania",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NZ",
+            "flag": "🇳🇿"
         },
         {
             "city": "Rotorua",
@@ -2792,7 +3298,9 @@
             "lon": 176.25,
             "region": "Oceania",
             "popular": false,
-            "climateType": "oceanic"
+            "climateType": "oceanic",
+            "country_iso_code": "NZ",
+            "flag": "🇳🇿"
         },
         {
             "city": "Nadi",
@@ -2803,7 +3311,9 @@
             "lon": 177.417,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "FJ",
+            "flag": "🇫🇯"
         },
         {
             "city": "Apia",
@@ -2814,7 +3324,9 @@
             "lon": -171.767,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "WS",
+            "flag": "🇼🇸"
         },
         {
             "city": "Nuku'alofa",
@@ -2825,7 +3337,9 @@
             "lon": -175.202,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "TO",
+            "flag": "🇹🇴"
         },
         {
             "city": "Port Vila",
@@ -2836,7 +3350,9 @@
             "lon": 168.327,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "VU",
+            "flag": "🇻🇺"
         },
         {
             "city": "Noumea",
@@ -2847,7 +3363,9 @@
             "lon": 166.457,
             "region": "Oceania",
             "popular": false,
-            "climateType": "subtropical"
+            "climateType": "subtropical",
+            "country_iso_code": "NC",
+            "flag": "🇳🇨"
         },
         {
             "city": "Papeete",
@@ -2858,7 +3376,9 @@
             "lon": -149.567,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PF",
+            "flag": "🇵🇫"
         },
         {
             "city": "Honiara",
@@ -2869,7 +3389,9 @@
             "lon": 159.949,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "SB",
+            "flag": "🇸🇧"
         },
         {
             "city": "Port Moresby",
@@ -2880,7 +3402,9 @@
             "lon": 147.18,
             "region": "Oceania",
             "popular": false,
-            "climateType": "tropical"
+            "climateType": "tropical",
+            "country_iso_code": "PG",
+            "flag": "🇵🇬"
         }
     ]
 }

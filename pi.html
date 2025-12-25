@@ -4069,8 +4069,8 @@
                     return;
                 }
                 
-                if (latestRecord && latestRecord.imageUrl) {
-                    console.log('✅ 找到最新的降落記錄，載入中...');
+                if (latestRecord) {
+                    console.log('✅ 找到最新的降落記錄，載入中...', latestRecord);
                     
                     // 更新目的地資料
                     destinationData = {
@@ -4084,16 +4084,29 @@
                         timezone: latestRecord.timezone
                     };
                     
-                    // 更新降落圖片
-                    destinationImageUrl = latestRecord.imageUrl;
+                    console.log('📍 目的地資料已更新:', destinationData);
                     
-                    // 顯示降落圖片
-                    const windowContent = document.querySelector('.window-content');
-                    if (windowContent) {
-                        windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
-                        windowContent.style.backgroundSize = 'cover';
-                        windowContent.style.backgroundPosition = 'center';
-                        console.log('✅ 最新降落圖片已顯示:', destinationImageUrl);
+                    // 更新降落圖片（優先使用 destinationImage，然後是 imageUrl）
+                    const imageUrl = latestRecord.destinationImage || latestRecord.imageUrl;
+                    if (imageUrl) {
+                        destinationImageUrl = imageUrl;
+                        
+                        // 顯示降落圖片到 800x800 視窗
+                        const windowContent = document.querySelector('.window-content');
+                        if (windowContent) {
+                            // 清除任何現有的背景
+                            windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                            windowContent.style.backgroundSize = 'cover';
+                            windowContent.style.backgroundPosition = 'center';
+                            windowContent.style.backgroundRepeat = 'no-repeat';
+                            // 確保視窗可見
+                            windowContent.style.display = 'block';
+                            console.log('✅ 最新降落圖片已顯示到 800x800 視窗:', destinationImageUrl);
+                        } else {
+                            console.warn('⚠️ 找不到 .window-content 元素，無法顯示圖片');
+                        }
+                    } else {
+                        console.warn('⚠️ Firebase 記錄中沒有圖片 URL');
                     }
                     
                     // 更新「所在國家」（stateCountry）為新的降落地點
