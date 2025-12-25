@@ -185,8 +185,8 @@
             width: 100%;
             height: 12px;
             border-radius: 999px;
-            /* 淺淺的底色，讓整條長度一眼看得出來 */
-            background: linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
+            /* 淺淺的藍色底色，讓整條長度一眼看得出來 */
+            background: linear-gradient(90deg, rgba(86,204,242,0.25), rgba(47,128,237,0.15));
             overflow: hidden;
             position: relative;
         }
@@ -1093,8 +1093,14 @@
                 <div class="flight-progress-glow" id="flightProgressGlow"></div>
             </div>
             <div class="flight-progress-meta">
-                <span id="flightProgressStartLabel">目前位置</span>
-                <span id="flightProgressEndLabel">???</span>
+                <span id="flightProgressStartLabel">
+                    <span id="flightProgressStartFlag" style="font-size: 16px; margin-right: 4px;">🏳️</span>
+                    目前位置
+                </span>
+                <span id="flightProgressEndLabel">
+                    <span id="flightProgressEndFlag" style="font-size: 16px; margin-right: 4px;">🏳️</span>
+                    ???
+                </span>
             </div>
         </div>
 
@@ -1148,7 +1154,7 @@
                 
                 
                 <!-- 航線資訊（左右佈局：原有位置 → 點點連接線 → 飛機箭頭 → 點點連接線 → 新位置） -->
-                <div id="readyDestinationInfo" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0; padding: 20px 32px; background: #fff5f0; border-radius: 16px; border: 2px solid #ffb399; max-width: 90%; width: 100%; margin-left: auto; margin-right: auto;">
+                <div id="readyDestinationInfo" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0; padding: 20px 32px; max-width: 90%; width: 100%; margin-left: auto; margin-right: auto;">
                     <!-- 左邊：原有位置（出發地） -->
                     <div style="display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-width: 120px;">
                         <span id="readyOriginFlag" style="font-size: 32px; line-height: 1;">🏳️</span>
@@ -1537,20 +1543,44 @@
                             readyCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
                         }
                         
-                        // 更新目的地國旗（根據 country_iso_code 轉 emoji）
+                        // 更新目的地國旗（優先從 sleepcity.json 獲取，否則根據 country_iso_code 轉 emoji）
                         if (readyFlagEl) {
-                            const countryCode = destinationData.country_iso_code || '';
                             let flagEmoji = '🏳️';
-                            if (countryCode && countryCode.length === 2) {
-                                const codePoints = countryCode
-                                    .toUpperCase()
-                                    .split('')
-                                    .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
-                                if (codePoints.length === 2) {
-                                    flagEmoji = String.fromCodePoint(...codePoints);
+                            
+                            // 優先從 sleepcity.json 獲取 flag
+                            (async () => {
+                                try {
+                                    const sleepCityResponse = await fetch('sleepcity.json');
+                                    if (sleepCityResponse.ok) {
+                                        const sleepCityData = await sleepCityResponse.json();
+                                        const matchingCity = sleepCityData.cities.find(city => 
+                                            (city.city === destinationData.city || city.city_zh === destinationData.city_zh) &&
+                                            (city.country === destinationData.country || city.country_zh === destinationData.country_zh)
+                                        );
+                                        if (matchingCity && matchingCity.flag) {
+                                            flagEmoji = matchingCity.flag;
+                                            readyFlagEl.textContent = flagEmoji;
+                                            console.log('✅ [準備起航] 從 sleepcity.json 獲取目的地國旗:', flagEmoji);
+                                            return;
+                                        }
+                                    }
+                                } catch (error) {
+                                    console.warn('⚠️ [準備起航] 無法載入 sleepcity.json:', error);
                                 }
-                            }
-                            readyFlagEl.textContent = flagEmoji;
+                                
+                                // 如果找不到匹配的城市或載入失敗，使用國家代碼生成
+                                const countryCode = destinationData.country_iso_code || '';
+                                if (countryCode && countryCode.length === 2) {
+                                    const codePoints = countryCode
+                                        .toUpperCase()
+                                        .split('')
+                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                    if (codePoints.length === 2) {
+                                        flagEmoji = String.fromCodePoint(...codePoints);
+                                    }
+                                }
+                                readyFlagEl.textContent = flagEmoji;
+                            })();
                         }
                     }
                     
@@ -1571,17 +1601,49 @@
                                     readyOriginCountryEl.textContent = lastLanding.country_zh || lastLanding.country || '未知國家';
                                 }
                                 if (readyOriginFlagEl) {
-                                    const countryCode = lastLanding.country_iso_code || '';
                                     let flagEmoji = '🏳️';
-                                    if (countryCode && countryCode.length === 2) {
-                                        const codePoints = countryCode
-                                            .toUpperCase()
-                                            .split('')
-                                            .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
-                                        if (codePoints.length === 2) {
-                                            flagEmoji = String.fromCodePoint(...codePoints);
+                                    
+                                    // 優先從 sleepcity.json 獲取 flag
+                                    try {
+                                        const sleepCityResponse = await fetch('sleepcity.json');
+                                        if (sleepCityResponse.ok) {
+                                            const sleepCityData = await sleepCityResponse.json();
+                                            const matchingCity = sleepCityData.cities.find(city => 
+                                                (city.city === lastLanding.city || city.city_zh === lastLanding.city_zh) &&
+                                                (city.country === lastLanding.country || city.country_zh === lastLanding.country_zh)
+                                            );
+                                            if (matchingCity && matchingCity.flag) {
+                                                flagEmoji = matchingCity.flag;
+                                                console.log('✅ [準備起航] 從 sleepcity.json 獲取出發地國旗:', flagEmoji);
+                                            } else {
+                                                // 如果找不到匹配的城市，使用國家代碼生成
+                                                const countryCode = lastLanding.country_iso_code || '';
+                                                if (countryCode && countryCode.length === 2) {
+                                                    const codePoints = countryCode
+                                                        .toUpperCase()
+                                                        .split('')
+                                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                                    if (codePoints.length === 2) {
+                                                        flagEmoji = String.fromCodePoint(...codePoints);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.warn('⚠️ [準備起航] 無法載入 sleepcity.json，使用國家代碼生成國旗:', error);
+                                        // 如果載入失敗，使用國家代碼生成
+                                        const countryCode = lastLanding.country_iso_code || '';
+                                        if (countryCode && countryCode.length === 2) {
+                                            const codePoints = countryCode
+                                                .toUpperCase()
+                                                .split('')
+                                                .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                            if (codePoints.length === 2) {
+                                                flagEmoji = String.fromCodePoint(...codePoints);
+                                            }
                                         }
                                     }
+                                    
                                     readyOriginFlagEl.textContent = flagEmoji;
                                 }
             } else {
@@ -2673,27 +2735,42 @@
                     return;
                 }
                 
+                // 優化：使用更簡單、更可靠的按鈕偵測邏輯
+                // 使用 buttonPressSequence 陣列來追蹤按鈕按下序列
+                buttonPressSequence.push(currentTime);
+                
+                // 只保留最近 3 次按下的時間（足夠判斷單擊/雙擊）
+                if (buttonPressSequence.length > 3) {
+                    buttonPressSequence = buttonPressSequence.slice(-3);
+                }
+                
+                // 清除之前的單擊延遲（重要：確保不會有多個 timeout 同時運行）
+                if (buttonPressTimeout) {
+                    clearTimeout(buttonPressTimeout);
+                    buttonPressTimeout = null;
+                }
+                
                 // 計算距離上次按下的時間
-                const timeSinceLastPress = lastButtonPressTime > 0 ? currentTime - lastButtonPressTime : Infinity;
+                const timeSinceLastPress = buttonPressSequence.length >= 2 
+                    ? buttonPressSequence[buttonPressSequence.length - 1] - buttonPressSequence[buttonPressSequence.length - 2]
+                    : Infinity;
                 
                 console.log('🔍 [Phase 5] 按鈕按下檢測:', {
+                    sequenceLength: buttonPressSequence.length,
                     timeSinceLastPress: timeSinceLastPress === Infinity ? 'Infinity（首次按下）' : timeSinceLastPress + 'ms',
-                    lastButtonPressTime: lastButtonPressTime > 0 ? lastButtonPressTime : '未設置',
                     DOUBLE_CLICK_THRESHOLD: DOUBLE_CLICK_THRESHOLD + 'ms',
-                    isDoubleClick: timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > 0,
+                    isDoubleClick: timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && buttonPressSequence.length >= 2,
                     buttonPressTimeout: buttonPressTimeout ? '存在（待處理）' : '不存在'
                 });
                 
-                // 雙擊檢測：在 500ms 內按兩次（必須在 Phase 5 且 lastButtonPressTime > 0）
-                // 重要：優先檢測雙擊，在設置單擊 timeout 之前
-                if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && lastButtonPressTime > 0) {
+                // 雙擊檢測：在 500ms 內按兩次（使用 buttonPressSequence 判斷）
+                if (buttonPressSequence.length >= 2 && timeSinceLastPress < DOUBLE_CLICK_THRESHOLD) {
                     console.log('🍽️ [Phase 5] ✅✅✅ 檢測到雙擊（間隔 ' + timeSinceLastPress + 'ms < ' + DOUBLE_CLICK_THRESHOLD + 'ms），觸發深夜機上服務');
                     
                     // 立即取消任何待處理的單擊 timeout（防止單擊邏輯執行）
                     if (buttonPressTimeout) {
                         clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
-                        console.log('✅ [Phase 5] 已取消待處理的單擊 timeout');
                     }
                     
                     // 立即觸發飛機餐
@@ -2705,36 +2782,22 @@
                     }
                     
                     // 完全重置，準備下一次判定
-                    lastButtonPressTime = 0;
                     buttonPressSequence = [];
+                    lastButtonPressTime = 0;
                     console.log('🔄 [Phase 5] 雙擊處理完成，已重置所有按鈕狀態');
                     return;
                 }
                 
-                // 單擊處理：記錄時間，等待看是否有第二次按下
-                // 清除之前的單擊延遲（重要：確保不會有多個 timeout 同時運行）
-                if (buttonPressTimeout) {
-                    clearTimeout(buttonPressTimeout);
-                    buttonPressTimeout = null;
-                    console.log('🧹 [Phase 5] 清除之前的單擊 timeout（準備記錄新的按下時間）');
-                }
-                
-                // 記錄這次按下的時間（重要：在清除 timeout 之後才記錄，避免被覆蓋）
-                const previousLastButtonPressTime = lastButtonPressTime;
+                // 記錄這次按下的時間（用於日誌）
                 lastButtonPressTime = currentTime;
-                console.log('📝 [Phase 5] 記錄按下時間:', {
-                    之前: previousLastButtonPressTime > 0 ? previousLastButtonPressTime : '未設置',
-                    現在: lastButtonPressTime,
-                    等待時間: DOUBLE_CLICK_THRESHOLD + 'ms',
-                    說明: '如果 ' + DOUBLE_CLICK_THRESHOLD + 'ms 內有第二次按下，將觸發雙擊'
-                });
                 
-                // 設置延遲，等待看是否有第二次按下
+                // 單擊處理：設置延遲，等待看是否有第二次按下
                 buttonPressTimeout = setTimeout(() => {
                     // 再次確認仍在 Phase 5（防止狀態變化）
                     if (currentPhase !== Phase.CRUISE && currentPhase !== 5) {
                         console.log('⚠️ [Phase 5] 階段已變化，取消單擊處理');
                         buttonPressTimeout = null;
+                        buttonPressSequence = [];
                         lastButtonPressTime = 0;
                         return;
                     }
@@ -2743,6 +2806,7 @@
                     if (midnightServiceActive || landingConfirmActive) {
                         console.log('⚠️ [Phase 5] 在等待期間檢測到其他操作，取消單擊處理');
                         buttonPressTimeout = null;
+                        buttonPressSequence = [];
                         lastButtonPressTime = 0;
                         return;
                     }
@@ -2751,6 +2815,7 @@
                     console.log('🛬 [Phase 5] ✅ 確認單擊（等待 ' + DOUBLE_CLICK_THRESHOLD + 'ms 無第二次按下），顯示提前降落確認');
                     showLandingConfirmation();
                     buttonPressTimeout = null;
+                    buttonPressSequence = [];
                     lastButtonPressTime = 0; // 重置，準備下一次判定
                 }, DOUBLE_CLICK_THRESHOLD); // 等待 500ms，確認沒有第二次按下
                 
@@ -3392,8 +3457,9 @@
                     }
                     if (preparedAnnouncement) {
                         console.log('✅ 按鈕：開始起飛！');
-                        // 立即顯示機長準備廣播中的提示
-                        setBoardingStatus(true, '機長準備廣播中...');
+                        // 立即顯示「機長廣播中...」的動態 UI
+                        console.log('📢 [Phase 3→4] 顯示機長廣播中 UI...');
+                        setBoardingStatus(true, '機長廣播中...');
                         startTakeoffSequence();
                     } else {
                         console.log('⚠️ 起飛準備未完成，嘗試重新準備...');
@@ -3461,12 +3527,13 @@
             manualLandingTriggered = false;
             
             // 如果還沒有顯示登機狀態，現在顯示（可能在按鈕處理時已經顯示了）
+            // 確保「機長廣播中...」UI 顯示（在按鈕處理時可能已經顯示）
             const boardingEl = document.getElementById('boardingStatus');
             if (!boardingEl || !boardingEl.classList.contains('active')) {
-                setBoardingStatus(true, '機長準備廣播中...');
+                setBoardingStatus(true, '機長廣播中...');
             } else {
-                // 更新訊息為機長準備廣播中
-                setBoardingStatus(true, '機長準備廣播中...');
+                // 更新訊息為機長廣播中（保持顯示）
+                setBoardingStatus(true, '機長廣播中...');
             }
             
             // 1. 先播放 captain.mp3（只播放前 6 秒），必須完全播放完成後才能繼續
@@ -3762,27 +3829,37 @@
                 }
             }
             
-            // 額外確保所有 .info-state 元素都被隱藏（除了 flightProgressWrapper、stateFlightFeedback、stateLandingCountryInfo 和 stateCountry）
-            // 重要：在 Phase 0 (POST_ARRIVAL) 時，確保 stateLandingCountryInfo 和 stateCountry 不被隱藏
+            // 額外確保所有 .info-state 元素都被隱藏（除了 flightProgressWrapper、stateFlightFeedback 和 stateCountry）
+            // 重要：在 Phase 0 (POST_ARRIVAL) 時，只顯示 stateCountry，永遠隱藏 stateLandingCountryInfo（避免重複）
             // 但在 Phase 5/6/7 時，必須隱藏 stateLandingCountryInfo
+            // 隱藏 stateLandingCountryInfo（因為資訊已由 stateCountry 顯示）
+            const countryInfoState = document.getElementById('stateLandingCountryInfo');
+            if (countryInfoState) {
+                countryInfoState.style.display = 'none';
+                countryInfoState.classList.remove('active');
+            }
+            
             document.querySelectorAll('.info-state').forEach(state => {
                 const stateId = state.id;
                 const isPhase0 = (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0);
                 const shouldKeepVisible = 
                     stateId === 'flightProgressWrapper' || 
                     stateId === 'stateFlightFeedback' || 
-                    (stateId === 'stateLandingCountryInfo' && isPhase0) || // 只在 Phase 0 時保持可見
                     (stateId === 'stateCountry' && (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0));
+                
+                // 永遠隱藏 stateLandingCountryInfo（因為資訊已由 stateCountry 顯示）
+                if (stateId === 'stateLandingCountryInfo') {
+                    state.style.display = 'none';
+                    state.classList.remove('active');
+                    return;
+                }
                 
                 if (!shouldKeepVisible) {
                     state.style.display = 'none';
                     state.classList.remove('active');
                 } else {
                     // 確保應該顯示的元素確實顯示
-                    if (stateId === 'stateLandingCountryInfo' && isPhase0) {
-                        state.style.display = 'flex';
-                        state.classList.add('active');
-                    } else if (stateId === 'stateCountry' && (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0)) {
+                    if (stateId === 'stateCountry' && (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0)) {
                         state.style.display = 'flex';
                         state.classList.add('active');
                     }
@@ -4051,6 +4128,39 @@
             console.log('✅ 應用程式初始化完成');
         }
         
+        // 驗證圖片 URL 是否可訪問（檢查 403 等錯誤）
+        async function validateImageUrl(imageUrl) {
+            return new Promise((resolve) => {
+                if (!imageUrl) {
+                    resolve(false);
+                    return;
+                }
+                
+                const img = new Image();
+                img.crossOrigin = 'anonymous'; // 允許跨域
+                
+                const timeout = setTimeout(() => {
+                    console.warn('⚠️ 圖片載入超時:', imageUrl);
+                    resolve(false);
+                }, 10000); // 10 秒超時
+                
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    console.log('✅ 圖片 URL 可訪問:', imageUrl);
+                    resolve(true);
+                };
+                
+                img.onerror = (error) => {
+                    clearTimeout(timeout);
+                    console.warn('⚠️ 圖片 URL 無法訪問（403 或其他錯誤）:', imageUrl, error);
+                    resolve(false);
+                };
+                
+                // 開始載入圖片
+                img.src = imageUrl;
+            });
+        }
+        
         // 在頁面初始化時載入最新的降落記錄
         async function loadLatestDestinationOnInit() {
             // 重要：只有在 Phase 0 時才執行，避免在 Phase 1 或其他階段時被調用導致切換回 Phase 0
@@ -4091,30 +4201,77 @@
                     if (imageUrl) {
                         destinationImageUrl = imageUrl;
                         
-                        // 顯示降落圖片到 800x800 視窗
-                        const windowContent = document.querySelector('.window-content');
-                        const initialImage = document.getElementById('initialImage');
+                        // 驗證圖片 URL 是否可訪問（檢查 403 錯誤）
+                        const imageValid = await validateImageUrl(imageUrl);
                         
-                        if (windowContent) {
-                            // 設置新圖片為背景，並確保在 taipei.png 之上
-                            windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
-                            windowContent.style.backgroundSize = 'cover';
-                            windowContent.style.backgroundPosition = 'center';
-                            windowContent.style.backgroundRepeat = 'no-repeat';
-                            windowContent.style.zIndex = '6'; // 確保在 initial-image (z-index: 5) 之上
+                        if (imageValid) {
+                            // 圖片可訪問，顯示圖片
+                            const windowContent = document.querySelector('.window-content');
+                            const initialImage = document.getElementById('initialImage');
                             
-                            // 隱藏 taipei.png（initial-image）
-                            if (initialImage) {
-                                initialImage.style.display = 'none';
-                                initialImage.style.opacity = '0';
-                                console.log('✅ 已隱藏 taipei.png，顯示新圖片');
+                            if (windowContent) {
+                                // 設置新圖片為背景，並確保在 taipei.png 之上
+                                windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                                windowContent.style.backgroundSize = 'cover';
+                                windowContent.style.backgroundPosition = 'center';
+                                windowContent.style.backgroundRepeat = 'no-repeat';
+                                windowContent.style.zIndex = '6'; // 確保在 initial-image (z-index: 5) 之上
+                                
+                                // 隱藏 taipei.png（initial-image）
+                                if (initialImage) {
+                                    initialImage.style.display = 'none';
+                                    initialImage.style.opacity = '0';
+                                    console.log('✅ 已隱藏 taipei.png，顯示新圖片');
+                                }
+                                
+                                // 確保視窗可見
+                                windowContent.style.display = 'block';
+                                console.log('✅ 最新降落圖片已顯示到 800x800 視窗:', destinationImageUrl);
+                            } else {
+                                console.warn('⚠️ 找不到 .window-content 元素，無法顯示圖片');
                             }
-                            
-                            // 確保視窗可見
-                            windowContent.style.display = 'block';
-                            console.log('✅ 最新降落圖片已顯示到 800x800 視窗:', destinationImageUrl);
                         } else {
-                            console.warn('⚠️ 找不到 .window-content 元素，無法顯示圖片');
+                            // 圖片不可訪問（403 或其他錯誤），重新生成圖片
+                            console.warn('⚠️ 圖片 URL 無法訪問（可能已過期），重新生成圖片...');
+                            try {
+                                const newImageUrl = await generateLandingImage(
+                                    destinationData.city,
+                                    destinationData.country,
+                                    destinationData.timezone || 'UTC',
+                                    new Date().toISOString()
+                                );
+                                if (newImageUrl) {
+                                    destinationImageUrl = newImageUrl;
+                                    const windowContent = document.querySelector('.window-content');
+                                    const initialImage = document.getElementById('initialImage');
+                                    
+                                    if (windowContent) {
+                                        windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                                        windowContent.style.backgroundSize = 'cover';
+                                        windowContent.style.backgroundPosition = 'center';
+                                        windowContent.style.backgroundRepeat = 'no-repeat';
+                                        windowContent.style.zIndex = '6';
+                                        
+                                        if (initialImage) {
+                                            initialImage.style.display = 'none';
+                                            initialImage.style.opacity = '0';
+                                        }
+                                        
+                                        windowContent.style.display = 'block';
+                                        console.log('✅ 重新生成的圖片已顯示:', destinationImageUrl);
+                                    }
+                                } else {
+                                    throw new Error('重新生成圖片失敗');
+                                }
+                            } catch (error) {
+                                console.error('❌ 重新生成圖片失敗，使用預設 taipei.png:', error);
+                                // 如果重新生成失敗，使用預設圖片
+                                const initialImage = document.getElementById('initialImage');
+                                if (initialImage) {
+                                    initialImage.style.display = 'block';
+                                    initialImage.style.opacity = '1';
+                                }
+                            }
                         }
                     } else {
                         console.warn('⚠️ Firebase 記錄中沒有圖片 URL，使用預設 taipei.png');
@@ -4254,16 +4411,9 @@
             const existingVideos = Array.from(videoContainer.querySelectorAll('video'));
             console.log('🔍 [landing.mp4] 找到', existingVideos.length, '個舊影片，將在 landing.mp4 開始播放時移除（避免空窗期）');
             
-            // 立即暫停所有舊影片，避免繼續循環播放
-            existingVideos.forEach(video => {
-                try {
-                    video.pause();
-                    video.currentTime = 0;
-                    console.log('✅ [landing.mp4] 已暫停舊影片:', video.src || '未知來源');
-                } catch (e) {
-                    console.warn('⚠️ [landing.mp4] 暫停舊影片時發生錯誤:', e);
-                }
-            });
+            // 不要立即暫停舊影片（特別是 takeoff2.mp4），保持播放直到 landing.mp4 準備就緒
+            // 這樣可以避免白屏
+            console.log('✅ [landing.mp4] 保持舊影片播放，等待 landing.mp4 準備就緒');
             
             // 準備 landing.mp4 影片元素
             const landingVideo = document.createElement('video');
@@ -4307,8 +4457,8 @@
                 }
             });
             
-            // 此時 landing.mp4 已經可以播放，現在才移除舊影片（takeoff2.mp4），避免空窗期
-            console.log('🔄 [landing.mp4] landing.mp4 已準備就緒，現在移除舊影片（takeoff2.mp4）...');
+            // 此時 landing.mp4 已經可以播放，現在才暫停並移除舊影片（takeoff2.mp4），避免空窗期
+            console.log('🔄 [landing.mp4] landing.mp4 已準備就緒，現在暫停並移除舊影片（takeoff2.mp4）...');
             existingVideos.forEach(video => {
                 try {
                     // 使用淡出效果，讓切換更平滑
@@ -4316,6 +4466,7 @@
                     video.style.opacity = '0';
                     setTimeout(() => {
                         video.pause();
+                        video.currentTime = 0;
                         video.currentTime = 0;
                         video.remove();
                         console.log('✅ [landing.mp4] 已移除舊影片:', video.src || '未知來源');
@@ -8404,30 +8555,59 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         }
 
         function handleCruise() {
-            // Phase 4: 開始睡眠計時
-            // 如果進度條已經顯示（在 startTakeoffSequence 中已設置），則跳過重複設置
-            const wrapper = document.getElementById('flightProgressWrapper');
-            if (wrapper && wrapper.style.display === 'block' && sleepStartTime) {
-                console.log('✈️ 進入巡航階段（進度條已顯示，跳過重複設置）');
-                // 確保所有狀態 UI 都被隱藏（防止被重新顯示）
-                hideAllStateUI();
-                
-                // 方案一：即使早期返回，也確保暫停影片（提高按鈕檢測穩定性）
-                try {
-                    const takeoffVideo2 = document.getElementById('takeoffVideo2');
-                    if (takeoffVideo2 && !takeoffVideo2.paused) {
-                        takeoffVideo2.pause();
-                        console.log('✅ [Phase 5] 已暫停 takeoff2.mp4（早期返回路徑）');
-                    }
+            // 優化：在 Phase 5 完全暫停 takeoff2.mp4，優先保證按鈕響應精確性
+            try {
+                // 嘗試兩種可能的 ID
+                const video2 = document.getElementById('takeoff2') || document.getElementById('takeoffVideo2');
+                if (video2) {
+                    video2.pause();
+                    video2.currentTime = 0; // 重置到開頭
+                    console.log('✅ [Phase 5] takeoff2.mp4 已暫停，優先保證按鈕響應');
+                    
+                    // 清除所有影片相關的檢查 interval
                     if (window._takeoff2VisibilityCheck) {
                         clearInterval(window._takeoff2VisibilityCheck);
                         window._takeoff2VisibilityCheck = null;
                     }
-                } catch (e) {
-                    // 忽略錯誤
                 }
+            } catch (error) {
+                console.warn('⚠️ [Phase 5] 暫停 takeoff2.mp4 時發生錯誤:', error);
+            }
+            // Phase 4: 開始睡眠計時
+            // 確保進度條顯示（即使已經顯示，也要確保它可見）
+            const wrapper = document.getElementById('flightProgressWrapper');
+            if (wrapper) {
+                // 確保進度條顯示
+                wrapper.style.display = 'block';
+                wrapper.style.visibility = 'visible';
+                wrapper.style.opacity = '1';
+                console.log('✅ [Phase 5] 確保進度條顯示');
                 
-                return;
+                // 如果進度條已經設置且 sleepStartTime 存在，則跳過重複設置
+                if (sleepStartTime) {
+                    console.log('✈️ 進入巡航階段（進度條已顯示，跳過重複設置）');
+                    // 確保所有狀態 UI 都被隱藏（防止被重新顯示）
+                    hideAllStateUI();
+                    
+                    // 方案一：即使早期返回，也確保暫停影片（提高按鈕檢測穩定性）
+                    try {
+                        const takeoffVideo2 = document.getElementById('takeoffVideo2');
+                        if (takeoffVideo2 && !takeoffVideo2.paused) {
+                            takeoffVideo2.pause();
+                            console.log('✅ [Phase 5] 已暫停 takeoff2.mp4（早期返回路徑）');
+                        }
+                        if (window._takeoff2VisibilityCheck) {
+                            clearInterval(window._takeoff2VisibilityCheck);
+                            window._takeoff2VisibilityCheck = null;
+                        }
+                    } catch (e) {
+                        // 忽略錯誤
+                    }
+                    
+                    return;
+                }
+            } else {
+                console.warn('⚠️ [Phase 5] 找不到 flightProgressWrapper，無法顯示進度條');
             }
             
             // 確保所有狀態 UI 都被隱藏（包括 stateCountry）
@@ -9200,6 +9380,13 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         }
 
         async function handleLanding() {
+            // 立即顯示「機長廣播中」的動態 UI（在底部 bar）
+            console.log('📢 [Phase 7] 顯示機長廣播中 UI...');
+            setBoardingStatus(true, '機長廣播中...');
+            
+            // 確保 takeoff2.mp4 繼續播放，直到 landing.mp4 開始播放
+            // 不要立即停止 takeoff2.mp4，避免白屏
+            console.log('✅ [Phase 7] 保持 takeoff2.mp4 播放，等待 landing.mp4 準備就緒');
             // Phase 7: 降落完成
             console.log('🛬 [Phase 7] 降落完成 - handleLanding() 開始執行');
             
@@ -9414,6 +9601,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             console.log('✅ captain.mp3 播放完成');
             
             // 播放正式降落語音（必須等待完成）
+            // 在播放語音期間，保持「機長廣播中」UI 顯示
             if (landingData && landingData.announcement) {
                 console.log('2️⃣ 播放降落語音...');
                 await playAnnouncement(landingData.announcement, 'zh-TW', {
@@ -9430,6 +9618,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 });
                 console.log('✅ 降落語音播放完成');
             }
+            
+            // 語音播放完成後，隱藏「機長廣播中」UI
+            setBoardingStatus(false);
             
             // 在背景生成降落圖片（使用最終確定的目的地，避免重複生成）
             console.log('3️⃣ 開始生成降落圖片...');
@@ -9653,24 +9844,16 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.log('✅ 目的地圖片已顯示在視窗中');
             }
             
-            // 隱藏其他狀態 UI，但確保 stateLandingCountryInfo 和 stateCountry 不被隱藏
-            // 先確保國家資訊 bar 正確顯示（在 hideAllStateUI 之前）
+            // 隱藏 stateLandingCountryInfo（因為資訊已由 stateCountry 顯示，避免重複）
             const countryInfoState = document.getElementById('stateLandingCountryInfo');
             if (countryInfoState) {
-                countryInfoState.style.display = 'flex';
-                countryInfoState.classList.add('active');
-                console.log('✅ 國家資訊 bar 已確保顯示（在 hideAllStateUI 之前）');
+                countryInfoState.style.display = 'none';
+                countryInfoState.classList.remove('active');
+                console.log('✅ 已隱藏 stateLandingCountryInfo（避免與 stateCountry 重複）');
             }
             
-            // 隱藏所有其他狀態 UI（hideAllStateUI 會保留 stateLandingCountryInfo 和 stateCountry）
+            // 隱藏所有其他狀態 UI（hideAllStateUI 會保留 stateCountry）
             hideAllStateUI();
-            
-            // 再次確保國家資訊 bar 正確顯示（在 hideAllStateUI 之後，雙重保險）
-            if (countryInfoState) {
-                countryInfoState.style.display = 'flex';
-                countryInfoState.classList.add('active');
-                console.log('✅ 國家資訊 bar 已確保顯示（在 hideAllStateUI 之後）');
-            }
             
             // 確保 stateCountry 在 Phase 0 時顯示
             const stateCountry = document.getElementById('stateCountry');
