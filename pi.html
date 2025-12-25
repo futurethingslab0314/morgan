@@ -1477,6 +1477,28 @@
                 stateElement.classList.add('active');
                 console.log('✅ 成功切換到狀態:', newState, '元素 ID:', stateId);
                 
+                // 如果是目的地顯示狀態，更新目的地國旗
+                if (newState === State.DESTINATION) {
+                    if (destinationData) {
+                        const destinationFlagEl = document.getElementById('destinationFlag');
+                        if (destinationFlagEl) {
+                            const countryCode = destinationData.country_iso_code || '';
+                            let flagEmoji = '🏳️';
+                            if (countryCode && countryCode.length === 2) {
+                                const codePoints = countryCode
+                                    .toUpperCase()
+                                    .split('')
+                                    .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                if (codePoints.length === 2) {
+                                    flagEmoji = String.fromCodePoint(...codePoints);
+                                }
+                            }
+                            destinationFlagEl.textContent = flagEmoji;
+                            console.log('✅ 目的地國旗已更新:', flagEmoji, '國家:', destinationData.country_zh || destinationData.country);
+                        }
+                    }
+                }
+                
                 // 如果是準備起航狀態，更新出發地和目的地資訊顯示（左右佈局）
                 if (newState === State.READY_TO_FLY) {
                     // 更新目的地資訊
@@ -2250,12 +2272,17 @@
                     return;
                 }
                 
+                // 優化：在 Phase 5 (CRUISE) 時，稍微降低輪詢頻率，減少與影片檢查的衝突
+                const isCruisePhase = currentPhase === Phase.CRUISE || currentPhase === 5;
+                const CRUISE_POLL_INTERVAL = 150; // Phase 5 時使用 150ms 而不是 100ms
+                
                 // 根據錯誤次數動態調整輪詢頻率（不再完全停止）
                 // 這樣可以確保即使 API 暫時失效，也不會完全錯過按鈕按下
                 if (buttonConsecutiveErrors > 0) {
                     // 根據錯誤次數計算新的輪詢間隔（線性退避，但不會完全停止）
                     const errorRatio = Math.min(buttonConsecutiveErrors / MAX_BUTTON_ERRORS, 1);
-                    const newInterval = Math.floor(MIN_POLL_INTERVAL + (MAX_POLL_INTERVAL - MIN_POLL_INTERVAL) * errorRatio);
+                    const baseInterval = isCruisePhase ? CRUISE_POLL_INTERVAL : MIN_POLL_INTERVAL;
+                    const newInterval = Math.floor(baseInterval + (MAX_POLL_INTERVAL - baseInterval) * errorRatio);
                     
                     // 如果間隔改變了，重新設置 interval
                     if (newInterval !== currentButtonPollInterval) {
@@ -2272,16 +2299,18 @@
                         return; // 這次不執行，等待下次用新間隔執行
                     }
                 } else {
-                    // 沒有錯誤，恢復到正常頻率
-                    if (currentButtonPollInterval !== MIN_POLL_INTERVAL) {
-                        currentButtonPollInterval = MIN_POLL_INTERVAL;
+                    // 沒有錯誤，根據 Phase 決定正常頻率
+                    const targetInterval = isCruisePhase ? CRUISE_POLL_INTERVAL : MIN_POLL_INTERVAL;
+                    if (currentButtonPollInterval !== targetInterval) {
+                        currentButtonPollInterval = targetInterval;
                         if (buttonPollInterval) {
                             clearInterval(buttonPollInterval);
                         }
                         buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
                         // 只在真正恢復時輸出一次，避免刷屏
                         if (connectionErrorLogged) {
-                            console.log('✅ 按鈕 API 已恢復，輪詢頻率恢復至正常（100ms）');
+                            const intervalText = isCruisePhase ? `${CRUISE_POLL_INTERVAL}ms（巡航模式）` : '100ms（正常模式）';
+                            console.log(`✅ 按鈕 API 已恢復，輪詢頻率恢復至正常（${intervalText}）`);
                             connectionErrorLogged = false;
                         }
                         return;
@@ -3546,13 +3575,27 @@
             }
             
             // 額外確保所有 .info-state 元素都被隱藏（除了 flightProgressWrapper、stateFlightFeedback、stateLandingCountryInfo 和 stateCountry）
+            // 重要：在 Phase 0 (POST_ARRIVAL) 時，確保 stateLandingCountryInfo 和 stateCountry 不被隱藏
             document.querySelectorAll('.info-state').forEach(state => {
-                if (state.id !== 'flightProgressWrapper' && 
-                    state.id !== 'stateFlightFeedback' && 
-                    state.id !== 'stateLandingCountryInfo' &&
-                    state.id !== 'stateCountry') {
+                const stateId = state.id;
+                const shouldKeepVisible = 
+                    stateId === 'flightProgressWrapper' || 
+                    stateId === 'stateFlightFeedback' || 
+                    stateId === 'stateLandingCountryInfo' ||
+                    (stateId === 'stateCountry' && (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0));
+                
+                if (!shouldKeepVisible) {
                     state.style.display = 'none';
                     state.classList.remove('active');
+                } else {
+                    // 確保應該顯示的元素確實顯示
+                    if (stateId === 'stateLandingCountryInfo') {
+                        state.style.display = 'flex';
+                        state.classList.add('active');
+                    } else if (stateId === 'stateCountry' && (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0)) {
+                        state.style.display = 'flex';
+                        state.classList.add('active');
+                    }
                 }
             });
         }
@@ -3808,9 +3851,21 @@
         
         // 在頁面初始化時載入最新的降落記錄
         async function loadLatestDestinationOnInit() {
+            // 重要：只有在 Phase 0 時才執行，避免在 Phase 1 或其他階段時被調用導致切換回 Phase 0
+            if (currentPhase !== Phase.POST_ARRIVAL && currentPhase !== 0) {
+                console.log('⚠️ [loadLatestDestinationOnInit] 當前不在 Phase 0，跳過載入（當前 Phase:', currentPhase, '）');
+                return;
+            }
+            
             try {
                 // 從 Firebase 獲取最新的降落記錄
                 const latestRecord = await getLatestFlightRecord();
+                
+                // 再次檢查 Phase（可能在異步操作期間 Phase 已改變）
+                if (currentPhase !== Phase.POST_ARRIVAL && currentPhase !== 0) {
+                    console.log('⚠️ [loadLatestDestinationOnInit] 異步操作期間 Phase 已改變，取消載入（當前 Phase:', currentPhase, '）');
+                    return;
+                }
                 
                 if (latestRecord && latestRecord.imageUrl) {
                     console.log('✅ 找到最新的降落記錄，載入中...');
@@ -3839,8 +3894,10 @@
                         console.log('✅ 最新降落圖片已顯示:', destinationImageUrl);
                     }
                     
-                    // 顯示國家資訊 bar
-                    await showLandingCountryInfo(destinationData);
+                    // 顯示國家資訊 bar（只在 Phase 0 時顯示）
+                    if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) {
+                        await showLandingCountryInfo(destinationData);
+                    }
                     
                     console.log('✅ 已載入最新降落位置:', destinationData.city_zh || destinationData.city, destinationData.country_zh || destinationData.country);
                 } else {
@@ -3854,6 +3911,7 @@
             } catch (error) {
                 console.error('❌ 載入最新降落位置失敗:', error);
                 // 即使失敗也繼續，顯示預設首頁
+                // 重要：不修改 currentPhase，避免意外切換
             }
         }
 
@@ -7081,6 +7139,26 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         destinationState.classList.add('active');
                         currentState = State.DESTINATION;
                         console.log('✅ 切換到目的地顯示狀態');
+                        
+                        // 更新目的地國旗
+                        if (destinationData) {
+                            const destinationFlagEl = document.getElementById('destinationFlag');
+                            if (destinationFlagEl) {
+                                const countryCode = destinationData.country_iso_code || '';
+                                let flagEmoji = '🏳️';
+                                if (countryCode && countryCode.length === 2) {
+                                    const codePoints = countryCode
+                                        .toUpperCase()
+                                        .split('')
+                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                    if (codePoints.length === 2) {
+                                        flagEmoji = String.fromCodePoint(...codePoints);
+                                    }
+                                }
+                                destinationFlagEl.textContent = flagEmoji;
+                                console.log('✅ 目的地國旗已更新:', flagEmoji, '國家:', destinationData.country_zh || destinationData.country);
+                            }
+                        }
                     }
                     break;
                 case Phase.TAKEOFF_PREP:
@@ -7326,17 +7404,48 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             try {
                 if (video1.readyState < 2) {
                     console.log('⏳ 等待影片 1 載入第一幀...');
+                    console.log('   影片 1 當前狀態:', {
+                        readyState: video1.readyState,
+                        networkState: video1.networkState,
+                        src: video1.src || video1.querySelector('source')?.src
+                    });
+                    
+                    // 增加超時時間到 15 秒，並添加更好的錯誤處理
                     await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => reject(new Error('載入超時')), 5000);
-                        video1.addEventListener('loadeddata', () => {
-                            clearTimeout(timeout);
+                        const timeout = setTimeout(() => {
+                            console.warn('⚠️ 影片 1 載入超時（15秒），但繼續播放');
+                            // 不 reject，而是 resolve，允許繼續播放
                             resolve();
-                        }, { once: true });
-                        video1.addEventListener('error', (e) => {
+                        }, 15000); // 增加到 15 秒
+                        
+                        // 監聽多個事件，確保能正確載入
+                        const onLoadedData = () => {
                             clearTimeout(timeout);
-                            reject(e);
-                        }, { once: true });
-                        video1.load();
+                            console.log('✅ 影片 1 loadeddata 事件觸發');
+                            resolve();
+                        };
+                        
+                        const onCanPlay = () => {
+                            clearTimeout(timeout);
+                            console.log('✅ 影片 1 canplay 事件觸發');
+                            resolve();
+                        };
+                        
+                        const onError = (e) => {
+                            clearTimeout(timeout);
+                            console.error('❌ 影片 1 載入錯誤:', e);
+                            // 即使出錯也 resolve，不阻塞流程
+                            resolve();
+                        };
+                        
+                        video1.addEventListener('loadeddata', onLoadedData, { once: true });
+                        video1.addEventListener('canplay', onCanPlay, { once: true });
+                        video1.addEventListener('error', onError, { once: true });
+                        
+                        // 如果影片還沒有開始載入，觸發載入
+                        if (video1.networkState === 0 || video1.networkState === 1) {
+                            video1.load();
+                        }
                     });
                 }
                 
@@ -7345,9 +7454,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 video1.style.opacity = '1';
                 video1.classList.add('playing');
                 
-                console.log('✅ 影片第一幀已載入');
+                console.log('✅ 影片第一幀已載入，readyState:', video1.readyState);
             } catch (error) {
-                console.warn('⚠️ 預載影片時發生錯誤:', error);
+                console.warn('⚠️ 預載影片時發生錯誤（但繼續播放）:', error);
+                // 即使出錯也繼續，不阻塞流程
             }
             
             // 顯示影片容器（但保持透明，等待淡入）
@@ -7392,17 +7502,48 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 // 先確保第二個影片也已載入（避免等一下切過去黑畫面）
                 if (video2.readyState < 2) {
                     console.log('⏳ 等待影片 2 載入...');
+                    console.log('   影片 2 當前狀態:', {
+                        readyState: video2.readyState,
+                        networkState: video2.networkState,
+                        src: video2.src || video2.querySelector('source')?.src
+                    });
+                    
+                    // 增加超時時間到 15 秒，並添加更好的錯誤處理
                     await new Promise((resolve, reject) => {
-                        const timeout = setTimeout(() => reject(new Error('載入超時')), 5000);
-                        video2.addEventListener('loadeddata', () => {
-                            clearTimeout(timeout);
+                        const timeout = setTimeout(() => {
+                            console.warn('⚠️ 影片 2 載入超時（15秒），但繼續播放');
+                            // 不 reject，而是 resolve，允許繼續播放
                             resolve();
-                        }, { once: true });
-                        video2.addEventListener('error', (e) => {
+                        }, 15000); // 增加到 15 秒
+                        
+                        // 監聽多個事件，確保能正確載入
+                        const onLoadedData = () => {
                             clearTimeout(timeout);
-                            reject(e);
-                        }, { once: true });
-                        video2.load();
+                            console.log('✅ 影片 2 loadeddata 事件觸發');
+                            resolve();
+                        };
+                        
+                        const onCanPlay = () => {
+                            clearTimeout(timeout);
+                            console.log('✅ 影片 2 canplay 事件觸發');
+                            resolve();
+                        };
+                        
+                        const onError = (e) => {
+                            clearTimeout(timeout);
+                            console.error('❌ 影片 2 載入錯誤:', e);
+                            // 即使出錯也 resolve，不阻塞流程
+                            resolve();
+                        };
+                        
+                        video2.addEventListener('loadeddata', onLoadedData, { once: true });
+                        video2.addEventListener('canplay', onCanPlay, { once: true });
+                        video2.addEventListener('error', onError, { once: true });
+                        
+                        // 如果影片還沒有開始載入，觸發載入
+                        if (video2.networkState === 0 || video2.networkState === 1) {
+                            video2.load();
+                        }
                     });
                 }
                 
@@ -7475,53 +7616,115 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     await video2.play();
                     console.log('✅ takeoff2.mp4 開始循環播放');
                     
-                    // 確保 video2 持續可見（定期檢查）
+                    // 優化：減少檢查頻率並添加防抖，避免干擾按鈕偵測
+                    // 使用較長的間隔（2秒）和條件檢查，減少 DOM 操作
+                    let lastVideoState = null;
                     const checkVideoVisibility = setInterval(() => {
-                        if (video2 && !video2.paused) {
-                            video2.style.opacity = '1';
-                            video2.style.display = 'block';
-                            video2.style.zIndex = '10';
-                            if (videoContainer) {
-                                videoContainer.style.display = 'flex';
-                                videoContainer.style.opacity = '1';
+                        if (!video2) return;
+                        
+                        const isPlaying = !video2.paused;
+                        const currentState = {
+                            playing: isPlaying,
+                            opacity: video2.style.opacity,
+                            display: video2.style.display
+                        };
+                        
+                        // 只在狀態真正改變時才更新 DOM（減少不必要的操作）
+                        if (JSON.stringify(currentState) !== JSON.stringify(lastVideoState)) {
+                            if (isPlaying) {
+                                // 只在需要時才更新樣式
+                                if (video2.style.opacity !== '1') {
+                                    video2.style.opacity = '1';
+                                }
+                                if (video2.style.display !== 'block') {
+                                    video2.style.display = 'block';
+                                }
+                                if (video2.style.zIndex !== '10') {
+                                    video2.style.zIndex = '10';
+                                }
+                                if (videoContainer) {
+                                    if (videoContainer.style.display !== 'flex') {
+                                        videoContainer.style.display = 'flex';
+                                    }
+                                    if (videoContainer.style.opacity !== '1') {
+                                        videoContainer.style.opacity = '1';
+                                    }
+                                }
                             }
-                        } else {
-                            // 如果暫停了，嘗試重新播放
-                            if (video2 && video2.paused) {
-                                video2.play().catch(err => {
-                                    console.warn('⚠️ 重新播放 takeoff2.mp4 失敗:', err);
-                                });
-                            }
+                            lastVideoState = currentState;
                         }
-                    }, 1000);
+                        
+                        // 如果暫停了，使用防抖機制避免頻繁重試
+                        if (!isPlaying && !video2._isRetrying) {
+                            video2._isRetrying = true;
+                            video2.play().catch(err => {
+                                console.warn('⚠️ 重新播放 takeoff2.mp4 失敗:', err);
+                            }).finally(() => {
+                                // 延遲重置重試標記，避免頻繁重試（2秒後才能再次重試）
+                                setTimeout(() => {
+                                    video2._isRetrying = false;
+                                }, 2000);
+                            });
+                        }
+                    }, 2000); // 增加到 2 秒，減少檢查頻率，降低對按鈕偵測的干擾
                     
                     // 存儲 interval ID，以便在需要時清除
                     window._takeoff2VisibilityCheck = checkVideoVisibility;
                     
-                    // 監聽 video2 的播放狀態
+                    // 優化：添加防抖機制，避免頻繁觸發
+                    let pauseRetryTimeout = null;
+                    let playEventFired = false;
+                    
+                    // 監聽 video2 的播放狀態（簡化邏輯，減少 DOM 操作）
                     video2.addEventListener('play', () => {
-                        video2.style.opacity = '1';
-                        video2.style.display = 'block';
-                        console.log('✅ takeoff2.mp4 正在播放');
-                    });
+                        if (!playEventFired) {
+                            playEventFired = true;
+                            video2.style.opacity = '1';
+                            video2.style.display = 'block';
+                            console.log('✅ takeoff2.mp4 正在播放');
+                            // 重置標記，允許下次觸發
+                            setTimeout(() => {
+                                playEventFired = false;
+                            }, 1000);
+                        }
+                    }, { once: false });
                     
                     video2.addEventListener('pause', () => {
-                        console.warn('⚠️ takeoff2.mp4 被暫停，嘗試重新播放');
-                        video2.play().catch(err => {
-                            console.warn('⚠️ 重新播放失敗:', err);
-                        });
-                    });
+                        console.warn('⚠️ takeoff2.mp4 被暫停，準備重新播放（防抖）');
+                        // 清除之前的重試
+                        if (pauseRetryTimeout) {
+                            clearTimeout(pauseRetryTimeout);
+                        }
+                        // 延遲重試，避免頻繁調用（500ms 防抖）
+                        pauseRetryTimeout = setTimeout(() => {
+                            if (video2 && video2.paused && !video2._isRetrying) {
+                                video2._isRetrying = true;
+                                video2.play().catch(err => {
+                                    console.warn('⚠️ 重新播放失敗:', err);
+                                }).finally(() => {
+                                    setTimeout(() => {
+                                        video2._isRetrying = false;
+                                    }, 2000);
+                                });
+                            }
+                        }, 500); // 500ms 防抖
+                    }, { once: false });
                     
                     video2.addEventListener('ended', () => {
                         console.log('✅ takeoff2.mp4 播放結束，重新開始（循環）');
-                        // 如果 loop 沒有生效，手動重新播放
-                        if (video2.loop) {
+                        // 如果 loop 沒有生效，手動重新播放（但添加防抖）
+                        if (video2.loop && !video2._isRetrying) {
+                            video2._isRetrying = true;
                             video2.currentTime = 0;
                             video2.play().catch(err => {
                                 console.warn('⚠️ 循環播放失敗:', err);
+                            }).finally(() => {
+                                setTimeout(() => {
+                                    video2._isRetrying = false;
+                                }, 1000);
                             });
                         }
-                    });
+                    }, { once: false });
                 } catch (error) {
                     console.error('❌ takeoff2.mp4 播放錯誤:', error);
                 }
@@ -8358,7 +8561,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             console.log('📊 時間差異: ' + timeDiff + ' 分鐘（' + timeDiffPercent.toFixed(1) + '%）');
             
             // 根據實際時長重新計算最終目的地（在播放 landing.mp4 之前先計算，避免重複生成圖片）
-            let finalDestination = destinationData;
+            let finalDestination = destinationData || null; // 確保有初始值
             let isWormhole = false;
             let landingData = null;
             
@@ -8441,48 +8644,98 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 isWormhole = true;
             }
             
-            // 如果沒有手動觸發降落，現在生成降落語音和圖片，並播放 landing.mp4
-            if (!manualLandingTriggered) {
-                // 生成降落內容（使用最終確定的目的地）
-                landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
-                
-                // 先播放 captain.mp3（6秒），然後播放正式降落語音
-                console.log('1️⃣ 播放 captain.mp3（6 秒）...');
-                await playAudioFile('sounds/captain.mp3', 6);
-                console.log('✅ captain.mp3 播放完成');
-                
-                // 播放正式降落語音
-                if (landingData.announcement) {
-                    await playAnnouncement(landingData.announcement, 'zh-TW', {
-                        volume: 1.0 // 語音最大音量
-                    });
+            // 生成降落內容和播放降落流程
+            // 注意：提前降落（window._earlyLandingConfirmed）也需要完整的降落流程
+            // 只有從 Phase 6 手動觸發的降落才跳過（但現在 Phase 6 也會執行完整流程）
+            let announcementText = ''; // 用於儲存降落語音文字（用於 Firebase 儲存）
+            
+            // 檢查是否是提前降落（提前降落時 wakeup 音樂已經在播放，但還是需要完整的降落流程）
+            const isEarlyLanding = window._earlyLandingConfirmed || false;
+            
+            // 提前降落時，wakeup 音樂已經在播放，需要調低音量以突出機長語音
+            if (isEarlyLanding && window._earlyLandingWakeupMusic) {
+                console.log('🔉 [提前降落] 調低 wakeup 音樂音量，凸顯機長語音');
+                try {
+                    window._earlyLandingWakeupMusic.volume = 0.15; // 調低音量
+                } catch (e) {
+                    console.warn('⚠️ 調低 wakeup 音樂音量失敗:', e);
                 }
-                
-                // 在背景生成降落圖片（使用最終確定的目的地，避免重複生成）
-                let landingImagePromise = Promise.resolve(null);
-                if (finalDestination) {
-                    landingImagePromise = (async () => {
-                        const url = await generateLandingImage(
-                            finalDestination.city,
-                            finalDestination.country,
-                            finalDestination.timezone || 'UTC',
-                            new Date().toISOString()
-                        );
-                        if (url) {
-                            // 暫存圖片 URL
-                            window._manualLandingImageUrl = url;
-                            destinationImageUrl = url;  // 同時更新 destinationImageUrl
-                        }
-                        return url;
-                    })();
-                }
-                
-                // 播放 landing.mp4，結束後無縫切換到降落圖片
-                await playLandingVideoAndShowImage(landingImagePromise);
             }
             
-            // 如果手動觸發降落，檢查是否需要播放蟲洞語音
-            if (manualLandingTriggered && isWormhole) {
+            // 生成降落內容（使用最終確定的目的地）
+            console.log('📝 [降落] 生成降落內容...');
+            landingData = await generateLandingContent(timeDiff, timeDiffPercent, actualDuration);
+            
+            // 儲存 announcement 文字（用於 Firebase）
+            if (landingData && landingData.announcement) {
+                announcementText = landingData.announcement;
+            } else {
+                // 如果沒有生成，使用預設文字
+                announcementText = '各位旅客，我們即將開始降落程序。請您慢慢醒來，輕輕活動一下身體。我們正在接近目的地，很快您就會看到窗外的風景。';
+                console.warn('⚠️ 降落內容生成失敗，使用預設文字');
+            }
+            
+            // 先播放 captain.mp3（6秒），然後播放正式降落語音
+            console.log('1️⃣ 播放 captain.mp3（6 秒）...');
+            await playAudioFile('sounds/captain.mp3', 6);
+            console.log('✅ captain.mp3 播放完成');
+            
+            // 播放正式降落語音
+            if (landingData && landingData.announcement) {
+                console.log('2️⃣ 播放降落語音...');
+                await playAnnouncement(landingData.announcement, 'zh-TW', {
+                    volume: 1.0 // 語音最大音量
+                });
+                console.log('✅ 降落語音播放完成');
+            } else if (announcementText) {
+                // 如果 landingData 沒有生成，使用 announcementText
+                console.log('2️⃣ 播放降落語音（使用預設文字）...');
+                await playAnnouncement(announcementText, 'zh-TW', {
+                    volume: 1.0
+                });
+                console.log('✅ 降落語音播放完成');
+            }
+            
+            // 在背景生成降落圖片（使用最終確定的目的地，避免重複生成）
+            console.log('3️⃣ 開始生成降落圖片...');
+            let landingImagePromise = Promise.resolve(null);
+            if (finalDestination) {
+                landingImagePromise = (async () => {
+                    const url = await generateLandingImage(
+                        finalDestination.city,
+                        finalDestination.country,
+                        finalDestination.timezone || 'UTC',
+                        new Date().toISOString()
+                    );
+                    if (url) {
+                        // 暫存圖片 URL
+                        window._manualLandingImageUrl = url;
+                        destinationImageUrl = url;  // 同時更新 destinationImageUrl
+                        console.log('✅ 降落圖片生成成功:', url);
+                    } else {
+                        console.warn('⚠️ 降落圖片生成失敗');
+                    }
+                    return url;
+                })();
+            }
+            
+            // 播放 landing.mp4，結束後無縫切換到降落圖片
+            console.log('4️⃣ 播放 landing.mp4...');
+            await playLandingVideoAndShowImage(landingImagePromise);
+            console.log('✅ landing.mp4 播放完成，已切換到降落圖片');
+            
+            // 如果提前降落，恢復 wakeup 音樂音量（如果還在播放）
+            if (isEarlyLanding && window._earlyLandingWakeupMusic) {
+                try {
+                    window._earlyLandingWakeupMusic.volume = 0.6; // 恢復音量
+                    console.log('🔉 [提前降落] 恢復 wakeup 音樂音量');
+                } catch (e) {
+                    console.warn('⚠️ 恢復 wakeup 音樂音量失敗:', e);
+                }
+            }
+            
+            // 如果手動觸發降落且是蟲洞，播放蟲洞語音（但這應該已經在 generateLandingContent 中處理了）
+            if (isWormhole && !landingData) {
                 const wormholeMessages = [
                     '由於遇到時空錯位，我們意外抵達了一個意想不到的目的地。',
                     '飛行途中遇到了蟲洞，我們被傳送到了另一個時空。',
@@ -8584,7 +8837,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 
                 // 媒體內容
                 imageUrl: finalImageUrl,                     // 降落圖片 URL（優先使用手動觸發的）
-                announcementText: announcement,             // 降落語音文字
+                announcementText: announcementText,          // 降落語音文字
                 
                 // 飛行回饋（實驗數據）
                 flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
@@ -8626,15 +8879,31 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.log('✅ 目的地圖片已顯示在視窗中');
             }
             
-            // 隱藏所有其他狀態 UI（stateLandingCountryInfo 已經在 bar 上正確顯示，不需要隱藏）
-            hideAllStateUI();
-            
-            // 確保國家資訊 bar 正確顯示（使用 flex 以符合 .info-state 樣式）
+            // 隱藏其他狀態 UI，但確保 stateLandingCountryInfo 和 stateCountry 不被隱藏
+            // 先確保國家資訊 bar 正確顯示（在 hideAllStateUI 之前）
             const countryInfoState = document.getElementById('stateLandingCountryInfo');
             if (countryInfoState) {
                 countryInfoState.style.display = 'flex';
                 countryInfoState.classList.add('active');
-                console.log('✅ 國家資訊 bar 已確保顯示在底部 bar 區域');
+                console.log('✅ 國家資訊 bar 已確保顯示（在 hideAllStateUI 之前）');
+            }
+            
+            // 隱藏所有其他狀態 UI（hideAllStateUI 會保留 stateLandingCountryInfo 和 stateCountry）
+            hideAllStateUI();
+            
+            // 再次確保國家資訊 bar 正確顯示（在 hideAllStateUI 之後，雙重保險）
+            if (countryInfoState) {
+                countryInfoState.style.display = 'flex';
+                countryInfoState.classList.add('active');
+                console.log('✅ 國家資訊 bar 已確保顯示（在 hideAllStateUI 之後）');
+            }
+            
+            // 確保 stateCountry 在 Phase 0 時顯示
+            const stateCountry = document.getElementById('stateCountry');
+            if (stateCountry && currentPhase === Phase.POST_ARRIVAL) {
+                stateCountry.style.display = 'flex';
+                stateCountry.classList.add('active');
+                console.log('✅ stateCountry 已確保顯示在 Phase 0');
             }
             
             console.log('✅ 降落完成，已切換到 Phase 0 (POST_ARRIVAL)，顯示目的地圖片和國家資訊');
@@ -8669,13 +8938,35 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         feedbackState.style.display = 'flex';
                         feedbackState.style.zIndex = '100';
                         
-                        // 使用預設目的地顯示情緒量表
-                        const defaultDestination = finalDestination || destinationData || {
-                            city: 'Tokyo',
-                            city_zh: '東京',
-                            country: 'Japan',
-                            country_zh: '日本'
-                        };
+                        // 使用預設目的地顯示情緒量表（確保 finalDestination 有值）
+                        let defaultDestination;
+                        try {
+                            // 嘗試使用已定義的 finalDestination（如果有的話）
+                            defaultDestination = (typeof finalDestination !== 'undefined' && finalDestination) 
+                                ? finalDestination 
+                                : (destinationData || {
+                                    city: 'Tokyo',
+                                    city_zh: '東京',
+                                    country: 'Japan',
+                                    country_zh: '日本',
+                                    country_iso_code: 'JP',
+                                    latitude: 35.676,
+                                    longitude: 139.650,
+                                    timezone: 'Asia/Tokyo'
+                                });
+                        } catch (e) {
+                            // 如果 finalDestination 未定義，使用備用方案
+                            defaultDestination = destinationData || {
+                                city: 'Tokyo',
+                                city_zh: '東京',
+                                country: 'Japan',
+                                country_zh: '日本',
+                                country_iso_code: 'JP',
+                                latitude: 35.676,
+                                longitude: 139.650,
+                                timezone: 'Asia/Tokyo'
+                            };
+                        }
                         
                         const feedbackData = await showFlightFeedback(defaultDestination);
                         console.log('✅ 情緒量表作答完成（錯誤恢復模式）');
@@ -8683,9 +8974,11 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         // 顯示國家資訊
                         await showLandingCountryInfo(defaultDestination);
                         
-                        // 切換到 Phase 8
-                        switchToPhase(Phase.RETURN_WINDOW);
-                        console.log('✅ 錯誤恢復完成，已切換到 Phase 8');
+                        // 切換到 Phase 0 (POST_ARRIVAL)
+                        currentPhase = Phase.POST_ARRIVAL;
+                        currentState = State.COUNTRY;
+                        switchState(State.COUNTRY);
+                        console.log('✅ 錯誤恢復完成，已切換到 Phase 0');
                     }
                 } catch (recoveryError) {
                     console.error('❌ 錯誤恢復也失敗:', recoveryError);
