@@ -647,7 +647,79 @@
             background: #ff8555;
         }
 
-        /* 時間選項 - 清爽設計 */
+        /* 時間選項 - 累積進度條樣式 */
+        .timer-progress-container {
+            width: 100%;
+        }
+
+        .timer-progress-bar {
+            display: flex;
+            gap: 6px;
+            align-items: flex-end;
+            justify-content: center;
+            height: 140px;
+            padding: 0 10px;
+        }
+
+        .timer-progress-segment {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            max-width: 80px;
+        }
+        
+        .timer-progress-segment:hover .timer-segment-fill {
+            border-color: #ff6b35;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+        }
+
+        .timer-segment-fill {
+            width: 100%;
+            background: #fff5f0;
+            border: 2px solid #ffb399;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.2s ease;
+            min-height: 20px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .timer-progress-segment.active .timer-segment-fill {
+            background: linear-gradient(180deg, #ff6b35 0%, #ff8c5a 100%);
+            border-color: #ff6b35;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+
+        .timer-progress-segment.active .timer-segment-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 50%);
+        }
+
+        .timer-segment-label {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+            text-align: center;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .timer-progress-segment.active .timer-segment-label {
+            color: #ff6b35;
+            font-weight: 600;
+        }
+
+        /* 保留舊的 .timer-option 樣式以兼容（如果還有其他地方用到） */
         .timer-option {
             padding: 14px 20px;
             background: #fff5f0;
@@ -945,15 +1017,36 @@
         <!-- 狀態2: 時間選擇（只顯示時間選擇） -->
         <div class="info-state" id="stateTimer" style="cursor: pointer;">
             <div class="state-label">⏱️ 選擇睡眠時長</div>
-            <div class="options-container" id="timerOptions">
-                <div class="timer-option" data-minutes="90" data-position="0">1.5小時</div>
-                <div class="timer-option" data-minutes="180" data-position="1">3小時</div>
-                <div class="timer-option" data-minutes="270" data-position="2">4.5小時</div>
-                <div class="timer-option" data-minutes="360" data-position="3">6小時</div>
-                <div class="timer-option" data-minutes="450" data-position="4">7.5小時</div>
-                <div class="timer-option" data-minutes="540" data-position="5">9小時</div>
+            <!-- 累積進度條樣式的時長選擇 -->
+            <div class="timer-progress-container" style="margin-top: 30px; padding: 0 20px;">
+                <div class="timer-progress-bar" id="timerProgressBar">
+                    <div class="timer-progress-segment" data-position="0" data-minutes="90">
+                        <div class="timer-segment-fill"></div>
+                        <div class="timer-segment-label">1.5小時</div>
+                    </div>
+                    <div class="timer-progress-segment" data-position="1" data-minutes="180">
+                        <div class="timer-segment-fill"></div>
+                        <div class="timer-segment-label">3小時</div>
+                    </div>
+                    <div class="timer-progress-segment" data-position="2" data-minutes="270">
+                        <div class="timer-segment-fill"></div>
+                        <div class="timer-segment-label">4.5小時</div>
+                    </div>
+                    <div class="timer-progress-segment" data-position="3" data-minutes="360">
+                        <div class="timer-segment-fill"></div>
+                        <div class="timer-segment-label">6小時</div>
+                    </div>
+                    <div class="timer-progress-segment" data-position="4" data-minutes="450">
+                        <div class="timer-segment-fill"></div>
+                        <div class="timer-segment-label">7.5小時</div>
+                    </div>
+                    <div class="timer-progress-segment" data-position="5" data-minutes="540">
+                        <div class="timer-segment-fill"></div>
+                        <div class="timer-segment-label">9小時</div>
+                    </div>
+                </div>
             </div>
-            <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
+            <div style="font-size: 14px; color: #999; margin-top: 20px; text-align: center; pointer-events: none;">
                 選擇後點擊按鈕繼續
             </div>
             <!-- 顯示旋鈕位置對應的時間說明 -->
@@ -1035,17 +1128,23 @@
             </div>
         </div>
 
-        <!-- 狀態4: 目的地顯示 -->
+        <!-- 狀態4: 目的地顯示（顯示國旗＋國家＋城市） -->
         <div class="info-state" id="stateDestination" style="cursor: pointer;">
             <div class="state-label">✈️ 目的地</div>
             <div class="country-display" style="margin-top: 20px;">
-                <div id="destinationCity" style="font-size: 24px; font-weight: bold; color: #ff6b35; margin-bottom: 10px;">
+                <!-- 國旗 + 國家 -->
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+                    <span id="destinationFlag" style="font-size: 40px; line-height: 1;">🏳️</span>
+                    <span id="destinationCountry" style="font-size: 18px; color: #666;">
+                        ...
+                    </span>
+                </div>
+                <!-- 城市名稱 -->
+                <div id="destinationCity" style="font-size: 24px; font-weight: bold; color: #ff6b35; margin-bottom: 6px; text-align: center;">
                     計算中...
                 </div>
-                <div id="destinationCountry" style="font-size: 18px; color: #666;">
-                    ...
-                </div>
-                <div id="destinationClimate" style="font-size: 14px; color: #999; margin-top: 10px;">
+                <!-- 氣候敘述 -->
+                <div id="destinationClimate" style="font-size: 14px; color: #999; margin-top: 6px; text-align: center;">
                     ...
                 </div>
             </div>
@@ -1392,7 +1491,27 @@
             currentPosition = position;
             selectedTimer = timerOptions[position];
             
-            // 立即更新 UI 高亮（無動畫延遲）
+            // 更新進度條：累積效果（選中 position N，前 N+1 個格子都亮）
+            const segments = document.querySelectorAll('.timer-progress-segment');
+            const maxHeight = 100; // 最大高度（px）
+            
+            segments.forEach((segment, idx) => {
+                const segmentPosition = parseInt(segment.dataset.position) || idx;
+                const isActive = segmentPosition <= position; // 累積：選中 N，前 N+1 個都亮
+                
+                // 更新 active 狀態
+                segment.classList.toggle('active', isActive);
+                
+                // 更新每個格子的高度（越後面的越高，形成階梯效果）
+                const heightPercent = ((segmentPosition + 1) / segments.length) * 100;
+                const height = (maxHeight * heightPercent) / 100;
+                const fillEl = segment.querySelector('.timer-segment-fill');
+                if (fillEl) {
+                    fillEl.style.height = `${height}px`;
+                }
+            });
+            
+            // 兼容舊的 .timer-option（如果還有其他地方用到）
             document.querySelectorAll('.timer-option').forEach((option, idx) => {
                 option.classList.toggle('active', idx === position);
             });
@@ -1404,7 +1523,7 @@
                 timerKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${hours} 小時`;
             }
 
-            console.log('✅ 選擇時間:', selectedTimer, '分鐘');
+            console.log('✅ 選擇時間:', selectedTimer, '分鐘 (位置', position, '，亮', position + 1, '格)');
             
             // 更新按鈕狀態
             updateNextButton();
@@ -1669,8 +1788,21 @@
                 return;
             }
 
-            // 時間選項點擊
+            // 時間選項點擊（支援新的進度條結構和舊的 .timer-option）
+            const timerSegment = e.target.closest('.timer-progress-segment');
             const timerOption = e.target.closest('.timer-option');
+            
+            if (timerSegment) {
+                e.preventDefault();
+                e.stopPropagation();
+                const position = parseInt(timerSegment.dataset.position);
+                console.log('點擊時間進度條，位置:', position, '當前狀態:', currentState);
+                if (currentState === State.TIMER) {
+                    selectTimer(position);
+                }
+                return;
+            }
+            
             if (timerOption) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1905,6 +2037,7 @@
         const MAX_POLL_INTERVAL = 2000; // 最大輪詢間隔（錯誤較多時）
         let buttonRecoveryCheckInterval = null; // 服務器恢復檢查定時器
         let preparedAnnouncement = null; // 準備好的 TTS 語音文字
+        let preparedAnnouncementGender = 'male'; // 準備好的語音性別（'male' 或 'female'）
         let preparedAudioId = null;      // 預先生成的 TTS 音檔 ID（/tts/generate 返回）
         
         // 按鈕雙擊/三擊檢測
@@ -2834,16 +2967,31 @@
                             console.log('✅ 隱藏計算動畫');
                         }
                         
-                        // 顯示目的地資訊（僅下方文字，不切換畫面）
+                        // 顯示目的地資訊（國旗 + 國家 + 城市 + 氣候）
                         const destinationCityEl = document.getElementById('destinationCity');
                         const destinationCountryEl = document.getElementById('destinationCountry');
                         const destinationClimateEl = document.getElementById('destinationClimate');
+                        const destinationFlagEl = document.getElementById('destinationFlag');
                         
                         if (destinationCityEl) {
                             destinationCityEl.textContent = destinationData.city_zh || destinationData.city || '未知城市';
                         }
                         if (destinationCountryEl) {
                             destinationCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
+                        }
+                        if (destinationFlagEl) {
+                            const countryCode = destinationData.country_iso_code || '';
+                            let flagEmoji = '🏳️';
+                            if (countryCode && countryCode.length === 2) {
+                                const codePoints = countryCode
+                                    .toUpperCase()
+                                    .split('')
+                                    .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                if (codePoints.length === 2) {
+                                    flagEmoji = String.fromCodePoint(...codePoints);
+                                }
+                            }
+                            destinationFlagEl.textContent = flagEmoji;
                         }
                         if (destinationClimateEl) {
                             destinationClimateEl.textContent = '🌍 ' + selectedClimateZone.name + ' - ' + selectedClimateZone.description;
@@ -2852,18 +3000,19 @@
                         // 提前生成 TTS 語音文字與音檔
                         console.log('🎤 生成起飛 TTS 語音文字與音檔（按鈕確認後）...');
                         const climateZone = destinationData.climateZone || null;
-                        const announcement = generateTakeoffAnnouncement(
+                        const announcementResult = generateTakeoffAnnouncement(
                             destinationData,
                             destinationData.country,
                             selectedTimer,
                             climateZone
                         );
                         
-                        if (announcement) {
-                            preparedAnnouncement = announcement;
+                        if (announcementResult && announcementResult.text) {
+                            preparedAnnouncement = announcementResult.text;
+                            preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
                             preparedAudioId = null;
-                            generateTtsAudio(announcement, 'zh-TW');
-                            console.log('✅ 起飛語音文字已準備');
+                            generateTtsAudio(announcementResult.text, 'zh-TW');
+                            console.log('✅ 起飛語音文字已準備（' + announcementResult.gender + ' 聲）');
                         } else {
                             console.warn('⚠️ 起飛語音文字生成失敗');
                         }
@@ -2925,20 +3074,21 @@
             
             if (destinationData) {
                 const climateZone = destinationData.climateZone || null;
-                const announcement = generateTakeoffAnnouncement(
+                const announcementResult = generateTakeoffAnnouncement(
                     destinationData,
                     destinationData.country,
                     selectedTimer,
                     climateZone
                 );
                 
-                if (announcement) {
-                    preparedAnnouncement = announcement;
+                if (announcementResult && announcementResult.text) {
+                    preparedAnnouncement = announcementResult.text;
+                    preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
                     preparedAudioId = null; // 重置先前的音檔 ID
-                    console.log('✅ TTS 語音已準備完成（等待起飛按鈕）');
+                    console.log('✅ TTS 語音已準備完成（等待起飛按鈕，' + announcementResult.gender + ' 聲）');
                     
                     // 嘗試預先生成 TTS 音檔（背景進行，不影響流程）
-                    generateTtsAudio(announcement, 'zh-TW');
+                    generateTtsAudio(announcementResult.text, 'zh-TW');
                     
                     // 切換到準備起航狀態
                     currentState = State.READY_TO_FLY;
@@ -3054,13 +3204,15 @@
             } else if (preparedAnnouncement) {
                 console.log('2️⃣ 使用即時 TTS 生成並播放（無快取音檔）...');
                 try {
+                    // 根據性別調整 pitch：女聲較高（1.0），男聲較低（0.85）
+                    const pitch = preparedAnnouncementGender === 'female' ? 1.0 : 0.85;
                     await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
                         isTakeoff: true,
                         rate: 0.7,
-                        pitch: 0.85,
+                        pitch: pitch,
                         volume: 1.0   // 起飛語音拉到最大音量
                     });
-                    console.log('✅ TTS 語音播放完成');
+                    console.log('✅ TTS 語音播放完成（' + preparedAnnouncementGender + ' 聲）');
                 } catch (error) {
                     console.warn('⚠️ TTS 語音播放時發生錯誤:', error);
                 }
@@ -4901,7 +5053,7 @@
                 durationDescription = `${minutes}分鐘`;
             }
             
-            // 獲取城市中文名稱（僅用於內部紀錄，不在廣播中直接說出目的地）
+            // 獲取城市中文名稱（用於廣播中告知乘客目的地）
             const cityName = city.city_zh || city.city || '目的地';
             const countryName = city.country_zh || city.country || '目的地國家';
             
@@ -4911,88 +5063,87 @@
                 : '您此刻想像中的氣候';
             const climateDescription = `一個擁有「${climateName}」氣候的地方`;
             
-            // 5組不同的起飛語音文字稿模板
+            // 5組不同的起飛語音文字稿模板（精簡版，語氣緩和、柔和）
             // 要點：
             // 1. 開頭都要有「歡迎搭乘 Sleep Airline」
-            // 2. 不提具體目的地、不說是哪個城市或在哪裡醒來
-            // 3. 只描述這是一段睡眠旅程與感受，有一個溫暖的結尾
+            // 2. 明確告知目的地國家和城市
+            // 3. 語氣緩和、柔和，適合睡眠引導
+            // 4. 性別標註：模板 1、3、5 為男聲；模板 2、4 為女聲
             const announcementTemplates = [
-                // 模板 1：經典專業機長風格（精簡版）
+                // 模板 1：男聲 - 專業機長風格（精簡、緩和）
                 `各位旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長為您廣播。
 
-我們預計在${timeDescription}起飛，這將是一段約${durationDescription}的睡眠旅程。
+我們預計在${timeDescription}起飛，這將是一段約${durationDescription}的睡眠旅程。今晚我們將飛往${countryName}的${cityName}，一個擁有「${climateName}」氣候的地方。
 
-在起飛前，請您先確認安全事項：請將手機調整為飛航模式，並把螢幕調暗；也可以輕輕拉下窗簾，讓機艙內維持柔和的光線，有助於您入睡與休息。
+在起飛前，請您將手機調整為飛航模式，調暗螢幕，也可以輕輕拉下窗簾，讓機艙內維持柔和的光線。
 
-現在，請讓身體慢慢放鬆。讓肩膀稍微往下沉，放鬆下巴與臉部肌肉。
+現在，請讓身體慢慢放鬆。讓肩膀往下沉，放鬆下巴與臉部肌肉。
 
-接著，專注在您的呼吸：深深吸一口氣，停留一秒，再緩慢吐氣。每一次吐氣，都把今天的緊繃與壓力帶走一點。
+接著，專注在您的呼吸：深深吸一口氣，停留一秒，再緩慢吐氣。每一次吐氣，都把今天的緊繃帶走一點。
 
 ${weatherDescription}在窗外等著我們，飛機引擎的規律聲響，會像安穩的背景音，陪您一起進入睡眠。
 
-在這段${durationDescription}的旅程中，我與全體機組人員會為您守護這片夜空，確保飛行平穩、安全。
-
-當您再次睜開眼睛時，已經是嶄新的一刻。
+在這段${durationDescription}的旅程中，我們會為您守護這片夜空，確保飛行平穩、安全。當您醒來時，我們已經抵達${countryName}的${cityName}。
 
 感謝您選擇 Sleep Airline，祝您有一段安穩、深層的睡眠旅程。`,
 
-                // 模板 2：溫柔陪伴風格（精簡版）
+                // 模板 2：女聲 - 溫柔陪伴風格（精簡、柔和）
                 `晚安，親愛的旅客，歡迎搭乘 Sleep Airline。這裡是您的機長。
 
-今晚我們會陪您經歷一段約${durationDescription}的飛行與睡眠旅程。
+今晚我們會陪您經歷一段約${durationDescription}的飛行與睡眠旅程。我們即將前往${countryName}的${cityName}，一個「${climateName}」的地方。
 
-在起飛前，請您先幫自己打造一個舒服的睡眠小空間：請將手機調成飛航模式，調暗螢幕亮度；如果方便，也可以把窗簾拉下，讓外面的光線不再打擾您。
+在起飛前，請您先幫自己打造一個舒服的睡眠小空間：將手機調成飛航模式，調暗螢幕亮度；如果方便，也可以把窗簾拉下。
 
-接下來，請輕輕閉上眼睛。讓肩膀自然下垂，雙手隨意放好，不需要刻意用力維持任何姿勢。
+接下來，請輕輕閉上眼睛。讓肩膀自然下垂，雙手隨意放好，不需要刻意用力。
 
 跟著自己的呼吸節奏：吸氣時，感受空氣進入胸口；吐氣時，想像今天累積的事情慢慢遠離您。
 
 我們會在${timeDescription}起飛，${weatherDescription}為我們鋪好今晚的航路。引擎的穩定聲響、機艙內柔和的燈光，都是為了讓您能好好休息。
 
-在這段飛行中，請把照顧自己的任務交給睡意，把飛行的安全交給我們。
+在這段飛行中，請把照顧自己的任務交給睡意，把飛行的安全交給我們。當您醒來時，我們已經在${countryName}的${cityName}了。
 
 感謝您搭乘 Sleep Airline，祝您一路好眠。`,
 
-                // 模板 3：簡潔俐落風格（超精簡）
+                // 模板 3：男聲 - 簡潔俐落風格（精簡、緩和）
                 `各位旅客晚安，歡迎搭乘 Sleep Airline，我是本次航班的機長。
 
-我們即將從${timeDescription}起飛，預計飛行時間約${durationDescription}。
+我們即將從${timeDescription}起飛，預計飛行時間約${durationDescription}。今晚的目的地是${countryName}的${cityName}，一個「${climateName}」的區域。
 
-現在請您簡單做三件事：第一，將手機與電子設備調整為飛航模式；第二，調暗螢幕亮度或關閉螢幕；第三，如果您想要更好入睡，可以把窗簾拉下。
+現在請您簡單做三件事：第一，將手機調整為飛航模式；第二，調暗螢幕亮度；第三，如果想要更好入睡，可以把窗簾拉下。
 
 接著，就讓身體靠在座椅上，放鬆肩膀與頸部，找到一個不需要用力的姿勢。
 
-飛機引擎的穩定聲響與機艙內的舒適環境，會一路陪著您休息到目的地。
+飛機引擎的穩定聲響與機艙內的舒適環境，會一路陪著您休息到${countryName}的${cityName}。
 
 在整個${durationDescription}的旅程中，請放心將安全交給我們，您只要好好睡一覺就好。
 
 感謝您選擇 Sleep Airline，祝您有個安穩的夜晚。`,
 
-                // 模板 4：帶點詩意、但更短的風格
+                // 模板 4：女聲 - 詩意風格（精簡、柔和）
                 `親愛的旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長。
 
-今晚，我們將在${timeDescription}起飛，展開一段約${durationDescription}的夜航與休息旅程。
+今晚，我們將在${timeDescription}起飛，展開一段約${durationDescription}的夜航與休息旅程。我們即將飛往${countryName}的${cityName}，一個「${climateName}」的地方。
 
-在這段旅程開始之前，請先替自己關掉外界的打擾：請將手機調成飛航模式，關閉不必要的通知；也可以把窗簾拉下，讓外面的城市燈火留在玻璃外面。
+在這段旅程開始之前，請先替自己關掉外界的打擾：將手機調成飛航模式，關閉不必要的通知；也可以把窗簾拉下，讓外面的城市燈火留在玻璃外面。
 
 當您這麼做的同時，也是在告訴身體：「接下來，是屬於休息的時間。」讓肩膀放鬆、讓眼皮自然變重，呼吸變得慢而穩。
 
-${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一個為您準備好的小小夜空。
+${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一個為您準備好的小小夜空。當您醒來時，我們已經在${countryName}的${cityName}了。
 
 我們會在駕駛艙裡守護這段航程，確保飛行平穩、安全。您只需要安心地睡一覺。
 
 感謝您搭乘 Sleep Airline，願您今晚睡得很深、很香。`,
 
-                // 模板 5：專業公告＋明確安全提醒風格
+                // 模板 5：男聲 - 專業公告風格（精簡、緩和）
                 `各位旅客，您好，歡迎搭乘 Sleep Airline，這裡是本次航班的機長。
 
-稍後我們將從${timeDescription}起飛，預計飛行時間約${durationDescription}。
+我們將從${timeDescription}起飛，預計飛行時間約${durationDescription}。將飛往${countryName}的${cityName}，一個擁有「${climateName}」氣候的地方。
 
-在關閉艙門前，再次提醒您幾項事項：請確認安全帶已經繫好，手機與平板已切換到飛航模式，並關閉或靜音通知。如果您希望更好入睡，也可以現在就把窗簾拉下，讓座位周圍變得安靜、柔和。
+在關閉艙門前，提醒您幾項事項：請確認安全帶已經繫好，手機與平板已切換到飛航模式，並關閉或靜音通知。如果您希望更好入睡，也可以現在就把窗簾拉下。
 
-接下來的時間，機艙燈光會逐漸調暗，讓您可以放心閉上眼睛休息。我們的機組成員會不時巡視機艙，有任何需要都可以輕按呼叫鈴告訴我們。
+接下來的時間，機艙燈光會逐漸調暗，讓您可以放心閉上眼睛休息。我們的機組成員會不時巡視機艙，有任何需要都可以告訴我們。
 
-在整段${durationDescription}的旅程中，我與全體機組人員會專注在飛行與安全上，為您守護這趟夜航。也邀請您，把這段時間完全留給自己，補上一場久違的好眠。
+在整段${durationDescription}的旅程中，我們會專注在飛行與安全上，為您守護這趟夜航。當您醒來時，我們已經抵達${countryName}的${cityName}。也邀請您，把這段時間完全留給自己，補上一場久違的好眠。
 
 代表全體機組，感謝您搭乘 Sleep Airline，祝您有一段安穩、舒適的睡眠旅程。`
             ];
@@ -5010,7 +5161,14 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             }
             
             const announcement = announcementTemplates[selectedIndex];
-            return announcement;
+            // 返回文字和性別信息（模板 1、3、5 為男聲；模板 2、4 為女聲）
+            const isFemale = selectedIndex === 1 || selectedIndex === 3; // 模板 2 和 4 是女聲（索引從 0 開始）
+            
+            return {
+                text: announcement,
+                gender: isFemale ? 'female' : 'male',
+                templateIndex: selectedIndex
+            };
         }
 
         async function generateAnnouncement(announcementType, city, country, countryCode, options = {}) {
@@ -6666,21 +6824,23 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 console.log('🎤 開始生成起飛語音...');
                 // 獲取氣候帶選項（如果有的話）
                 const climateZone = destinationData.climateZone || null;
-                const announcement = generateTakeoffAnnouncement(
+                const announcementResult = generateTakeoffAnnouncement(
                     destinationData,
                     destinationData.country,
                     selectedTimer,
                     climateZone  // 傳遞氣候帶選項以選擇對應的語音模板
                 );
                 
-                if (announcement) {
-                    console.log('🎤 語音生成完成，開始播放');
+                if (announcementResult && announcementResult.text) {
+                    console.log('🎤 語音生成完成，開始播放（' + announcementResult.gender + ' 聲）');
+                    // 根據性別調整 pitch：女聲較高（1.0-1.05），男聲較低（0.85-0.9）
+                    const pitch = announcementResult.gender === 'female' ? 1.0 : 0.85;
                     // 使用 TTS 播放（本地 TTS 服務或瀏覽器 TTS）
                     // 起飛語音使用特殊參數：柔和、有步調、但音量拉高一點
-                    await playAnnouncement(announcement, 'zh-TW', { 
+                    await playAnnouncement(announcementResult.text, 'zh-TW', { 
                         isTakeoff: true,
                         rate: 0.7,     // 70% 語速（更慢、更有步調）
-                        pitch: 0.85,   // 自然音調（不像機器人）
+                        pitch: pitch,   // 根據性別調整音調
                         volume: 1.0    // 起飛語音拉到最大音量
                     });
                 } else {

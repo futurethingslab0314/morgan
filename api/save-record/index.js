@@ -31,9 +31,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ 
-            success: false, 
-            error: '只允許 POST 請求' 
+        return res.status(405).json({
+            success: false,
+            error: '只允許 POST 請求'
         });
     }
 
@@ -118,15 +118,15 @@ export default async function handler(req, res) {
 
         const now = new Date();
         const userUTCOffset = parseFloat(targetUTCOffset);
-        
+
         // 使用優雅的時區處理獲取本地日期
-        const recordedDateString = getLocalDate({ 
-            now: now, 
+        const recordedDateString = getLocalDate({
+            now: now,
             timeZone: timezone, // 優先使用 IANA 時區名稱
             offsetHours: userUTCOffset, // fallback 到數字偏移量
             fallbackTZ: 'Asia/Taipei' // 最終 fallback
         });
-        
+
         // 記錄使用的時區資訊
         if (typeof timezone === 'string' && timezone.trim()) {
             console.log(`📅 使用 IANA 時區: ${timezone}, 本地日期: ${recordedDateString}`);
@@ -239,47 +239,64 @@ export default async function handler(req, res) {
             // 
             // 或者更簡單：直接在 sleepAirline collection 下創建 flight document，然後在其下創建子 collection
             // 但這樣用戶在 Console 會看到 flight 是 document，不是 collection
-            
+
             // 最終方案：如果用戶在 Console 看到 flight 是 collection，我們需要一個中間 document
             // 使用 'data' 作為中間 document：sleepAirline (collection) > data (doc) > flight (collection)
             // 但這樣路徑會變成：.../sleepAirline/data/flight
-            
+
             // 重新檢查：用戶說的路徑是 sleepAirline/sleepAirline/flight
             // 如果第二個 sleepAirline 是 collection，flight 是 collection，那麼中間需要一個 doc
             // 最簡單的方式：sleepAirline (collection) > flight (doc) > records (collection)
             // 但用戶想要 flight 是 collection
-            
+
             // 根據用戶在 Console 看到的實際情況，我們假設：
             // sleepAirline (collection) > flight (doc) > records (collection)
             // 這樣用戶在 Console 點進去 flight 會看到 records collection
-            
+
             // 但如果用戶真的需要 flight 是頂層 collection，我們需要：
             // sleepAirline (collection) > _root (doc) > flight (collection)
-            
+
             // 為了簡化，我們直接使用 flight 作為 document，然後在其下創建 records collection
             // 這樣實際路徑是：.../sleepAirline/flight
             // 用戶在 Console 會看到：sleepAirline（左欄 collection）/ sleepAirline（中欄 doc）/ flight（右欄 doc）
             //
-            // ✅ 修改：每次保存都創建新的 document，保留所有歷史記錄
-            // 路徑結構：sleepAirline (collection) > sleepAirline (doc) > flight (collection) > [新 document]
-            // 這樣每次保存都會創建一個新的 document，不會覆蓋之前的記錄
+            // ✅ 修改：使用 flight+日期 作為 document ID，便於識別和查看
+            // 路徑結構：sleepAirline (collection) > sleepAirline (doc) > flight (collection) > flightYYYY-MM-DD (document)
+            // 如果同一天有多筆記錄，會在 document ID 後加上時間戳來區分
             const flightCollectionRef = db
                 .collection('artifacts')
                 .doc(APP_ID)
                 .collection('userProfiles')
                 .doc('sleepAirline')
                 .collection('sleepAirline')
-                .collection('flight'); // flight 是 collection，每次創建新 document
+                .collection('flight'); // flight 是 collection
 
-            // 使用 add() 創建新的 document（自動生成 ID）
-            const flightDocRef = await flightCollectionRef.add({
+            // 生成 document ID：flight + 日期（例如：flight2025-12-23）
+            // 如果同一天有多筆記錄，加上時間戳來區分（例如：flight2025-12-23_143052）
+            let flightDocId = `flight${recordedDateString}`;
+
+            // 檢查是否已存在相同日期的 document
+            const existingDoc = await flightCollectionRef.doc(flightDocId).get();
+            if (existingDoc.exists) {
+                // 如果已存在，加上時間戳（時分秒）來區分，確保唯一性
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                const timeStr = `${hours}${minutes}${seconds}`;
+                flightDocId = `flight${recordedDateString}_${timeStr}`;
+            }
+
+            // 使用 doc() 創建指定 ID 的 document
+            const flightDocRef = flightCollectionRef.doc(flightDocId);
+            await flightDocRef.set({
                 ...baseRecordData,
                 ...artifactsData,
-            });
+            }, { merge: false }); // 使用 set() 而不是 add()，merge: false 表示完全覆蓋（如果已存在）
 
-            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/flight/${flightDocRef.id}`;
-            console.log('✅ 個人檔案記錄已儲存到 artifacts（新 document）:', userProfilePath);
-            console.log('   文件 ID:', flightDocRef.id);
+            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/sleepAirline/flight/${flightDocId}`;
+            console.log('✅ 個人檔案記錄已儲存到 artifacts（document ID: ' + flightDocId + '）:', userProfilePath);
+            console.log('   文件 ID:', flightDocId);
 
             // 儲存到公共資料結構（對應網頁版眾人地圖）
             const publicDataPath = `artifacts/${APP_ID}/publicData/allSharedEntries/dailyRecords`;
@@ -302,7 +319,7 @@ export default async function handler(req, res) {
                 success: true,
                 message: '記錄已成功儲存',
                 artifactsIds: {
-                    userProfileId: flightDocRef.id, // 新創建的 flight document ID
+                    userProfileId: flightDocId, // flight+日期格式的 document ID
                     publicDataId: publicDocRef.id
                 },
                 legacyIds: {  // 棄用

@@ -69,10 +69,10 @@ def get_knob_position():
             ),
             503,
         )
-
+    
     try:
         pos = knob_handler.read_position()
-
+        
         if pos is not None:
             # 直接回傳目前讀到的位置
             return jsonify(
@@ -148,7 +148,7 @@ def get_button_state():
             ),
             503,
         )
-
+    
     try:
         import RPi.GPIO as GPIO
 
