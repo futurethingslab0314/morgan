@@ -1086,7 +1086,7 @@
         <!-- 飛行階段進度條（從出發地到未知目的地的旅程進度，不顯示具體時間） -->
         <div class="flight-progress-wrapper" id="flightProgressWrapper">
             <div class="flight-progress-label">
-                從出發地前往未知目的地的旅程進行中…
+                Sleep Airline 正前往目的地的旅程進行中…
             </div>
             <div class="flight-progress-bar-bg">
                 <div class="flight-progress-bar-fill" id="flightProgressFill"></div>
@@ -1367,6 +1367,7 @@
         let selectedTimer = null;
         let selectedAngle = null;
         let isTakeoffSequenceRunning = false; // 防止起飛序列重複觸發
+        let midnightServiceTriggered = false; // 標記飛機餐是否已觸發（一次旅程只觸發一次）
         let selectedDirection = null;
         let currentPosition = 0;
         let destinationData = null;
@@ -1533,12 +1534,14 @@
                         const readyCityEl = document.getElementById('readyDestinationCity');
                         const readyCountryEl = document.getElementById('readyDestinationCountry');
                         
-                        // 更新目的地城市名稱
+                        // 更新目的地城市名稱（顯示城市 + 國家）
                         if (readyCityEl) {
-                            readyCityEl.textContent = destinationData.city_zh || destinationData.city || '未知城市';
+                            const cityName = destinationData.city_zh || destinationData.city || '未知城市';
+                            const countryName = destinationData.country_zh || destinationData.country || '未知國家';
+                            readyCityEl.textContent = cityName ? `${cityName}, ${countryName}` : cityName;
                         }
                         
-                        // 更新目的地國家名稱
+                        // 更新目的地國家名稱（保持顯示國家，因為城市已經在上面顯示了）
                         if (readyCountryEl) {
                             readyCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
                         }
@@ -1615,7 +1618,7 @@
                                             if (matchingCity && matchingCity.flag) {
                                                 flagEmoji = matchingCity.flag;
                                                 console.log('✅ [準備起航] 從 sleepcity.json 獲取出發地國旗:', flagEmoji);
-                                            } else {
+            } else {
                                                 // 如果找不到匹配的城市，使用國家代碼生成
                                                 const countryCode = lastLanding.country_iso_code || '';
                                                 if (countryCode && countryCode.length === 2) {
@@ -2232,6 +2235,14 @@
                         return;
                     }
                     
+                    // Phase 5 (CRUISE) 時，旋鈕轉動觸發飛機餐（一次旅程只觸發一次）
+                    if ((currentPhase === Phase.CRUISE || currentPhase === 5) && !midnightServiceTriggered && !midnightServiceActive) {
+                        console.log('🍽️ [Phase 5] 檢測到旋鈕轉動，觸發飛機餐（一次旅程只觸發一次）');
+                        midnightServiceTriggered = true; // 標記已觸發，防止重複觸發
+                        triggerMidnightService();
+                        return; // 觸發飛機餐後，不處理其他旋鈕邏輯
+                    }
+                    
                     if (currentState === State.TIMER) {
                         selectTimer(pos);
                     } else if (currentState === State.ANGLE) {
@@ -2763,30 +2774,8 @@
                     buttonPressTimeout: buttonPressTimeout ? '存在（待處理）' : '不存在'
                 });
                 
-                // 雙擊檢測：在 500ms 內按兩次（使用 buttonPressSequence 判斷）
-                if (buttonPressSequence.length >= 2 && timeSinceLastPress < DOUBLE_CLICK_THRESHOLD) {
-                    console.log('🍽️ [Phase 5] ✅✅✅ 檢測到雙擊（間隔 ' + timeSinceLastPress + 'ms < ' + DOUBLE_CLICK_THRESHOLD + 'ms），觸發深夜機上服務');
-                    
-                    // 立即取消任何待處理的單擊 timeout（防止單擊邏輯執行）
-                    if (buttonPressTimeout) {
-                        clearTimeout(buttonPressTimeout);
-                        buttonPressTimeout = null;
-                    }
-                    
-                    // 立即觸發飛機餐
-                    try {
-                        triggerMidnightService();
-                        console.log('✅ [Phase 5] triggerMidnightService() 調用成功');
-                    } catch (error) {
-                        console.error('❌ [Phase 5] triggerMidnightService() 調用失敗:', error);
-                    }
-                    
-                    // 完全重置，準備下一次判定
-                    buttonPressSequence = [];
-                    lastButtonPressTime = 0;
-                    console.log('🔄 [Phase 5] 雙擊處理完成，已重置所有按鈕狀態');
-                    return;
-                }
+                // 注意：飛機餐已改為由旋鈕轉動觸發，不再使用雙擊觸發
+                // 雙擊現在只用於提前降落確認
                 
                 // 記錄這次按下的時間（用於日誌）
                 lastButtonPressTime = currentTime;
@@ -3126,8 +3115,29 @@
             console.log('   preparedAnnouncement:', preparedAnnouncement ? '已準備' : '未準備');
             
             // ============================================================================
-            // 優先級 1: 飛行階段特殊處理（CRUISE, DESCENT, LANDING）
+            // 優先級 1: 飛行階段特殊處理（TAKEOFF_PREP, CRUISE, DESCENT, LANDING）
             // ============================================================================
+            
+            // 1.0 Phase 4 (TAKEOFF_PREP) - 起飛準備階段
+            if (currentPhase === Phase.TAKEOFF_PREP || currentPhase === 4) {
+                // 立即顯示「機長廣播中...」的動態 UI
+                console.log('📢 [Phase 4] 顯示機長廣播中 UI...');
+                setBoardingStatus(true, '機長廣播中...');
+                
+                // 觸發起飛序列
+                if (!isTakeoffSequenceRunning && preparedAnnouncement) {
+                    console.log('✅ [Phase 4] 按鈕：開始起飛！');
+                    startTakeoffSequence();
+                } else if (isTakeoffSequenceRunning) {
+                    console.log('⚠️ [Phase 4] 起飛序列正在進行中，忽略按鈕按下');
+                } else {
+                    console.log('⚠️ [Phase 4] 起飛準備未完成，嘗試重新準備...');
+                    if (destinationData) {
+                        prepareForTakeoff();
+                    }
+                }
+                return;
+            }
             
             // 1.1 巡航階段（CRUISE）
             if (currentPhase === Phase.CRUISE || currentPhase == 5) {
@@ -4327,11 +4337,13 @@
                     // 更新「所在國家」（stateCountry）為新的降落地點
                     const stateCountry = document.getElementById('stateCountry');
                     if (stateCountry) {
-                        // 更新國家名稱
+                        // 更新國家名稱（顯示國家 + 城市）
                         const currentCountryEl = document.getElementById('currentCountry');
                         if (currentCountryEl) {
-                            currentCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
-                            console.log('✅ 已更新「所在國家」為:', destinationData.country_zh || destinationData.country);
+                            const cityName = destinationData.city_zh || destinationData.city || '';
+                            const countryName = destinationData.country_zh || destinationData.country || '未知國家';
+                            currentCountryEl.textContent = cityName ? `${cityName}, ${countryName}` : countryName;
+                            console.log('✅ 已更新「所在國家」為:', cityName ? `${cityName}, ${countryName}` : countryName);
                         }
                         
                         // 更新國旗 emoji（使用從 sleepcity.json 獲取的 flag）
@@ -6881,6 +6893,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 const maxIndex = options.length > 0 ? options.length - 1 : 4;
                 const FEEDBACK_TIMEOUT_MS = 30000; // 最多等待 30 秒
                 let buttonPressHandled = false;
+                let lastKnobPositionForFeedback = null; // 記錄上次的旋鈕位置，用於檢測變化
                 
                 // 設置全局標記，讓 handlePhysicalButtonPress 知道要處理情緒量表（只設置一次）
                 window._feedbackWaitingForButton = true;
@@ -6927,40 +6940,54 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                                     return;
                                 }
                                 
-                                // 旋鈕位置（0-maxIndex）直接對應選項索引
-                                const clampedIndex = Math.max(0, Math.min(maxIndex, position));
-                                console.log('🔍 [情緒量表] 旋鈕位置檢查: position=', position, 'clampedIndex=', clampedIndex, 'selectedIndex=', selectedIndex, 'maxIndex=', maxIndex);
+                                // 如果位置沒有變化，跳過處理（避免不必要的更新）
+                                if (lastKnobPositionForFeedback !== null && lastKnobPositionForFeedback === position) {
+                                    return;
+                                }
+                                lastKnobPositionForFeedback = position;
                                 
-                                if (clampedIndex !== selectedIndex) {
-                                    console.log('✅ [情緒量表] 檢測到變化，準備更新 UI: 從索引', selectedIndex, '→', clampedIndex);
-                                    updateSelection(clampedIndex);
-                                    // 更新全局標記的選擇值（確保同步）
-                                    window._feedbackSelectedValue = selectedFeedback;
-                                    console.log('🔄 [情緒量表] 旋鈕選擇更新完成: 位置', position, '→ 索引', clampedIndex, '→ 分數', selectedFeedback);
-                                    
-                                    // 驗證 UI 是否真的更新了
-                                    const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
-                                    const activeCount = Array.from(currentOptions).filter(opt => opt.classList.contains('active')).length;
-                                    console.log('🔍 [情緒量表] UI 驗證: 總選項數=', currentOptions.length, 'active 數量=', activeCount, '應該只有 1 個 active');
-                                    
-                                    if (activeCount !== 1) {
-                                        console.error('❌ [情緒量表] UI 更新異常！應該只有 1 個 active，但發現', activeCount, '個');
-                                        // 強制修復
-                                        currentOptions.forEach((opt, i) => {
-                                            if (i === clampedIndex) {
-                                                opt.classList.add('active');
-                                                opt.style.opacity = '1';
-                                                opt.style.transform = 'scale(1.05)';
-                                            } else {
-                                                opt.classList.remove('active');
-                                                opt.style.opacity = '0.6';
-                                                opt.style.transform = 'scale(1)';
-                                            }
-                                        });
-                                        console.log('🔧 [情緒量表] 已強制修復 UI');
-                                    }
-                                } else {
-                                    console.log('ℹ️ [情緒量表] 索引未變化，跳過更新');
+                                // 旋鈕位置映射：旋鈕有 6 個位置 (0-5)，選項有 5 個 (0-4)
+                                // 將旋鈕位置 0-5 映射到選項索引 0-4
+                                // 位置 0 → 索引 0 (1分)
+                                // 位置 1 → 索引 1 (2分)
+                                // 位置 2 → 索引 2 (3分)
+                                // 位置 3 → 索引 3 (4分)
+                                // 位置 4 → 索引 4 (5分)
+                                // 位置 5 → 索引 4 (5分，最大值)
+                                let mappedIndex = position;
+                                if (position > maxIndex) {
+                                    mappedIndex = maxIndex; // 如果位置超過最大值，使用最大值
+                                }
+                                const clampedIndex = Math.max(0, Math.min(maxIndex, mappedIndex));
+                                console.log('🔍 [情緒量表] 旋鈕位置檢查: position=', position, 'mappedIndex=', mappedIndex, 'clampedIndex=', clampedIndex, 'selectedIndex=', selectedIndex, 'maxIndex=', maxIndex);
+                                
+                                // 強制更新 UI，不管 selectedIndex 是否相同（確保 UI 同步）
+                                console.log('✅ [情緒量表] 檢測到旋鈕轉動，立即更新 UI: 位置', position, '→ 索引', clampedIndex);
+                                updateSelection(clampedIndex);
+                                // 更新全局標記的選擇值（確保同步）
+                                window._feedbackSelectedValue = selectedFeedback;
+                                console.log('🔄 [情緒量表] 旋鈕選擇更新完成: 位置', position, '→ 索引', clampedIndex, '→ 分數', selectedFeedback);
+                                
+                                // 驗證 UI 是否真的更新了
+                                const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
+                                const activeCount = Array.from(currentOptions).filter(opt => opt.classList.contains('active')).length;
+                                console.log('🔍 [情緒量表] UI 驗證: 總選項數=', currentOptions.length, 'active 數量=', activeCount, '應該只有 1 個 active');
+                                
+                                if (activeCount !== 1) {
+                                    console.error('❌ [情緒量表] UI 更新異常！應該只有 1 個 active，但發現', activeCount, '個');
+                                    // 強制修復
+                                    currentOptions.forEach((opt, i) => {
+                                        if (i === clampedIndex) {
+                                            opt.classList.add('active');
+                                            opt.style.opacity = '1';
+                                            opt.style.transform = 'scale(1.05)';
+                                        } else {
+                                            opt.classList.remove('active');
+                                            opt.style.opacity = '0.6';
+                                            opt.style.transform = 'scale(1)';
+                                        }
+                                    });
+                                    console.log('🔧 [情緒量表] 已強制修復 UI');
                                 }
                             } else {
                                 console.warn('⚠️ [情緒量表] API 返回無效數據:', data);
@@ -6974,7 +7001,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                                 console.warn('⚠️ [情緒量表] 旋鈕 API 錯誤:', err.message);
                             }
                         });
-                }, 150); // 降低到 150ms，提升響應速度
+                }, 100); // 降低到 100ms，提升響應速度
                 
                 // 備用方案：獨立按鈕輪詢（如果全局監控不可用或失效）
                 const buttonCheckInterval = setInterval(() => {
@@ -7096,10 +7123,12 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 // 更新 stateCountry（所在國家）
                 const stateCountry = document.getElementById('stateCountry');
                 if (stateCountry) {
-                    // 更新國家名稱
+                    // 更新國家名稱（顯示國家 + 城市）
                     const currentCountryEl = document.getElementById('currentCountry');
                     if (currentCountryEl) {
-                        currentCountryEl.textContent = destination.country_zh || destination.country || '未知國家';
+                        const cityName = destination.city_zh || destination.city || '';
+                        const countryName = destination.country_zh || destination.country || '未知國家';
+                        currentCountryEl.textContent = cityName ? `${cityName}, ${countryName}` : countryName;
                     }
                     
                     // 更新國旗 emoji（使用從 sleepcity.json 獲取的 flag）
@@ -8742,6 +8771,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 重置布林值
             landingExecuted = false;
             midnightServiceActive = false;
+            midnightServiceTriggered = false; // 重置飛機餐觸發標記
             manualLandingTriggered = false;
             descentAnnouncementPlayed = false;
             landingConfirmActive = false;

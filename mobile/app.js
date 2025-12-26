@@ -76,9 +76,15 @@ class SleepAirlineMobile {
             return;
         }
 
-        container.innerHTML = this.records.map((record, index) => `
+        container.innerHTML = this.records.map((record, index) => {
+            // 嘗試多種可能的圖片欄位名稱
+            const imageUrl = record.imageUrl || record.destinationImage || record.image_url || '';
+            // 使用 data 屬性存儲圖片 URL，方便後續處理
+            const imageStyle = imageUrl ? `background-image: url('${imageUrl}')` : 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);';
+            
+            return `
             <div class="journey-card" data-index="${index}">
-                <div class="journey-image" style="background-image: url('${record.imageUrl || ''}')">
+                <div class="journey-image" style="${imageStyle}" data-image-url="${imageUrl || ''}" data-city="${record.city_zh || record.city || ''}" data-country="${record.country_zh || record.country || ''}">
                     <div class="journey-badge">${this.getPunctualityBadge(record.punctuality)}</div>
                 </div>
                 <div class="journey-info">
@@ -91,7 +97,8 @@ class SleepAirlineMobile {
                     ${record.climateZoneName ? `<div class="climate-tag">${record.climateZoneName}</div>` : ''}
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         // 添加點擊事件
         container.querySelectorAll('.journey-card').forEach(card => {
@@ -99,6 +106,25 @@ class SleepAirlineMobile {
                 const index = parseInt(card.dataset.index);
                 this.showJourneyDetail(this.records[index]);
             });
+        });
+
+        // 處理圖片載入錯誤（403 或其他錯誤）
+        container.querySelectorAll('.journey-image').forEach(imgEl => {
+            const imgUrl = imgEl.dataset.imageUrl;
+            if (imgUrl) {
+                // 創建一個隱藏的 img 元素來測試圖片是否可載入
+                const testImg = new Image();
+                testImg.onload = () => {
+                    // 圖片載入成功，不需要做任何事
+                };
+                testImg.onerror = () => {
+                    // 圖片載入失敗（可能是 403 過期），使用漸層背景
+                    console.warn('⚠️ 圖片載入失敗，使用預設背景:', imgUrl);
+                    imgEl.style.backgroundImage = 'none';
+                    imgEl.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                };
+                testImg.src = imgUrl;
+            }
         });
 
         this.showEmptyState();
@@ -109,63 +135,81 @@ class SleepAirlineMobile {
         const mapContainer = document.getElementById('map-container');
         if (!mapContainer) return;
 
-        this.map = new google.maps.Map(mapContainer, {
-            zoom: 3,
-            center: { lat: TAIPEI_LAT, lng: TAIPEI_LON },
-            mapTypeId: 'terrain',
-            styles: [
-                {
-                    featureType: 'poi',
-                    elementType: 'labels',
-                    stylers: [{ visibility: 'off' }]
-                }
-            ]
-        });
+        try {
+            // 使用 Leaflet 初始化地圖
+            this.map = L.map(mapContainer, {
+                zoomControl: true,
+                scrollWheelZoom: true,
+                doubleClickZoom: true,
+                touchZoom: true,
+                dragging: true
+            }).setView([TAIPEI_LAT, TAIPEI_LON], 3);
 
-        // 如果切換到地圖頁，渲染地圖
-        if (document.getElementById('map-page').classList.contains('active')) {
-            this.renderMap();
+            // 添加 OpenStreetMap 圖層
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(this.map);
+
+            // 等待地圖容器可見後再調整大小
+            setTimeout(() => {
+                if (this.map) {
+                    this.map.invalidateSize();
+                }
+            }, 100);
+
+            console.log('✅ Leaflet 地圖初始化成功');
+
+            // 如果切換到地圖頁，渲染地圖
+            if (document.getElementById('map-page').classList.contains('active')) {
+                this.renderMap();
+            }
+        } catch (error) {
+            console.error('❌ 地圖初始化失敗:', error);
+            // 顯示錯誤訊息
+            mapContainer.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                    <h3 style="margin: 0 0 10px 0; color: #333;">地圖載入失敗</h3>
+                    <p style="margin: 0; color: #666; font-size: 14px;">請檢查網路連線或稍後再試</p>
+                </div>
+            `;
         }
     }
 
     // 渲染地圖標記和路徑
     renderMap() {
-        if (!this.map || this.records.length === 0) return;
+        if (!this.map || this.records.length === 0) {
+            console.log('⚠️ 地圖未初始化或沒有記錄');
+            return;
+        }
 
         // 清除舊的標記和路徑
-        this.markers.forEach(m => m.setMap(null));
-        this.polylines.forEach(p => p.setMap(null));
+        this.markers.forEach(m => this.map.removeLayer(m));
+        this.polylines.forEach(p => this.map.removeLayer(p));
         this.markers = [];
         this.polylines = [];
 
+        // 創建圖層組
+        const markersLayer = L.layerGroup().addTo(this.map);
+        const polylinesLayer = L.layerGroup().addTo(this.map);
+
         // 起點：台北
-        const taipeiMarker = new google.maps.Marker({
-            position: { lat: TAIPEI_LAT, lng: TAIPEI_LON },
-            map: this.map,
-            title: '起點：台北',
-            icon: {
-                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="20" cy="20" r="15" fill="#4CAF50" stroke="white" stroke-width="3"/>
-                        <text x="20" y="26" font-size="16" fill="white" text-anchor="middle" font-weight="bold">起</text>
-                    </svg>
-                `),
-                scaledSize: new google.maps.Size(40, 40),
-                anchor: new google.maps.Point(20, 20)
-            }
+        const taipeiIcon = L.divIcon({
+            className: 'custom-marker start-marker',
+            html: '<div style="width: 40px; height: 40px; border-radius: 50%; background: #4CAF50; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">起</div>',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
         });
 
-        const taipeiInfoWindow = new google.maps.InfoWindow({
-            content: '<div style="padding: 10px;"><h3 style="margin: 0;">起點：台北</h3><p style="margin: 5px 0 0 0; color: #666;">你的旅程起點</p></div>'
-        });
+        const taipeiMarker = L.marker([TAIPEI_LAT, TAIPEI_LON], { icon: taipeiIcon })
+            .addTo(markersLayer)
+            .bindPopup('<div style="padding: 10px;"><h3 style="margin: 0;">起點：台北</h3><p style="margin: 5px 0 0 0; color: #666;">你的旅程起點</p></div>');
 
-        taipeiMarker.addListener('click', () => {
-            taipeiInfoWindow.open(this.map, taipeiMarker);
-        });
+        this.markers.push(taipeiMarker);
 
-        let previousPosition = { lat: TAIPEI_LAT, lng: TAIPEI_LON };
-        const bounds = new google.maps.LatLngBounds();
-        bounds.extend({ lat: TAIPEI_LAT, lng: TAIPEI_LON });
+        let previousPosition = [TAIPEI_LAT, TAIPEI_LON];
+        const bounds = L.latLngBounds([[TAIPEI_LAT, TAIPEI_LON]]);
 
         // 為每個記錄創建標記和路徑
         this.records.forEach((record, index) => {
@@ -174,70 +218,57 @@ class SleepAirlineMobile {
                 return;
             }
 
-            const position = {
-                lat: parseFloat(record.latitude),
-                lng: parseFloat(record.longitude)
-            };
+            const position = [
+                parseFloat(record.latitude),
+                parseFloat(record.longitude)
+            ];
 
-            // 創建標記
-            const marker = new google.maps.Marker({
-                position: position,
-                map: this.map,
-                title: `${record.city_zh || record.city}`,
-                label: {
-                    text: `${index + 1}`,
-                    color: 'white',
-                    fontWeight: 'bold',
-                    fontSize: '12px'
-                },
-                icon: {
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 10,
-                    fillColor: '#FF6B35',
-                    fillOpacity: 1,
-                    strokeColor: '#fff',
-                    strokeWeight: 2
-                }
+            // 創建自定義標記圖標
+            const markerIcon = L.divIcon({
+                className: 'custom-marker destination-marker',
+                html: `<div style="width: 30px; height: 30px; border-radius: 50%; background: #FF6B35; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${index + 1}</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
             });
 
-            // 添加資訊視窗
-            const infoWindow = new google.maps.InfoWindow({
-                content: `
+            // 創建標記
+            const marker = L.marker(position, { icon: markerIcon })
+                .addTo(markersLayer)
+                .bindPopup(`
                     <div style="padding: 10px; min-width: 200px;">
                         <h3 style="margin: 0 0 5px 0; font-size: 16px;">${record.city_zh || record.city}</h3>
                         <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;">${record.country_zh || record.country}</p>
                         <p style="margin: 0; font-size: 12px; color: #999;">${this.formatDate(record.wakeTime || record.recordedDateString)}</p>
                         ${record.sleepDuration ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">飛行時長: ${this.formatDuration(record.sleepDuration)}</p>` : ''}
                     </div>
-                `
-            });
-
-            marker.addListener('click', () => {
-                infoWindow.open(this.map, marker);
-            });
+                `);
 
             this.markers.push(marker);
             bounds.extend(position);
 
             // 繪製飛行路徑
-            const flightPath = new google.maps.Polyline({
-                path: [previousPosition, position],
-                geodesic: true,
-                strokeColor: '#FF6B35',
-                strokeOpacity: 0.6,
-                strokeWeight: 3
-            });
+            const flightPath = L.polyline([previousPosition, position], {
+                color: '#FF6B35',
+                weight: 3,
+                opacity: 0.6,
+                smoothFactor: 1
+            }).addTo(polylinesLayer);
 
-            flightPath.setMap(this.map);
             this.polylines.push(flightPath);
-
             previousPosition = position;
         });
 
         // 調整地圖視圖以包含所有標記
         if (this.markers.length > 0) {
-            this.map.fitBounds(bounds);
+            this.map.fitBounds(bounds, { padding: [50, 50] });
         }
+
+        // 確保地圖大小正確
+        setTimeout(() => {
+            if (this.map) {
+                this.map.invalidateSize();
+            }
+        }, 100);
     }
 
     // 渲染統計
@@ -373,8 +404,17 @@ class SleepAirlineMobile {
         const modalBody = document.getElementById('modal-body');
         if (!modal || !modalBody) return;
 
+        // 嘗試多種可能的圖片欄位名稱
+        const imageUrl = record.imageUrl || record.destinationImage || record.image_url || '';
+        
+        // 創建圖片元素，並添加錯誤處理
+        let imageHtml = '';
+        if (imageUrl) {
+            imageHtml = `<div class="modal-image" style="background-image: url('${imageUrl}')" data-image-url="${imageUrl}"></div>`;
+        }
+        
         modalBody.innerHTML = `
-            ${record.imageUrl ? `<div class="modal-image" style="background-image: url('${record.imageUrl}')"></div>` : ''}
+            ${imageHtml}
             <h2 class="modal-title">${record.city_zh || record.city || '未知城市'}</h2>
             <p class="modal-subtitle">${record.country_zh || record.country || '未知國家'}</p>
             
@@ -427,6 +467,22 @@ class SleepAirlineMobile {
         `;
 
         modal.classList.add('active');
+        
+        // 處理模態框中的圖片載入錯誤
+        const modalImage = modalBody.querySelector('.modal-image');
+        if (modalImage && imageUrl) {
+            const testImg = new Image();
+            testImg.onload = () => {
+                // 圖片載入成功
+            };
+            testImg.onerror = () => {
+                // 圖片載入失敗，使用漸層背景
+                console.warn('⚠️ 模態框圖片載入失敗，使用預設背景:', imageUrl);
+                modalImage.style.backgroundImage = 'none';
+                modalImage.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            };
+            testImg.src = imageUrl;
+        }
     }
 
     // 設置導航
@@ -451,8 +507,18 @@ class SleepAirlineMobile {
         if (targetBtn) targetBtn.classList.add('active');
 
         // 如果切換到地圖頁，渲染地圖
-        if (page === 'map' && this.map) {
-            setTimeout(() => this.renderMap(), 100);
+        if (page === 'map') {
+            if (!this.map) {
+                // 如果地圖還沒初始化，先初始化
+                this.initMap();
+            }
+            // 等待地圖容器可見後再渲染
+            setTimeout(() => {
+                if (this.map) {
+                    this.map.invalidateSize();
+                    this.renderMap();
+                }
+            }, 200);
         }
     }
 

@@ -188,6 +188,26 @@ body {
     height: calc(100vh - 180px);
     min-height: 400px;
     background: #E0E0E0;
+    position: relative;
+    z-index: 1;
+}
+
+/* Leaflet 地圖樣式 */
+#map-container .leaflet-container {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* 自定義標記樣式 */
+.custom-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+.start-marker,
+.destination-marker {
+    cursor: pointer;
 }
 
 .map-legend {
