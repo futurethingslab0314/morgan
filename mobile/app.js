@@ -133,9 +133,28 @@ class SleepAirlineMobile {
     // 初始化地圖
     initMap() {
         const mapContainer = document.getElementById('map-container');
-        if (!mapContainer) return;
+        if (!mapContainer) {
+            console.warn('⚠️ 地圖容器不存在');
+            return;
+        }
+
+        // 檢查 Leaflet 是否已載入
+        if (typeof L === 'undefined') {
+            console.error('❌ Leaflet 未載入，請檢查網路連線');
+            mapContainer.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                    <h3 style="margin: 0 0 10px 0; color: #333;">地圖庫載入失敗</h3>
+                    <p style="margin: 0; color: #666; font-size: 14px;">請檢查網路連線或重新整理頁面</p>
+                </div>
+            `;
+            return;
+        }
 
         try {
+            // 清除容器中可能存在的舊內容（包括 Google Maps 錯誤訊息）
+            mapContainer.innerHTML = '';
+
             // 使用 Leaflet 初始化地圖
             this.map = L.map(mapContainer, {
                 zoomControl: true,
@@ -171,7 +190,7 @@ class SleepAirlineMobile {
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center;">
                     <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
                     <h3 style="margin: 0 0 10px 0; color: #333;">地圖載入失敗</h3>
-                    <p style="margin: 0; color: #666; font-size: 14px;">請檢查網路連線或稍後再試</p>
+                    <p style="margin: 0; color: #666; font-size: 14px;">錯誤: ${error.message}</p>
                 </div>
             `;
         }
