@@ -2310,7 +2310,7 @@
         
         // 按鈕雙擊/三擊檢測
         let lastButtonPressTime = 0;
-        const DOUBLE_CLICK_THRESHOLD = 500; // 500ms 內按兩次視為雙擊
+        const DOUBLE_CLICK_THRESHOLD = 300; // 🔧 修正：300ms 內按兩次視為雙擊（從 500ms 降低，提升響應速度）
         const TRIPLE_CLICK_THRESHOLD = 600; // 600ms 內按三次視為三擊
         let buttonPressTimeout = null;
         let buttonPressSequence = []; // 記錄按鈕按下時間序列
@@ -2346,6 +2346,7 @@
                 // 嘗試連接 API，檢查服務器是否恢復
                 try {
                     const controller = new AbortController();
+                    // 🔧 修正：增加超時時間到 1000ms，確保 API 響應慢時也能正確檢測按鈕狀態
                     const timeoutId = setTimeout(() => controller.abort(), 1000);
                     
                     const response = await fetch('http://127.0.0.1:5001/api/button/state?gpio=4', {
@@ -2406,9 +2407,10 @@
                     return;
                 }
                 
-                // 優化：在 Phase 5 (CRUISE) 時，稍微降低輪詢頻率，減少與影片檢查的衝突
+                // 🔧 修正：在 Phase 5 (CRUISE) 時，保持正常輪詢頻率（100ms），確保按鈕偵測不會錯過
+                // 之前降低到 150ms 會導致按鈕按下容易被錯過
                 const isCruisePhase = currentPhase === Phase.CRUISE || currentPhase === 5;
-                const CRUISE_POLL_INTERVAL = 150; // Phase 5 時使用 150ms 而不是 100ms
+                const CRUISE_POLL_INTERVAL = 100; // Phase 5 時也使用 100ms，確保按鈕響應及時
                 
                 // 根據錯誤次數動態調整輪詢頻率（不再完全停止）
                 // 這樣可以確保即使 API 暫時失效，也不會完全錯過按鈕按下
@@ -2456,7 +2458,8 @@
                 }
                 
                 controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 500);
+                // 🔧 修正：增加超時時間到 1000ms，確保 API 響應慢時也能正確檢測按鈕狀態
+                const timeoutId = setTimeout(() => controller.abort(), 1000);
                 
                 try {
                     // 監控 GPIO 4（接 3V3，實體針腳 7）
@@ -2493,9 +2496,13 @@
                         // 嘗試格式 2: /api/button?gpio=4（舊備援端點）
                         // 如果這個也失敗，就直接視為連線失敗，不再嘗試已移除的 /api/gpio/4 端點
                         try {
+                            // 🔧 修正：增加超時時間到 1000ms
+                            const controller2 = new AbortController();
+                            const timeoutId2 = setTimeout(() => controller2.abort(), 1000);
                             response = await fetch('http://127.0.0.1:5001/api/button?gpio=4', {
-                                signal: controller.signal
+                                signal: controller2.signal
                             });
+                            clearTimeout(timeoutId2);
                             if (response.status === 503) {
                                 // 不記錄日誌，避免重複
                                 return;
@@ -2780,7 +2787,22 @@
                 // 記錄這次按下的時間（用於日誌）
                 lastButtonPressTime = currentTime;
                 
+                // 🔧 修正：立即檢查是否為雙擊，如果是雙擊立即處理，不需要等待
+                if (buttonPressSequence.length >= 2 && timeSinceLastPress < DOUBLE_CLICK_THRESHOLD) {
+                    // 檢測到雙擊，立即處理（不需要等待）
+                    console.log('🛬 [Phase 5] ✅ 檢測到雙擊（間隔 ' + timeSinceLastPress + 'ms），立即處理提前降落確認');
+                    if (buttonPressTimeout) {
+                        clearTimeout(buttonPressTimeout);
+                        buttonPressTimeout = null;
+                    }
+                    showLandingConfirmation();
+                    buttonPressSequence = [];
+                    lastButtonPressTime = 0;
+                    return;
+                }
+                
                 // 單擊處理：設置延遲，等待看是否有第二次按下
+                // 🔧 修正：減少延遲時間，提升響應速度
                 buttonPressTimeout = setTimeout(() => {
                     // 再次確認仍在 Phase 5（防止狀態變化）
                     if (currentPhase !== Phase.CRUISE && currentPhase !== 5) {
@@ -2806,7 +2828,7 @@
                     buttonPressTimeout = null;
                     buttonPressSequence = [];
                     lastButtonPressTime = 0; // 重置，準備下一次判定
-                }, DOUBLE_CLICK_THRESHOLD); // 等待 500ms，確認沒有第二次按下
+                }, DOUBLE_CLICK_THRESHOLD); // 🔧 修正：等待時間已降低到 300ms，提升響應速度
                 
                 return; // 重要：直接返回，不執行後續的非巡航階段邏輯
             }
