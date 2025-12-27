@@ -8487,9 +8487,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 // 2）takeoff1.mp4 → takeoff2.mp4：直接切換到 takeoff2.mp4，之後 takeoff2.mp4 持續以 crossfade 方式循環
                 console.log('🎬 切換到 takeoff2.mp4，開始交叉淡入淡出 + 循環播放');
 
-                // 先確保第二支影片從頭開始，並設置為循環播放
+                // 🔧 改進：先確保第二支影片從頭開始，不設置循環播放
                 video2.currentTime = 0;
-                video2.loop = true; // 設置循環播放
+                video2.loop = false; // 不循環播放，改為播放三次後停留在最後一幀
                 // 優化：降低影片解碼負擔，提升按鈕響應
                 video2.playsInline = true; // 確保內聯播放
                 video2.muted = true; // 確保靜音（背景影片不需要聲音）
@@ -8518,10 +8518,52 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     videoContainer.style.visibility = 'visible';
                 }
                 
-                // 開始播放 takeoff2.mp4（循環播放）
+                // 🔧 改進：開始播放 takeoff2.mp4（播放三次後停留在最後一幀）
                 try {
-                    await video2.play();
-                    console.log('✅ takeoff2.mp4 開始循環播放（背景影片，低優先級）');
+                    // 追蹤播放次數
+                    let playCount = 0;
+                    const maxPlayCount = 3;
+                    
+                    // 播放函數
+                    const playTakeoff2 = async () => {
+                        if (playCount >= maxPlayCount) {
+                            // 已播放三次，停留在最後一幀
+                            console.log('✅ takeoff2.mp4 已播放三次，停留在最後一幀');
+                            video2.pause();
+                            // 確保停留在最後一幀（duration - 0.1 秒，避免可能的邊界問題）
+                            if (video2.duration && !isNaN(video2.duration)) {
+                                video2.currentTime = Math.max(0, video2.duration - 0.1);
+                            }
+                            return;
+                        }
+                        
+                        playCount++;
+                        console.log(`✅ takeoff2.mp4 開始播放（第 ${playCount}/${maxPlayCount} 次）`);
+                        
+                        video2.currentTime = 0;
+                        await video2.play();
+                    };
+                    
+                    // 監聽 ended 事件，實現播放三次
+                    video2.addEventListener('ended', () => {
+                        console.log(`✅ takeoff2.mp4 播放結束（第 ${playCount}/${maxPlayCount} 次）`);
+                        if (playCount < maxPlayCount) {
+                            // 還沒播放三次，繼續播放
+                            playTakeoff2().catch(err => {
+                                console.warn('⚠️ takeoff2.mp4 重播失敗:', err);
+                            });
+                        } else {
+                            // 已播放三次，停留在最後一幀
+                            console.log('✅ takeoff2.mp4 已播放三次，停留在最後一幀');
+                            video2.pause();
+                            if (video2.duration && !isNaN(video2.duration)) {
+                                video2.currentTime = Math.max(0, video2.duration - 0.1);
+                            }
+                        }
+                    }, { once: false });
+                    
+                    // 開始第一次播放
+                    await playTakeoff2();
                     
                     // 優化：大幅簡化影片檢查邏輯，優先保證按鈕響應精確性
                     // takeoff2.mp4 只是背景影片，不需要頻繁檢查，只在真正需要時才檢查
@@ -8535,10 +8577,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                         if (now - lastCheckTime < 30000) return;
                         lastCheckTime = now;
                         
-                        // 只在影片真的停止播放時才嘗試重新播放（不檢查樣式，減少 DOM 操作）
-                        if (video2.paused && !video2._isRetrying) {
+                        // 只在影片真的停止播放且還沒播放三次時才嘗試重新播放
+                        if (video2.paused && playCount < maxPlayCount && !video2._isRetrying) {
                             video2._isRetrying = true;
-                            video2.play().catch(err => {
+                            playTakeoff2().catch(err => {
                                 // 靜默處理錯誤，不輸出警告（背景影片失敗不影響功能）
                             }).finally(() => {
                                 // 延遲重置重試標記（5秒後才能再次重試）
@@ -8551,62 +8593,8 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     
                     // 存儲 interval ID，以便在需要時清除
                     window._takeoff2VisibilityCheck = checkVideoVisibility;
-                    console.log('✅ [Phase 5] takeoff2.mp4 可見性檢查已啟動（極簡化：每 30 秒檢查一次，優先保證按鈕響應）');
+                    console.log('✅ [Phase 5] takeoff2.mp4 可見性檢查已啟動（播放三次後停留在最後一幀）');
                     
-                    // 優化：添加防抖機制，避免頻繁觸發
-                    let pauseRetryTimeout = null;
-                    let playEventFired = false;
-                    
-                    // 監聽 video2 的播放狀態（簡化邏輯，減少 DOM 操作）
-                    video2.addEventListener('play', () => {
-                        if (!playEventFired) {
-                            playEventFired = true;
-                            video2.style.opacity = '1';
-                            video2.style.display = 'block';
-                            console.log('✅ takeoff2.mp4 正在播放');
-                            // 重置標記，允許下次觸發
-                            setTimeout(() => {
-                                playEventFired = false;
-                            }, 1000);
-                        }
-                    }, { once: false });
-                    
-                    video2.addEventListener('pause', () => {
-                        console.warn('⚠️ takeoff2.mp4 被暫停，準備重新播放（防抖）');
-                        // 清除之前的重試
-                        if (pauseRetryTimeout) {
-                            clearTimeout(pauseRetryTimeout);
-                        }
-                        // 延遲重試，避免頻繁調用（500ms 防抖）
-                        pauseRetryTimeout = setTimeout(() => {
-                            if (video2 && video2.paused && !video2._isRetrying) {
-                                video2._isRetrying = true;
-                                video2.play().catch(err => {
-                                    console.warn('⚠️ 重新播放失敗:', err);
-                                }).finally(() => {
-                                    setTimeout(() => {
-                                        video2._isRetrying = false;
-                                    }, 2000);
-                                });
-                            }
-                        }, 500); // 500ms 防抖
-                    }, { once: false });
-                    
-                    video2.addEventListener('ended', () => {
-                        console.log('✅ takeoff2.mp4 播放結束，重新開始（循環）');
-                        // 如果 loop 沒有生效，手動重新播放（但添加防抖）
-                        if (video2.loop && !video2._isRetrying) {
-                            video2._isRetrying = true;
-                            video2.currentTime = 0;
-                            video2.play().catch(err => {
-                                console.warn('⚠️ 循環播放失敗:', err);
-                            }).finally(() => {
-                                setTimeout(() => {
-                                    video2._isRetrying = false;
-                                }, 1000);
-                            });
-                        }
-                    }, { once: false });
                 } catch (error) {
                     console.error('❌ takeoff2.mp4 播放錯誤:', error);
                 }
@@ -9570,7 +9558,7 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             console.log('📢 [Phase 7] 顯示機長廣播中 UI...');
             setBoardingStatus(true, '機長廣播中...');
             
-            // 確保 takeoff2.mp4 繼續播放，直到 landing.mp4 開始播放
+            // 🔧 改進：確保 takeoff2.mp4 繼續播放，直到 landing.mp4 準備好並可以播放
             // 不要立即停止 takeoff2.mp4，避免白屏
             console.log('✅ [Phase 7] 保持 takeoff2.mp4 播放，等待 landing.mp4 準備就緒');
             // Phase 7: 降落完成
@@ -9596,40 +9584,17 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 標記已執行，防止重複（在開始時就標記，即使後續出錯也不會重複執行）
             landingExecuted = true;
             
-            // 立即停止並移除所有 takeoff 影片（takeoff1.mp4, takeoff2.mp4）
-            console.log('🛑 [Phase 7] 立即停止並移除所有 takeoff 影片...');
+            // 🔧 改進：不立即停止 takeoff2.mp4，而是等待 landing.mp4 準備好
+            // 停止 takeoff2.mp4 的可見性檢查（但保持影片播放）
+            console.log('🔄 [Phase 7] 停止 takeoff2.mp4 可見性檢查，但保持播放直到 landing.mp4 準備就緒');
             try {
-                // 停止 takeoff2.mp4 的可見性檢查
                 if (window._takeoff2VisibilityCheck) {
                     clearInterval(window._takeoff2VisibilityCheck);
                     window._takeoff2VisibilityCheck = null;
                     console.log('✅ [Phase 7] 已停止 takeoff2.mp4 可見性檢查');
                 }
-                
-                // 立即停止並移除所有 takeoff 影片
-                const videoContainer = document.querySelector('.window-area');
-                const videoContainerEl = document.getElementById('videoContainer');
-                if (videoContainer) {
-                    const allVideos = Array.from(videoContainer.querySelectorAll('video'));
-                    allVideos.forEach(video => {
-                        try {
-                            video.pause();
-                            video.currentTime = 0;
-                            video.remove();
-                            console.log('✅ [Phase 7] 已停止並移除影片:', video.src || '未知來源');
-                        } catch (e) {
-                            console.warn('⚠️ [Phase 7] 移除影片時發生錯誤:', e);
-                        }
-                    });
-                }
-                
-                // 隱藏影片容器
-                if (videoContainerEl) {
-                    videoContainerEl.style.display = 'none';
-                    console.log('✅ [Phase 7] 已隱藏影片容器');
-                }
             } catch (e) {
-                console.warn('⚠️ [Phase 7] 停止影片時發生小問題:', e);
+                console.warn('⚠️ [Phase 7] 停止可見性檢查時發生錯誤:', e);
             }
             
             // 立即結束飛行進度條顯示（Phase 7 時進度條應該立即消失）
