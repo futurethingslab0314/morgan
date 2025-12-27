@@ -276,6 +276,29 @@
             flex-shrink: 0;
             margin-top: auto; /* 推到底部 */
         }
+        
+        /* 機長廣播中/準備降落消息顯示 */
+        .info-bar-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 600;
+            color: #ff6b35;
+            letter-spacing: 2px;
+            z-index: 1000;
+            background: rgba(255, 107, 53, 0.15);
+            border-top: 2px solid #ff6b35;
+        }
+        
+        .info-bar-message.active {
+            display: flex !important;
+        }
 
         /* 狀態顯示區域 - 一次只顯示一個狀態 */
         .info-state {
@@ -308,10 +331,23 @@
         }
         
         #stateFlightFeedback .feedback-option {
-            min-width: 100px; /* 稍微減小最小寬度 */
+            min-width: 100px;
             max-width: 120px;
-            padding: 12px 8px; /* 減少 padding */
-            font-size: 12px; /* 稍微減小字體 */
+            padding: 12px 8px;
+            font-size: 12px;
+            opacity: 0.3 !important; /* 預設半透明 */
+            transform: scale(1) !important; /* 預設大小 */
+            transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, border 0.2s ease !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 2px solid rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        #stateFlightFeedback .feedback-option.active {
+            opacity: 1 !important; /* 選中時完全不透明 */
+            transform: scale(1.15) !important; /* 選中時放大 */
+            background: rgba(255, 107, 53, 0.3) !important; /* 選中時有背景色 */
+            border: 3px solid #ff6b35 !important; /* 選中時有邊框 */
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4) !important; /* 選中時有陰影 */
         }
         
         #stateFlightFeedback .climate-icon {
@@ -570,10 +606,13 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
+            position: relative;
+            z-index: 1000;
         }
 
         .boarding-status.active {
-            display: flex;
+            display: flex !important;
+            visibility: visible !important;
         }
 
         .boarding-status-text {
@@ -989,6 +1028,7 @@
             </div>
             <!-- 底部資訊 bar - 280px 高，完全在 800x1080 範圍內 -->
     <div class="info-bar">
+        <div id="infoBarMessage" class="info-bar-message"></div>
         <!-- 狀態1: 國家顯示 -->
         <div class="info-state active" id="stateCountry" style="cursor: pointer; position: relative;">
             <div class="state-label">📍 所在國家</div>
@@ -1213,7 +1253,7 @@
                     </div>
                 </div>
                 
-                <div style="font-size: 16px; color: #666; margin-bottom: 10px;">
+                <div id="pressButtonAgain" style="font-size: 16px; color: #666; margin-bottom: 10px;">
                     請再次按下按鈕開始起飛
                 </div>
                 <!-- 登機／等待機長廣播的動態提示 -->
@@ -6548,30 +6588,61 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 return;
             }
             
+            // 🔧 隱藏/顯示"請再次按下按鈕"文字
+            const pressButtonAgain = document.getElementById('pressButtonAgain');
+            if (pressButtonAgain) {
+                if (active) {
+                    pressButtonAgain.style.display = 'none'; // 隱藏"請再次按下按鈕"
+                } else {
+                    pressButtonAgain.style.display = 'block'; // 顯示"請再次按下按鈕"
+                }
+            }
+            
             const textEl = el.querySelector('.boarding-status-text');
             if (textEl && message) {
                 textEl.textContent = message;
             }
             
-            // 🔧 改進：確保bar有正確的背景色和顯示
+            // 🔧 在info-bar中顯示消息
+            const infoBarMessage = document.getElementById('infoBarMessage');
             const infoBar = document.querySelector('.info-bar');
-            if (infoBar) {
-                if (active) {
+            
+            if (active && message) {
+                // 顯示機長廣播中/準備降落消息
+                if (infoBarMessage) {
+                    infoBarMessage.textContent = message;
+                    infoBarMessage.classList.add('active');
+                }
+                
+                if (infoBar) {
                     // 顯示機長廣播中時，填滿顏色
                     infoBar.style.backgroundColor = 'rgba(255, 107, 53, 0.15)'; // 橙色半透明背景
                     infoBar.style.borderTop = '2px solid #ff6b35'; // 橙色邊框
-                } else {
+                }
+                
+                // 隱藏所有info-state
+                document.querySelectorAll('.info-state').forEach(state => {
+                    state.classList.remove('active');
+                    state.style.display = 'none';
+                });
+                
+                el.classList.add('active');
+                el.style.display = 'flex'; // 強制顯示
+                el.style.zIndex = '1000'; // 確保在最上層
+                console.log('✅ [機長廣播UI] 已顯示在bar:', message);
+            } else {
+                // 隱藏消息
+                if (infoBarMessage) {
+                    infoBarMessage.classList.remove('active');
+                    infoBarMessage.textContent = '';
+                }
+                
+                if (infoBar) {
                     // 隱藏時恢復原樣
                     infoBar.style.backgroundColor = '';
                     infoBar.style.borderTop = '';
                 }
-            }
-            
-            if (active) {
-                el.classList.add('active');
-                el.style.display = 'flex'; // 強制顯示
-                console.log('✅ [機長廣播UI] 已顯示:', message);
-            } else {
+                
                 el.classList.remove('active');
                 el.style.display = 'none'; // 強制隱藏
                 console.log('✅ [機長廣播UI] 已隱藏');
@@ -7071,38 +7142,21 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     
                     // 重新查詢 options，確保獲取到最新的 DOM 元素（防止元素被替換）
                     const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
-                    if (currentOptions.length !== options.length) {
-                        console.warn('⚠️ [情緒量表] 選項數量變化，重新查詢');
-                        // 如果數量變化，使用新的查詢結果
-                        currentOptions.forEach((opt, i) => {
-                            if (i === index) {
-                                opt.classList.add('active');
-                                opt.style.opacity = '1';
-                                opt.style.transform = 'scale(1.05)';
-                            } else {
-                                opt.classList.remove('active');
-                                opt.style.opacity = '0.6';
-                                opt.style.transform = 'scale(1)';
-                            }
-                        });
-                    } else {
-                        // 正常情況：使用原始 options
-                        options.forEach((opt, i) => {
-                            if (i === index) {
-                                opt.classList.add('active');
-                                opt.style.opacity = '1';
-                                opt.style.transform = 'scale(1.05)';
-                            } else {
-                                opt.classList.remove('active');
-                                opt.style.opacity = '0.6';
-                                opt.style.transform = 'scale(1)';
-                            }
-                        });
-                    }
+                    
+                    // 簡化：統一使用currentOptions，確保獲取到最新元素
+                    currentOptions.forEach((opt, i) => {
+                        if (i === index) {
+                            // 選中的選項：添加active class，CSS會自動處理樣式
+                            opt.classList.add('active');
+                        } else {
+                            // 未選中的選項：移除active class
+                            opt.classList.remove('active');
+                        }
+                    });
                     
                     selectedIndex = index;
                     // 使用當前選中的元素獲取 data-feedback
-                    const selectedOption = currentOptions.length === options.length ? options[index] : currentOptions[index];
+                    const selectedOption = currentOptions[index];
                     selectedFeedback = selectedOption?.getAttribute('data-feedback') || String(index + 1);
                     
                     // 立即更新全局標記的選擇值（確保同步）
@@ -9179,6 +9233,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
         async function handleDescent() {
             // Phase 6: 降落前 5 分鐘
             console.log('🛬 [handleDescent] 準備降落（5分鐘前）');
+            
+            // 顯示「準備降落」UI在info-bar中
+            setBoardingStatus(true, '準備降落...');
             console.log('   descentAnnouncementPlayed:', descentAnnouncementPlayed);
             console.log('   currentPhase:', currentPhase);
             

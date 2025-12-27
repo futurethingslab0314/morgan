@@ -161,11 +161,17 @@ class SleepAirlineMobile {
             // 生成條碼數字（基於記錄ID或時間戳）
             const barcodeNumber = this.generateBarcodeNumber(record);
 
+            // 生成星星評分顯示
+            const feedbackStars = this.generateFeedbackStars(record.flightFeedback);
+
             return `
             <div class="ticket-card" data-index="${index}" style="--ticket-primary: ${colors.primary}; --ticket-secondary: ${colors.secondary};">
                 <div class="ticket-header">
                     <div class="ticket-airline">Sleep Airline</div>
-                    <div class="ticket-badge">${this.getPunctualityBadge(record.punctuality)}</div>
+                    <div class="ticket-header-right">
+                        ${feedbackStars}
+                        <div class="ticket-badge">${this.getPunctualityBadge(record.punctuality)}</div>
+                    </div>
                 </div>
                 ${imageUrl ? `
                 <div class="ticket-image" style="background-image: url('${imageUrl}')" data-image-url="${imageUrl}"></div>
@@ -333,22 +339,9 @@ class SleepAirlineMobile {
         const markersLayer = L.layerGroup().addTo(this.map);
         const polylinesLayer = L.layerGroup().addTo(this.map);
 
-        // 起點：台北
-        const taipeiIcon = L.divIcon({
-            className: 'custom-marker start-marker',
-            html: '<div style="width: 40px; height: 40px; border-radius: 50%; background: #4CAF50; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">起</div>',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
-
-        const taipeiMarker = L.marker([TAIPEI_LAT, TAIPEI_LON], { icon: taipeiIcon })
-            .addTo(markersLayer)
-            .bindPopup('<div style="padding: 10px;"><h3 style="margin: 0;">起點：台北</h3><p style="margin: 5px 0 0 0; color: #666;">你的旅程起點</p></div>');
-
-        this.markers.push(taipeiMarker);
-
-        let previousPosition = [TAIPEI_LAT, TAIPEI_LON];
-        const bounds = L.latLngBounds([[TAIPEI_LAT, TAIPEI_LON]]);
+        const bounds = L.latLngBounds([]);
+        let previousPosition = null;
+        let previousRecord = null;
 
         // 為每個記錄創建標記和路徑
         this.records.forEach((record, index) => {
@@ -362,7 +355,61 @@ class SleepAirlineMobile {
                 parseFloat(record.longitude)
             ];
 
-            // 創建自定義標記圖標
+            // 獲取上一個記錄作為起點
+            const prevRecord = index < this.records.length - 1 ? this.records[index + 1] : null;
+
+            // 如果有上一個記錄，創建綠色起點標記
+            if (prevRecord && prevRecord.latitude && prevRecord.longitude &&
+                prevRecord.latitude !== 0 && prevRecord.longitude !== 0) {
+                const prevPosition = [
+                    parseFloat(prevRecord.latitude),
+                    parseFloat(prevRecord.longitude)
+                ];
+
+                // 只在第一次或上一個記錄改變時創建起點標記
+                if (!previousPosition ||
+                    previousPosition[0] !== prevPosition[0] ||
+                    previousPosition[1] !== prevPosition[1]) {
+
+                    const startIcon = L.divIcon({
+                        className: 'custom-marker start-marker',
+                        html: '<div style="width: 40px; height: 40px; border-radius: 50%; background: #4CAF50; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">起</div>',
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    });
+
+                    const startMarker = L.marker(prevPosition, { icon: startIcon })
+                        .addTo(markersLayer)
+                        .bindPopup(`
+                            <div style="padding: 10px;">
+                                <h3 style="margin: 0;">起點：${prevRecord.city_zh || prevRecord.city}</h3>
+                                <p style="margin: 5px 0 0 0; color: #666;">${prevRecord.country_zh || prevRecord.country}</p>
+                            </div>
+                        `);
+
+                    this.markers.push(startMarker);
+                    bounds.extend(prevPosition);
+                    previousPosition = prevPosition;
+                }
+            } else if (!previousPosition) {
+                // 如果沒有上一個記錄，使用台北作為起點（僅第一個記錄）
+                const taipeiIcon = L.divIcon({
+                    className: 'custom-marker start-marker',
+                    html: '<div style="width: 40px; height: 40px; border-radius: 50%; background: #4CAF50; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">起</div>',
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 20]
+                });
+
+                const taipeiMarker = L.marker([TAIPEI_LAT, TAIPEI_LON], { icon: taipeiIcon })
+                    .addTo(markersLayer)
+                    .bindPopup('<div style="padding: 10px;"><h3 style="margin: 0;">起點：台北</h3><p style="margin: 5px 0 0 0; color: #666;">你的旅程起點</p></div>');
+
+                this.markers.push(taipeiMarker);
+                bounds.extend([TAIPEI_LAT, TAIPEI_LON]);
+                previousPosition = [TAIPEI_LAT, TAIPEI_LON];
+            }
+
+            // 創建目的地標記（橙色）
             const markerIcon = L.divIcon({
                 className: 'custom-marker destination-marker',
                 html: `<div style="width: 30px; height: 30px; border-radius: 50%; background: #FF6B35; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${index + 1}</div>`,
@@ -370,31 +417,54 @@ class SleepAirlineMobile {
                 iconAnchor: [15, 15]
             });
 
+            // 獲取出發地資訊
+            const departureCity = prevRecord
+                ? (prevRecord.city_zh || prevRecord.city || '台北')
+                : '台北';
+            const departureCountry = prevRecord
+                ? (prevRecord.country_zh || prevRecord.country || '台灣')
+                : '台灣';
+
+            // 獲取國旗（同步版本，用於地圖彈窗）
+            const flag = this.getCountryFlagSync(record);
+
             // 創建標記
             const marker = L.marker(position, { icon: markerIcon })
                 .addTo(markersLayer)
                 .bindPopup(`
                     <div style="padding: 10px; min-width: 200px;">
-                        <h3 style="margin: 0 0 5px 0; font-size: 16px;">${record.city_zh || record.city}</h3>
-                        <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;">${record.country_zh || record.country}</p>
-                        <p style="margin: 0; font-size: 12px; color: #999;">${this.formatDate(record.wakeTime || record.recordedDateString)}</p>
-                        ${record.sleepDuration ? `<p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">飛行時長: ${this.formatDuration(record.sleepDuration)}</p>` : ''}
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="font-size: 24px;">${flag}</span>
+                            <div>
+                                <h3 style="margin: 0 0 2px 0; font-size: 16px;">${record.city_zh || record.city}</h3>
+                                <p style="margin: 0; color: #666; font-size: 14px;">${record.country_zh || record.country}</p>
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                            <p style="margin: 0 0 4px 0; font-size: 12px; color: #999;">從 ${departureCity} 飛來</p>
+                            <p style="margin: 0; font-size: 12px; color: #999;">${this.formatDate(record.wakeTime || record.recordedDateString)}</p>
+                            ${record.sleepDuration ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #999;">飛行時長: ${this.formatDuration(record.sleepDuration)}</p>` : ''}
+                        </div>
                     </div>
                 `);
 
             this.markers.push(marker);
             bounds.extend(position);
 
-            // 繪製飛行路徑
-            const flightPath = L.polyline([previousPosition, position], {
-                color: '#FF6B35',
-                weight: 3,
-                opacity: 0.6,
-                smoothFactor: 1
-            }).addTo(polylinesLayer);
+            // 繪製飛行路徑（從上一個位置到當前位置）
+            if (previousPosition) {
+                const flightPath = L.polyline([previousPosition, position], {
+                    color: '#FF6B35',
+                    weight: 3,
+                    opacity: 0.6,
+                    smoothFactor: 1
+                }).addTo(polylinesLayer);
 
-            this.polylines.push(flightPath);
+                this.polylines.push(flightPath);
+            }
+
             previousPosition = position;
+            previousRecord = record;
         });
 
         // 調整地圖視圖以包含所有標記
@@ -638,7 +708,7 @@ class SleepAirlineMobile {
     }
 
     // 顯示旅程詳情（機票詳情）
-    showJourneyDetail(record) {
+    async showJourneyDetail(record) {
         const modal = document.getElementById('journey-modal');
         const modalBody = document.getElementById('modal-body');
         if (!modal || !modalBody) return;
@@ -691,10 +761,18 @@ class SleepAirlineMobile {
         // 嘗試多種可能的圖片欄位名稱
         const imageUrl = record.imageUrl || record.destinationImage || record.image_url || '';
 
+        // 獲取國旗（異步）
+        const flag = await this.getCountryFlag(record);
+
         modalBody.innerHTML = `
             <div class="ticket-detail-header" style="--ticket-primary: ${colors.primary}; --ticket-secondary: ${colors.secondary};">
-                <h2 class="modal-title">${arrivalCity}</h2>
-                <p class="modal-subtitle">${arrivalCountry}</p>
+                <div style="display: flex; align-items: center; gap: 12px; justify-content: center;">
+                    <span style="font-size: 48px;">${flag}</span>
+                    <div>
+                        <h2 class="modal-title">${arrivalCity}</h2>
+                        <p class="modal-subtitle">${arrivalCountry}</p>
+                    </div>
+                </div>
             </div>
             ${imageUrl ? `
             <div class="modal-image" style="background-image: url('${imageUrl}')" data-image-url="${imageUrl}"></div>
@@ -754,6 +832,13 @@ class SleepAirlineMobile {
                     <div class="modal-detail-value">${record.climateZoneName}</div>
                 </div>
                 ` : ''}
+                
+                ${record.flightFeedback ? `
+                <div class="modal-detail">
+                    <div class="modal-detail-label">睡眠體驗評分</div>
+                    <div class="modal-detail-value">${record.flightFeedback} 分</div>
+                </div>
+                ` : ''}
             </div>
             
             ${countryInfo ? `
@@ -761,6 +846,16 @@ class SleepAirlineMobile {
                 <h3 class="country-info-title">目的地資訊</h3>
                 <div class="country-info-item">🌤️ ${countryInfo.weather}</div>
                 <div class="country-info-item">✨ ${countryInfo.feature}</div>
+            </div>
+            ` : ''}
+            
+            ${record.flightFeedback ? `
+            <div class="ticket-detail-feedback">
+                <h3 class="feedback-title">睡眠體驗評分</h3>
+                <div class="feedback-display">
+                    <div class="feedback-score-large">${record.flightFeedback}</div>
+                    <div class="feedback-label-large">分</div>
+                </div>
             </div>
             ` : ''}
             
@@ -971,6 +1066,122 @@ class SleepAirlineMobile {
             'LATE': '延遲抵達'
         };
         return texts[punctuality] || '未知';
+    }
+
+    // 生成星星評分顯示
+    generateFeedbackStars(feedback) {
+        if (!feedback || feedback === null || feedback === undefined) {
+            return ''; // 沒有評分時不顯示
+        }
+
+        const score = parseInt(feedback);
+        if (isNaN(score) || score < 1 || score > 5) {
+            return '';
+        }
+
+        // 生成星星：實心星星表示評分，空心星星表示未達到
+        let starsHtml = '<div class="feedback-stars">';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= score) {
+                starsHtml += '<span class="star star-filled">⭐</span>';
+            } else {
+                starsHtml += '<span class="star star-empty">☆</span>';
+            }
+        }
+        starsHtml += '</div>';
+
+        return starsHtml;
+    }
+
+    // 獲取國家國旗emoji（同步版本，用於地圖）
+    getCountryFlagSync(record) {
+        // 根據國家名稱返回預設國旗
+        const country = (record.country_zh || record.country || '').toLowerCase();
+        const flagMap = {
+            '台灣': '🇹🇼', 'taiwan': '🇹🇼',
+            '美國': '🇺🇸', 'united states': '🇺🇸', 'usa': '🇺🇸',
+            '日本': '🇯🇵', 'japan': '🇯🇵',
+            '中國': '🇨🇳', 'china': '🇨🇳',
+            '韓國': '🇰🇷', 'south korea': '🇰🇷', 'korea': '🇰🇷',
+            '英國': '🇬🇧', 'united kingdom': '🇬🇧', 'uk': '🇬🇧',
+            '法國': '🇫🇷', 'france': '🇫🇷',
+            '德國': '🇩🇪', 'germany': '🇩🇪',
+            '義大利': '🇮🇹', 'italy': '🇮🇹',
+            '西班牙': '🇪🇸', 'spain': '🇪🇸',
+            '澳洲': '🇦🇺', 'australia': '🇦🇺',
+            '加拿大': '🇨🇦', 'canada': '🇨🇦',
+            '巴西': '🇧🇷', 'brazil': '🇧🇷',
+            '墨西哥': '🇲🇽', 'mexico': '🇲🇽',
+            '印度': '🇮🇳', 'india': '🇮🇳',
+            '泰國': '🇹🇭', 'thailand': '🇹🇭',
+            '越南': '🇻🇳', 'vietnam': '🇻🇳',
+            '印尼': '🇮🇩', 'indonesia': '🇮🇩',
+            '菲律賓': '🇵🇭', 'philippines': '🇵🇭',
+            '新加坡': '🇸🇬', 'singapore': '🇸🇬',
+            '馬來西亞': '🇲🇾', 'malaysia': '🇲🇾',
+            '俄羅斯': '🇷🇺', 'russia': '🇷🇺',
+            '阿根廷': '🇦🇷', 'argentina': '🇦🇷',
+            '智利': '🇨🇱', 'chile': '🇨🇱',
+            '秘魯': '🇵🇪', 'peru': '🇵🇪',
+            '南非': '🇿🇦', 'south africa': '🇿🇦',
+            '埃及': '🇪🇬', 'egypt': '🇪🇬',
+            '土耳其': '🇹🇷', 'turkey': '🇹🇷',
+            '希臘': '🇬🇷', 'greece': '🇬🇷',
+            '葡萄牙': '🇵🇹', 'portugal': '🇵🇹',
+            '荷蘭': '🇳🇱', 'netherlands': '🇳🇱',
+            '比利時': '🇧🇪', 'belgium': '🇧🇪',
+            '瑞士': '🇨🇭', 'switzerland': '🇨🇭',
+            '奧地利': '🇦🇹', 'austria': '🇦🇹',
+            '瑞典': '🇸🇪', 'sweden': '🇸🇪',
+            '挪威': '🇳🇴', 'norway': '🇳🇴',
+            '丹麥': '🇩🇰', 'denmark': '🇩🇰',
+            '芬蘭': '🇫🇮', 'finland': '🇫🇮',
+            '波蘭': '🇵🇱', 'poland': '🇵🇱',
+            '捷克': '🇨🇿', 'czech republic': '🇨🇿',
+            '匈牙利': '🇭🇺', 'hungary': '🇭🇺',
+            '以色列': '🇮🇱', 'israel': '🇮🇱',
+            '沙烏地阿拉伯': '🇸🇦', 'saudi arabia': '🇸🇦',
+            '阿拉伯聯合大公國': '🇦🇪', 'united arab emirates': '🇦🇪', 'uae': '🇦🇪',
+            '卡達': '🇶🇦', 'qatar': '🇶🇦',
+            '科威特': '🇰🇼', 'kuwait': '🇰🇼',
+            '阿曼': '🇴🇲', 'oman': '🇴🇲',
+            '約旦': '🇯🇴', 'jordan': '🇯🇴',
+            '黎巴嫩': '🇱🇧', 'lebanon': '🇱🇧',
+            '敘利亞': '🇸🇾', 'syria': '🇸🇾',
+            '伊拉克': '🇮🇶', 'iraq': '🇮🇶',
+            '葉門': '🇾🇪', 'yemen': '🇾🇪',
+            '肯亞': '🇰🇪', 'kenya': '🇰🇪',
+            '奈及利亞': '🇳🇬', 'nigeria': '🇳🇬',
+            '迦納': '🇬🇭', 'ghana': '🇬🇭',
+            '衣索比亞': '🇪🇹', 'ethiopia': '🇪🇹',
+            '摩洛哥': '🇲🇦', 'morocco': '🇲🇦',
+            '紐西蘭': '🇳🇿', 'new zealand': '🇳🇿'
+        };
+
+        return flagMap[country] || flagMap[record.country_zh] || flagMap[record.country] || '🏳️';
+    }
+
+    // 獲取國家國旗emoji（異步版本，用於詳情頁）
+    async getCountryFlag(record) {
+        try {
+            // 優先從 sleepcity.json 獲取
+            const response = await fetch('sleepcity.json');
+            if (response.ok) {
+                const data = await response.json();
+                const city = data.cities.find(c =>
+                    (c.city_zh === record.city_zh || c.city === record.city) &&
+                    (c.country_zh === record.country_zh || c.country === record.country)
+                );
+                if (city && city.flag) {
+                    return city.flag;
+                }
+            }
+        } catch (e) {
+            console.warn('無法載入 sleepcity.json:', e);
+        }
+
+        // 如果沒有找到，使用同步版本
+        return this.getCountryFlagSync(record);
     }
 
     // 計算台灣時間的降落時間
