@@ -106,6 +106,13 @@ fi
 
 echo ""
 
+# 🔧 禁用螢幕保護和自動鎖定（防止自動退出需要重新輸入密碼）
+echo -e "${BLUE}🔒 禁用系統自動鎖定...${NC}"
+export DISPLAY=:0
+xset s off -dpms s noblank 2>/dev/null || true
+echo -e "${GREEN}✅ 系統自動鎖定已禁用${NC}"
+echo ""
+
 # 啟動主程式
 python3 "$MAIN_SCRIPT" 2>&1 | tee "${LOG_DIR}/wakeup-map.log"
 
