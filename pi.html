@@ -4266,10 +4266,21 @@
         function getProxiedImageUrl(imageUrl) {
             if (!imageUrl) return imageUrl;
             
-            // 如果是 Firebase Storage URL，使用代理
-            if (imageUrl.includes('storage.googleapis.com') || imageUrl.includes('firebasestorage')) {
+            // 🔧 改進：更全面地檢測 Firebase Storage URL（支持所有格式）
+            // 格式1: https://storage.googleapis.com/[bucket]/[path]
+            // 格式2: https://firebasestorage.googleapis.com/v0/b/[bucket]/o/[path]?alt=media
+            // 格式3: https://[bucket].firebasestorage.app/[path]
+            const isFirebaseStorage = 
+                imageUrl.includes('storage.googleapis.com') || 
+                imageUrl.includes('firebasestorage.googleapis.com') ||
+                imageUrl.includes('firebasestorage.app');
+            
+            if (isFirebaseStorage) {
                 const encodedUrl = encodeURIComponent(imageUrl);
-                return `https://morgan-orcin.vercel.app/api/proxy-image?url=${encodedUrl}`;
+                const proxiedUrl = `https://morgan-orcin.vercel.app/api/proxy-image?url=${encodedUrl}`;
+                console.log('🔄 [圖片代理] 原始 URL:', imageUrl);
+                console.log('🔄 [圖片代理] 代理 URL:', proxiedUrl);
+                return proxiedUrl;
             }
             
             // 其他 URL 直接返回

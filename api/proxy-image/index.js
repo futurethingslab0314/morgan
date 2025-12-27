@@ -4,7 +4,7 @@
 export default async function handler(req, res) {
     // 設置 CORS 標頭
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年快取
 
@@ -14,9 +14,9 @@ export default async function handler(req, res) {
         return;
     }
 
-    // 只允許 GET 請求
-    if (req.method !== 'GET') {
-        res.setHeader('Allow', ['GET']);
+    // 允許 GET 和 HEAD 請求
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.setHeader('Allow', ['GET', 'HEAD']);
         res.status(405).json({ error: `方法 ${req.method} 不被允許` });
         return;
     }
@@ -47,6 +47,7 @@ export default async function handler(req, res) {
 
         // 從 Firebase Storage 獲取圖片
         const imageResponse = await fetch(imageUrl, {
+            method: req.method, // 支持 GET 和 HEAD
             headers: {
                 'User-Agent': 'Mozilla/5.0'
             }
@@ -59,16 +60,26 @@ export default async function handler(req, res) {
             return;
         }
 
-        // 獲取圖片數據
-        const imageBuffer = await imageResponse.arrayBuffer();
+        // 獲取內容類型
         const contentType = imageResponse.headers.get('content-type') || 'image/png';
+        const contentLength = imageResponse.headers.get('content-length');
 
         // 設置響應頭
         res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Length', imageBuffer.byteLength);
+        if (contentLength) {
+            res.setHeader('Content-Length', contentLength);
+        }
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1年快取
 
-        // 返回圖片數據
+        // 如果是 HEAD 請求，只返回標頭，不返回內容
+        if (req.method === 'HEAD') {
+            res.status(200).end();
+            return;
+        }
+
+        // GET 請求：獲取並返回圖片數據
+        const imageBuffer = await imageResponse.arrayBuffer();
+        res.setHeader('Content-Length', imageBuffer.byteLength);
         res.status(200).send(Buffer.from(imageBuffer));
 
     } catch (error) {
