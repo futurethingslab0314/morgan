@@ -4262,70 +4262,48 @@
             console.log('✅ 應用程式初始化完成');
         }
         
+        // 🔧 將 Firebase Storage URL 轉換為代理 URL（避免 CORS 問題）
+        function getProxiedImageUrl(imageUrl) {
+            if (!imageUrl) return imageUrl;
+            
+            // 如果是 Firebase Storage URL，使用代理
+            if (imageUrl.includes('storage.googleapis.com') || imageUrl.includes('firebasestorage')) {
+                const encodedUrl = encodeURIComponent(imageUrl);
+                return `https://morgan-orcin.vercel.app/api/proxy-image?url=${encodedUrl}`;
+            }
+            
+            // 其他 URL 直接返回
+            return imageUrl;
+        }
+        
         // 驗證圖片 URL 是否可訪問（檢查 403 等錯誤）
         async function validateImageUrl(imageUrl) {
-            return new Promise((resolve) => {
-                if (!imageUrl) {
-                    resolve(false);
-                    return;
+            if (!imageUrl) {
+                return false;
+            }
+            
+            try {
+                // 🔧 改進：對於 Firebase Storage URL，使用代理 URL 驗證（避免 CORS 問題）
+                const urlToCheck = getProxiedImageUrl(imageUrl);
+                
+                // 使用 fetch 而不是 Image 對象，避免瀏覽器直接載入圖片觸發 CORS
+                const response = await fetch(urlToCheck, {
+                    method: 'HEAD', // 只獲取標頭，不載入完整圖片
+                    mode: 'cors', // 明確使用 CORS 模式
+                    cache: 'no-cache'
+                });
+                
+                if (response.ok) {
+                    console.log('✅ 圖片 URL 可訪問:', urlToCheck);
+                    return true;
+                } else {
+                    console.warn('⚠️ 圖片 URL 無法訪問（狀態碼:', response.status, '）:', urlToCheck);
+                    return false;
                 }
-                
-                // 🔧 改進：對於 Firebase Storage URL，先嘗試直接 fetch 檢查
-                // 如果是 storage.googleapis.com 的 URL，使用 fetch 檢查（避免 CORS 問題）
-                if (imageUrl.includes('storage.googleapis.com')) {
-                    fetch(imageUrl, { 
-                        method: 'HEAD',
-                        mode: 'no-cors' // 使用 no-cors 模式避免 CORS 檢查
-                    }).then(() => {
-                        // no-cors 模式下無法讀取狀態，但能發送請求就表示可能可訪問
-                        // 再用 Image 載入確認
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        const timeout = setTimeout(() => {
-                            console.warn('⚠️ 圖片載入超時:', imageUrl);
-                            resolve(false);
-                        }, 10000);
-                        img.onload = () => {
-                            clearTimeout(timeout);
-                            console.log('✅ 圖片 URL 可訪問:', imageUrl);
-                            resolve(true);
-                        };
-                        img.onerror = () => {
-                            clearTimeout(timeout);
-                            console.warn('⚠️ 圖片 URL 無法訪問:', imageUrl);
-                            resolve(false);
-                        };
-                        img.src = imageUrl;
-                    }).catch(() => {
-                        resolve(false);
-                    });
-                    return;
-                }
-                
-                // 其他 URL 使用標準 Image 載入
-                const img = new Image();
-                img.crossOrigin = 'anonymous'; // 允許跨域
-                
-                const timeout = setTimeout(() => {
-                    console.warn('⚠️ 圖片載入超時:', imageUrl);
-                    resolve(false);
-                }, 10000); // 10 秒超時
-                
-                img.onload = () => {
-                    clearTimeout(timeout);
-                    console.log('✅ 圖片 URL 可訪問:', imageUrl);
-                    resolve(true);
-                };
-                
-                img.onerror = (error) => {
-                    clearTimeout(timeout);
-                    console.warn('⚠️ 圖片 URL 無法訪問（403 或其他錯誤）:', imageUrl, error);
-                    resolve(false);
-                };
-                
-                // 開始載入圖片
-                img.src = imageUrl;
-            });
+            } catch (error) {
+                console.warn('⚠️ 圖片 URL 驗證失敗:', error.message);
+                return false;
+            }
         }
         
         // 在頁面初始化時載入最新的降落記錄
@@ -4377,8 +4355,10 @@
                             const initialImage = document.getElementById('initialImage');
                             
                             if (windowContent) {
+                                // 🔧 使用代理 URL 避免 CORS 問題
+                                const proxiedUrl = getProxiedImageUrl(destinationImageUrl);
                                 // 設置新圖片為背景，並確保在 taipei.png 之上
-                                windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                                windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                                 windowContent.style.backgroundSize = 'cover';
                                 windowContent.style.backgroundPosition = 'center';
                                 windowContent.style.backgroundRepeat = 'no-repeat';
@@ -4413,7 +4393,9 @@
                                     const initialImage = document.getElementById('initialImage');
                                     
                                     if (windowContent) {
-                                        windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                                        // 🔧 使用代理 URL 避免 CORS 問題
+                                        const proxiedUrl = getProxiedImageUrl(destinationImageUrl);
+                                        windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                                         windowContent.style.backgroundSize = 'cover';
                                         windowContent.style.backgroundPosition = 'center';
                                         windowContent.style.backgroundRepeat = 'no-repeat';
@@ -4553,7 +4535,9 @@
                 try {
                     const landingImageUrl = await landingImagePromise;
                     if (landingImageUrl) {
-                        windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                        // 🔧 使用代理 URL 避免 CORS 問題
+                        const proxiedUrl = getProxiedImageUrl(landingImageUrl);
+                        windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                         windowContent.style.backgroundSize = 'cover';
                         windowContent.style.backgroundPosition = 'center';
                         console.log('🖼️ 降落圖片已顯示（無影片容器）');
@@ -4681,7 +4665,9 @@
                     windowContent.style.zIndex = '1000';
                     windowContent.style.position = 'relative';
                     windowContent.innerHTML = ''; // 清除所有內容（包括文字和 icon）
-                    windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                    // 🔧 使用代理 URL 避免 CORS 問題
+                    const proxiedUrl = getProxiedImageUrl(landingImageUrl);
+                    windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                     windowContent.style.backgroundSize = 'cover';
                     windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
@@ -6762,7 +6748,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     // 顯示降落圖片
                     const windowContent = document.querySelector('.window-content');
                     if (windowContent) {
-                        windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                        // 🔧 使用代理 URL 避免 CORS 問題
+                        const proxiedUrl = getProxiedImageUrl(destinationImageUrl);
+                        windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                         windowContent.style.backgroundSize = 'cover';
                         windowContent.style.backgroundPosition = 'center';
                         console.log('✅ 最新降落圖片已顯示:', destinationImageUrl);
@@ -9845,7 +9833,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     if (landingImageUrl) {
                         const windowContent = document.querySelector('.window-content');
                         if (windowContent) {
-                            windowContent.style.backgroundImage = 'url(' + landingImageUrl + ')';
+                            // 🔧 使用代理 URL 避免 CORS 問題
+                            const proxiedUrl = getProxiedImageUrl(landingImageUrl);
+                            windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                             windowContent.style.backgroundSize = 'cover';
                             windowContent.style.backgroundPosition = 'center';
                             windowContent.style.backgroundRepeat = 'no-repeat';
@@ -9886,8 +9876,10 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             // 如果圖片還沒顯示，現在顯示（確保圖片已生成）
             if (finalImageUrl && document.querySelector('.window-content')) {
                 const windowContent = document.querySelector('.window-content');
-                if (!windowContent.style.backgroundImage || !windowContent.style.backgroundImage.includes(finalImageUrl)) {
-                    windowContent.style.backgroundImage = 'url(' + finalImageUrl + ')';
+                // 🔧 使用代理 URL 避免 CORS 問題
+                const proxiedUrl = getProxiedImageUrl(finalImageUrl);
+                if (!windowContent.style.backgroundImage || !windowContent.style.backgroundImage.includes(proxiedUrl)) {
+                    windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                     windowContent.style.backgroundSize = 'cover';
                     windowContent.style.backgroundPosition = 'center';
                     console.log('🖼️ 降落圖片已顯示（最終確認）');
@@ -9907,7 +9899,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                 windowContent.style.position = 'relative';
                 // 確保圖片顯示
                 if (finalImageUrl) {
-                    windowContent.style.backgroundImage = 'url(' + finalImageUrl + ')';
+                    // 🔧 使用代理 URL 避免 CORS 問題
+                    const proxiedUrl = getProxiedImageUrl(finalImageUrl);
+                    windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                     windowContent.style.backgroundSize = 'cover';
                     windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
@@ -10025,7 +10019,9 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
             if (destinationImageUrl && document.querySelector('.window-content')) {
                 const windowContent = document.querySelector('.window-content');
                 windowContent.innerHTML = '';
-                windowContent.style.backgroundImage = 'url(' + destinationImageUrl + ')';
+                // 🔧 使用代理 URL 避免 CORS 問題
+                const proxiedUrl = getProxiedImageUrl(destinationImageUrl);
+                windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                 windowContent.style.backgroundSize = 'cover';
                 windowContent.style.backgroundPosition = 'center';
                 console.log('✅ 目的地圖片已顯示在視窗中');
