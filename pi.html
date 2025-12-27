@@ -4270,6 +4270,39 @@
                     return;
                 }
                 
+                // 🔧 改進：對於 Firebase Storage URL，先嘗試直接 fetch 檢查
+                // 如果是 storage.googleapis.com 的 URL，使用 fetch 檢查（避免 CORS 問題）
+                if (imageUrl.includes('storage.googleapis.com')) {
+                    fetch(imageUrl, { 
+                        method: 'HEAD',
+                        mode: 'no-cors' // 使用 no-cors 模式避免 CORS 檢查
+                    }).then(() => {
+                        // no-cors 模式下無法讀取狀態，但能發送請求就表示可能可訪問
+                        // 再用 Image 載入確認
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        const timeout = setTimeout(() => {
+                            console.warn('⚠️ 圖片載入超時:', imageUrl);
+                            resolve(false);
+                        }, 10000);
+                        img.onload = () => {
+                            clearTimeout(timeout);
+                            console.log('✅ 圖片 URL 可訪問:', imageUrl);
+                            resolve(true);
+                        };
+                        img.onerror = () => {
+                            clearTimeout(timeout);
+                            console.warn('⚠️ 圖片 URL 無法訪問:', imageUrl);
+                            resolve(false);
+                        };
+                        img.src = imageUrl;
+                    }).catch(() => {
+                        resolve(false);
+                    });
+                    return;
+                }
+                
+                // 其他 URL 使用標準 Image 載入
                 const img = new Image();
                 img.crossOrigin = 'anonymous'; // 允許跨域
                 
@@ -9489,92 +9522,16 @@ ${weatherDescription}在窗外鋪成一條柔和的航道，而機艙裡是一�
                     skyFeature = '星空';
                 }
                 
-                // 🔧 改進：更精確、更統一的機翼描述，確保每次生成都完全一致
-                const prompt = 'A square composition (1024x1024) showing a landing aircraft wing view from passenger window perspective.\n\n' +
-                    '=== WING SPECIFICATIONS (MUST BE IDENTICAL IN EVERY IMAGE) ===\n' +
-                    'REFERENCE MODEL: Boeing 787 Dreamliner wing (use this exact reference for consistency)\n\n' +
-                    'POSITION & SIZE:\n' +
-                    '- Wing position: Bottom 30% of frame (exactly 30%, not 25% or 35%)\n' +
-                    '- Wing span: Extends from left edge (0% from left) to 65% from left edge\n' +
-                    '- Wing width: 30% of frame height (measured from bottom edge)\n' +
-                    '- Wing occupies exactly 30% of bottom frame area\n\n' +
-                    'SHAPE & STRUCTURE:\n' +
-                    '- Wing type: Modern swept-back wing (Boeing 787 style)\n' +
-                    '- Wing sweep angle: 32.2 degrees (consistent swept-back appearance)\n' +
-                    '- Wing chord: Tapers smoothly from root (wider) to tip (narrower)\n' +
-                    '- Wing root: Starts at left edge, 15% width of frame\n' +
-                    '- Wing tip: Ends at 65% from left, 8% width of frame\n' +
-                    '- Wing thickness: Thin profile, maximum 2% of frame height at root\n' +
-                    '- Leading edge: Smooth, curved, aerodynamic curve\n' +
-                    '- Trailing edge: Straight, clean line\n' +
-                    '- Wing surface: Flat top surface, no visible curvature from this angle\n\n' +
-                    'WINGLET (MANDATORY):\n' +
-                    '- Position: At wing tip (rightmost end of wing)\n' +
-                    '- Shape: Raked winglet (Boeing 787 style), angled upward at 15 degrees\n' +
-                    '- Height: 8% of frame height\n' +
-                    '- Width: 2% of frame width\n' +
-                    '- Color: Same white as wing (#FFFFFF)\n' +
-                    '- Style: Modern, aerodynamic, integrated with wing\n\n' +
-                    'ANGLE & PERSPECTIVE:\n' +
-                    '- Viewing angle: 15 degrees from horizontal (wing tip slightly elevated)\n' +
-                    '- Perspective: Passenger window view, looking slightly down and forward\n' +
-                    '- Wing tilt: Wing tip is 5% higher than wing root (subtle upward angle)\n' +
-                    '- Depth: Wing appears flat, no 3D curvature visible from this angle\n' +
-                    '- Orientation: Wing extends from left (near) to right (far)\n\n' +
-                    'COLOR & MATERIAL:\n' +
-                    '- Base color: Pure white (#FFFFFF), no off-white or cream tones\n' +
-                    '- Shadow color: Very light gray (#F8F8F8) for subtle depth\n' +
-                    '- Material: Smooth composite material (Boeing 787 composite wing)\n' +
-                    '- Finish: Semi-matte, not glossy or mirror-like\n' +
-                    '- Reflection: Minimal, only subtle highlights, no mirror reflections\n' +
-                    '- No visible paint lines, decals, or markings\n\n' +
-                    'DETAILS & PANEL LINES:\n' +
-                    '- Panel lines: Exactly 2 parallel lines running along wing length\n' +
-                    '- Line position: First line at 40% from leading edge, second at 60%\n' +
-                    '- Line style: Very subtle, thin (0.5px), light gray (#E8E8E8)\n' +
-                    '- Line length: Full wing length, from root to tip\n' +
-                    '- NO rivets, screws, or fasteners visible\n' +
-                    '- NO access panels or maintenance hatches\n' +
-                    '- NO visible seams or joints\n' +
-                    '- NO logos, text, or markings\n\n' +
-                    'LIGHTING:\n' +
-                    '- Light source: Soft top-down lighting (from above)\n' +
-                    '- Light angle: 45 degrees from top-left\n' +
-                    '- Highlights: Subtle white highlights on wing top surface\n' +
-                    '- Shadows: Very light gray shadows (#F5F5F5) under wing\n' +
-                    '- Contrast: Low contrast, soft and gentle\n' +
-                    '- No harsh shadows or dramatic lighting\n\n' +
-                    '=== BACKGROUND ===\n' +
-                    '- Cityscape: ' + city + ', ' + country + '\n' +
-                    '- Time: ' + timeSegment + ' (' + weatherState + ' atmosphere)\n' +
-                    '- Sky: Features ' + skyFeature + '\n' +
-                    '- View: Aerial view from aircraft perspective\n' +
-                    '- Distance: City at medium distance (clearly visible landmarks)\n' +
-                    '- Perspective: Looking down at 30-degree angle\n\n' +
-                    '=== ART STYLE ===\n' +
-                    '- Style: 3D cartoon rendering, Pixar animation quality\n' +
-                    '- Color: Vector-like color blocks, clean and vibrant\n' +
-                    '- Lighting: Soft, volumetric, cinematic\n' +
-                    '- Edges: Clean, sharp edges (no anti-aliasing blur)\n' +
-                    '- Mood: Calm, peaceful, arrival moment\n' +
-                    '- NO motion blur\n' +
-                    '- NO exaggerated perspective distortion\n' +
-                    '- NO lens flare or dramatic effects\n\n' +
-                    '=== CRITICAL REQUIREMENTS ===\n' +
-                    '1. NO airplane windows, window frames, window edges, or glass visible\n' +
-                    '2. NO window reflections or window elements\n' +
-                    '3. ONLY the wing (with winglet) and cityscape background\n' +
-                    '4. Wing MUST be identical in every generation:\n' +
-                    '   - Same position (bottom 30%)\n' +
-                    '   - Same size (30% of frame)\n' +
-                    '   - Same shape (Boeing 787 swept-back wing)\n' +
-                    '   - Same angle (15 degrees, tip elevated)\n' +
-                    '   - Same color (pure white #FFFFFF)\n' +
-                    '   - Same winglet (raked, 15 degrees upward)\n' +
-                    '   - Same panel lines (2 lines, same position)\n' +
-                    '5. Wing should look like it belongs to the same aircraft in every image\n' +
-                    '6. Consistency is more important than artistic variation\n' +
-                    '7. If in doubt, use Boeing 787 Dreamliner wing as exact reference';
+                // 🔧 改進：精簡但精確的機翼描述，確保每次生成都一致（控制在 4000 字符以內）
+                const prompt = 'Square 1024x1024 landing aircraft wing view from passenger window. ' +
+                    'WING: Boeing 787 Dreamliner style, bottom 30% of frame, extends left edge to 65%, white (#FFFFFF), swept-back 32°, ' +
+                    'winglet at tip (raked, 15° upward, 8% height), 2 subtle parallel panel lines (40% and 60% from leading edge), ' +
+                    '15° viewing angle (tip elevated 5%), semi-matte finish, soft top-down lighting. ' +
+                    'NO windows, frames, or glass visible. ONLY wing and cityscape. ' +
+                    'BACKGROUND: ' + city + ', ' + country + ' cityscape, ' + timeSegment + ' (' + weatherState + '), ' + skyFeature + ', ' +
+                    'aerial view 30° down, medium distance. ' +
+                    'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur. ' +
+                    'CRITICAL: Wing must be identical every time - same position, size, shape, angle, color, winglet, panel lines. Consistency is priority.';
                 
                 const response = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
                     method: 'POST',

@@ -82,6 +82,8 @@ export default async function handler(req, res) {
             
             // 上傳到 Firebase Storage
             const file = bucket.file(fileName);
+            
+            // 🔧 改進：上傳文件並設置為公開讀取
             await file.save(imageData, {
                 metadata: {
                     contentType: 'image/png',
@@ -89,11 +91,30 @@ export default async function handler(req, res) {
                 },
             });
             
-            // 設置為公開讀取
-            await file.makePublic();
+            // 🔧 改進：確保文件是公開的（使用正確的 Firebase Admin SDK 方法）
+            try {
+                // 方法1：使用 makePublic()（推薦）
+                await file.makePublic();
+                console.log('✅ 文件已設置為公開讀取 (makePublic)');
+            } catch (publicError) {
+                console.warn('⚠️ makePublic 失敗，嘗試設置 ACL:', publicError.message);
+                // 方法2：如果 makePublic 失敗，嘗試手動設置 ACL
+                try {
+                    await file.acl.add({
+                        entity: 'allUsers',
+                        role: 'READER'
+                    });
+                    console.log('✅ 使用 ACL 設置為公開讀取');
+                } catch (aclError) {
+                    console.warn('⚠️ ACL 設置也失敗:', aclError.message);
+                    // 即使失敗也繼續，因為文件可能已經是公開的
+                }
+            }
             
-            // 獲取公開 URL（永久 URL）
+            // 🔧 改進：使用正確的公開 URL 格式
+            // Firebase Storage 公開文件的標準 URL 格式
             permanentImageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+            
             console.log('✅ 圖片已上傳到 Firebase Storage，永久 URL:', permanentImageUrl);
             
         } catch (uploadError) {
