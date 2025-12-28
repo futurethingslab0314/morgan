@@ -332,7 +332,7 @@ ${prompt}`;
         }
 
         const response = await openai.chat.completions.create({
-            model: "gpt-4o", // 🔧 升級到 GPT-4o（更優質的模型，支持更好的理解和生成）
+            model: "gpt-4-turbo", // 🔧 使用 GPT-4 Turbo（GPT-4o 已移除，使用穩定可用的 GPT-4 Turbo）
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
             max_tokens: 400

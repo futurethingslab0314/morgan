@@ -164,12 +164,16 @@ class SleepAirlineMobile {
             // 生成星星評分顯示
             const feedbackStars = this.generateFeedbackStars(record.flightFeedback);
 
+            // 檢查是否是蟲洞目的地
+            const isWormhole = record.isWormhole || record.wormhole || false;
+
             return `
-            <div class="ticket-card" data-index="${index}" style="--ticket-primary: ${colors.primary}; --ticket-secondary: ${colors.secondary};">
+            <div class="ticket-card ${isWormhole ? 'wormhole-ticket' : ''}" data-index="${index}" style="--ticket-primary: ${colors.primary}; --ticket-secondary: ${colors.secondary};">
                 <div class="ticket-header">
                     <div class="ticket-airline">Sleep Airline</div>
                     <div class="ticket-header-right">
                         ${feedbackStars}
+                        ${isWormhole ? '<div class="ticket-badge wormhole-badge">🌀 蟲洞</div>' : ''}
                         <div class="ticket-badge">${this.getPunctualityBadge(record.punctuality)}</div>
                     </div>
                 </div>
@@ -737,8 +741,12 @@ class SleepAirlineMobile {
         // 獲取國旗（異步）
         const flag = await this.getCountryFlag(record);
 
+        // 檢查是否是蟲洞目的地
+        const isWormhole = record.isWormhole || record.wormhole || false;
+
         modalBody.innerHTML = `
-            <div class="ticket-detail-header" style="--ticket-primary: ${colors.primary}; --ticket-secondary: ${colors.secondary};">
+            <div class="ticket-detail-header ${isWormhole ? 'wormhole-header' : ''}" style="--ticket-primary: ${colors.primary}; --ticket-secondary: ${colors.secondary};">
+                ${isWormhole ? '<div class="wormhole-banner">🌀 蟲洞效應：時空錯位目的地</div>' : ''}
                 <div style="display: flex; align-items: center; gap: 12px; justify-content: center;">
                     <span style="font-size: 48px;">${flag}</span>
                     <div>

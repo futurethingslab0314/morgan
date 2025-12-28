@@ -166,6 +166,62 @@ body {
     letter-spacing: 1px;
 }
 
+/* 蟲洞機票樣式 */
+.wormhole-ticket {
+    position: relative;
+    border: 2px solid #9B59B6;
+    box-shadow: 0 4px 16px rgba(155, 89, 182, 0.3);
+}
+
+.wormhole-ticket::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(155, 89, 182, 0.05), rgba(142, 68, 173, 0.05));
+    pointer-events: none;
+    border-radius: 12px;
+}
+
+.wormhole-badge {
+    background: linear-gradient(135deg, #9B59B6, #8E44AD) !important;
+    color: #FFFFFF !important;
+    font-weight: 600;
+    animation: wormhole-pulse 2s infinite;
+}
+
+@keyframes wormhole-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.wormhole-header {
+    position: relative;
+}
+
+.wormhole-banner {
+    background: linear-gradient(135deg, #9B59B6, #8E44AD);
+    color: #FFFFFF;
+    padding: 12px 20px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 16px;
+    animation: wormhole-pulse 2s infinite;
+}
+
 .ticket-badge {
     background: rgba(255, 255, 255, 0.3);
     color: white;
