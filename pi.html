@@ -4917,6 +4917,10 @@
             
             console.log('⏹️ landing.mp4 播放結束，準備顯示降落圖片');
             
+            // 🔧 改進：landing.mp4 播放結束後，隱藏「準備降落...」UI
+            setBoardingStatus(false);
+            console.log('✅ [landing.mp4] 已隱藏「準備降落...」UI');
+            
             // 🔧 改進：檢查圖片是否已經準備好
             let landingImageUrl = null;
             try {
@@ -8395,9 +8399,81 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 標記已提前降落，防止 Phase 6 的邏輯執行
             window._earlyLandingConfirmed = true;
             
-            // 🔧 改進：緊急降落流程
-            // 1. 先播放 captain.mp3
-            console.log('1️⃣ [緊急降落] 播放 captain.mp3...');
+            // 🔧 改進：緊急降落流程 - 先播放音樂，同時準備 TTS
+            // 1. 立即開始播放 wakeup 音樂（不等待，讓音樂先開始）
+            console.log('1️⃣ [緊急降落] 立即開始播放 wakeup 音樂（淡入）...');
+            const musicPromise = playWakeupMusicForEarlyLanding();
+            
+            // 2. 同時開始準備 TTS（提前生成降落內容）
+            console.log('2️⃣ [緊急降落] 開始準備 TTS 語音...');
+            const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
+            const punctuality = calculatePunctuality(selectedTimer, actualDuration);
+            const timeDiff = actualDuration - selectedTimer;
+            const timeDiffPercent = (timeDiff / selectedTimer) * 100;
+            
+            // 提前計算目的地和生成降落內容
+            let finalDestination = destinationData || null;
+            let isWormhole = false;
+            const landingContentPromise = (async () => {
+                try {
+                    // 獲取之前選擇的氣候帶選項（如果有的話）
+                    const climateZone = destinationData?.climateZone || null;
+                    
+                    // 使用實際飛行時間計算最終目的地
+                    finalDestination = await destinationCalculator.findDestination(
+                        actualDuration,
+                        selectedDirection,
+                        punctuality,
+                        climateZone
+                    );
+                    
+                    // 檢查蟲洞效應（1/7 機率）
+                    const wormholeChance = Math.random();
+                    if (wormholeChance < 1/7) {
+                        console.log('🌀 [蟲洞效應] 觸發機率：' + (wormholeChance * 100).toFixed(2) + '%，觸發蟲洞效應！');
+                        const originalDestination = finalDestination;
+                        finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                            selectedDirection,
+                            climateZone
+                        );
+                        if (finalDestination) {
+                            isWormhole = true;
+                            finalDestination.wormhole = true;
+                        }
+                    } else if (!finalDestination) {
+                        finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                            selectedDirection,
+                            climateZone
+                        );
+                        if (finalDestination) {
+                            isWormhole = true;
+                            finalDestination.wormhole = true;
+                        }
+                    }
+                    
+                    // 生成降落內容（TTS）
+                    const landingDataResult = await generateLandingContent(
+                        timeDiff,
+                        timeDiffPercent,
+                        actualDuration,
+                        isWormhole ? finalDestination : null
+                    );
+                    
+                    // 保存到全局變數，供 handleLanding 使用
+                    window._preGeneratedLandingData = landingDataResult;
+                    window._preGeneratedFinalDestination = finalDestination;
+                    window._preGeneratedIsWormhole = isWormhole;
+                    
+                    console.log('✅ [緊急降落] TTS 內容已準備完成');
+                    return landingDataResult;
+                } catch (error) {
+                    console.error('❌ [緊急降落] 準備 TTS 時發生錯誤:', error);
+                    return null;
+                }
+            })();
+            
+            // 3. 播放 captain.mp3（同時音樂和 TTS 在背景準備）
+            console.log('3️⃣ [緊急降落] 播放 captain.mp3...');
             try {
                 await playAudioFile('sounds/captain.mp3', 6);
                 console.log('✅ captain.mp3 播放完成');
@@ -8405,11 +8481,33 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.warn('⚠️ captain.mp3 播放失敗:', error);
             }
             
-            // 2. captain.mp3 播放完成後，開始播放 wakeup 音樂（慢慢淡入）
-            console.log('2️⃣ [緊急降落] 開始播放 wakeup 音樂（淡入）...');
-            await playWakeupMusicForEarlyLanding();
+            // 4. captain.mp3 播完後，等待 TTS 準備完成（如果還沒準備好）
+            console.log('4️⃣ [緊急降落] 等待 TTS 準備完成...');
+            const landingData = await landingContentPromise;
             
-            // 3. 觸發手動降落（直接跳轉到 Phase 7）
+            // 5. TTS 準備完成後，立即播放 TTS
+            if (landingData && landingData.announcement) {
+                console.log('5️⃣ [緊急降落] 播放 TTS 語音...');
+                // 確保音樂音量較低
+                if (window._earlyLandingWakeupMusic) {
+                    window._earlyLandingWakeupMusic.volume = 0.15;
+                }
+                await playAnnouncement(landingData.announcement, 'zh-TW', {
+                    gender: landingData.gender || 'male',
+                    speed: 0.75
+                });
+                console.log('✅ TTS 語音播放完成');
+                
+                // TTS 播放完成後，恢復音樂音量
+                if (window._earlyLandingWakeupMusic) {
+                    fadeInAudio(window._earlyLandingWakeupMusic, 2000, 0.6);
+                }
+            }
+            
+            // 6. 等待音樂淡入完成（不阻塞，讓它在背景完成）
+            musicPromise.catch(err => console.warn('⚠️ 音樂播放錯誤:', err));
+            
+            // 7. 觸發手動降落（直接跳轉到 Phase 7）
             triggerManualLanding();
         }
         
@@ -10317,19 +10415,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     skyFeature = '星空';
                 }
                 
-                // 🔧 改進：第一人稱機翼視角（從窗戶往外看，但不要窗戶框和玻璃反射）
-                const prompt = 'Square 1024x1024 first-person view from airplane passenger window looking out. ' +
+                // 🔧 改進：第一人稱機翼視角（完全沒有窗戶框，純粹的機翼和城市風景）
+                const prompt = 'Square 1024x1024 aerial view from airplane, full-frame unobstructed view. ' +
                     'WING: Large bright blue airplane wing extending diagonally from lower left to middle right, ' +
-                    'Boeing 787 Dreamliner style, seen from passenger seat perspective looking out window, ' +
+                    'Boeing 787 Dreamliner style, seen from above and slightly behind, ' +
                     'slightly upturned wingtip (sharklet) visible on left side, ' +
                     'two engine nacelles underneath in darker blue, ' +
                     'subtle panel lines in lighter blue on wing surface, ' +
                     'wing occupies foreground bottom portion, creating immersive depth. ' +
-                    'NO window frames, NO glass reflections, NO window edges visible - pure first-person view as if looking directly through transparent window. ' +
+                    'ABSOLUTELY NO window frames, NO window borders, NO window edges, NO window structure, NO glass panes, NO glass reflections, NO window elements visible - pure unobstructed aerial view, full-frame composition, no window or frame elements whatsoever. ' +
                     'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' + timeSegment + ' (' + weatherState + '), ' + skyFeature + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing. ' +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
-                    'CRITICAL: First-person passenger window perspective, NO window frames or glass reflections, wing prominent in foreground, cityscape visible below and beyond, immersive view like looking out airplane window.';
+                    'CRITICAL: Full-frame unobstructed aerial view, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, wing prominent in foreground, cityscape visible below and beyond, pure aerial perspective without any window elements.';
                 
                 const response = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
                     method: 'POST',
@@ -10633,32 +10731,53 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 生成降落內容（使用最終確定的目的地）
             console.log('📝 [降落] 生成降落內容...');
             
-            // 🔧 改進：如果觸發了蟲洞，將目的地資訊傳遞給 generateLandingContent
-            // 確保 generateLandingContent 知道這是蟲洞目的地
-            if (isWormhole && finalDestination) {
-                // 將蟲洞目的地儲存到全局變數，讓 generateLandingContent 使用
-                window._wormholeDestination = finalDestination;
-                console.log('🌀 [降落] 蟲洞目的地已傳遞給 generateLandingContent:', finalDestination.city_zh || finalDestination.city);
+            // 🔧 改進：提前降落時，使用已準備好的 TTS 內容；否則並行生成
+            if (isEarlyLanding && window._preGeneratedLandingData) {
+                console.log('✅ [提前降落] 使用已準備好的 TTS 內容');
+                landingData = window._preGeneratedLandingData;
+                finalDestination = window._preGeneratedFinalDestination || finalDestination;
+                isWormhole = window._preGeneratedIsWormhole || isWormhole;
+                
+                // 清除已使用的變數
+                delete window._preGeneratedLandingData;
+                delete window._preGeneratedFinalDestination;
+                delete window._preGeneratedIsWormhole;
+                
+                // 生成目的地資訊（如果還沒生成）
+                const destinationInfoResult = await generateDestinationInfo(finalDestination);
+                window._preGeneratedDestinationInfo = destinationInfoResult;
+            } else {
+                // 正常降落：並行生成降落內容和目的地資訊
+                // 🔧 改進：如果觸發了蟲洞，將目的地資訊傳遞給 generateLandingContent
+                // 確保 generateLandingContent 知道這是蟲洞目的地
+                if (isWormhole && finalDestination) {
+                    // 將蟲洞目的地儲存到全局變數，讓 generateLandingContent 使用
+                    window._wormholeDestination = finalDestination;
+                    console.log('🌀 [降落] 蟲洞目的地已傳遞給 generateLandingContent:', finalDestination.city_zh || finalDestination.city);
+                }
+                
+                // 🔧 改進：同時並行生成降落內容和目的地資訊，減少等待時間
+                console.log('🚀 [降落] 並行生成降落內容和目的地資訊...');
+                const [landingDataResult, destinationInfoResult] = await Promise.all([
+                    generateLandingContent(timeDiff, timeDiffPercent, actualDuration, isWormhole ? finalDestination : null),
+                    generateDestinationInfo(finalDestination)
+                ]);
+                
+                landingData = landingDataResult;
+                
+                // 儲存目的地資訊到全局變數，供 showLandingCountryInfo 使用
+                window._preGeneratedDestinationInfo = destinationInfoResult;
             }
             
-            // 🔧 改進：同時並行生成降落內容和目的地資訊，減少等待時間
-            console.log('🚀 [降落] 並行生成降落內容和目的地資訊...');
-            const [landingDataResult, destinationInfoResult] = await Promise.all([
-                generateLandingContent(timeDiff, timeDiffPercent, actualDuration, isWormhole ? finalDestination : null),
-                generateDestinationInfo(finalDestination)
-            ]);
-            
-            landingData = landingDataResult;
-            
-            // 儲存目的地資訊到全局變數，供 showLandingCountryInfo 使用
-            window._preGeneratedDestinationInfo = destinationInfoResult;
-            
             // 提前生成歡迎語音文字
-            const cityName = finalDestination.city_zh || finalDestination.city || '';
-            const countryName = finalDestination.country_zh || finalDestination.country || '';
-            const welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfoResult.time}，${destinationInfoResult.weather}，${destinationInfoResult.feature}。`;
-            window._preGeneratedWelcomeMessage = welcomeMessage;
-            console.log('✅ [降落] 目的地資訊和歡迎語音已提前生成:', destinationInfoResult);
+            const destinationInfoResult = window._preGeneratedDestinationInfo;
+            if (destinationInfoResult) {
+                const cityName = finalDestination.city_zh || finalDestination.city || '';
+                const countryName = finalDestination.country_zh || finalDestination.country || '';
+                const welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfoResult.time}，${destinationInfoResult.weather}，${destinationInfoResult.feature}。`;
+                window._preGeneratedWelcomeMessage = welcomeMessage;
+                console.log('✅ [降落] 目的地資訊和歡迎語音已提前生成:', destinationInfoResult);
+            }
             
             // 儲存 announcement 文字（用於 Firebase）
             if (landingData && landingData.announcement) {
@@ -10670,33 +10789,32 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             }
             
             // 🔧 改進：提前降落時，先播放 captain.mp3，然後播放正式降落語音
-            // 如果是提前降落，captain.mp3 已經在 confirmEarlyLanding 中播放過了
+            // 如果是提前降落，captain.mp3 和 TTS 已經在 confirmEarlyLanding 中播放過了
             if (!isEarlyLanding) {
                 // 正常降落：先播放 captain.mp3（6秒），然後播放正式降落語音
-            console.log('1️⃣ 播放 captain.mp3（6 秒）...');
-            await playAudioFile('sounds/captain.mp3', 6);
-            console.log('✅ captain.mp3 播放完成');
+                console.log('1️⃣ 播放 captain.mp3（6 秒）...');
+                await playAudioFile('sounds/captain.mp3', 6);
+                console.log('✅ captain.mp3 播放完成');
+                
+                // 播放正式降落語音（必須等待完成）
+                // 在播放語音期間，保持「機長廣播中」UI 顯示
+                if (landingData && landingData.announcement) {
+                    console.log('2️⃣ 播放降落語音...');
+                    await playAnnouncement(landingData.announcement, 'zh-TW', {
+                        volume: 1.0, // 語音最大音量
+                        waitForCompletion: true // 強制等待播放完成
+                    });
+                    console.log('✅ 降落語音播放完成');
+                } else if (announcementText) {
+                    // 如果 landingData 沒有生成，使用 announcementText
+                    console.log('2️⃣ 播放降落語音（使用預設文字）...');
+                    await playAnnouncement(announcementText, 'zh-TW', {
+                        volume: 1.0,
+                        waitForCompletion: true // 強制等待播放完成
+                    });
+                }
             } else {
-                console.log('ℹ️ [提前降落] captain.mp3 已在 confirmEarlyLanding 中播放，跳過');
-            }
-            
-            // 播放正式降落語音（必須等待完成）
-            // 在播放語音期間，保持「機長廣播中」UI 顯示
-            // 🔧 改進：提前降落時，保持音樂小音量，語音播放完成後再放大
-            if (landingData && landingData.announcement) {
-                console.log('2️⃣ 播放降落語音...');
-                await playAnnouncement(landingData.announcement, 'zh-TW', {
-                    volume: 1.0, // 語音最大音量
-                    waitForCompletion: true // 強制等待播放完成
-                });
-                console.log('✅ 降落語音播放完成');
-            } else if (announcementText) {
-                // 如果 landingData 沒有生成，使用 announcementText
-                console.log('2️⃣ 播放降落語音（使用預設文字）...');
-                await playAnnouncement(announcementText, 'zh-TW', {
-                    volume: 1.0,
-                    waitForCompletion: true // 強制等待播放完成
-                });
+                console.log('ℹ️ [提前降落] captain.mp3 和 TTS 已在 confirmEarlyLanding 中播放，跳過');
                 console.log('✅ 降落語音播放完成');
             }
             
