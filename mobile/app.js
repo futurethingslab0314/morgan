@@ -355,64 +355,27 @@ class SleepAirlineMobile {
                 parseFloat(record.longitude)
             ];
 
-            // 獲取上一個記錄作為起點
+            // 獲取上一個記錄作為起點（用於計算飛行路徑，但不顯示綠色標記）
             const prevRecord = index < this.records.length - 1 ? this.records[index + 1] : null;
 
-            // 如果有上一個記錄，創建綠色起點標記
+            // 更新 previousPosition 用於繪製飛行路徑
             if (prevRecord && prevRecord.latitude && prevRecord.longitude &&
                 prevRecord.latitude !== 0 && prevRecord.longitude !== 0) {
-                const prevPosition = [
+                previousPosition = [
                     parseFloat(prevRecord.latitude),
                     parseFloat(prevRecord.longitude)
                 ];
-
-                // 只在第一次或上一個記錄改變時創建起點標記
-                if (!previousPosition ||
-                    previousPosition[0] !== prevPosition[0] ||
-                    previousPosition[1] !== prevPosition[1]) {
-
-                    const startIcon = L.divIcon({
-                        className: 'custom-marker start-marker',
-                        html: '<div style="width: 40px; height: 40px; border-radius: 50%; background: #4CAF50; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">起</div>',
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
-                    });
-
-                    const startMarker = L.marker(prevPosition, { icon: startIcon })
-                        .addTo(markersLayer)
-                        .bindPopup(`
-                            <div style="padding: 10px;">
-                                <h3 style="margin: 0;">起點：${prevRecord.city_zh || prevRecord.city}</h3>
-                                <p style="margin: 5px 0 0 0; color: #666;">${prevRecord.country_zh || prevRecord.country}</p>
-                            </div>
-                        `);
-
-                    this.markers.push(startMarker);
-                    bounds.extend(prevPosition);
-                    previousPosition = prevPosition;
-                }
             } else if (!previousPosition) {
-                // 如果沒有上一個記錄，使用台北作為起點（僅第一個記錄）
-                const taipeiIcon = L.divIcon({
-                    className: 'custom-marker start-marker',
-                    html: '<div style="width: 40px; height: 40px; border-radius: 50%; background: #4CAF50; border: 3px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">起</div>',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                });
-
-                const taipeiMarker = L.marker([TAIPEI_LAT, TAIPEI_LON], { icon: taipeiIcon })
-                    .addTo(markersLayer)
-                    .bindPopup('<div style="padding: 10px;"><h3 style="margin: 0;">起點：台北</h3><p style="margin: 5px 0 0 0; color: #666;">你的旅程起點</p></div>');
-
-                this.markers.push(taipeiMarker);
-                bounds.extend([TAIPEI_LAT, TAIPEI_LON]);
+                // 如果沒有上一個記錄，使用台北作為起點位置（僅用於計算路徑）
                 previousPosition = [TAIPEI_LAT, TAIPEI_LON];
             }
 
-            // 創建目的地標記（橙色）
+            // 創建目的地標記（最新用橘色，其他用淺橘色）
+            const isLatest = index === 0; // 第一個記錄是最新的
+            const markerColor = isLatest ? '#FF6B35' : '#FFB88C'; // 橘色或淺橘色
             const markerIcon = L.divIcon({
                 className: 'custom-marker destination-marker',
-                html: `<div style="width: 30px; height: 30px; border-radius: 50%; background: #FF6B35; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${index + 1}</div>`,
+                html: `<div style="width: 30px; height: 30px; border-radius: 50%; background: ${markerColor}; border: 2px solid white; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${index + 1}</div>`,
                 iconSize: [30, 30],
                 iconAnchor: [15, 15]
             });
@@ -453,8 +416,10 @@ class SleepAirlineMobile {
 
             // 繪製飛行路徑（從上一個位置到當前位置）
             if (previousPosition) {
+                // 最新路徑用橘色，其他用淺橘色
+                const pathColor = isLatest ? '#FF6B35' : '#FFB88C';
                 const flightPath = L.polyline([previousPosition, position], {
-                    color: '#FF6B35',
+                    color: pathColor,
                     weight: 3,
                     opacity: 0.6,
                     smoothFactor: 1
@@ -658,6 +623,8 @@ class SleepAirlineMobile {
     // 生成國家資訊
     generateCountryInfo(record) {
         try {
+            const city = record.city_zh || record.city || '';
+            const country = record.country_zh || record.country || '';
             const timezone = record.timezone || 'UTC';
             const now = new Date();
             const localTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
@@ -697,10 +664,16 @@ class SleepAirlineMobile {
             ];
             const randomFeature = features[Math.floor(Math.random() * features.length)];
 
+            // 生成完整的地區介紹文字
+            const fullInfo = `${city}，${country} | 當地時間 ${timeString} | ${weather} | ${randomFeature}`;
+
             return {
+                city: city,
+                country: country,
                 time: timeString,
                 weather: weather,
-                feature: randomFeature
+                feature: randomFeature,
+                fullInfo: fullInfo
             };
         } catch (error) {
             return null;
@@ -846,6 +819,9 @@ class SleepAirlineMobile {
                 <h3 class="country-info-title">目的地資訊</h3>
                 <div class="country-info-item">🌤️ ${countryInfo.weather}</div>
                 <div class="country-info-item">✨ ${countryInfo.feature}</div>
+                ${countryInfo.fullInfo ? `
+                <div class="country-info-intro">${countryInfo.fullInfo}</div>
+                ` : ''}
             </div>
             ` : ''}
             
@@ -1262,16 +1238,21 @@ class SleepAirlineMobile {
             <div class="sleep-times-list">
                 ${sleepTimes.map(item => `
                     <div class="sleep-time-item">
-                        <div class="sleep-time-header">
-                            <div class="sleep-time-date">${item.arrivalDate}</div>
-                            ${item.sleepTime ? `<div class="sleep-time-time">${item.sleepTime}</div>` : ''}
+                        <div class="sleep-time-date">${item.arrivalDate}</div>
+                        <div class="sleep-time-times">
+                            ${item.sleepTime ? `
+                            <div class="time-block">
+                                <span class="time-label">起飛時間</span>
+                                <span class="time-value sleep-time-value">${item.sleepTime}</span>
+                            </div>
+                            ` : ''}
+                            ${item.arrivalTime ? `
+                            <div class="time-block">
+                                <span class="time-label">降落時間</span>
+                                <span class="time-value arrival-time-value">${item.arrivalTime}</span>
+                            </div>
+                            ` : ''}
                         </div>
-                        ${item.arrivalTime ? `
-                        <div class="arrival-time">
-                            <span class="arrival-time-label">降落時間：</span>
-                            <span class="arrival-time-value">${item.arrivalTime}</span>
-                        </div>
-                        ` : ''}
                         <div class="sleep-time-destination">
                             <span class="sleep-time-city">${item.arrivalCity}</span>
                             <span class="sleep-time-country">${item.arrivalCountry}</span>

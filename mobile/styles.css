@@ -261,6 +261,19 @@ body {
     text-align: center;
 }
 
+.country-info-intro {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: rgba(255, 107, 53, 0.08);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.6;
+    font-weight: 500;
+}
+
 /* 機票條碼區塊 */
 .ticket-barcode-section {
     margin-top: 15px;
@@ -449,7 +462,6 @@ body {
     border: none !important;
 }
 
-.start-marker,
 .destination-marker {
     cursor: pointer;
 }
@@ -477,12 +489,6 @@ body {
     height: 16px;
     border-radius: 50%;
     display: inline-block;
-}
-
-.legend-dot.start {
-    background: #4CAF50;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px #4CAF50;
 }
 
 .legend-dot.destination {
@@ -563,37 +569,42 @@ body {
     border-left: 3px solid var(--primary-color);
 }
 
-.sleep-time-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
 .sleep-time-date {
     font-size: 13px;
     color: var(--text-secondary);
+    margin-bottom: 10px;
 }
 
-.sleep-time-time {
+.sleep-time-times {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.time-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 100px;
+}
+
+.time-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.time-value {
     font-size: 16px;
     font-weight: bold;
+}
+
+.sleep-time-value {
     color: var(--primary-color);
 }
 
-.arrival-time {
-    margin-top: 6px;
-    margin-bottom: 8px;
-    font-size: 14px;
-}
-
-.arrival-time-label {
-    color: var(--text-secondary);
-    margin-right: 6px;
-}
-
 .arrival-time-value {
-    font-weight: bold;
     color: #2f80ed;
 }
 
@@ -807,6 +818,18 @@ body {
     border-radius: 8px;
     font-size: 14px;
     color: var(--text-secondary);
+}
+
+.ticket-detail-country .country-info-intro {
+    margin-top: 12px;
+    padding: 12px 15px;
+    background: rgba(255, 107, 53, 0.08);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-weight: 500;
 }
 
 
