@@ -332,13 +332,43 @@ ${prompt}`;
         }
 
         const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: "gpt-4o", // 🔧 升級到 GPT-4o（更優質的模型，支持更好的理解和生成）
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
             max_tokens: 400
         });
 
         const announcement = response.choices[0].message.content.trim();
+
+        // 🔧 改進：如果是降落廣播，同時生成活動建議
+        let activitySuggestion = null;
+        if (announcementType === 'landing') {
+            try {
+                const activityPrompt = isEnglish
+                    ? `Generate ONE engaging activity suggestion for travelers visiting ${city}, ${country}. 
+                    Make it specific, encouraging, and culturally relevant. Examples: "Participate in local festivals", "Try authentic street food", "Experience traditional cultural activities", "Visit historical sites", "Explore local markets", "Attend traditional celebrations", "Taste local specialties", "Visit museums", "Stroll through old districts", "Experience local arts".
+                    Format: One sentence, 15-25 words, warm and inviting tone. Focus on cultural experiences, not just tourist attractions.`
+                    : `為前往【${city}，${country}】的旅客生成一個有趣的活動建議。
+                    要具體、鼓勵性、符合當地文化。例如：「參與當地民族慶典，感受傳統文化」、「品嚐道地特色美食，探索味蕾新體驗」、「體驗當地文化活動，深入了解風土人情」、「參觀歷史古蹟，感受時光流轉」、「探索當地市集，發現獨特工藝品」、「參與傳統節慶，融入當地生活」、「品嚐街頭小吃，體驗在地風味」、「參觀博物館，了解文化歷史」、「漫步老城區，感受歷史氛圍」、「體驗當地藝術，欣賞文化創作」。
+                    格式：一句話，15-25字，溫暖邀請的語氣。重點是文化體驗，不只是景點。`;
+
+                const activityResponse = await openai.chat.completions.create({
+                    model: "gpt-4o", // 🔧 升級到 GPT-4o（更優質的模型，生成更符合當地文化的活動建議）
+                    messages: [{ role: "user", content: activityPrompt }],
+                    temperature: 0.9,
+                    max_tokens: 100
+                });
+
+                activitySuggestion = activityResponse.choices[0].message.content.trim();
+                console.log('✅ 活動建議生成成功:', activitySuggestion);
+            } catch (error) {
+                console.warn('⚠️ 生成活動建議失敗:', error);
+                // 如果失敗，使用預設建議
+                activitySuggestion = isEnglish
+                    ? `Experience the local culture and explore authentic activities in ${city}`
+                    : `體驗當地文化，探索${city}的獨特魅力`;
+            }
+        }
 
         res.status(200).json({
             announcement,
@@ -347,6 +377,7 @@ ${prompt}`;
             country,
             countryCode,
             greeting,
+            activitySuggestion, // 🔧 新增：活動建議
             timestamp: new Date().toISOString()
         });
 
