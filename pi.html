@@ -7677,7 +7677,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 let selectedFeedback = '3';
                 
                 // 更新選中狀態（使用 active class，類似氣候選項）
-                // 🔧 改進：每個選項都顯示5顆星星，根據選中的位置（0-4）動態顯示對應數量的亮星星
+                // 🔧 改進：總共只顯示5顆星星，根據選中的位置（0-4）動態顯示對應數量的亮星星
+                // 位置 0 → 1顆星，位置 1 → 2顆星，位置 2 → 3顆星，位置 3 → 4顆星，位置 4 → 5顆星
                 function updateSelection(index) {
                     if (index < 0 || index >= options.length) {
                         console.warn('⚠️ [情緒量表] 無效的索引:', index, 'options.length:', options.length);
@@ -7690,43 +7691,44 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     // 計算應該亮幾顆星星（索引 0-4 對應 1-5 顆星）
                     const starsToShow = index + 1;
                     
-                    // 更新所有選項的星星顯示和 active 狀態
-                    currentOptions.forEach((opt, i) => {
-                        const starsContainer = opt.querySelector('.feedback-stars');
-                        const stars = starsContainer ? starsContainer.querySelectorAll('.star') : [];
-                        
-                        if (i === index) {
-                            // 選中的選項：添加 active class，並根據選中位置顯示對應數量的亮星星
-                            opt.classList.add('active');
-                            
-                            // 更新星星：顯示對應數量的亮星星（位置 0 → 1顆亮，位置 4 → 5顆全亮）
-                            stars.forEach((star, starIndex) => {
-                                if (starIndex < starsToShow) {
-                                    star.classList.remove('star-empty');
-                                    star.classList.add('star-filled');
-                                    star.textContent = '⭐';
-                                } else {
-                                    star.classList.remove('star-filled');
-                                    star.classList.add('star-empty');
-                                    star.textContent = '☆';
-                                }
-                            });
-                        } else {
-                            // 未選中的選項：移除 active class，所有星星都顯示為空（☆）
-                            opt.classList.remove('active');
-                            
-                            // 所有星星都顯示為空（未選中時）
-                            stars.forEach((star) => {
-                                star.classList.remove('star-filled');
+                    // 找到所有選項的星星容器，確保總共只有5顆星星
+                    const allStarsContainers = document.querySelectorAll('#feedbackOptions .feedback-stars');
+                    
+                    // 先清除所有星星容器中的內容
+                    allStarsContainers.forEach(container => {
+                        container.innerHTML = '';
+                    });
+                    
+                    // 在選中的選項中動態創建星星
+                    const selectedOption = currentOptions[index];
+                    const selectedStarsContainer = selectedOption.querySelector('.feedback-stars');
+                    
+                    if (selectedStarsContainer) {
+                        // 創建對應數量的星星
+                        for (let i = 0; i < 5; i++) {
+                            const star = document.createElement('span');
+                            star.className = 'star';
+                            if (i < starsToShow) {
+                                star.classList.add('star-filled');
+                                star.textContent = '⭐';
+                            } else {
                                 star.classList.add('star-empty');
                                 star.textContent = '☆';
-                            });
+                            }
+                            selectedStarsContainer.appendChild(star);
+                        }
+                    }
+                    
+                    // 更新所有選項的 active 狀態
+                    currentOptions.forEach((opt, i) => {
+                        if (i === index) {
+                            opt.classList.add('active');
+                        } else {
+                            opt.classList.remove('active');
                         }
                     });
                     
                     selectedIndex = index;
-                    // 使用當前選中的元素獲取 data-feedback
-                    const selectedOption = currentOptions[index];
                     selectedFeedback = selectedOption?.getAttribute('data-feedback') || String(index + 1);
                     
                     // 立即更新全局標記的選擇值（確保同步）
@@ -8943,6 +8945,25 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
             
             if (phase === Phase.POST_ARRIVAL || phase === 0) {
+                // 🔧 改進：確保使用最新生成的圖片
+                const latestImageUrl = window._manualLandingImageUrl || destinationImageUrl;
+                if (latestImageUrl) {
+                    console.log('🖼️ [Phase 0] 使用最新生成的圖片:', latestImageUrl);
+                    destinationImageUrl = latestImageUrl;
+                    
+                    // 立即顯示新圖片
+                    const windowContent = document.querySelector('.window-content');
+                    if (windowContent) {
+                        windowContent.innerHTML = '';
+                        const proxiedUrl = getProxiedImageUrl(latestImageUrl);
+                        windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
+                        windowContent.style.backgroundSize = 'cover';
+                        windowContent.style.backgroundPosition = 'center';
+                        windowContent.style.backgroundRepeat = 'no-repeat';
+                        console.log('✅ [Phase 0] 新生成的圖片已顯示');
+                    }
+                }
+                
                 // Phase 0: 優先顯示 stateLandingCountryInfo（降落後的統一資訊），隱藏 stateCountry
                 if (stateLandingCountryInfo && stateLandingCountryInfo.classList.contains('active')) {
                     // 如果有降落後的資訊，只顯示它（與 Phase 7 效果一致）
@@ -10666,18 +10687,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
                 
                 // 🔧 改進：第一人稱機翼視角（完全沒有窗戶框，純粹的機翼和城市風景）
-                const prompt = 'Square 1024x1024 aerial view from airplane, full-frame unobstructed view. ' +
+                const prompt = 'Square 1024x1024 first-person view from inside airplane cabin looking out through window, ' +
                     'WING: Large bright blue airplane wing extending diagonally from lower left to middle right, ' +
-                    'Boeing 787 Dreamliner style, seen from above and slightly behind, ' +
+                    'Boeing 787 Dreamliner style, seen from passenger window perspective, ' +
                     'slightly upturned wingtip (sharklet) visible on left side, ' +
                     'two engine nacelles underneath in darker blue, ' +
                     'subtle panel lines in lighter blue on wing surface, ' +
-                    'wing occupies foreground bottom portion, creating immersive depth. ' +
-                    'ABSOLUTELY NO window frames, NO window borders, NO window edges, NO window structure, NO glass panes, NO glass reflections, NO window elements visible - pure unobstructed aerial view, full-frame composition, no window or frame elements whatsoever. ' +
+                    'wing occupies foreground bottom portion, creating immersive first-person depth. ' +
+                    'VIEWPOINT: First-person perspective from inside airplane cabin, looking out through window opening, ' +
+                    'ABSOLUTELY NO window frames, NO window borders, NO window edges, NO window structure, NO glass panes, NO glass reflections, NO window frame elements visible - pure unobstructed view through window opening, as if looking directly out from inside the cabin, no visible window frame or structure. ' +
                     'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' + timeSegment + ' (' + weatherState + '), ' + skyFeature + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing. ' +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
-                    'CRITICAL: Full-frame unobstructed aerial view, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, wing prominent in foreground, cityscape visible below and beyond, pure aerial perspective without any window elements.';
+                    'CRITICAL: First-person view from inside airplane cabin looking out, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective looking out through window opening without any visible window frame elements.';
                 
                 const response = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
                     method: 'POST',
@@ -10746,8 +10768,13 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.warn('⚠️ [handleLanding] 關閉飛行進度條時發生小問題:', e);
             }
             
-            // 立即顯示「機長廣播中」的動態 UI（在底部 bar）
-            console.log('📢 [Phase 7] 顯示機長廣播中 UI...');
+            // 🔧 改進：先顯示5秒「準備降落程序...」，再顯示「機長廣播中...」來拖時間
+            console.log('📢 [Phase 7] 先顯示準備降落程序...');
+            setBoardingStatus(true, '準備降落程序...');
+            
+            // 等待5秒後切換到「機長廣播中...」
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            console.log('📢 [Phase 7] 切換到機長廣播中 UI...');
             setBoardingStatus(true, '機長廣播中...');
             
             // 🔧 改進：確保 takeoff2.mp4 繼續播放，直到 landing.mp4 準備好並可以播放
