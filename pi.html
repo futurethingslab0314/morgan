@@ -1058,9 +1058,9 @@
         .landing-country-bar {
             display: flex;
             align-items: center;
-            justify-content: center; /* 🔧 改進：置中對齊 */
+            justify-content: center; /* 置中對齊主要內容 */
             gap: 24px;
-            padding: 20px 32px;
+            padding: 20px 32px 20px 180px; /* 🔧 改進：左邊增加 padding，為「所在位置」留出空間 */
             background: rgba(255, 255, 255, 0.98);
             width: 100%;
             box-sizing: border-box;
@@ -1078,6 +1078,10 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            white-space: nowrap; /* 防止文字換行 */
+            max-width: 140px; /* 限制最大寬度 */
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .landing-country-flag {
@@ -1093,8 +1097,9 @@
             flex-direction: column;
             gap: 10px;
             min-width: 0;
-            align-items: center; /* 🔧 改進：置中對齊 */
-            text-align: center; /* 🔧 改進：文字置中 */
+            align-items: center; /* 置中對齊 */
+            text-align: center; /* 文字置中 */
+            max-width: calc(100% - 200px); /* 🔧 改進：限制最大寬度，避免和左邊重疊 */
         }
 
         .landing-country-name {
@@ -2200,6 +2205,19 @@
 
         // 下一步按鈕點擊事件
         document.addEventListener('DOMContentLoaded', () => {
+            // 🔧 改進：立即清空位置顯示，避免顯示「台灣」
+            const currentCountryEl = document.getElementById('currentCountry');
+            const stateCountry = document.getElementById('stateCountry');
+            const countryFlagEl = stateCountry ? stateCountry.querySelector('.country-flag') : null;
+            
+            if (currentCountryEl) {
+                currentCountryEl.textContent = '';
+                console.log('🔍 [DOMContentLoaded] 立即清空位置顯示，等待載入新位置...');
+            }
+            if (countryFlagEl) {
+                countryFlagEl.textContent = '🏳️';
+            }
+            
             const nextButton = document.getElementById('nextButton');
             if (nextButton) {
                 nextButton.addEventListener('click', () => {
@@ -4583,6 +4601,19 @@
             
             // 重要：只有在 Phase 0 時才設置初始狀態，避免覆蓋用戶已切換的狀態
             if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) {
+                // 🔧 改進：先清空位置顯示，避免顯示「台灣」
+                const currentCountryEl = document.getElementById('currentCountry');
+                const stateCountry = document.getElementById('stateCountry');
+                const countryFlagEl = stateCountry ? stateCountry.querySelector('.country-flag') : null;
+                
+                if (currentCountryEl) {
+                    currentCountryEl.textContent = '';
+                    console.log('🔍 [initializeApp] 先清空位置顯示，等待載入新位置...');
+                }
+                if (countryFlagEl) {
+                    countryFlagEl.textContent = '🏳️';
+                }
+                
                 // 確保初始狀態正確顯示
                 switchState(State.COUNTRY);
                 
@@ -5224,17 +5255,9 @@
             
             console.log('⏹️ landing.mp4 播放結束，準備顯示降落圖片');
             
-            // 🔧 改進：landing.mp4 播放結束後，隱藏「降落中，請稍後」UI，並恢復橘色大字為「機長廣播中」
-            const landingCaptainStateEnd = document.getElementById('stateCaptainAnnouncement');
-            if (landingCaptainStateEnd) {
-                const stateLabelEnd = landingCaptainStateEnd.querySelector('.state-label');
-                if (stateLabelEnd) {
-                    stateLabelEnd.textContent = '📢 機長廣播中';
-                    console.log('✅ [landing.mp4] 已恢復橘色大字為「機長廣播中」');
-                }
-            }
-            setBoardingStatus(false);
-            console.log('✅ [landing.mp4] 已隱藏「降落中，請稍後」UI');
+            // 🔧 改進：landing.mp4 播放結束後，先不隱藏「降落中，請稍後」UI
+            // 等到圖片顯示後再隱藏，並顯示目的地資訊
+            console.log('⏳ [landing.mp4] 保持「降落中，請稍後」UI，等待圖片顯示...');
             
             // 🔧 改進：在等待生圖時，先顯示情緒量表讓使用者先做
             console.log('📋 [landing.mp4] 在等待生圖時，先顯示情緒量表...');
@@ -5281,6 +5304,10 @@
                     windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
                     console.log('🖼️ 降落圖片已顯示（landing.mp4 之後）');
+                    
+                    // 🔧 改進：圖片顯示後，隱藏「降落中，請稍後」UI
+                    setBoardingStatus(false);
+                    console.log('✅ [landing.mp4] 圖片已顯示，已隱藏「降落中，請稍後」UI');
                 } else {
                 // 圖片還沒準備好，停留在 landing.mp4 的最後一幀
                 console.log('⏳ 降落圖片尚未準備好，停留在 landing.mp4 最後一幀，等待圖片生成...');
@@ -5319,6 +5346,10 @@
                             // 淡入圖片
                             setTimeout(() => {
                                 windowContent.style.opacity = '1';
+                                
+                                // 🔧 改進：圖片顯示後，隱藏「降落中，請稍後」UI
+                                setBoardingStatus(false);
+                                console.log('✅ [landing.mp4] 圖片已顯示，已隱藏「降落中，請稍後」UI');
                             }, 50);
                             
                             console.log('🖼️ 降落圖片已無縫切換顯示');
@@ -9195,6 +9226,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
             
             if (phase === Phase.POST_ARRIVAL || phase === 0) {
+                // 🔧 改進：確保 currentState 正確設置為 State.COUNTRY（允許按鈕正常運作）
+                if (currentState !== State.COUNTRY) {
+                    currentState = State.COUNTRY;
+                    console.log('✅ [Phase 0] 已重置 currentState 為 State.COUNTRY');
+                }
+                
                 // 🔧 改進：確保使用最新生成的圖片
                 const latestImageUrl = window._manualLandingImageUrl || destinationImageUrl;
                 if (latestImageUrl) {
@@ -9229,6 +9266,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     stateCountry.classList.add('active');
                     console.log('✅ [Phase ' + phase + '] 顯示 stateCountry（初始狀態）');
                 }
+                
+                // 🔧 改進：確保按鈕狀態正確（清除所有按鈕相關狀態，確保可以正常響應）
+                lastButtonPressTime = 0;
+                buttonPressSequence = [];
+                if (buttonPressTimeout) {
+                    clearTimeout(buttonPressTimeout);
+                    buttonPressTimeout = null;
+                }
+                console.log('✅ [Phase 0] 已清除按鈕狀態，準備接收新的按鈕輸入');
             } else {
                 // 其他 Phase: 隱藏兩者
                 if (stateCountry) {
@@ -10354,12 +10400,17 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             }
             
-            // 清除時間和方向選擇（讓用戶可以重新選擇）
-            // 注意：不重置 selectedTimer 和 selectedDirection，因為用戶可能想要保留
-            // 但如果需要完全重置，可以取消下面的註釋
-            // selectedTimer = null;
-            // selectedDirection = null;
+            // 🔧 改進：清除時間和方向選擇（讓用戶可以重新選擇，確保第二次 loop 正常運作）
+            selectedTimer = null;
+            selectedDirection = null;
+            // 注意：不重置 destinationData，因為 Phase 0 需要顯示上次的目的地資訊
             // destinationData = null;
+            
+            // 🔧 改進：重置 currentPosition（旋鈕位置追蹤）
+            currentPosition = 0;
+            
+            // 🔧 改進：重置 lastKnobPosition（確保旋鈕位置能重新讀取）
+            lastKnobPosition = null;
             
             console.log('✅ [重置狀態] 所有飛行狀態已重置');
         }
@@ -11822,7 +11873,10 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             }
             
             switchToPhase(Phase.POST_ARRIVAL); // 從 Phase 7 回到 Phase 0，這是允許的
+            // 🔧 改進：確保 currentState 正確設置（switchToPhase 已經會設置，但這裡再次確認）
             currentState = State.COUNTRY;
+            // 確保 switchState 也被調用，更新 UI 狀態
+            switchState(State.COUNTRY);
             console.log('   切換後 - 當前階段:', currentPhase, '當前狀態:', currentState);
             
             // 確保目的地圖片顯示在 800x800 視窗中（優先使用最新生成的圖片）
