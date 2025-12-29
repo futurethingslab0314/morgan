@@ -94,7 +94,7 @@ export default async function handler(req, res) {
             // 🔧 改進：確保文件是公開的（使用正確的 Firebase Admin SDK 方法）
             try {
                 // 方法1：使用 makePublic()（推薦）
-                await file.makePublic();
+            await file.makePublic();
                 console.log('✅ 文件已設置為公開讀取 (makePublic)');
             } catch (publicError) {
                 console.warn('⚠️ makePublic 失敗，嘗試設置 ACL:', publicError.message);

@@ -7704,7 +7704,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     const selectedStarsContainer = selectedOption.querySelector('.feedback-stars');
                     
                     if (selectedStarsContainer) {
-                        // 創建對應數量的星星
+                        // 創建對應數量的星星（總共5顆，根據選中位置顯示對應數量的亮星星）
                         for (let i = 0; i < 5; i++) {
                             const star = document.createElement('span');
                             star.className = 'star';
@@ -10687,15 +10687,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
                 
                 // 🔧 改進：第一人稱機翼視角（完全沒有窗戶框，純粹的機翼和城市風景）
-                const prompt = 'Square 1024x1024 first-person view from inside airplane cabin looking out through window, ' +
+                const prompt = 'Square 1024x1024 first-person view from inside airplane cabin looking out through window opening, ' +
                     'WING: Large bright blue airplane wing extending diagonally from lower left to middle right, ' +
-                    'Boeing 787 Dreamliner style, seen from passenger window perspective, ' +
+                    'Boeing 787 Dreamliner style, seen from passenger window perspective inside cabin, ' +
                     'slightly upturned wingtip (sharklet) visible on left side, ' +
                     'two engine nacelles underneath in darker blue, ' +
                     'subtle panel lines in lighter blue on wing surface, ' +
-                    'wing occupies foreground bottom portion, creating immersive first-person depth. ' +
+                    'wing occupies foreground bottom portion, creating immersive first-person depth from inside cabin. ' +
                     'VIEWPOINT: First-person perspective from inside airplane cabin, looking out through window opening, ' +
-                    'ABSOLUTELY NO window frames, NO window borders, NO window edges, NO window structure, NO glass panes, NO glass reflections, NO window frame elements visible - pure unobstructed view through window opening, as if looking directly out from inside the cabin, no visible window frame or structure. ' +
+                    'ABSOLUTELY NO window frames, NO window borders, NO window edges, NO window structure, NO glass panes, NO glass reflections, NO window frame elements visible - pure unobstructed view through window opening, as if looking directly out from inside the cabin, no visible window frame or structure whatsoever. ' +
                     'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' + timeSegment + ' (' + weatherState + '), ' + skyFeature + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing. ' +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
