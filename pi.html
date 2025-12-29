@@ -280,7 +280,7 @@
             margin-top: auto; /* 推到底部 */
         }
         
-        /* 機長廣播中/準備降落消息顯示 */
+        /* 機長廣播中/準備降落消息顯示 - 白底清新現代樣式 */
         .info-bar-message {
             position: absolute;
             top: 0;
@@ -291,44 +291,25 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            font-size: 20px;
-            font-weight: 600;
-            color: #ff6b35;
-            letter-spacing: 2px;
+            font-size: 18px;
+            font-weight: 500;
+            color: #333333;
+            letter-spacing: 1px;
             z-index: 1000;
-            background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 107, 53, 0.1));
-            border-top: 2px solid #ff6b35;
-            border-bottom: 1px solid rgba(255, 107, 53, 0.3);
-            backdrop-filter: blur(4px);
-            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+            background: #ffffff;
+            border-top: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             line-height: 50px; /* 確保文字垂直置中 */
         }
         
         .info-bar-message.active {
             display: flex;
-            animation: announcementPulse 2s ease-in-out infinite;
-        }
-        
-        @keyframes announcementPulse {
-            0%, 100% {
-                background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 107, 53, 0.1));
-                box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
-            }
-            50% {
-                background: linear-gradient(135deg, rgba(255, 107, 53, 0.25), rgba(255, 107, 53, 0.15));
-                box-shadow: 0 2px 12px rgba(255, 107, 53, 0.3);
-            }
+            animation: none; /* 移除脈衝動畫，保持簡潔 */
         }
         
         .info-bar-message::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: linear-gradient(180deg, #ff6b35, rgba(255, 107, 53, 0.5));
-            animation: slideDown 1.5s ease-in-out infinite;
+            display: none; /* 移除左側裝飾條 */
         }
         
         @keyframes slideDown {
@@ -6938,6 +6919,14 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             const infoBar = document.querySelector('.info-bar');
             
             if (active && message) {
+                // 🔧 判斷是否為計算步驟（根據消息內容）
+                const isCalculating = message.includes('搜尋') || 
+                                     message.includes('確認') || 
+                                     message.includes('計算') || 
+                                     message.includes('規劃') || 
+                                     message.includes('驗證') ||
+                                     message.includes('Sleep Airline');
+                
                 // 顯示機長廣播中/準備降落消息
                 if (infoBarMessage) {
                     // 處理「...」的波浪動畫效果
@@ -6949,13 +6938,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     } else {
                         infoBarMessage.textContent = message;
                     }
+                    
+                    // 所有消息都使用統一的樣式
                     infoBarMessage.classList.add('active');
                 }
                 
                 if (infoBar) {
-                    // 顯示機長廣播中時，填滿顏色
-                    infoBar.style.backgroundColor = 'rgba(255, 107, 53, 0.15)'; // 橙色半透明背景
-                    infoBar.style.borderTop = '2px solid #ff6b35'; // 橙色邊框
+                    // 所有消息都使用白底清新樣式
+                    infoBar.style.backgroundColor = '#ffffff';
+                    infoBar.style.borderTop = '1px solid #e5e7eb';
                     infoBar.classList.add('has-message'); // 添加標記類，用於調整布局
                 }
                 
