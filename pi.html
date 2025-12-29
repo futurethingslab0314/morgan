@@ -280,7 +280,7 @@
             margin-top: auto; /* 推到底部 */
         }
         
-        /* 機長廣播中/準備降落消息顯示 - 白底清新現代樣式 */
+        /* 機長廣播中/準備降落消息顯示 - 保留用於其他用途，但主要使用 stateCaptainAnnouncement */
         .info-bar-message {
             position: absolute;
             top: 0;
@@ -310,6 +310,18 @@
         
         .info-bar-message::before {
             display: none; /* 移除左側裝飾條 */
+        }
+        
+        /* 機長廣播狀態樣式 - 與前面 phase 的 UI 一致 */
+        #stateCaptainAnnouncement .announcement-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #stateCaptainAnnouncement #announcementMessage {
+            min-height: 30px;
         }
         
         @keyframes slideDown {
@@ -1285,6 +1297,21 @@
                 </div>
                 <div style="font-size: 14px; color: #999; margin-top: 10px;">
                     請稍候
+                </div>
+            </div>
+        </div>
+
+        <!-- 機長廣播狀態（與前面 phase 的 UI 樣式一致） -->
+        <div class="info-state" id="stateCaptainAnnouncement" style="display: none;">
+            <div class="state-label">📢 機長廣播中</div>
+            <div class="announcement-content" style="margin-top: 30px; text-align: center;">
+                <div class="calculating-spinner">
+                    <div class="spinner-circle"></div>
+                    <div class="spinner-circle"></div>
+                    <div class="spinner-circle"></div>
+                </div>
+                <div id="announcementMessage" style="font-size: 18px; color: #666; margin-top: 20px; font-weight: 500;">
+                    機長廣播中<span class="dots"><span>.</span><span>.</span><span>.</span></span>
                 </div>
             </div>
         </div>
@@ -3007,6 +3034,61 @@
             
             // 開始輪詢
             buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
+        }
+        
+        // ============================================================================
+        // 音頻淡入淡出函數（全局作用域，供所有函數使用）
+        // ============================================================================
+        function fadeInAudio(audio, duration = 1000, targetVolume = 1) {
+            return new Promise((resolve) => {
+                if (!audio) {
+                    console.warn('⚠️ fadeInAudio: audio 對象不存在');
+                    resolve();
+                    return;
+                }
+                const startVolume = audio.volume || 0;
+                const endVolume = targetVolume;
+                const startTime = Date.now();
+                
+                const fadeInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    audio.volume = startVolume + (endVolume - startVolume) * progress;
+                    
+                    if (progress >= 1) {
+                        clearInterval(fadeInterval);
+                        audio.volume = endVolume;
+                        resolve();
+                    }
+                }, 16); // 約 60fps
+            });
+        }
+        
+        function fadeOutAudio(audio, duration = 1000) {
+            return new Promise((resolve) => {
+                if (!audio) {
+                    console.warn('⚠️ fadeOutAudio: audio 對象不存在');
+                    resolve();
+                    return;
+                }
+                const startVolume = audio.volume || 0;
+                const endVolume = 0;
+                const startTime = Date.now();
+                
+                const fadeInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    audio.volume = startVolume + (endVolume - startVolume) * progress;
+                    
+                    if (progress >= 1) {
+                        clearInterval(fadeInterval);
+                        audio.volume = endVolume;
+                        audio.pause();
+                        audio.currentTime = 0;
+                        resolve();
+                    }
+                }, 16); // 約 60fps
+            });
         }
         
         // 處理實體按鈕按下事件（支援雙擊/三擊檢測）
@@ -6875,19 +6957,41 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 { message: '驗證天氣條件與能見度...', duration: 1500 }
             ];
             
-            // 顯示計算 UI
-            setBoardingStatus(true, steps[0].message);
+            // 顯示 stateCalculating UI（與前面 phase 的樣式一致）
+            const calculatingState = document.getElementById('stateCalculating');
+            if (calculatingState) {
+                calculatingState.style.display = 'flex';
+                calculatingState.classList.add('active');
+                
+                // 更新計算內容文字
+                const calculatingContent = calculatingState.querySelector('.calculating-content');
+                if (calculatingContent) {
+                    const messageDiv = calculatingContent.querySelector('div[style*="font-size: 18px"]');
+                    if (messageDiv) {
+                        messageDiv.textContent = steps[0].message;
+                    }
+                }
+            }
             
             // 依次顯示每個步驟
             for (let i = 0; i < steps.length; i++) {
                 await new Promise(resolve => setTimeout(resolve, steps[i].duration));
-                if (i < steps.length - 1) {
-                    setBoardingStatus(true, steps[i + 1].message);
+                if (i < steps.length - 1 && calculatingState) {
+                    const calculatingContent = calculatingState.querySelector('.calculating-content');
+                    if (calculatingContent) {
+                        const messageDiv = calculatingContent.querySelector('div[style*="font-size: 18px"]');
+                        if (messageDiv) {
+                            messageDiv.textContent = steps[i + 1].message;
+                        }
+                    }
                 }
             }
             
             // 最後隱藏計算 UI
-            setBoardingStatus(false);
+            if (calculatingState) {
+                calculatingState.style.display = 'none';
+                calculatingState.classList.remove('active');
+            }
             console.log('✅ 目的地計算 UI 步驟完成');
         }
 
@@ -6914,10 +7018,6 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 textEl.textContent = message;
             }
             
-            // 🔧 在info-bar中顯示消息
-            const infoBarMessage = document.getElementById('infoBarMessage');
-            const infoBar = document.querySelector('.info-bar');
-            
             if (active && message) {
                 // 🔧 判斷是否為計算步驟（根據消息內容）
                 const isCalculating = message.includes('搜尋') || 
@@ -6927,34 +7027,64 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                                      message.includes('驗證') ||
                                      message.includes('Sleep Airline');
                 
-                // 顯示機長廣播中/準備降落消息
-                if (infoBarMessage) {
-                    // 處理「...」的波浪動畫效果
-                    let displayMessage = message;
-                    if (message && message.includes('...')) {
-                        const baseText = message.replace('...', '');
-                        displayMessage = baseText + '<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
-                        infoBarMessage.innerHTML = displayMessage;
-                    } else {
-                        infoBarMessage.textContent = message;
+                // 隱藏所有其他 info-state
+                document.querySelectorAll('.info-state').forEach(state => {
+                    if (state.id !== 'stateCaptainAnnouncement' && state.id !== 'stateCalculating') {
+                        state.classList.remove('active');
+                        state.style.display = 'none';
+                    }
+                });
+                
+                // 如果是計算步驟，使用 stateCalculating
+                if (isCalculating) {
+                    const calculatingState = document.getElementById('stateCalculating');
+                    const captainState = document.getElementById('stateCaptainAnnouncement');
+                    
+                    if (captainState) {
+                        captainState.style.display = 'none';
+                        captainState.classList.remove('active');
                     }
                     
-                    // 所有消息都使用統一的樣式
-                    infoBarMessage.classList.add('active');
+                    if (calculatingState) {
+                        calculatingState.style.display = 'flex';
+                        calculatingState.classList.add('active');
+                        
+                        // 更新計算內容文字
+                        const calculatingContent = calculatingState.querySelector('.calculating-content');
+                        if (calculatingContent) {
+                            const messageDiv = calculatingContent.querySelector('div[style*="font-size: 18px"]');
+                            if (messageDiv) {
+                                messageDiv.textContent = message;
+                            }
+                        }
+                    }
+                } else {
+                    // 機長廣播使用 stateCaptainAnnouncement（與前面 phase 的 UI 一致）
+                    const captainState = document.getElementById('stateCaptainAnnouncement');
+                    const calculatingState = document.getElementById('stateCalculating');
+                    
+                    if (calculatingState) {
+                        calculatingState.style.display = 'none';
+                        calculatingState.classList.remove('active');
+                    }
+                    
+                    if (captainState) {
+                        captainState.style.display = 'flex';
+                        captainState.classList.add('active');
+                        
+                        // 更新機長廣播訊息
+                        const announcementMessage = document.getElementById('announcementMessage');
+                        if (announcementMessage) {
+                            // 處理「...」的波浪動畫效果
+                            if (message && message.includes('...')) {
+                                const baseText = message.replace('...', '');
+                                announcementMessage.innerHTML = baseText + '<span class="dots"><span>.</span><span>.</span><span>.</span></span>';
+                            } else {
+                                announcementMessage.textContent = message || '機長廣播中';
+                            }
+                        }
+                    }
                 }
-                
-                if (infoBar) {
-                    // 所有消息都使用白底清新樣式
-                    infoBar.style.backgroundColor = '#ffffff';
-                    infoBar.style.borderTop = '1px solid #e5e7eb';
-                    infoBar.classList.add('has-message'); // 添加標記類，用於調整布局
-                }
-                
-                // 隱藏所有info-state
-                document.querySelectorAll('.info-state').forEach(state => {
-                    state.classList.remove('active');
-                    state.style.display = 'none';
-                });
                 
                 // 🔧 確保隱藏進度條（當顯示機長廣播時，不應該同時顯示進度條）
                 const flightProgressWrapper = document.getElementById('flightProgressWrapper');
@@ -6967,19 +7097,20 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 el.classList.add('active');
                 el.style.display = 'flex'; // 強制顯示
                 el.style.zIndex = '1000'; // 確保在最上層
-                console.log('✅ [機長廣播UI] 已顯示在bar:', message);
+                console.log('✅ [機長廣播UI] 已顯示（使用 info-state 樣式）:', message);
             } else {
-                // 隱藏消息
-                if (infoBarMessage) {
-                    infoBarMessage.classList.remove('active');
-                    infoBarMessage.textContent = '';
+                // 隱藏所有機長廣播相關的 UI
+                const captainState = document.getElementById('stateCaptainAnnouncement');
+                const calculatingState = document.getElementById('stateCalculating');
+                
+                if (captainState) {
+                    captainState.style.display = 'none';
+                    captainState.classList.remove('active');
                 }
                 
-                if (infoBar) {
-                    // 隱藏時恢復原樣
-                    infoBar.style.backgroundColor = '';
-                    infoBar.style.borderTop = '';
-                    infoBar.classList.remove('has-message'); // 移除標記類
+                if (calculatingState) {
+                    calculatingState.style.display = 'none';
+                    calculatingState.classList.remove('active');
                 }
                 
                 el.classList.remove('active');
@@ -9191,48 +9322,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 🔧 改進：為 takeoff.mp3 添加淡入淡出效果
             takeoffAudio.volume = 0; // 初始音量為 0
             
-            // 淡入淡出函數
-            const fadeInAudio = (audio, duration = 1000) => {
-                return new Promise((resolve) => {
-                    const startVolume = 0;
-                    const endVolume = 1;
-                    const startTime = Date.now();
-                    
-                    const fadeInterval = setInterval(() => {
-                        const elapsed = Date.now() - startTime;
-                        const progress = Math.min(elapsed / duration, 1);
-                        audio.volume = startVolume + (endVolume - startVolume) * progress;
-                        
-                        if (progress >= 1) {
-                            clearInterval(fadeInterval);
-                            audio.volume = endVolume;
-                            resolve();
-                        }
-                    }, 16); // 約 60fps
-                });
-            };
-            
-            const fadeOutAudio = (audio, duration = 1000) => {
-                return new Promise((resolve) => {
-                    const startVolume = audio.volume;
-                    const endVolume = 0;
-                    const startTime = Date.now();
-                    
-                    const fadeInterval = setInterval(() => {
-                        const elapsed = Date.now() - startTime;
-                        const progress = Math.min(elapsed / duration, 1);
-                        audio.volume = startVolume + (endVolume - startVolume) * progress;
-                        
-                        if (progress >= 1) {
-                            clearInterval(fadeInterval);
-                            audio.volume = endVolume;
-                            audio.pause();
-                            audio.currentTime = 0;
-                            resolve();
-                        }
-                    }, 16); // 約 60fps
-                });
-            };
+            // 使用全局的 fadeInAudio 和 fadeOutAudio 函數
             
             try {
                 // 先確保第二個影片也已載入（避免等一下切過去黑畫面）
@@ -10995,24 +11085,25 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // landingImagePromise 應該已經在函數開始時就定義了
             if (!landingImagePromise) {
                 console.warn('⚠️ landingImagePromise 未定義，重新生成...');
-                landingImagePromise = Promise.resolve(null);
-            if (finalDestination) {
-                landingImagePromise = (async () => {
-                    const url = await generateLandingImage(
-                        finalDestination.city,
-                        finalDestination.country,
-                        finalDestination.timezone || 'UTC',
-                        new Date().toISOString()
-                    );
-                    if (url) {
-                        window._manualLandingImageUrl = url;
+                if (finalDestination) {
+                    landingImagePromise = (async () => {
+                        const url = await generateLandingImage(
+                            finalDestination.city,
+                            finalDestination.country,
+                            finalDestination.timezone || 'UTC',
+                            new Date().toISOString()
+                        );
+                        if (url) {
+                            window._manualLandingImageUrl = url;
                             destinationImageUrl = url;
-                        console.log('✅ 降落圖片生成成功:', url);
-                    } else {
-                        console.warn('⚠️ 降落圖片生成失敗');
-                    }
-                    return url;
-                })();
+                            console.log('✅ 降落圖片生成成功:', url);
+                        } else {
+                            console.warn('⚠️ 降落圖片生成失敗');
+                        }
+                        return url;
+                    })();
+                } else {
+                    landingImagePromise = Promise.resolve(null);
                 }
             }
             
