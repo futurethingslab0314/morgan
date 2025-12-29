@@ -5353,31 +5353,31 @@
         // ============================================================================
         class DestinationCalculator {
             constructor() {
-                // // 台北座標（預設出發地）
-                // this.taipeiLat = 25.05306;
-                // this.taipeiLon = 121.52639;
-                // // 當前出發地座標（可動態更新）
-                // this.originLat = this.taipeiLat;
-                // this.originLon = this.taipeiLon;
+                // 台北座標（預設出發地）
+                this.taipeiLat = 25.05306;
+                this.taipeiLon = 121.52639;
+                // 當前出發地座標（可動態更新）
+                this.originLat = this.taipeiLat;
+                this.originLon = this.taipeiLon;
                 // 飛機速度 (km/h)
                 this.aircraftSpeed = 850;
                 // 城市資料
                 this.citiesData = null;
             }
             
-            // // 設置出發地座標
-            // setOrigin(latitude, longitude) {
-            //     this.originLat = latitude || this.taipeiLat;
-            //     this.originLon = longitude || this.taipeiLon;
-            //     console.log(`📍 出發地已更新: (${this.originLat.toFixed(3)}, ${this.originLon.toFixed(3)})`);
-            // }
+            // 設置出發地座標
+            setOrigin(latitude, longitude) {
+                this.originLat = latitude || this.taipeiLat;
+                this.originLon = longitude || this.taipeiLon;
+                console.log(`📍 出發地已更新: (${this.originLat.toFixed(3)}, ${this.originLon.toFixed(3)})`);
+            }
             
-            // // 重置為台北出發地
-            // resetToTaipei() {
-            //     this.originLat = this.taipeiLat;
-            //     this.originLon = this.taipeiLon;
-            //     console.log(`📍 出發地已重置為台北: (${this.originLat.toFixed(3)}, ${this.originLon.toFixed(3)})`);
-            // }
+            // 重置為台北出發地
+            resetToTaipei() {
+                this.originLat = this.taipeiLat;
+                this.originLon = this.taipeiLon;
+                console.log(`📍 出發地已重置為台北: (${this.originLat.toFixed(3)}, ${this.originLon.toFixed(3)})`);
+            }
             
             // 載入城市資料
             async loadCitiesData() {
