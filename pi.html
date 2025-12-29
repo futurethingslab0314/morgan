@@ -8399,10 +8399,10 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 標記已提前降落，防止 Phase 6 的邏輯執行
             window._earlyLandingConfirmed = true;
             
-            // 🔧 改進：緊急降落流程 - 先播放音樂，同時準備 TTS
+            // 🔧 改進：緊急降落流程 - 先播放音樂，等待 TTS 準備好，再播放 captain.mp3 和 TTS
             // 1. 立即開始播放 wakeup 音樂（不等待，讓音樂先開始）
             console.log('1️⃣ [緊急降落] 立即開始播放 wakeup 音樂（淡入）...');
-            const musicPromise = playWakeupMusicForEarlyLanding();
+            playWakeupMusicForEarlyLanding().catch(err => console.warn('⚠️ 音樂播放錯誤:', err));
             
             // 2. 同時開始準備 TTS（提前生成降落內容）
             console.log('2️⃣ [緊急降落] 開始準備 TTS 語音...');
@@ -8472,8 +8472,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             })();
             
-            // 3. 播放 captain.mp3（同時音樂和 TTS 在背景準備）
-            console.log('3️⃣ [緊急降落] 播放 captain.mp3...');
+            // 3. 等待 TTS 準備完成（確保 TTS 準備好後再播放 captain.mp3）
+            console.log('3️⃣ [緊急降落] 等待 TTS 準備完成...');
+            const landingData = await landingContentPromise;
+            
+            // 4. TTS 準備完成後，播放 captain.mp3
+            console.log('4️⃣ [緊急降落] 播放 captain.mp3...');
             try {
                 await playAudioFile('sounds/captain.mp3', 6);
                 console.log('✅ captain.mp3 播放完成');
@@ -8481,11 +8485,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.warn('⚠️ captain.mp3 播放失敗:', error);
             }
             
-            // 4. captain.mp3 播完後，等待 TTS 準備完成（如果還沒準備好）
-            console.log('4️⃣ [緊急降落] 等待 TTS 準備完成...');
-            const landingData = await landingContentPromise;
-            
-            // 5. TTS 準備完成後，立即播放 TTS
+            // 5. captain.mp3 播完後，立即播放 TTS（已經準備好了）
             if (landingData && landingData.announcement) {
                 console.log('5️⃣ [緊急降落] 播放 TTS 語音...');
                 // 確保音樂音量較低
@@ -8504,10 +8504,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             }
             
-            // 6. 等待音樂淡入完成（不阻塞，讓它在背景完成）
-            musicPromise.catch(err => console.warn('⚠️ 音樂播放錯誤:', err));
-            
-            // 7. 觸發手動降落（直接跳轉到 Phase 7）
+            // 6. 觸發手動降落（直接跳轉到 Phase 7）
+            console.log('6️⃣ [緊急降落] 觸發手動降落...');
             triggerManualLanding();
         }
         
@@ -8815,7 +8813,23 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                             wrapper.style.display = 'none';
                             wrapper.style.visibility = 'hidden';
                             wrapper.style.opacity = '0';
-                            console.log('✅ [Phase 7] 進度條已立即隱藏');
+                            // 🔧 確保進度條的所有子元素也隱藏
+                            const progressLabel = wrapper.querySelector('.flight-progress-label');
+                            const progressMeta = wrapper.querySelector('.flight-progress-meta');
+                            const progressBar = wrapper.querySelector('.flight-progress-bar-bg');
+                            if (progressLabel) {
+                                progressLabel.style.display = 'none';
+                                progressLabel.style.visibility = 'hidden';
+                            }
+                            if (progressMeta) {
+                                progressMeta.style.display = 'none';
+                                progressMeta.style.visibility = 'hidden';
+                            }
+                            if (progressBar) {
+                                progressBar.style.display = 'none';
+                                progressBar.style.visibility = 'hidden';
+                            }
+                            console.log('✅ [Phase 7] 進度條已立即隱藏（包括所有子元素）');
                         }
                     } catch (e) {
                         console.warn('⚠️ [Phase 7] 關閉飛行進度條時發生小問題:', e);
@@ -10815,7 +10829,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             } else {
                 console.log('ℹ️ [提前降落] captain.mp3 和 TTS 已在 confirmEarlyLanding 中播放，跳過');
-                console.log('✅ 降落語音播放完成');
+                console.log('✅ 降落語音播放完成，繼續降落流程...');
             }
             
             // 🔧 改進：語音播放完成後，如果是提前降落，將音樂音量放大
