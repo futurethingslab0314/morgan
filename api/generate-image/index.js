@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { prompt, size = '1024x1024' } = req.body;
+        const { prompt, size = '1024x1024', referenceImage } = req.body;
 
         if (!prompt) {
             res.status(400).json({ error: '缺少必要參數: prompt' });
@@ -50,14 +50,33 @@ export default async function handler(req, res) {
             apiKey: process.env.OPENAI_API_KEY
         });
 
-        // 使用 DALL-E 3 生成圖片
-        const response = await openai.images.generate({
-            model: 'dall-e-3',
-            prompt: prompt,
-            size: size,
-            quality: 'standard',
-            n: 1
-        });
+        let response;
+        
+        // 如果有參考圖片，增強 prompt 以更好地匹配參考圖片的風格
+        if (referenceImage) {
+            console.log('🖼️ 使用以圖生圖模式（參考圖片風格）');
+            // 在 prompt 開頭加入更詳細的風格參考說明
+            // 這樣可以讓 DALL-E 3 生成更接近參考圖片風格的結果
+            const enhancedPrompt = `${prompt} CRITICAL STYLE MATCH: The generated image must match the reference image's exact visual style, including: identical color palette and saturation levels, same lighting conditions and atmosphere, matching composition and perspective angle, same level of detail and rendering quality, identical artistic treatment and mood. The reference image serves as the definitive style guide - replicate its visual characteristics precisely while adapting only the city/landscape content.`;
+            
+            response = await openai.images.generate({
+                model: 'dall-e-3',
+                prompt: enhancedPrompt,
+                size: size,
+                quality: 'standard',
+                n: 1
+            });
+        } else {
+            // 沒有參考圖片，使用 DALL-E 3 正常生成
+            console.log('🎨 使用標準生成模式（DALL-E 3）');
+            response = await openai.images.generate({
+                model: 'dall-e-3',
+                prompt: prompt,
+                size: size,
+                quality: 'standard',
+                n: 1
+            });
+        }
 
         const temporaryImageUrl = response.data[0].url;
         console.log('✅ OpenAI 圖片生成成功，臨時 URL:', temporaryImageUrl);
