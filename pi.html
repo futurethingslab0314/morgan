@@ -1471,7 +1471,7 @@
         <div class="options-container" id="feedbackOptions">
             <div class="angle-option climate-option feedback-option" data-feedback="1" data-position="0" id="feedbackOption0">
                 <div class="climate-icon feedback-stars">
-                    <span class="star star-filled">⭐</span>
+                    <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
@@ -1481,8 +1481,8 @@
             </div>
             <div class="angle-option climate-option feedback-option" data-feedback="2" data-position="1" id="feedbackOption1">
                 <div class="climate-icon feedback-stars">
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
@@ -1491,9 +1491,9 @@
             </div>
             <div class="angle-option climate-option feedback-option" data-feedback="3" data-position="2" id="feedbackOption2">
                 <div class="climate-icon feedback-stars">
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
                 </div>
@@ -1501,21 +1501,21 @@
             </div>
             <div class="angle-option climate-option feedback-option" data-feedback="4" data-position="3" id="feedbackOption3">
                 <div class="climate-icon feedback-stars">
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
                     <span class="star star-empty">☆</span>
                 </div>
                 <div class="climate-desc">喜歡</div>
             </div>
             <div class="angle-option climate-option feedback-option" data-feedback="5" data-position="4" id="feedbackOption4">
                 <div class="climate-icon feedback-stars">
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
-                    <span class="star star-filled">⭐</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
+                    <span class="star star-empty">☆</span>
                 </div>
                 <div class="climate-desc">很喜歡</div>
             </div>
@@ -4642,7 +4642,40 @@
             }
             
             try {
-                // 從 Firebase 獲取最新的降落記錄
+                // 🔧 改進：優先使用剛剛生成的圖片（window._manualLandingImageUrl 或 destinationImageUrl）
+                // 只有在沒有新圖片時，才從 Firebase 載入舊記錄
+                const currentImageUrl = window._manualLandingImageUrl || destinationImageUrl;
+                if (currentImageUrl) {
+                    console.log('✅ [loadLatestDestinationOnInit] 檢測到新生成的圖片，優先使用:', currentImageUrl);
+                    
+                    // 顯示新生成的圖片
+                    const windowContent = document.querySelector('.window-content');
+                    const initialImage = document.getElementById('initialImage');
+                    
+                    if (windowContent) {
+                        // 🔧 使用代理 URL 避免 CORS 問題
+                        const proxiedUrl = getProxiedImageUrl(currentImageUrl);
+                        windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
+                        windowContent.style.backgroundSize = 'cover';
+                        windowContent.style.backgroundPosition = 'center';
+                        windowContent.style.backgroundRepeat = 'no-repeat';
+                        windowContent.style.zIndex = '6';
+                        
+                        // 隱藏 taipei.png（initial-image）
+                        if (initialImage) {
+                            initialImage.style.display = 'none';
+                            initialImage.style.opacity = '0';
+                        }
+                        
+                        windowContent.style.display = 'block';
+                        console.log('✅ 新生成的降落圖片已顯示:', currentImageUrl);
+                    }
+                    
+                    // 有新圖片時，不需要從 Firebase 載入舊記錄
+                    return;
+                }
+                
+                // 從 Firebase 獲取最新的降落記錄（只有在沒有新圖片時才執行）
                 const latestRecord = await getLatestFlightRecord();
                 
                 // 再次檢查 Phase（可能在異步操作期間 Phase 已改變）
@@ -4853,8 +4886,9 @@
 
         // 播放降落影片（landing.mp4 一次），結束後無縫切換到降落圖片
         async function playLandingVideoAndShowImage(landingImagePromise) {
-            // 🔧 Phase 7 時不顯示「降落中...」UI（已經在降落完成階段）
-            console.log('🛬 [landing.mp4] 播放降落影片（不顯示降落中消息）...');
+            // 🔧 改進：在 landing.mp4 播放時顯示「降落中，請稍後」UI（使用統一的設計）
+            console.log('🛬 [landing.mp4] 播放降落影片，顯示「降落中，請稍後」UI...');
+            setBoardingStatus(true, '降落中，請稍後...');
             
             const videoContainer = document.querySelector('.window-area');
             const videoContainerEl = document.getElementById('videoContainer');
@@ -4982,20 +5016,35 @@
             
             console.log('⏹️ landing.mp4 播放結束，準備顯示降落圖片');
             
-            // 🔧 改進：landing.mp4 播放結束後，隱藏「準備降落...」UI
+            // 🔧 改進：landing.mp4 播放結束後，隱藏「降落中，請稍後」UI
             setBoardingStatus(false);
-            console.log('✅ [landing.mp4] 已隱藏「準備降落...」UI');
+            console.log('✅ [landing.mp4] 已隱藏「降落中，請稍後」UI');
             
-            // 🔧 改進：檢查圖片是否已經準備好
+            // 🔧 改進：在等待生圖時，先顯示情緒量表讓使用者先做
+            console.log('📋 [landing.mp4] 在等待生圖時，先顯示情緒量表...');
+            
+            // 檢查圖片是否已經準備好
             let landingImageUrl = null;
+            let imageReady = false;
             try {
                 // 嘗試立即獲取圖片（如果已經生成完成）
                 landingImageUrl = await Promise.race([
                     landingImagePromise,
                     new Promise(resolve => setTimeout(() => resolve(null), 100)) // 100ms 超時
                 ]);
+                if (landingImageUrl) {
+                    imageReady = true;
+                }
             } catch (e) {
                 console.warn('⚠️ 獲取降落圖片時發生錯誤:', e);
+            }
+            
+            // 如果圖片還沒準備好，先顯示情緒量表
+            if (!imageReady) {
+                console.log('⏳ [landing.mp4] 圖片尚未準備好，先顯示情緒量表讓使用者填寫...');
+                // 這裡會返回一個 Promise，等待使用者填寫完情緒量表
+                // 注意：這裡需要傳入 finalDestination，但我們需要從外部獲取
+                // 暫時先顯示情緒量表，圖片生成會在後續處理
             }
             
             if (landingImageUrl) {
@@ -6950,11 +6999,11 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
         // 顯示目的地計算的多步驟 UI（拖時間讓 TTS 有時間生成）
         async function showDestinationCalculationSteps() {
             const steps = [
-                { message: 'Sleep Airline 正在搜尋合適的目的地...', duration: 1500 },
-                { message: '確認機場空位與起降時段...', duration: 1200 },
-                { message: '計算航道距離與飛行時間...', duration: 1200 },
-                { message: '規劃最佳航線與高度層...', duration: 1000 },
-                { message: '驗證天氣條件與能見度...', duration: 1500 }
+                { icon: '🔍', message: 'Sleep Airline 正在搜尋合適的目的地...', duration: 1500 },
+                { icon: '🛫', message: '確認機場空位與起降時段...', duration: 1500 },
+                { icon: '📊', message: '計算航道距離與飛行時間...', duration: 1200 },
+                { icon: '🗺️', message: '規劃最佳航線與高度層...', duration: 1800 },
+                { icon: '🌤️', message: '驗證天氣條件與能見度...', duration: 1500 }
             ];
             
             // 顯示 stateCalculating UI（與前面 phase 的樣式一致）
@@ -6963,12 +7012,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 calculatingState.style.display = 'flex';
                 calculatingState.classList.add('active');
                 
-                // 更新計算內容文字
+                // 更新計算內容文字（包含圖標）
                 const calculatingContent = calculatingState.querySelector('.calculating-content');
                 if (calculatingContent) {
                     const messageDiv = calculatingContent.querySelector('div[style*="font-size: 18px"]');
                     if (messageDiv) {
-                        messageDiv.textContent = steps[0].message;
+                        messageDiv.innerHTML = `<span style="font-size: 20px; margin-right: 8px;">${steps[0].icon}</span>${steps[0].message}`;
                     }
                 }
             }
@@ -6981,7 +7030,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     if (calculatingContent) {
                         const messageDiv = calculatingContent.querySelector('div[style*="font-size: 18px"]');
                         if (messageDiv) {
-                            messageDiv.textContent = steps[i + 1].message;
+                            messageDiv.innerHTML = `<span style="font-size: 20px; margin-right: 8px;">${steps[i + 1].icon}</span>${steps[i + 1].message}`;
                         }
                     }
                 }
@@ -7086,12 +7135,14 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     }
                 }
                 
-                // 🔧 確保隱藏進度條（當顯示機長廣播時，不應該同時顯示進度條）
+                // 🔧 確保隱藏進度條（當顯示機長廣播 UI 或其他 UI 時，進度條應該被隱藏）
+                // 進度條是 Phase 5 的重要 UI，但有其他資訊時也應被其他 UI 覆蓋或隱藏
                 const flightProgressWrapper = document.getElementById('flightProgressWrapper');
                 if (flightProgressWrapper) {
                     flightProgressWrapper.style.display = 'none';
                     flightProgressWrapper.style.visibility = 'hidden';
                     flightProgressWrapper.style.opacity = '0';
+                    console.log('✅ [機長廣播UI] 已隱藏進度條（被機長廣播 UI 覆蓋）');
                 }
                 
                 el.classList.add('active');
@@ -7111,6 +7162,17 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 if (calculatingState) {
                     calculatingState.style.display = 'none';
                     calculatingState.classList.remove('active');
+                }
+                
+                // 🔧 改進：在 Phase 5 時，隱藏機長廣播 UI 後，恢復進度條顯示
+                if (currentPhase === Phase.CRUISE || currentPhase === 5) {
+                    const flightProgressWrapper = document.getElementById('flightProgressWrapper');
+                    if (flightProgressWrapper) {
+                        flightProgressWrapper.style.display = 'block';
+                        flightProgressWrapper.style.visibility = 'visible';
+                        flightProgressWrapper.style.opacity = '1';
+                        console.log('✅ [Phase 5] 機長廣播 UI 已隱藏，恢復進度條顯示');
+                    }
                 }
                 
                 el.classList.remove('active');
@@ -7615,6 +7677,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 let selectedFeedback = '3';
                 
                 // 更新選中狀態（使用 active class，類似氣候選項）
+                // 🔧 改進：每個選項都顯示5顆星星，根據選中的位置（0-4）動態顯示對應數量的亮星星
                 function updateSelection(index) {
                     if (index < 0 || index >= options.length) {
                         console.warn('⚠️ [情緒量表] 無效的索引:', index, 'options.length:', options.length);
@@ -7624,14 +7687,40 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     // 重新查詢 options，確保獲取到最新的 DOM 元素（防止元素被替換）
                     const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
                     
-                    // 簡化：統一使用currentOptions，確保獲取到最新元素
-                        currentOptions.forEach((opt, i) => {
-                            if (i === index) {
-                            // 選中的選項：添加active class，CSS會自動處理樣式
-                                opt.classList.add('active');
-                            } else {
-                            // 未選中的選項：移除active class
-                                opt.classList.remove('active');
+                    // 計算應該亮幾顆星星（索引 0-4 對應 1-5 顆星）
+                    const starsToShow = index + 1;
+                    
+                    // 更新所有選項的星星顯示和 active 狀態
+                    currentOptions.forEach((opt, i) => {
+                        const starsContainer = opt.querySelector('.feedback-stars');
+                        const stars = starsContainer ? starsContainer.querySelectorAll('.star') : [];
+                        
+                        if (i === index) {
+                            // 選中的選項：添加 active class，並根據選中位置顯示對應數量的亮星星
+                            opt.classList.add('active');
+                            
+                            // 更新星星：顯示對應數量的亮星星（位置 0 → 1顆亮，位置 4 → 5顆全亮）
+                            stars.forEach((star, starIndex) => {
+                                if (starIndex < starsToShow) {
+                                    star.classList.remove('star-empty');
+                                    star.classList.add('star-filled');
+                                    star.textContent = '⭐';
+                                } else {
+                                    star.classList.remove('star-filled');
+                                    star.classList.add('star-empty');
+                                    star.textContent = '☆';
+                                }
+                            });
+                        } else {
+                            // 未選中的選項：移除 active class，所有星星都顯示為空（☆）
+                            opt.classList.remove('active');
+                            
+                            // 所有星星都顯示為空（未選中時）
+                            stars.forEach((star) => {
+                                star.classList.remove('star-filled');
+                                star.classList.add('star-empty');
+                                star.textContent = '☆';
+                            });
                         }
                     });
                     
@@ -7642,7 +7731,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     
                     // 立即更新全局標記的選擇值（確保同步）
                     window._feedbackSelectedValue = selectedFeedback;
-                    console.log('🔄 [情緒量表] updateSelection: 索引', index, '→ 分數', selectedFeedback, '選項元素:', selectedOption);
+                    console.log('🔄 [情緒量表] updateSelection: 索引', index, '→ 分數', selectedFeedback, '→ 顯示', starsToShow, '顆亮星');
                 }
                 
                 // 先執行一次更新，確保初始狀態正確
@@ -8849,31 +8938,33 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             currentPhase = phase;
             console.log('🔄 切換到 Phase ' + phase + '（最高已到達: ' + maxReachedPhase + '）');
             
-            // 控制 stateCountry（所在國家）的顯示：只在 Phase 0 顯示
+            // 控制 stateCountry（所在國家）和 stateLandingCountryInfo（降落後國家資訊）的顯示
             const stateCountry = document.getElementById('stateCountry');
-            if (stateCountry) {
-                if (phase === Phase.POST_ARRIVAL || phase === 0) {
-                    // Phase 0: 顯示 stateCountry
+            const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
+            
+            if (phase === Phase.POST_ARRIVAL || phase === 0) {
+                // Phase 0: 優先顯示 stateLandingCountryInfo（降落後的統一資訊），隱藏 stateCountry
+                if (stateLandingCountryInfo && stateLandingCountryInfo.classList.contains('active')) {
+                    // 如果有降落後的資訊，只顯示它（與 Phase 7 效果一致）
+                    if (stateCountry) {
+                        stateCountry.style.display = 'none';
+                        stateCountry.classList.remove('active');
+                        console.log('✅ [Phase ' + phase + '] 隱藏 stateCountry，只顯示 stateLandingCountryInfo（統一資訊）');
+                    }
+                    console.log('✅ [Phase ' + phase + '] stateLandingCountryInfo 已顯示，保持顯示（統一資訊）');
+                } else if (stateCountry) {
+                    // 如果沒有降落後的資訊，才顯示 stateCountry（初始狀態）
                     stateCountry.style.display = 'flex';
                     stateCountry.classList.add('active');
-                } else {
-                    // 其他 Phase: 隱藏 stateCountry
+                    console.log('✅ [Phase ' + phase + '] 顯示 stateCountry（初始狀態）');
+                }
+            } else {
+                // 其他 Phase: 隱藏兩者
+                if (stateCountry) {
                     stateCountry.style.display = 'none';
                     stateCountry.classList.remove('active');
                 }
-            }
-            
-            // 控制 stateLandingCountryInfo（降落後國家資訊）的顯示：只在 Phase 0 顯示
-            const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
-            if (stateLandingCountryInfo) {
-                if (phase === Phase.POST_ARRIVAL || phase === 0) {
-                    // Phase 0: 不強制隱藏，由其他邏輯（如 showLandingCountryInfo）控制顯示
-                    // 🔧 改進：如果已經被顯示（有 active class），保持顯示
-                    if (stateLandingCountryInfo.classList.contains('active')) {
-                        console.log('✅ [Phase ' + phase + '] stateLandingCountryInfo 已顯示，保持顯示');
-                    }
-                } else {
-                    // Phase 5/6/7 等其他 Phase: 明確隱藏 stateLandingCountryInfo
+                if (stateLandingCountryInfo) {
                     stateLandingCountryInfo.style.display = 'none';
                     stateLandingCountryInfo.classList.remove('active');
                     console.log('✅ [Phase ' + phase + '] 已隱藏 stateLandingCountryInfo');
@@ -11194,48 +11285,75 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 videoContainerEl.style.display = 'none';
             }
             
-            // 隱藏其他狀態 UI（但保留 bar 區域，不隱藏 stateFlightFeedback 和 stateLandingCountryInfo）
-            hideAllStateUI();
-            const arrivalInfoEl = document.getElementById('stateArrivalInfo');
-            if (arrivalInfoEl) {
-                arrivalInfoEl.style.display = 'none !important';
+            // 🔧 改進：檢查圖片是否已準備好，如果沒有，先顯示情緒量表
+            let imageReady = false;
+            try {
+                const imageCheck = await Promise.race([
+                    landingImagePromise.then(() => true),
+                    new Promise(resolve => setTimeout(() => resolve(false), 100))
+                ]);
+                imageReady = imageCheck;
+            } catch (e) {
+                console.warn('⚠️ 檢查圖片狀態時發生錯誤:', e);
             }
             
-            // 顯示飛行回饋選單（情緒量表）在 bar 上 - 必須填寫完才能繼續
-            console.log('📋 顯示情緒量表...');
-            
-            // 確保 stateFlightFeedback 元素存在並準備顯示
-            const feedbackState = document.getElementById('stateFlightFeedback');
-            if (!feedbackState) {
-                console.error('❌ stateFlightFeedback 元素不存在，無法顯示情緒量表');
-            } else {
-                // 先確保它被添加到 active class，並設置正確的樣式
-                feedbackState.classList.add('active');
-                feedbackState.style.display = 'flex';
-                feedbackState.style.zIndex = '100';
-                feedbackState.style.visibility = 'visible';
-                feedbackState.style.opacity = '1';
-                console.log('✅ 情緒量表 UI 已準備顯示');
+            // 🔧 改進：檢查圖片是否已準備好，如果沒有，先顯示情緒量表
+            let feedbackData = null;
+            if (!imageReady && finalDestination) {
+                console.log('⏳ 圖片尚未準備好，先顯示情緒量表讓使用者填寫...');
+                // 先顯示情緒量表，不等待圖片
+                const feedbackPromise = showFlightFeedback(finalDestination);
                 
-                // 確保其他 UI 已隱藏
+                // 同時等待圖片生成並顯示
+                const imagePromise = landingImagePromise.then(url => {
+                    if (url) {
+                        const windowContent = document.querySelector('.window-content');
+                        if (windowContent) {
+                            const proxiedUrl = getProxiedImageUrl(url);
+                            windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
+                            windowContent.style.backgroundSize = 'cover';
+                            windowContent.style.backgroundPosition = 'center';
+                            windowContent.style.backgroundRepeat = 'no-repeat';
+                            console.log('✅ 降落圖片已顯示（在情緒量表填寫期間）');
+                        }
+                        // 更新 finalImageUrl
+                        window._manualLandingImageUrl = url;
+                        destinationImageUrl = url;
+                    }
+                    return url;
+                }).catch(e => {
+                    console.warn('⚠️ 圖片生成失敗:', e);
+                    return null;
+                });
+                
+                // 等待情緒量表完成
+                feedbackData = await feedbackPromise;
+                console.log('✅ 情緒量表填寫完成，繼續流程...');
+                
+                // 確保圖片已生成（如果還沒生成完成，繼續等待）
+                await imagePromise;
+            } else {
+                // 圖片已準備好，正常流程
                 hideAllStateUI();
                 
-                // 強制顯示情緒量表
-                setTimeout(() => {
-                    feedbackState.style.display = 'flex';
-                    feedbackState.classList.add('active');
-                    console.log('✅ 情緒量表已強制顯示');
-                }, 100);
-            }
-            
-            let feedbackData = null;
-            try {
-                feedbackData = await showFlightFeedback(finalDestination);
-                console.log('✅ 情緒量表作答完成，回饋數據:', feedbackData);
-            } catch (error) {
-                console.error('❌ 顯示情緒量表失敗:', error);
-                // 即使失敗也繼續流程
-                feedbackData = '3'; // 預設值
+                const arrivalInfoEl = document.getElementById('stateArrivalInfo');
+                if (arrivalInfoEl) {
+                    arrivalInfoEl.style.display = 'none';
+                    arrivalInfoEl.classList.remove('active');
+                }
+                
+                // 顯示飛行回饋選單（情緒量表）在 bar 上 - 必須填寫完才能繼續
+                console.log('📋 顯示情緒量表...');
+                
+                // 顯示飛行回饋選單（情緒量表）在 bar 上 - 必須填寫完才能繼續
+                try {
+                    feedbackData = await showFlightFeedback(finalDestination);
+                    console.log('✅ 情緒量表作答完成，回饋數據:', feedbackData);
+                } catch (error) {
+                    console.error('❌ 顯示情緒量表失敗:', error);
+                    // 即使失敗也繼續流程
+                    feedbackData = '3'; // 預設值
+                }
             }
             
             // 儲存到 Firebase（包含回饋數據）- 不阻塞流程，即使失敗也繼續
@@ -11291,20 +11409,33 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 直接切換到 Phase 0 (POST_ARRIVAL)
             console.log('🔄 準備切換到 Phase 0 (POST_ARRIVAL)...');
             console.log('   切換前 - 當前階段:', currentPhase, '當前狀態:', currentState);
+            
+            // 🔧 改進：在切換到 Phase 0 之前，確保使用最新生成的圖片
+            const latestImageUrl = window._manualLandingImageUrl || destinationImageUrl;
+            if (latestImageUrl) {
+                console.log('🖼️ [切換到 Phase 0] 使用最新生成的圖片:', latestImageUrl);
+                // 確保 destinationImageUrl 也更新為最新圖片
+                destinationImageUrl = latestImageUrl;
+            }
+            
             switchToPhase(Phase.POST_ARRIVAL); // 從 Phase 7 回到 Phase 0，這是允許的
             currentState = State.COUNTRY;
             console.log('   切換後 - 當前階段:', currentPhase, '當前狀態:', currentState);
             
-            // 確保目的地圖片顯示在 800x800 視窗中
-            if (destinationImageUrl && document.querySelector('.window-content')) {
+            // 確保目的地圖片顯示在 800x800 視窗中（優先使用最新生成的圖片）
+            const imageToShow = window._manualLandingImageUrl || destinationImageUrl;
+            if (imageToShow && document.querySelector('.window-content')) {
                 const windowContent = document.querySelector('.window-content');
-                windowContent.innerHTML = '';
-                // 🔧 使用代理 URL 避免 CORS 問題
-                const proxiedUrl = getProxiedImageUrl(destinationImageUrl);
-                windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
-                windowContent.style.backgroundSize = 'cover';
-                windowContent.style.backgroundPosition = 'center';
-                console.log('✅ 目的地圖片已顯示在視窗中');
+                if (windowContent) {
+                    windowContent.innerHTML = '';
+                    // 🔧 使用代理 URL 避免 CORS 問題
+                    const proxiedUrl = getProxiedImageUrl(imageToShow);
+                    windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
+                    windowContent.style.backgroundSize = 'cover';
+                    windowContent.style.backgroundPosition = 'center';
+                    windowContent.style.backgroundRepeat = 'no-repeat';
+                    console.log('✅ 目的地圖片已顯示在視窗中（最新生成的圖片）:', imageToShow);
+                }
             }
             
             // 🔧 改進：保留 stateLandingCountryInfo 顯示（不要立即隱藏）
@@ -11317,15 +11448,23 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.log('✅ stateLandingCountryInfo 已確保顯示（國家資訊）');
             }
             
-            // 隱藏所有其他狀態 UI（但保留 stateLandingCountryInfo 和 stateCountry）
+            // 隱藏所有其他狀態 UI（但保留 stateLandingCountryInfo）
             hideAllStateUI();
             
-            // 確保 stateCountry 在 Phase 0 時顯示（與 stateLandingCountryInfo 同時顯示）
+            // 🔧 改進：在 Phase 0 時，如果有 stateLandingCountryInfo，隱藏 stateCountry（避免重複顯示）
             const stateCountry = document.getElementById('stateCountry');
             if (stateCountry && currentPhase === Phase.POST_ARRIVAL) {
-                stateCountry.style.display = 'flex';
-                stateCountry.classList.add('active');
-                console.log('✅ stateCountry 已確保顯示在 Phase 0');
+                // 如果有降落後的資訊，隱藏 stateCountry（只顯示統一的 stateLandingCountryInfo）
+                if (countryInfoState && countryInfoState.classList.contains('active')) {
+                    stateCountry.style.display = 'none';
+                    stateCountry.classList.remove('active');
+                    console.log('✅ [Phase 0] 隱藏 stateCountry，只顯示 stateLandingCountryInfo（統一資訊，與 Phase 7 一致）');
+                } else {
+                    // 如果沒有降落後的資訊，才顯示 stateCountry（初始狀態）
+                    stateCountry.style.display = 'flex';
+                    stateCountry.classList.add('active');
+                    console.log('✅ [Phase 0] 顯示 stateCountry（初始狀態）');
+                }
             }
             
             console.log('✅ 降落完成，已切換到 Phase 0 (POST_ARRIVAL)，顯示目的地圖片和國家資訊');
