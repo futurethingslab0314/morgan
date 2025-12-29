@@ -7896,7 +7896,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 let selectedFeedback = '3';
                 
                 // 更新選中狀態（使用 active class，類似氣候選項）
-                // 🔧 改進：總共只顯示5顆星星，根據選中的位置（0-4）動態顯示對應數量的亮星星
+                // 🔧 改進：所有選項都顯示5顆星星，選中的選項根據位置（0-4）顯示對應數量的亮星星
                 // 位置 0 → 1顆星，位置 1 → 2顆星，位置 2 → 3顆星，位置 3 → 4顆星，位置 4 → 5顆星
                 function updateSelection(index) {
                     if (index < 0 || index >= options.length) {
@@ -7910,33 +7910,39 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     // 計算應該亮幾顆星星（索引 0-4 對應 1-5 顆星）
                     const starsToShow = index + 1;
                     
-                    // 找到所有選項的星星容器，確保總共只有5顆星星
-                    const allStarsContainers = document.querySelectorAll('#feedbackOptions .feedback-stars');
-                    
-                    // 先清除所有星星容器中的內容
-                    allStarsContainers.forEach(container => {
-                        container.innerHTML = '';
-                    });
-                    
-                    // 在選中的選項中動態創建星星
-                    const selectedOption = currentOptions[index];
-                    const selectedStarsContainer = selectedOption.querySelector('.feedback-stars');
-                    
-                    if (selectedStarsContainer) {
-                        // 創建對應數量的星星（總共5顆，根據選中位置顯示對應數量的亮星星）
-                        for (let i = 0; i < 5; i++) {
-                            const star = document.createElement('span');
-                            star.className = 'star';
-                            if (i < starsToShow) {
-                                star.classList.add('star-filled');
-                                star.textContent = '⭐';
-                            } else {
-                                star.classList.add('star-empty');
-                                star.textContent = '☆';
+                    // 為所有選項更新星星顯示
+                    currentOptions.forEach((option, i) => {
+                        const starsContainer = option.querySelector('.feedback-stars');
+                        if (!starsContainer) return;
+                        
+                        // 清除現有星星
+                        starsContainer.innerHTML = '';
+                        
+                        // 如果是選中的選項，根據位置顯示對應數量的亮星星
+                        if (i === index) {
+                            // 選中的選項：顯示對應數量的亮星星（位置 0 → 1顆，位置 1 → 2顆，等等）
+                            for (let j = 0; j < 5; j++) {
+                                const star = document.createElement('span');
+                                star.className = 'star';
+                                if (j < starsToShow) {
+                                    star.classList.add('star-filled');
+                                    star.textContent = '⭐';
+                                } else {
+                                    star.classList.add('star-empty');
+                                    star.textContent = '☆';
+                                }
+                                starsContainer.appendChild(star);
                             }
-                            selectedStarsContainer.appendChild(star);
+                        } else {
+                            // 未選中的選項：顯示全部空星星
+                            for (let j = 0; j < 5; j++) {
+                                const star = document.createElement('span');
+                                star.className = 'star star-empty';
+                                star.textContent = '☆';
+                                starsContainer.appendChild(star);
+                            }
                         }
-                    }
+                    });
                     
                     // 更新所有選項的 active 狀態
                     currentOptions.forEach((opt, i) => {
@@ -7948,6 +7954,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     });
                     
                     selectedIndex = index;
+                    const selectedOption = currentOptions[index];
                     selectedFeedback = selectedOption?.getAttribute('data-feedback') || String(index + 1);
                     
                     // 立即更新全局標記的選擇值（確保同步）
