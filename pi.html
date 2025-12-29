@@ -290,6 +290,7 @@
             display: none;
             align-items: center;
             justify-content: center;
+            text-align: center;
             font-size: 20px;
             font-weight: 600;
             color: #ff6b35;
@@ -300,6 +301,7 @@
             border-bottom: 1px solid rgba(255, 107, 53, 0.3);
             backdrop-filter: blur(4px);
             box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+            line-height: 50px; /* 確保文字垂直置中 */
         }
         
         .info-bar-message.active {
@@ -6886,10 +6888,10 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
         async function showDestinationCalculationSteps() {
             const steps = [
                 { message: 'Sleep Airline 正在搜尋合適的目的地...', duration: 1500 },
-                { message: '確認機場空位與起降時段...', duration: 500 },
-                { message: '計算航道距離與飛行時間...', duration: 800 },
-                { message: '規劃最佳航線與高度層...', duration: 500 },
-                { message: '驗證天氣條件與能見度...', duration: 1000 }
+                { message: '確認機場空位與起降時段...', duration: 1200 },
+                { message: '計算航道距離與飛行時間...', duration: 1200 },
+                { message: '規劃最佳航線與高度層...', duration: 1000 },
+                { message: '驗證天氣條件與能見度...', duration: 1500 }
             ];
             
             // 顯示計算 UI
@@ -6962,6 +6964,14 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     state.classList.remove('active');
                     state.style.display = 'none';
                 });
+                
+                // 🔧 確保隱藏進度條（當顯示機長廣播時，不應該同時顯示進度條）
+                const flightProgressWrapper = document.getElementById('flightProgressWrapper');
+                if (flightProgressWrapper) {
+                    flightProgressWrapper.style.display = 'none';
+                    flightProgressWrapper.style.visibility = 'hidden';
+                    flightProgressWrapper.style.opacity = '0';
+                }
                 
                 el.classList.add('active');
                 el.style.display = 'flex'; // 強制顯示
@@ -8860,6 +8870,34 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     } catch (e) {
                         console.warn('⚠️ [Phase 7] 關閉飛行進度條時發生小問題:', e);
                     }
+                    
+                    // 🔧 改進：在進入 Phase 7 時立即開始生成降落圖片（提前生成）
+                    // 使用 destinationData 或提前準備好的目的地
+                    const earlyDestination = window._preGeneratedFinalDestination || destinationData;
+                    if (earlyDestination && !window._earlyLandingImagePromise) {
+                        console.log('🖼️ [Phase 7] 立即開始生成降落圖片（提前生成）...');
+                        window._earlyLandingImagePromise = (async () => {
+                            try {
+                                const url = await generateLandingImage(
+                                    earlyDestination.city,
+                                    earlyDestination.country,
+                                    earlyDestination.timezone || 'UTC',
+                                    new Date().toISOString()
+                                );
+                                if (url) {
+                                    window._manualLandingImageUrl = url;
+                                    console.log('✅ [Phase 7] 降落圖片已提前生成:', url);
+                                } else {
+                                    console.warn('⚠️ [Phase 7] 降落圖片生成失敗');
+                                }
+                                return url;
+                            } catch (error) {
+                                console.error('❌ [Phase 7] 生成降落圖片時發生錯誤:', error);
+                                return null;
+                            }
+                        })();
+                    }
+                    
                     // 然後調用 handleLanding()
                     handleLanding();
                     break;
@@ -10503,6 +10541,39 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
         }
 
         async function handleLanding() {
+            // 🔧 立即隱藏進度條（確保在 Phase 7 時不顯示）
+            try {
+                if (window._flightProgressInterval) {
+                    clearInterval(window._flightProgressInterval);
+                    window._flightProgressInterval = null;
+                    console.log('✅ [handleLanding] 已停止進度條更新');
+                }
+                const wrapper = document.getElementById('flightProgressWrapper');
+                if (wrapper) {
+                    wrapper.style.display = 'none';
+                    wrapper.style.visibility = 'hidden';
+                    wrapper.style.opacity = '0';
+                    const progressLabel = wrapper.querySelector('.flight-progress-label');
+                    const progressMeta = wrapper.querySelector('.flight-progress-meta');
+                    const progressBar = wrapper.querySelector('.flight-progress-bar-bg');
+                    if (progressLabel) {
+                        progressLabel.style.display = 'none';
+                        progressLabel.style.visibility = 'hidden';
+                    }
+                    if (progressMeta) {
+                        progressMeta.style.display = 'none';
+                        progressMeta.style.visibility = 'hidden';
+                    }
+                    if (progressBar) {
+                        progressBar.style.display = 'none';
+                        progressBar.style.visibility = 'hidden';
+                    }
+                    console.log('✅ [handleLanding] 進度條已立即隱藏');
+                }
+            } catch (e) {
+                console.warn('⚠️ [handleLanding] 關閉飛行進度條時發生小問題:', e);
+            }
+            
             // 立即顯示「機長廣播中」的動態 UI（在底部 bar）
             console.log('📢 [Phase 7] 顯示機長廣播中 UI...');
             setBoardingStatus(true, '機長廣播中...');
@@ -10599,7 +10670,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             let landingData = null;
             
             // 🔧 改進：提前開始生成圖片（不等待目的地計算完成）
-            let landingImagePromise = Promise.resolve(null);
+            // 如果已經在 Phase 7 進入時開始生成，使用那個 Promise
+            let landingImagePromise = window._earlyLandingImagePromise || Promise.resolve(null);
+            if (window._earlyLandingImagePromise) {
+                console.log('✅ [handleLanding] 使用已開始生成的降落圖片 Promise');
+                delete window._earlyLandingImagePromise; // 清除標記
+            }
             
             try {
                 // 獲取之前選擇的氣候帶選項（如果有的話）
@@ -10656,24 +10732,28 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.log('✅ 最終目的地計算完成:', finalDestination);
                     console.log('📍 目的地: ' + finalDestination.city + ', ' + finalDestination.country);
                     
-                    // 🔧 改進：立即開始生成圖片（不等待後續流程）
-                    console.log('🖼️ [Phase 7] 立即開始生成降落圖片（提前生成）...');
-                    landingImagePromise = (async () => {
-                        const url = await generateLandingImage(
-                            finalDestination.city,
-                            finalDestination.country,
-                            finalDestination.timezone || 'UTC',
-                            new Date().toISOString()
-                        );
-                        if (url) {
-                            window._manualLandingImageUrl = url;
-                            destinationImageUrl = url;
-                            console.log('✅ 降落圖片生成成功（提前生成）:', url);
-                        } else {
-                            console.warn('⚠️ 降落圖片生成失敗');
-                        }
-                        return url;
-                    })();
+                    // 🔧 改進：如果圖片還沒開始生成，立即開始生成（不等待後續流程）
+                    if (!landingImagePromise || landingImagePromise === Promise.resolve(null)) {
+                        console.log('🖼️ [Phase 7] 立即開始生成降落圖片（提前生成）...');
+                        landingImagePromise = (async () => {
+                            const url = await generateLandingImage(
+                                finalDestination.city,
+                                finalDestination.country,
+                                finalDestination.timezone || 'UTC',
+                                new Date().toISOString()
+                            );
+                            if (url) {
+                                window._manualLandingImageUrl = url;
+                                destinationImageUrl = url;
+                                console.log('✅ 降落圖片生成成功（提前生成）:', url);
+                            } else {
+                                console.warn('⚠️ 降落圖片生成失敗');
+                            }
+                            return url;
+                        })();
+                    } else {
+                        console.log('✅ [Phase 7] 降落圖片已在 Phase 7 進入時開始生成，繼續使用');
+                    }
                 }
                 
             } catch (error) {
@@ -10778,6 +10858,27 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 finalDestination = window._preGeneratedFinalDestination || finalDestination;
                 isWormhole = window._preGeneratedIsWormhole || isWormhole;
                 
+                // 🔧 提前降落時，確保 landingImagePromise 已開始生成圖片
+                if (finalDestination && !landingImagePromise) {
+                    console.log('🖼️ [提前降落] 開始生成降落圖片...');
+                    landingImagePromise = (async () => {
+                        const url = await generateLandingImage(
+                            finalDestination.city,
+                            finalDestination.country,
+                            finalDestination.timezone || 'UTC',
+                            new Date().toISOString()
+                        );
+                        if (url) {
+                            window._manualLandingImageUrl = url;
+                            destinationImageUrl = url;
+                            console.log('✅ [提前降落] 降落圖片生成成功:', url);
+                        } else {
+                            console.warn('⚠️ [提前降落] 降落圖片生成失敗');
+                        }
+                        return url;
+                    })();
+                }
+                
                 // 清除已使用的變數
                 delete window._preGeneratedLandingData;
                 delete window._preGeneratedFinalDestination;
@@ -10856,6 +10957,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             } else {
                 console.log('ℹ️ [提前降落] captain.mp3 和 TTS 已在 confirmEarlyLanding 中播放，跳過');
                 console.log('✅ 降落語音播放完成，繼續降落流程...');
+                // 🔧 提前降落時，確保隱藏機長廣播 UI，繼續執行後續流程
+                setBoardingStatus(false);
             }
             
             // 🔧 改進：語音播放完成後，如果是提前降落，將音樂音量放大
@@ -10892,8 +10995,10 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 };
             }
             
-            // 語音播放完成後，隱藏「機長廣播中」UI
-            setBoardingStatus(false);
+            // 語音播放完成後，隱藏「機長廣播中」UI（如果不是提前降落，因為提前降落已經在上面隱藏了）
+            if (!isEarlyLanding) {
+                setBoardingStatus(false);
+            }
             
             // 🔧 改進：圖片應該已經在開始時就開始生成了，這裡只是確保
             // landingImagePromise 應該已經在函數開始時就定義了
