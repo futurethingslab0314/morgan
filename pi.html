@@ -4004,7 +4004,10 @@
             }
             
             // 1. 先播放 captain.mp3（只播放前 6 秒），必須完全播放完成後才能繼續
+            // 🔧 改進：TTS 應該在確定目標時就已經開始生成（prepareForTakeoff），
+            // 從確定目標到播放 TTS 之間有足夠的時間（顯示準備起航 UI + 用戶按按鈕 + captain.mp3 6秒 = 10+ 秒）
             console.log('1️⃣ 開始播放 captain.mp3（只播放前 6 秒）...');
+            console.log('🔧 [起飛] TTS 預生成狀態:', preparedAudioId ? '已準備好' : '尚未準備好（將在播放 captain.mp3 時等待）');
             
             // 先取消所有 TTS 播放
             if ('speechSynthesis' in window) {
@@ -4012,73 +4015,107 @@
                 console.log('✅ 已取消所有 TTS 播放');
             }
             
-            try {
-                // 使用 new Audio() 和 Promise 確保完全播放完成
-                const captainAudio = new Audio('sounds/captain.mp3');
-                captainAudio.volume = 1.0;
-                captainAudio.preload = 'auto';
-                
-                // 等待音頻載入完成
-                await new Promise((resolve) => {
-                    if (captainAudio.readyState >= 2) {
-                        resolve();
-                    } else {
-                        captainAudio.addEventListener('canplaythrough', () => resolve(), { once: true });
-                        captainAudio.addEventListener('error', () => resolve(), { once: true });
-                        captainAudio.load();
-                    }
-                });
-                
-                // 播放 captain.mp3，使用 setTimeout 精確控制 6 秒
-                await new Promise((resolve) => {
-                    const timeout = setTimeout(() => {
-                        captainAudio.pause();
-                        captainAudio.currentTime = 0;
-                        console.log('✅ captain.mp3 已播放 6 秒並停止');
-                        resolve();
-                    }, 6000);
+            // 在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成
+            const captainPlayPromise = (async () => {
+                try {
+                    // 使用 new Audio() 和 Promise 確保完全播放完成
+                    const captainAudio = new Audio('sounds/captain.mp3');
+                    captainAudio.volume = 1.0;
+                    captainAudio.preload = 'auto';
                     
-                    captainAudio.onended = () => {
-                        clearTimeout(timeout);
-                        console.log('✅ captain.mp3 自然播放完成（但只播放 6 秒）');
-                        resolve();
-                    };
-                    
-                    captainAudio.onerror = (e) => {
-                        clearTimeout(timeout);
-                        // 檢查是否是預期的停止操作（6秒後手動停止可能觸發 error 事件）
-                        // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
-                        if (captainAudio.currentTime > 0) {
-                            console.log('ℹ️ captain.mp3 播放過程中觸發 error 事件（可能是預期的停止操作）');
+                    // 等待音頻載入完成
+                    await new Promise((resolve) => {
+                        if (captainAudio.readyState >= 2) {
+                            resolve();
                         } else {
-                            console.warn('⚠️ captain.mp3 播放錯誤（載入失敗）:', e);
+                            captainAudio.addEventListener('canplaythrough', () => resolve(), { once: true });
+                            captainAudio.addEventListener('error', () => resolve(), { once: true });
+                            captainAudio.load();
                         }
-                        resolve(); // 即使錯誤也繼續
-                    };
-                    
-                    captainAudio.play().then(() => {
-                        console.log('▶️ captain.mp3 開始播放');
-                    }).catch(err => {
-                        clearTimeout(timeout);
-                        console.warn('⚠️ captain.mp3 播放失敗:', err);
-                        resolve(); // 即使失敗也繼續
                     });
-                });
-                
-                // 確保音頻完全停止
-                captainAudio.pause();
-                captainAudio.currentTime = 0;
-                captainAudio.src = ''; // 清空音源，確保完全釋放
-                
-                // 完全停止後等待 0ms（立即繼續，不等待）
-                // 注意：雖然是 0ms，但這會讓瀏覽器有機會完成音頻停止操作
-                await new Promise(resolve => setTimeout(resolve, 0));
-                console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
-            } catch (error) {
-                console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
+                    
+                    // 播放 captain.mp3，使用 setTimeout 精確控制 6 秒
+                    await new Promise((resolve) => {
+                        const timeout = setTimeout(() => {
+                            captainAudio.pause();
+                            captainAudio.currentTime = 0;
+                            console.log('✅ captain.mp3 已播放 6 秒並停止');
+                            resolve();
+                        }, 6000);
+                        
+                        captainAudio.onended = () => {
+                            clearTimeout(timeout);
+                            console.log('✅ captain.mp3 自然播放完成（但只播放 6 秒）');
+                            resolve();
+                        };
+                        
+                        captainAudio.onerror = (e) => {
+                            clearTimeout(timeout);
+                            // 檢查是否是預期的停止操作（6秒後手動停止可能觸發 error 事件）
+                            // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
+                            if (captainAudio.currentTime > 0) {
+                                console.log('ℹ️ captain.mp3 播放過程中觸發 error 事件（可能是預期的停止操作）');
+                            } else {
+                                console.warn('⚠️ captain.mp3 播放錯誤（載入失敗）:', e);
+                            }
+                            resolve(); // 即使錯誤也繼續
+                        };
+                        
+                        captainAudio.play().then(() => {
+                            console.log('▶️ captain.mp3 開始播放');
+                        }).catch(err => {
+                            clearTimeout(timeout);
+                            console.warn('⚠️ captain.mp3 播放失敗:', err);
+                            resolve(); // 即使失敗也繼續
+                        });
+                    });
+                    
+                    // 確保音頻完全停止
+                    captainAudio.pause();
+                    captainAudio.currentTime = 0;
+                    captainAudio.src = ''; // 清空音源，確保完全釋放
+                    
+                    // 完全停止後等待 0ms（立即繼續，不等待）
+                    // 注意：雖然是 0ms，但這會讓瀏覽器有機會完成音頻停止操作
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
+                } catch (error) {
+                    console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
+                }
+            })();
+            
+            // 🔧 改進：在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成（最多等待到 captain.mp3 播放完成）
+            if (!preparedAudioId && preparedAnnouncement) {
+                console.log('⏳ [起飛] TTS 尚未準備好，在播放 captain.mp3 的同時等待生成完成...');
+                try {
+                    // 等待 TTS 生成完成（最多等待到 captain.mp3 播放完成）
+                    await Promise.race([
+                        new Promise(resolve => {
+                            const checkInterval = setInterval(() => {
+                                if (preparedAudioId) {
+                                    clearInterval(checkInterval);
+                                    console.log('✅ [起飛] TTS 生成完成，audio_id:', preparedAudioId);
+                                    resolve();
+                                }
+                            }, 100);
+                            
+                            // 等待 captain.mp3 播放完成（約 6 秒）
+                            captainPlayPromise.then(() => {
+                                clearInterval(checkInterval);
+                                resolve();
+                            });
+                        }),
+                        captainPlayPromise
+                    ]);
+                } catch (err) {
+                    console.warn('⚠️ [起飛] 等待 TTS 生成時發生錯誤:', err);
+                }
             }
             
-            // 2. captain.mp3 播放完成後，才播放準備好的 TTS 語音
+            // 等待 captain.mp3 播放完成
+            await captainPlayPromise;
+            
+            // 2. captain.mp3 播放完成後，立即播放準備好的 TTS 語音
             if (preparedAudioId) {
                 console.log('2️⃣ 播放預先生成的 TTS 音檔:', preparedAudioId);
                 try {
@@ -4086,6 +4123,17 @@
                     console.log('✅ TTS 音檔播放完成');
                 } catch (error) {
                     console.warn('⚠️ TTS 音檔播放時發生錯誤:', error);
+                    // 如果播放失敗，回退到即時生成
+                    if (preparedAnnouncement) {
+                        console.log('🔄 [起飛] TTS 音檔播放失敗，回退到即時生成...');
+                        await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
+                            isTakeoff: true,
+                            rate: 0.65,
+                            pitch: 0.85,
+                            volume: 1.0,
+                            gender: preparedAnnouncementGender
+                        });
+                    }
                 }
             } else if (preparedAnnouncement) {
                 console.log('2️⃣ 使用即時 TTS 生成並播放（無快取音檔）...');
@@ -7182,7 +7230,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
 
         // 預先生成 TTS 音檔（使用 /tts/generate，只生成，不播放）
         async function generateTtsAudio(text, language = 'zh-TW', gender = 'male', speed = 0.8) {
-            if (!text) return;
+            if (!text) return null;
             
             const TTS_BASE = 'http://127.0.0.1:5005';
             try {
@@ -7213,14 +7261,18 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     if (data.success && data.audio_id) {
                         preparedAudioId = data.audio_id;
                         console.log('✅ TTS 音檔預先生成成功，audio_id:', preparedAudioId);
+                        return preparedAudioId; // 🔧 改進：返回 audio_id
                     } else {
                         console.warn('⚠️ /tts/generate 返回錯誤:', data.error);
+                        return null;
                     }
                 } else {
                     console.warn('⚠️ /tts/generate HTTP 錯誤:', response.status, response.statusText);
+                    return null;
                 }
             } catch (error) {
                 console.warn('⚠️ 呼叫 /tts/generate 失敗:', error.message);
+                return null;
             }
         }
 
@@ -10355,21 +10407,91 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     fill.style.width = '0%';
                     glow.style.left = '0%';
 
-                    // 左邊顯示目前位置（國家名稱），右邊顯示預設目的地
+                    // 左邊顯示目前位置（城市, 國家）和國旗
                     try {
                         const countryEl = document.getElementById('currentCountry');
-                        const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
-                        startLabel.textContent = countryText || '目前位置';
+                        const countryFlagEl = document.querySelector('.country-flag');
+                        const startFlagEl = document.getElementById('flightProgressStartFlag');
+                        
+                        // 獲取起點資訊
+                        let originText = '目前位置';
+                        let originFlag = '🏳️';
+                        
+                        if (countryEl) {
+                            const countryText = countryEl.textContent.trim();
+                            if (countryText) {
+                                // 嘗試解析格式（可能是 "城市, 國家" 或只有國家）
+                                originText = countryText;
+                            }
+                        }
+                        
+                        // 獲取起點國旗
+                        if (countryFlagEl) {
+                            const flagText = countryFlagEl.textContent.trim();
+                            if (flagText && flagText !== '🏳️') {
+                                originFlag = flagText;
+                            }
+                        }
+                        
+                        // 更新起點標籤和國旗
+                        startLabel.textContent = originText;
+                        if (startFlagEl) {
+                            startFlagEl.textContent = originFlag;
+                        }
+                        
+                        console.log('✅ [進度條] 起點資訊已更新:', originText, originFlag);
                     } catch (e) {
+                        console.warn('⚠️ [進度條] 更新起點資訊時發生錯誤:', e);
                         startLabel.textContent = '目前位置';
                     }
                     
-                    // 右邊顯示預設目的地（如果有 destinationData）
+                    // 右邊顯示預設目的地（城市, 國家）和國旗
+                    const endFlagEl = document.getElementById('flightProgressEndFlag');
                     if (destinationData) {
-                        const destinationName = destinationData.city_zh || destinationData.city || destinationData.country_zh || destinationData.country || '???';
+                        // 構建目的地文字（城市, 國家）
+                        const city = destinationData.city_zh || destinationData.city || '';
+                        const country = destinationData.country_zh || destinationData.country || '';
+                        let destinationName = '';
+                        
+                        if (city && country) {
+                            destinationName = `${city}, ${country}`;
+                        } else if (city) {
+                            destinationName = city;
+                        } else if (country) {
+                            destinationName = country;
+                        } else {
+                            destinationName = '???';
+                        }
+                        
                         endLabel.textContent = destinationName;
+                        
+                        // 更新終點國旗
+                        if (endFlagEl) {
+                            const countryCode = destinationData.country_iso_code || '';
+                            let flagEmoji = '🏳️';
+                            if (countryCode && countryCode.length === 2) {
+                                try {
+                                    const codePoints = countryCode
+                                        .toUpperCase()
+                                        .split('')
+                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                    if (codePoints.length === 2) {
+                                        flagEmoji = String.fromCodePoint(...codePoints);
+                                    }
+                                } catch (e) {
+                                    console.warn('⚠️ [進度條] 生成終點國旗 emoji 時發生錯誤:', e);
+                                }
+                            }
+                            endFlagEl.textContent = flagEmoji;
+                        }
+                        
+                        console.log('✅ [進度條] 終點資訊已更新:', destinationName, endFlagEl ? endFlagEl.textContent : '');
                     } else {
                         endLabel.textContent = '???';
+                        if (endFlagEl) {
+                            endFlagEl.textContent = '🏳️';
+                        }
+                        console.warn('⚠️ [進度條] destinationData 不存在，無法更新終點資訊');
                     }
 
                     // 先清掉舊的計時器
@@ -11086,7 +11208,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             }
             
             // 🔧 改進：準時/延後降落時，在 Phase 6 按按鈕後：
-            // Phase 6 已經在 10 秒後自動播放了喚醒語音，所以按按鈕後直接進入 Phase 7
+            // Phase 6 已經正確播放了喚醒音樂和語音，按按鈕後直接進入 Phase 7
+            // Phase 7 會播放新的音樂，生成並播放降落語音 A（captain.mp3 + 語音 A）
             
             // 檢查是否是準時/延後降落（Phase 6）
             if (currentPhase === Phase.DESCENT || currentPhase === 6) {
@@ -11755,102 +11878,64 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // ============================================================================
             // 步驟 4: 語音A生成好後，播放 captain.mp3，然後立即播放語音A（音樂小聲）
             // ============================================================================
-            // 🔧 改進：檢查是否已經在 Phase 6 播放過語音（準時/遲到降落的情況）
-            // 如果是提早降落（isEarlyLanding），需要播放語音A
-            // 如果是準時/遲到降落（manualLandingTriggered），已經在 Phase 6 播放過，不需要重複播放
-            if (isEarlyLanding) {
-                // 提早降落：需要播放語音A
-                console.log('4️⃣ [Phase 7] 提早降落，播放 captain.mp3...');
-                setBoardingStatus(true, '機長廣播中...');
-                
-                // 降低音樂音量（讓語音更突出）
-                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    console.log('🔉 [Phase 7] 降低音樂音量，讓語音更突出');
-                    try {
-                        window._phase7WakeupMusic.volume = 0.15;
-                    } catch (err) {
-                        console.warn('⚠️ [Phase 7] 設置音樂音量失敗:', err);
-                    }
-                } else {
-                    console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法降低音量');
-                }
-                
-                // 播放 captain.mp3
+            // 🔧 改進：無論是提早降落還是準時/遲到降落，都需要播放語音A
+            // Phase 6 播放的是「準備降落的喚醒語音」，Phase 7 播放的是「降落廣播語音A」，兩者不同
+            console.log('4️⃣ [Phase 7] 播放 captain.mp3 和語音A（降落廣播）...');
+            setBoardingStatus(true, '機長廣播中...');
+            
+            // 降低音樂音量（讓語音更突出）
+            if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                console.log('🔉 [Phase 7] 降低音樂音量，讓語音更突出');
                 try {
-                    await playAudioFile('sounds/captain.mp3', 6);
-                    console.log('✅ captain.mp3 播放完成');
-            } catch (error) {
-                    console.warn('⚠️ captain.mp3 播放失敗:', error);
-                }
-                
-                // captain.mp3 播放完後，立即播放已預先生成的語音A
-                if (landingData && landingData.announcement) {
-                    console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
-                    
-                    // 如果語音A已預先生成，使用 playCachedTts 播放
-                    if (voiceAAudioId) {
-                        console.log('✅ [Phase 7] 使用已預先生成的語音A，audio_id:', voiceAAudioId);
-                        await playCachedTts(voiceAAudioId);
-                        console.log('✅ 語音A播放完成');
-                    } else {
-                        // 如果預先生成失敗，回退到 playAnnouncement
-                        console.warn('⚠️ [Phase 7] 語音A未預先生成，使用 playAnnouncement 生成並播放');
-                        await playAnnouncement(landingData.announcement, 'zh-TW', {
-                            gender: landingData.gender || 'male',
-                            speed: 0.75,
-                            volume: 1.0,
-                            waitForCompletion: true
-                        });
-                        console.log('✅ 語音A播放完成');
-                    }
-                    
-                    // 語音A播放完成後，恢復音樂音量
-                    if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                        console.log('🔉 [Phase 7] 語音A播放完成，恢復音樂音量');
-                        try {
-                            fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
-                                console.warn('⚠️ 恢復音樂音量失敗:', err);
-                            });
-                        } catch (err) {
-                            console.warn('⚠️ [Phase 7] 恢復音樂音量時發生錯誤:', err);
-                        }
-                    } else {
-                        console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法恢復音量');
-                    }
+                    window._phase7WakeupMusic.volume = 0.15;
+                } catch (err) {
+                    console.warn('⚠️ [Phase 7] 設置音樂音量失敗:', err);
                 }
             } else {
-                // 準時/遲到降落：已經在 Phase 6 播放過語音，不需要重複播放
-                // 🔧 改進：無論是 manualLandingTriggered 還是其他情況，只要不是提早降落，都跳過語音A播放
-                console.log('⏭️ [Phase 7] 準時/遲到降落，已在 Phase 6 播放過語音，跳過語音A播放');
-                console.log('   🔍 調試資訊 - isEarlyLanding:', isEarlyLanding, 'manualLandingTriggered:', manualLandingTriggered);
+                console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法降低音量');
+            }
+            
+            // 播放 captain.mp3
+            try {
+                await playAudioFile('sounds/captain.mp3', 6);
+                console.log('✅ captain.mp3 播放完成');
+            } catch (error) {
+                console.warn('⚠️ captain.mp3 播放失敗:', error);
+            }
+            
+            // captain.mp3 播放完後，立即播放已預先生成的語音A
+            if (landingData && landingData.announcement) {
+                console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
                 
-                // 確保音樂音量正常（因為 Phase 6 已經調整過音量）
-                // 但也要檢查 Phase 7 的音樂（因為 Phase 7 會播放新的 wakeup 音樂）
-                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    try {
-                        // 如果音樂音量還是 0.15，恢復到 0.6
-                        if (window._phase7WakeupMusic.volume < 0.5) {
-                            console.log('🔉 [Phase 7] 恢復音樂音量到正常水平');
-                            fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
-                                console.warn('⚠️ 恢復音樂音量失敗:', err);
-                            });
-                        }
-                    } catch (err) {
-                        console.warn('⚠️ [Phase 7] 檢查/恢復音樂音量時發生錯誤:', err);
-                    }
+                // 如果語音A已預先生成，使用 playCachedTts 播放
+                if (voiceAAudioId) {
+                    console.log('✅ [Phase 7] 使用已預先生成的語音A，audio_id:', voiceAAudioId);
+                    await playCachedTts(voiceAAudioId);
+                    console.log('✅ 語音A播放完成');
                 } else {
-                    console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停');
+                    // 如果預先生成失敗，回退到 playAnnouncement
+                    console.warn('⚠️ [Phase 7] 語音A未預先生成，使用 playAnnouncement 生成並播放');
+                    await playAnnouncement(landingData.announcement, 'zh-TW', {
+                        gender: landingData.gender || 'male',
+                        speed: 0.75,
+                        volume: 1.0,
+                        waitForCompletion: true
+                    });
+                    console.log('✅ 語音A播放完成');
                 }
                 
-                // 也要檢查 Phase 6 的音樂（descentWakeupMusic）是否還在播放
-                if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                    // 如果音樂音量還是 0.15，恢復到 0.6
-                    if (descentWakeupMusic.volume < 0.5) {
-                        console.log('🔉 [Phase 7] 恢復 Phase 6 音樂音量到正常水平');
-                        fadeInAudio(descentWakeupMusic, 2000, 0.6).catch(err => {
-                            console.warn('⚠️ 恢復 Phase 6 音樂音量失敗:', err);
+                // 語音A播放完成後，恢復音樂音量
+                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                    console.log('🔉 [Phase 7] 語音A播放完成，恢復音樂音量');
+                    try {
+                        fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
+                            console.warn('⚠️ 恢復音樂音量失敗:', err);
                         });
+                    } catch (err) {
+                        console.warn('⚠️ [Phase 7] 恢復音樂音量時發生錯誤:', err);
                     }
+                } else {
+                    console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法恢復音量');
                 }
             }
             
