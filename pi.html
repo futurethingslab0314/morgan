@@ -1293,7 +1293,7 @@
 
         <!-- 計算目的地動畫 -->
         <div class="info-state" id="stateCalculating" style="display: none;">
-            <div class="state-label">✈️ 計算目的地中</div>
+            <div class="state-label">✈️ 計算目的地中2</div>
             <div class="calculating-content" style="margin-top: 30px; text-align: center;">
                 <div class="calculating-spinner">
                     <div class="spinner-circle"></div>
@@ -7371,6 +7371,29 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         captainState.style.display = 'flex';
                         captainState.classList.add('active');
                         
+                        // 🔧 改進：先顯示「準備啟航」4 秒，然後切換到「📢 機長廣播中」
+                        const stateLabel = captainState.querySelector('.state-label');
+                        if (stateLabel) {
+                            // 清除之前的 timeout（如果有的話）
+                            if (window._captainAnnouncementTimeout) {
+                                clearTimeout(window._captainAnnouncementTimeout);
+                                window._captainAnnouncementTimeout = null;
+                            }
+                            
+                            // 先設置為「準備啟航」
+                            stateLabel.textContent = '準備啟航';
+                            console.log('✅ [setBoardingStatus] 顯示「準備啟航」');
+                            
+                            // 4 秒後切換到「📢 機長廣播中」
+                            window._captainAnnouncementTimeout = setTimeout(() => {
+                                if (captainState.classList.contains('active')) {
+                                    stateLabel.textContent = '📢 機長廣播中';
+                                    console.log('✅ [setBoardingStatus] 切換到「📢 機長廣播中」');
+                                }
+                                window._captainAnnouncementTimeout = null;
+                            }, 4000);
+                        }
+                        
                         // 更新機長廣播訊息
                         const announcementMessage = document.getElementById('announcementMessage');
                         if (announcementMessage) {
@@ -7403,6 +7426,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 // 隱藏所有機長廣播相關的 UI
                 const captainState = document.getElementById('stateCaptainAnnouncement');
                 const calculatingState = document.getElementById('stateCalculating');
+                
+                // 🔧 清除標題切換的 timeout（如果有的話）
+                if (window._captainAnnouncementTimeout) {
+                    clearTimeout(window._captainAnnouncementTimeout);
+                    window._captainAnnouncementTimeout = null;
+                }
                 
                 if (captainState) {
                     captainState.style.display = 'none';
@@ -8879,20 +8908,13 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 等待一小段時間確保 Phase 7 已初始化
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // 1. 顯示「降落準備中請稍等」5秒
-            console.log('1️⃣ [緊急降落] 顯示「降落準備中請稍等」...');
+            // 🔧 改進：同時顯示「降落準備中請稍等...」和開始準備 TTS，以拖時間讓 TTS 有時間生成
+            // 1. 顯示「降落準備中請稍等...」
+            console.log('1️⃣ [緊急降落] 顯示「降落準備中請稍等...」...');
             setBoardingStatus(true, '降落準備中請稍等...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
             
-            // 2. 顯示「機長準備廣播」
-            console.log('2️⃣ [緊急降落] 顯示「機長準備廣播」...');
-            setBoardingStatus(true, '機長準備廣播...');
-            
-            // 🔧 改進：提早降落時，Phase 5 不播放音樂，直接進入 Phase 7 時再播放新的 wakeup 音樂
-            // 音樂已在 Phase 7 進入時播放，這裡只需要調整音量（在語音播放時降低）
-            
-            // 3. 開始準備 TTS 文字內容（異步進行）
-            console.log('3️⃣ [緊急降落] 開始準備 TTS 文字內容...');
+            // 2. 開始準備 TTS 文字內容（異步進行，與 UI 顯示同時進行）
+            console.log('2️⃣ [緊急降落] 開始準備 TTS 文字內容（與 UI 顯示同時進行）...');
             const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
             const punctuality = calculatePunctuality(selectedTimer, actualDuration);
             const timeDiff = actualDuration - selectedTimer;
@@ -9381,6 +9403,16 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         stateLandingCountryInfo.classList.remove('active');
                         console.log('✅ [Phase 5] 已隱藏 stateLandingCountryInfo');
                     }
+                    
+                    // 🔧 改進：確保進度條顯示（在調用 handleCruise 之前）
+                    const progressWrapperForPhase5 = document.getElementById('flightProgressWrapper');
+                    if (progressWrapperForPhase5) {
+                        progressWrapperForPhase5.style.display = 'block';
+                        progressWrapperForPhase5.style.visibility = 'visible';
+                        progressWrapperForPhase5.style.opacity = '1';
+                        console.log('✅ [switchToPhase Phase 5] 確保進度條顯示');
+                    }
+                    
                     handleCruise();
                     break;
                 case Phase.DESCENT:
@@ -10158,14 +10190,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.warn('⚠️ [Phase 5] 暫停 takeoff2.mp4 時發生錯誤:', error);
             }
             // Phase 4: 開始睡眠計時
-            // 確保進度條顯示（即使已經顯示，也要確保它可見）
+            // 🔧 改進：確保進度條顯示（即使已經顯示，也要確保它可見）
+            // 無論 sleepStartTime 是否存在，都要確保進度條顯示
             const wrapper = document.getElementById('flightProgressWrapper');
             if (wrapper) {
-                // 確保進度條顯示
+                // 🔧 強制設置進度條顯示（確保第二次進入 Phase 5 時也能顯示）
                 wrapper.style.display = 'block';
                 wrapper.style.visibility = 'visible';
                 wrapper.style.opacity = '1';
-                console.log('✅ [Phase 5] 確保進度條顯示');
+                console.log('✅ [Phase 5] 確保進度條顯示（強制設置）');
                 
                 // 如果進度條已經設置且 sleepStartTime 存在，則跳過重複設置
                 if (sleepStartTime) {
@@ -10828,6 +10861,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 // 5. TTS 音頻準備完成後，顯示「機長廣播中」並播放 captain.mp3
                 console.log('5️⃣ [Phase 6] TTS 音頻已準備好，顯示「機長廣播中」並播放 captain.mp3...');
                 setBoardingStatus(true, '機長廣播中...');
+                
+                // 🔧 改進：降低音樂音量（讓語音更突出）
+                if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                    console.log('🔉 [Phase 6] 降低音樂音量，讓語音更突出');
+                    descentWakeupMusic.volume = 0.15;
+                }
                 
                 try {
                     await playAudioFile('sounds/captain.mp3', 6);
@@ -11591,10 +11630,14 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         });
                     }
                 }
-            } else if (manualLandingTriggered) {
+            } else {
                 // 準時/遲到降落：已經在 Phase 6 播放過語音，不需要重複播放
+                // 🔧 改進：無論是 manualLandingTriggered 還是其他情況，只要不是提早降落，都跳過語音A播放
                 console.log('⏭️ [Phase 7] 準時/遲到降落，已在 Phase 6 播放過語音，跳過語音A播放');
+                console.log('   🔍 調試資訊 - isEarlyLanding:', isEarlyLanding, 'manualLandingTriggered:', manualLandingTriggered);
+                
                 // 確保音樂音量正常（因為 Phase 6 已經調整過音量）
+                // 但也要檢查 Phase 7 的音樂（因為 Phase 7 會播放新的 wakeup 音樂）
                 if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
                     // 如果音樂音量還是 0.15，恢復到 0.6
                     if (window._phase7WakeupMusic.volume < 0.5) {
@@ -11604,9 +11647,17 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         });
                     }
                 }
-            } else {
-                // 其他情況（不應該發生，但為了安全起見）
-                console.warn('⚠️ [Phase 7] 未知的降落類型，跳過語音A播放');
+                
+                // 也要檢查 Phase 6 的音樂（descentWakeupMusic）是否還在播放
+                if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                    // 如果音樂音量還是 0.15，恢復到 0.6
+                    if (descentWakeupMusic.volume < 0.5) {
+                        console.log('🔉 [Phase 7] 恢復 Phase 6 音樂音量到正常水平');
+                        fadeInAudio(descentWakeupMusic, 2000, 0.6).catch(err => {
+                            console.warn('⚠️ 恢復 Phase 6 音樂音量失敗:', err);
+                        });
+                    }
+                }
             }
             
             // 隱藏機長廣播 UI
