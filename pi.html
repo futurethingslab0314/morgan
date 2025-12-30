@@ -4774,7 +4774,7 @@
                 if (latestRecord) {
                     console.log('✅ 找到最新的降落記錄，載入中...', latestRecord);
                     
-                    // 更新目的地資料
+                    // 🔧 改進：更新目的地資料（確保更新全局變數）
                     destinationData = {
                         city: latestRecord.city || latestRecord.destinationCity,
                         country: latestRecord.country || latestRecord.destinationCountry,
@@ -4783,10 +4783,13 @@
                         country_iso_code: latestRecord.country_iso_code || latestRecord.countryCode,
                         latitude: latestRecord.latitude || latestRecord.destinationLatitude,
                         longitude: latestRecord.longitude || latestRecord.destinationLongitude,
-                        timezone: latestRecord.timezone
+                        timezone: latestRecord.timezone,
+                        // 🔧 改進：確保包含 destinationInfo（如果有的話）
+                        destinationInfo: latestRecord.destinationInfo || null
                     };
                     
                     console.log('📍 目的地資料已更新:', destinationData);
+                    console.log('📍 destinationInfo:', destinationData.destinationInfo);
                     
                     // 🔧 改進：優先使用新生成的圖片，只有在沒有新圖片時才使用 Firebase 記錄中的圖片
                     const imageUrl = latestRecord.destinationImage || latestRecord.imageUrl;
@@ -7874,19 +7877,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 feedbackState.classList.add('active'); // 添加 active class 確保顯示
                 console.log('✅ 情緒量表已顯示，display:', feedbackState.style.display, 'zIndex:', feedbackState.style.zIndex, 'active:', feedbackState.classList.contains('active'));
                 
-                // 在顯示後重新查詢 options，確保獲取到最新的 DOM 元素
+                // 在顯示後重新查詢星星選項，確保獲取到最新的 DOM 元素
                 // 重要：必須在 feedbackState 顯示後再查詢，因為可能之前被隱藏或替換
-                const options = document.querySelectorAll('#feedbackOptions .feedback-option');
+                const starSegments = document.querySelectorAll('#feedbackOptions .feedback-star-segment');
                 
-                if (!options || options.length === 0) {
-                    console.error('❌ [情緒量表] 無法找到選項元素，options:', options, 'length:', options?.length);
+                if (!starSegments || starSegments.length === 0) {
+                    console.error('❌ [情緒量表] 無法找到星星選項元素，starSegments:', starSegments, 'length:', starSegments?.length);
                     console.error('   feedbackState:', feedbackState);
                     console.error('   #feedbackOptions:', document.getElementById('feedbackOptions'));
                     resolve(null);
                     return;
                 }
                 
-                console.log('✅ [情緒量表] 找到', options.length, '個選項');
+                console.log('✅ [情緒量表] 找到', starSegments.length, '個星星選項');
                 
                 // 初始化選中狀態（預設 3 分）
                 let selectedIndex = 2; // 對應 3 分
@@ -11834,6 +11837,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.log('📍 [handleLanding] 在保存前強制同步 destinationData 為 finalDestination');
             }
             
+            // 🔧 改進：在顯示國家資訊前，先生成並保存 destinationInfo 到 Firebase
+            let destinationInfo = null;
+            try {
+                destinationInfo = await generateDestinationInfo(finalDestination);
+                console.log('✅ [Phase 7] 已生成目的地資訊:', destinationInfo);
+            } catch (error) {
+                console.warn('⚠️ [Phase 7] 生成目的地資訊失敗:', error);
+            }
+            
             // 儲存到 Firebase（包含回饋數據）- 不阻塞流程，即使失敗也繼續
             // 🔧 改進：使用 finalDestination（確保是新降落地點，不是舊的 destinationData）
             const destinationToSave = finalDestination || destinationData;
@@ -11896,15 +11908,6 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             console.log('📋 情緒量表填寫完成，準備顯示國家資訊...');
             console.log('   當前階段:', currentPhase);
             console.log('   當前狀態:', currentState);
-            
-            // 🔧 改進：在顯示國家資訊前，先生成並保存 destinationInfo 到 Firebase
-            let destinationInfo = null;
-            try {
-                destinationInfo = await generateDestinationInfo(finalDestination);
-                console.log('✅ [Phase 7] 已生成目的地資訊:', destinationInfo);
-            } catch (error) {
-                console.warn('⚠️ [Phase 7] 生成目的地資訊失敗:', error);
-            }
             
             // showLandingCountryInfo 會隱藏情緒量表並顯示國家資訊（在底部 bar 上）
             await showLandingCountryInfo(finalDestination);
