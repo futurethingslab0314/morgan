@@ -8505,6 +8505,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     for (const musicPath of musicPaths) {
                         try {
                             mealMusic = new Audio(musicPath);
+                            window.mealMusic = mealMusic; // 🔧 改進：設置為全局變量，以便其他函數可以訪問
                             mealMusic.volume = 0.6;
                             mealMusic.loop = false;
                             
@@ -10195,10 +10196,29 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             const wrapper = document.getElementById('flightProgressWrapper');
             if (wrapper) {
                 // 🔧 強制設置進度條顯示（確保第二次進入 Phase 5 時也能顯示）
+                // 必須先設置 display，再設置 visibility 和 opacity
                 wrapper.style.display = 'block';
                 wrapper.style.visibility = 'visible';
                 wrapper.style.opacity = '1';
-                console.log('✅ [Phase 5] 確保進度條顯示（強制設置）');
+                
+                // 確保所有子元素也顯示
+                const progressLabel = wrapper.querySelector('.flight-progress-label');
+                const progressMeta = wrapper.querySelector('.flight-progress-meta');
+                const progressBar = wrapper.querySelector('.flight-progress-bar-bg');
+                if (progressLabel) {
+                    progressLabel.style.display = 'block';
+                    progressLabel.style.visibility = 'visible';
+                }
+                if (progressMeta) {
+                    progressMeta.style.display = 'block';
+                    progressMeta.style.visibility = 'visible';
+                }
+                if (progressBar) {
+                    progressBar.style.display = 'block';
+                    progressBar.style.visibility = 'visible';
+                }
+                
+                console.log('✅ [Phase 5] 確保進度條顯示（強制設置，包括所有子元素）');
                 
                 // 如果進度條已經設置且 sleepStartTime 存在，則跳過重複設置
                 if (sleepStartTime) {
@@ -10427,12 +10447,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 這裡只清除 destinationImageUrl，讓新飛行可以生成新的圖片
             console.log('🔄 [resetFlightState] 準備清除舊的圖片 URL（但保留 _manualLandingImageUrl 供 Phase 0 使用）');
             
-            // 清除進度條
+            // 清除進度條（但不要設置 display: none，只設置 visibility 和 opacity，以便 handleCruise 可以正確顯示）
             const wrapper = document.getElementById('flightProgressWrapper');
             if (wrapper) {
-                wrapper.style.display = 'none';
+                // 🔧 改進：只設置 visibility 和 opacity，不設置 display: none
+                // 這樣 handleCruise 可以正確顯示進度條
                 wrapper.style.visibility = 'hidden';
                 wrapper.style.opacity = '0';
+                // 不設置 display: none，讓 handleCruise 可以設置 display: block
+                console.log('🔄 [resetFlightState] 進度條已隱藏（但保留 display 屬性供 handleCruise 使用）');
             }
             
             // 清除影片元素（如果有的話）
@@ -10820,46 +10843,32 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.log('1️⃣ [Phase 6] 準備 TTS 文字內容...');
                 const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
                 
-                // 2. 預先生成 TTS 音頻（確保音頻準備好後再播放 captain.mp3）
-                console.log('2️⃣ [Phase 6] 預先生成 TTS 音頻（確保音頻準備好後再播放 captain.mp3）...');
-                let ttsReady = false;
+                // 2. 預先生成 TTS 音頻（使用 /tts/generate，只生成不播放）
+                console.log('2️⃣ [Phase 6] 預先生成 TTS 音頻（在 captain.mp3 播放的同時生成）...');
+                let phase6VoiceAudioId = null;
                 if (wakeUpAnnouncement) {
                     try {
-                        const TTS_BASE = 'http://127.0.0.1:5005';
-                        const selectedVoice = 'onyx'; // 使用男聲
-                        const openaiSpeed = Math.max(0.7, Math.min(0.9, 0.8 * 1.1));
-                        
-                        console.log(`🎤 [Phase 6] 預先生成 TTS 音頻（語速 ${openaiSpeed.toFixed(2)}）...`);
-                        const ttsResponse = await fetch(TTS_BASE + '/tts/play', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                text: wakeUpAnnouncement,
-                                languageCode: 'zh',
-                                voice: selectedVoice,
-                                speed: openaiSpeed
-                            }),
-                            timeout: 15000 // 15 秒超時
+                        // 在背景生成 TTS 音頻，不阻塞流程
+                        const phase6VoicePromise = generateTtsAudio(
+                            wakeUpAnnouncement,
+                            'zh-TW',
+                            'male',
+                            0.8
+                        ).then(() => {
+                            phase6VoiceAudioId = preparedAudioId;
+                            console.log('✅ [Phase 6] TTS 音頻已預先生成完成，audio_id:', phase6VoiceAudioId);
+                        }).catch(err => {
+                            console.warn('⚠️ [Phase 6] TTS 音頻預先生成失敗:', err);
                         });
                         
-                        if (ttsResponse.ok) {
-                            const ttsResult = await ttsResponse.json();
-                            if (ttsResult.success) {
-                                ttsReady = true;
-                                console.log('✅ [Phase 6] TTS 音頻已預先生成完成，可以立即播放');
-                            } else {
-                                console.warn('⚠️ [Phase 6] TTS 音頻生成失敗:', ttsResult);
-                            }
-                        } else {
-                            console.warn('⚠️ [Phase 6] TTS API 響應失敗:', ttsResponse.status);
-                        }
+                        // 不等待生成完成，繼續執行（在播放 captain.mp3 的同時生成）
                     } catch (error) {
                         console.warn('⚠️ [Phase 6] 預先生成 TTS 音頻時發生錯誤:', error);
                     }
                 }
                 
-                // 5. TTS 音頻準備完成後，顯示「機長廣播中」並播放 captain.mp3
-                console.log('5️⃣ [Phase 6] TTS 音頻已準備好，顯示「機長廣播中」並播放 captain.mp3...');
+                // 5. 顯示「機長廣播中」並播放 captain.mp3
+                console.log('5️⃣ [Phase 6] 顯示「機長廣播中」並播放 captain.mp3...');
                 setBoardingStatus(true, '機長廣播中...');
                 
                 // 🔧 改進：降低音樂音量（讓語音更突出）
@@ -10875,15 +10884,26 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.warn('⚠️ captain.mp3 播放失敗:', error);
                 }
                 
-                // 6. captain.mp3 播完後，立即播放準備降落的語音（TTS 已預先生成，應該可以立即播放）
+                // 6. captain.mp3 播完後，立即播放已預先生成的準備降落語音
                 if (wakeUpAnnouncement) {
-                    console.log('6️⃣ [Phase 6] captain.mp3 播放完成，立即播放準備降落的語音（TTS 已預先生成）...');
-                    await playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
-                        volume: 1.0, // 語音最大音量
-                        rate: 0.8,
-                        pitch: 0.9
-                    });
-                    console.log('✅ 準備降落的語音播放完成');
+                    console.log('6️⃣ [Phase 6] captain.mp3 播放完成，立即播放準備降落的語音...');
+                    
+                    // 如果 TTS 音頻已預先生成，使用 playCachedTts 播放
+                    if (phase6VoiceAudioId) {
+                        console.log('✅ [Phase 6] 使用已預先生成的 TTS 音頻，audio_id:', phase6VoiceAudioId);
+                        await playCachedTts(phase6VoiceAudioId);
+                        console.log('✅ 準備降落的語音播放完成');
+                    } else {
+                        // 如果預先生成失敗，回退到 playAnnouncement
+                        console.warn('⚠️ [Phase 6] TTS 音頻未預先生成，使用 playAnnouncement 生成並播放');
+                        await playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
+                            volume: 1.0,
+                            rate: 0.8,
+                            pitch: 0.9,
+                            waitForCompletion: true
+                        });
+                        console.log('✅ 準備降落的語音播放完成');
+                    }
                     
                     // 語音播放完成後，慢慢將音樂音量調大
                     if (descentWakeupMusic && !descentWakeupMusic.paused) {
@@ -11487,9 +11507,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             console.log('✅ [Phase 7] 最終目的地計算完成:', finalDestination.city_zh || finalDestination.city);
             
             // ============================================================================
-            // 步驟 3: 生成降落文字A和語音A（並行），同時開始生成圖片A（背景進行）
+            // 步驟 3: 生成降落文字A，然後立即預先生成語音A（不播放），同時開始生成圖片A（背景進行）
             // ============================================================================
-            console.log('3️⃣ [Phase 7] 生成降落文字A和語音A，同時開始生成圖片A（背景進行）...');
+            console.log('3️⃣ [Phase 7] 生成降落文字A，然後立即預先生成語音A，同時開始生成圖片A（背景進行）...');
             
             let landingData = null; // 文字A
             let landingImagePromise = null; // 圖片A Promise（只生成一次）
@@ -11522,6 +11542,25 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 };
             }
             
+            // 🔧 改進：在計算好降落地點後，立即預先生成語音A（不播放，只生成）
+            console.log('🎤 [Phase 7] 降落地點已計算完成，立即預先生成語音A（不播放）...');
+            let voiceAAudioId = null;
+            if (landingData && landingData.announcement) {
+                try {
+                    // 等待語音A生成完成（因為需要在播放 captain.mp3 之前就準備好）
+                    await generateTtsAudio(
+                        landingData.announcement,
+                        'zh-TW',
+                        landingData.gender || 'male',
+                        0.75
+                    );
+                    voiceAAudioId = preparedAudioId;
+                    console.log('✅ [Phase 7] 語音A已預先生成完成（不播放），audio_id:', voiceAAudioId);
+                } catch (error) {
+                    console.warn('⚠️ [Phase 7] 預先生成語音A時發生錯誤:', error);
+                }
+            }
+            
             // 開始生成圖片A（背景進行，只生成一次）
             if (finalDestination && !window._phase7ImageAPromise) {
                 console.log('🖼️ [Phase 7] 開始生成圖片A（背景進行，只生成一次）...');
@@ -11547,46 +11586,6 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 landingImagePromise = window._phase7ImageAPromise;
             }
             
-            // 生成語音A（等待完成）
-            console.log('🎤 [Phase 7] 生成語音A...');
-            if (landingData && landingData.announcement) {
-                try {
-                    const TTS_BASE = 'http://127.0.0.1:5005';
-                    const voiceMap = {
-                        'male': 'onyx',
-                        'female': 'nova'
-                    };
-                    const selectedVoice = voiceMap[landingData.gender || 'male'] || 'onyx';
-                    const openaiSpeed = Math.max(0.7, Math.min(0.9, 0.75 * 1.1));
-                    
-                    console.log(`🎤 [Phase 7] 預先生成語音A（${landingData.gender || 'male'} 聲，語速 ${openaiSpeed.toFixed(2)}）...`);
-                    const ttsResponse = await fetch(TTS_BASE + '/tts/play', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            text: landingData.announcement,
-                            languageCode: 'zh',
-                            voice: selectedVoice,
-                            speed: openaiSpeed
-                        }),
-                        timeout: 15000 // 15 秒超時
-                    });
-                    
-                    if (ttsResponse.ok) {
-                        const ttsResult = await ttsResponse.json();
-                        if (ttsResult.success) {
-                            console.log('✅ [Phase 7] 語音A已預先生成完成，可以立即播放');
-                        } else {
-                            console.warn('⚠️ [Phase 7] 語音A生成失敗:', ttsResult);
-                        }
-                    } else {
-                        console.warn('⚠️ [Phase 7] 語音A API 響應失敗:', ttsResponse.status);
-                    }
-                } catch (error) {
-                    console.warn('⚠️ [Phase 7] 預先生成語音A時發生錯誤:', error);
-                }
-            }
-            
             // ============================================================================
             // 步驟 4: 語音A生成好後，播放 captain.mp3，然後立即播放語音A（音樂小聲）
             // ============================================================================
@@ -11595,7 +11594,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 如果是準時/遲到降落（manualLandingTriggered），已經在 Phase 6 播放過，不需要重複播放
             if (isEarlyLanding) {
                 // 提早降落：需要播放語音A
-                console.log('4️⃣ [Phase 7] 提早降落，語音A已準備好，播放 captain.mp3...');
+                console.log('4️⃣ [Phase 7] 提早降落，播放 captain.mp3...');
                 setBoardingStatus(true, '機長廣播中...');
                 
                 // 降低音樂音量（讓語音更突出）
@@ -11612,15 +11611,26 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.warn('⚠️ captain.mp3 播放失敗:', error);
                 }
                 
-                // captain.mp3 播放完後，立即播放語音A
+                // captain.mp3 播放完後，立即播放已預先生成的語音A
                 if (landingData && landingData.announcement) {
                     console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
-                    await playAnnouncement(landingData.announcement, 'zh-TW', {
-                        gender: landingData.gender || 'male',
-                        speed: 0.75,
-                        volume: 1.0
-                    });
-                    console.log('✅ 語音A播放完成');
+                    
+                    // 如果語音A已預先生成，使用 playCachedTts 播放
+                    if (voiceAAudioId) {
+                        console.log('✅ [Phase 7] 使用已預先生成的語音A，audio_id:', voiceAAudioId);
+                        await playCachedTts(voiceAAudioId);
+                        console.log('✅ 語音A播放完成');
+                    } else {
+                        // 如果預先生成失敗，回退到 playAnnouncement
+                        console.warn('⚠️ [Phase 7] 語音A未預先生成，使用 playAnnouncement 生成並播放');
+                        await playAnnouncement(landingData.announcement, 'zh-TW', {
+                            gender: landingData.gender || 'male',
+                            speed: 0.75,
+                            volume: 1.0,
+                            waitForCompletion: true
+                        });
+                        console.log('✅ 語音A播放完成');
+                    }
                     
                     // 語音A播放完成後，恢復音樂音量
                     if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
@@ -11668,11 +11678,42 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // ============================================================================
             console.log('6️⃣ [Phase 7] 語音A播放完成，準備降落，播放 landing.mp4...');
             
-            // 背景生成文字B和語音B（新城市介紹）
-            console.log('📝 [Phase 7] 背景生成文字B和語音B（新城市介紹）...');
+            // 背景生成文字B（新城市介紹）
+            console.log('📝 [Phase 7] 背景生成文字B（新城市介紹）...');
             const destinationInfoPromise = generateDestinationInfo(finalDestination);
             
-            // 播放 landing.mp4（不等待文字B和語音B）
+            // 🔧 改進：在 landing.mp4 播放時，等待文字B生成完成，然後立即預先生成語音B（不播放）
+            const voiceBPromise = (async () => {
+                try {
+                    // 等待文字B生成完成
+                    const destinationInfo = await destinationInfoPromise;
+                    console.log('✅ [Phase 7] 文字B已生成，立即預先生成語音B（不播放）...');
+                    
+                    if (destinationInfo && finalDestination) {
+                        const cityName = finalDestination.city_zh || finalDestination.city || '';
+                        const countryName = finalDestination.country_zh || finalDestination.country || '';
+                        const welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
+                        
+                        // 預先生成語音B（不播放）
+                        await generateTtsAudio(
+                            welcomeMessage,
+                            'zh-TW',
+                            'female',
+                            0.75
+                        );
+                        const voiceBAudioId = preparedAudioId;
+                        console.log('✅ [Phase 7] 語音B已預先生成完成（不播放），audio_id:', voiceBAudioId);
+                        
+                        // 將語音B的 audio_id 存儲到全局變量，供後續使用
+                        window._phase7VoiceBAudioId = voiceBAudioId;
+                        window._phase7WelcomeMessage = welcomeMessage;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ [Phase 7] 預先生成語音B時發生錯誤:', error);
+                }
+            })();
+            
+            // 播放 landing.mp4（在播放的同時，語音B會在背景生成）
             try {
                 await playLandingVideoAndShowImage(landingImagePromise, finalDestination);
                 console.log('✅ landing.mp4 播放完成');
@@ -11726,53 +11767,48 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // ============================================================================
             console.log('8️⃣ [Phase 7] 情緒表完成，等待文字B和語音B生成完成...');
             
-            // 等待文字B生成完成
+            // 等待文字B和語音B生成完成（語音B已在 landing.mp4 播放時生成）
             const destinationInfo = await destinationInfoPromise;
             console.log('✅ [Phase 7] 文字B（新城市介紹）已生成:', destinationInfo);
             
-            // 生成語音B（新城市介紹語音）
+            // 確保語音B已生成完成（等待生成完成）
+            try {
+                await voiceBPromise;
+                console.log('✅ [Phase 7] 語音B已生成完成，準備播放');
+            } catch (error) {
+                console.warn('⚠️ [Phase 7] 語音B生成可能失敗，將使用備用方案:', error);
+            }
+            
+            // 顯示文字B並播放語音B
             if (destinationInfo) {
-                const cityName = finalDestination.city_zh || finalDestination.city || '';
-                const countryName = finalDestination.country_zh || finalDestination.country || '';
-                const welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
-                
-                console.log('🎤 [Phase 7] 生成語音B（新城市介紹）...');
-                try {
-                    const TTS_BASE = 'http://127.0.0.1:5005';
-                    const ttsResponse = await fetch(TTS_BASE + '/tts/play', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            text: welcomeMessage,
-                            languageCode: 'zh',
-                            voice: 'nova', // 使用女聲
-                            speed: 0.75
-                        }),
-                        timeout: 15000
-                    });
-                    
-                    if (ttsResponse.ok) {
-                        const ttsResult = await ttsResponse.json();
-                        if (ttsResult.success) {
-                            console.log('✅ [Phase 7] 語音B已預先生成完成');
-                        }
-                    }
-                } catch (error) {
-                    console.warn('⚠️ [Phase 7] 語音B生成失敗:', error);
-                }
-                
-                // 顯示文字B並播放語音B
                 console.log('9️⃣ [Phase 7] 顯示文字B並播放語音B...');
                 await showLandingCountryInfo(finalDestination, destinationInfo);
                 
-                // 播放語音B
+                // 播放已預先生成的語音B
                 console.log('🔊 [Phase 7] 播放語音B（新城市介紹）...');
-                await playAnnouncement(welcomeMessage, 'zh-TW', {
-                    gender: 'female',
-                    speed: 0.75,
-                    volume: 1.0
-                });
-                console.log('✅ 語音B播放完成');
+                
+                // 如果語音B已預先生成，使用 playCachedTts 播放
+                if (window._phase7VoiceBAudioId) {
+                    console.log('✅ [Phase 7] 使用已預先生成的語音B，audio_id:', window._phase7VoiceBAudioId);
+                    await playCachedTts(window._phase7VoiceBAudioId);
+                    console.log('✅ 語音B播放完成');
+                } else {
+                    // 如果預先生成失敗，回退到 playAnnouncement
+                    console.warn('⚠️ [Phase 7] 語音B未預先生成，使用 playAnnouncement 生成並播放');
+                    const welcomeMessage = window._phase7WelcomeMessage || 
+                        `歡迎來到${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
+                    await playAnnouncement(welcomeMessage, 'zh-TW', {
+                        gender: 'female',
+                        speed: 0.75,
+                        volume: 1.0,
+                        waitForCompletion: true
+                    });
+                    console.log('✅ 語音B播放完成');
+                }
+                
+                // 清理全局變量
+                delete window._phase7VoiceBAudioId;
+                delete window._phase7WelcomeMessage;
             }
             
             // ============================================================================
