@@ -1363,7 +1363,7 @@
                     <div style="display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-width: 120px;">
                         <span id="readyOriginFlag" style="font-size: 32px; line-height: 1;">🏳️</span>
                         <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px;">
-                            <span id="readyOriginCity" style="font-size: 18px; font-weight: 600; color: #ff6b35; line-height: 1.2;">台灣</span>
+                            <span id="readyOriginCity" style="font-size: 18px; font-weight: 600; color: #ff6b35; line-height: 1.2;">載入中...</span>
                             <span id="readyOriginCountry" style="font-size: 13px; color: #666; line-height: 1.2;">出發地</span>
                         </div>
                     </div>
@@ -1483,16 +1483,16 @@
             <div class="feedback-stars-container">
                 <div class="feedback-star-segment" data-position="0">
                     <div class="feedback-star-fill">⭐</div>
-                </div>
+            </div>
                 <div class="feedback-star-segment" data-position="1">
                     <div class="feedback-star-fill">⭐</div>
-                </div>
+            </div>
                 <div class="feedback-star-segment" data-position="2">
                     <div class="feedback-star-fill">⭐</div>
-                </div>
+            </div>
                 <div class="feedback-star-segment" data-position="3">
                     <div class="feedback-star-fill">⭐</div>
-                </div>
+            </div>
                 <div class="feedback-star-segment" data-position="4">
                     <div class="feedback-star-fill">⭐</div>
                 </div>
@@ -1724,73 +1724,33 @@
                 
                 // 如果是準備起航狀態，更新出發地和目的地資訊顯示（左右佈局）
                 if (newState === State.READY_TO_FLY) {
-                    // 更新目的地資訊
-                    if (destinationData) {
-                        const readyFlagEl = document.getElementById('readyDestinationFlag');
-                        const readyCityEl = document.getElementById('readyDestinationCity');
-                        const readyCountryEl = document.getElementById('readyDestinationCountry');
-                        
-                        // 更新目的地城市名稱（顯示城市 + 國家）
-                        if (readyCityEl) {
-                            const cityName = destinationData.city_zh || destinationData.city || '未知城市';
-                            const countryName = destinationData.country_zh || destinationData.country || '未知國家';
-                            readyCityEl.textContent = cityName ? `${cityName}, ${countryName}` : cityName;
-                        }
-                        
-                        // 更新目的地國家名稱（保持顯示國家，因為城市已經在上面顯示了）
-                        if (readyCountryEl) {
-                            readyCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
-                        }
-                        
-                        // 更新目的地國旗（優先從 sleepcity.json 獲取，否則根據 country_iso_code 轉 emoji）
-                        if (readyFlagEl) {
-                            let flagEmoji = '🏳️';
-                            
-                            // 優先從 sleepcity.json 獲取 flag
-                            (async () => {
-                                try {
-                                    const sleepCityResponse = await fetch('sleepcity.json');
-                                    if (sleepCityResponse.ok) {
-                                        const sleepCityData = await sleepCityResponse.json();
-                                        const matchingCity = sleepCityData.cities.find(city => 
-                                            (city.city === destinationData.city || city.city_zh === destinationData.city_zh) &&
-                                            (city.country === destinationData.country || city.country_zh === destinationData.country_zh)
-                                        );
-                                        if (matchingCity && matchingCity.flag) {
-                                            flagEmoji = matchingCity.flag;
-                                            readyFlagEl.textContent = flagEmoji;
-                                            console.log('✅ [準備起航] 從 sleepcity.json 獲取目的地國旗:', flagEmoji);
-                                            return;
-                                        }
-                                    }
-                                } catch (error) {
-                                    console.warn('⚠️ [準備起航] 無法載入 sleepcity.json:', error);
-                                }
-                                
-                                // 如果找不到匹配的城市或載入失敗，使用國家代碼生成
-                                const countryCode = destinationData.country_iso_code || '';
-                                if (countryCode && countryCode.length === 2) {
-                                    const codePoints = countryCode
-                                        .toUpperCase()
-                                        .split('')
-                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
-                                    if (codePoints.length === 2) {
-                                        flagEmoji = String.fromCodePoint(...codePoints);
-                                    }
-                                }
-                                readyFlagEl.textContent = flagEmoji;
-                            })();
-                        }
+                    // 🔧 改進：先隱藏航線資訊，等所有資料準備好後再一起顯示
+                    const readyDestinationInfo = document.getElementById('readyDestinationInfo');
+                    if (readyDestinationInfo) {
+                        readyDestinationInfo.style.opacity = '0';
+                        readyDestinationInfo.style.visibility = 'hidden';
                     }
                     
-                    // 更新出發地資訊（從 Firebase 或預設值）
-                    (async () => {
-                        try {
-                            const lastLanding = await loadLastLandingLocation();
+                    // 🔧 改進：同時載入出發地和目的地資訊，等兩者都準備好後再一起顯示
+                            (async () => {
+                                try {
+                            // 同時載入出發地和目的地資訊
+                            const [lastLanding, destinationReady] = await Promise.all([
+                                loadLastLandingLocation().catch(err => {
+                                    console.warn('⚠️ [準備起航] 載入出發地失敗:', err);
+                                    return null;
+                                }),
+                                Promise.resolve(destinationData ? true : false)
+                            ]);
+                            
                             const readyOriginFlagEl = document.getElementById('readyOriginFlag');
                             const readyOriginCityEl = document.getElementById('readyOriginCity');
                             const readyOriginCountryEl = document.getElementById('readyOriginCountry');
+                            const readyFlagEl = document.getElementById('readyDestinationFlag');
+                            const readyCityEl = document.getElementById('readyDestinationCity');
+                            const readyCountryEl = document.getElementById('readyDestinationCountry');
                             
+                            // 更新出發地資訊
                             if (lastLanding && lastLanding.city && lastLanding.country) {
                                 // 使用上次降落地點作為出發地
                                 if (readyOriginCityEl) {
@@ -1830,7 +1790,6 @@
                                         }
                                     } catch (error) {
                                         console.warn('⚠️ [準備起航] 無法載入 sleepcity.json，使用國家代碼生成國旗:', error);
-                                        // 如果載入失敗，使用國家代碼生成
                                         const countryCode = lastLanding.country_iso_code || '';
                                         if (countryCode && countryCode.length === 2) {
                                             const codePoints = countryCode
@@ -1846,7 +1805,7 @@
                                     readyOriginFlagEl.textContent = flagEmoji;
                                 }
             } else {
-                                // 使用預設台北作為出發地
+                                // 沒有上次降落地點，使用預設台北作為出發地
                                 if (readyOriginCityEl) {
                                     readyOriginCityEl.textContent = '台北';
                                 }
@@ -1857,15 +1816,83 @@
                                     readyOriginFlagEl.textContent = '🇹🇼';
                                 }
                             }
+                            
+                            // 更新目的地資訊
+                            if (destinationData) {
+                                // 更新目的地城市名稱（顯示城市 + 國家）
+                                if (readyCityEl) {
+                                    const cityName = destinationData.city_zh || destinationData.city || '未知城市';
+                                    const countryName = destinationData.country_zh || destinationData.country || '未知國家';
+                                    readyCityEl.textContent = cityName ? `${cityName}, ${countryName}` : cityName;
+                                }
+                                
+                                // 更新目的地國家名稱
+                                if (readyCountryEl) {
+                                    readyCountryEl.textContent = destinationData.country_zh || destinationData.country || '未知國家';
+                                }
+                                
+                                // 更新目的地國旗（優先從 sleepcity.json 獲取，否則根據 country_iso_code 轉 emoji）
+                                if (readyFlagEl) {
+                                    let flagEmoji = '🏳️';
+                                    
+                                    try {
+                                        const sleepCityResponse = await fetch('sleepcity.json');
+                                        if (sleepCityResponse.ok) {
+                                            const sleepCityData = await sleepCityResponse.json();
+                                            const matchingCity = sleepCityData.cities.find(city => 
+                                                (city.city === destinationData.city || city.city_zh === destinationData.city_zh) &&
+                                                (city.country === destinationData.country || city.country_zh === destinationData.country_zh)
+                                            );
+                                            if (matchingCity && matchingCity.flag) {
+                                                flagEmoji = matchingCity.flag;
+                                                console.log('✅ [準備起航] 從 sleepcity.json 獲取目的地國旗:', flagEmoji);
+                                            } else {
+                                                // 如果找不到匹配的城市或載入失敗，使用國家代碼生成
+                                                const countryCode = destinationData.country_iso_code || '';
+                                                if (countryCode && countryCode.length === 2) {
+                                                    const codePoints = countryCode
+                                                        .toUpperCase()
+                                                        .split('')
+                                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                                    if (codePoints.length === 2) {
+                                                        flagEmoji = String.fromCodePoint(...codePoints);
+                                                    }
+                                                }
+                                }
+                            }
                         } catch (error) {
-                            console.warn('⚠️ 載入出發地資訊失敗，使用預設值:', error);
-                            // 使用預設台北作為出發地
-                            const readyOriginCityEl = document.getElementById('readyOriginCity');
-                            const readyOriginCountryEl = document.getElementById('readyOriginCountry');
-                            const readyOriginFlagEl = document.getElementById('readyOriginFlag');
-                            if (readyOriginCityEl) readyOriginCityEl.textContent = '台北';
-                            if (readyOriginCountryEl) readyOriginCountryEl.textContent = '台灣';
-                            if (readyOriginFlagEl) readyOriginFlagEl.textContent = '🇹🇼';
+                                        console.warn('⚠️ [準備起航] 無法載入 sleepcity.json:', error);
+                                        const countryCode = destinationData.country_iso_code || '';
+                                        if (countryCode && countryCode.length === 2) {
+                                            const codePoints = countryCode
+                                                .toUpperCase()
+                                                .split('')
+                                                .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                            if (codePoints.length === 2) {
+                                                flagEmoji = String.fromCodePoint(...codePoints);
+                                            }
+                                        }
+                                    }
+                                    
+                                    readyFlagEl.textContent = flagEmoji;
+                                }
+                            }
+                            
+                            // 🔧 改進：所有資料準備好後，再一起顯示航線資訊
+                            if (readyDestinationInfo) {
+                                readyDestinationInfo.style.opacity = '1';
+                                readyDestinationInfo.style.visibility = 'visible';
+                                readyDestinationInfo.style.transition = 'opacity 0.3s ease';
+                                console.log('✅ [準備起航] 所有資料已準備好，顯示航線資訊');
+                            }
+                        } catch (error) {
+                            console.error('❌ [準備起航] 載入航線資訊失敗:', error);
+                            // 即使失敗也顯示（使用預設值）
+                            const readyDestinationInfo = document.getElementById('readyDestinationInfo');
+                            if (readyDestinationInfo) {
+                                readyDestinationInfo.style.opacity = '1';
+                                readyDestinationInfo.style.visibility = 'visible';
+                            }
                         }
                     })();
                 }
@@ -5027,9 +5054,9 @@
                         console.log('✅ [Phase 0] 已顯示 stateLandingCountryInfo（從 Firebase 載入）');
                     } else {
                         // 沒有 destinationInfo，只顯示 stateCountry
-                        if (countryInfoState) {
-                            countryInfoState.style.display = 'none';
-                            countryInfoState.classList.remove('active');
+                    if (countryInfoState) {
+                        countryInfoState.style.display = 'none';
+                        countryInfoState.classList.remove('active');
                         }
                     }
                     
@@ -7895,71 +7922,43 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 let selectedIndex = 2; // 對應 3 分
                 let selectedFeedback = '3';
                 
-                // 更新選中狀態（使用 active class，類似氣候選項）
-                // 🔧 改進：所有選項都顯示5顆星星，選中的選項根據位置（0-4）顯示對應數量的亮星星
-                // 位置 0 → 1顆星，位置 1 → 2顆星，位置 2 → 3顆星，位置 3 → 4顆星，位置 4 → 5顆星
+                // 更新選中狀態（類似選睡眠時長的效果）
+                // 🔧 改進：整個 bar 只有 5 顆星星，選到第幾個位置就亮幾顆星星
+                // 位置 0 → 亮 1 顆星，位置 1 → 亮 2 顆星，位置 2 → 亮 3 顆星，位置 3 → 亮 4 顆星，位置 4 → 亮 5 顆星
                 function updateSelection(index) {
-                    if (index < 0 || index >= options.length) {
-                        console.warn('⚠️ [情緒量表] 無效的索引:', index, 'options.length:', options.length);
+                    if (index < 0 || index >= starSegments.length) {
+                        console.warn('⚠️ [情緒量表] 無效的索引:', index, 'starSegments.length:', starSegments.length);
                         return;
                     }
                     
-                    // 重新查詢 options，確保獲取到最新的 DOM 元素（防止元素被替換）
-                    const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
+                    // 重新查詢 starSegments，確保獲取到最新的 DOM 元素（防止元素被替換）
+                    const currentSegments = document.querySelectorAll('#feedbackOptions .feedback-star-segment');
                     
                     // 計算應該亮幾顆星星（索引 0-4 對應 1-5 顆星）
                     const starsToShow = index + 1;
                     
-                    // 為所有選項更新星星顯示
-                    currentOptions.forEach((option, i) => {
-                        const starsContainer = option.querySelector('.feedback-stars');
-                        if (!starsContainer) return;
-                        
-                        // 清除現有星星
-                        starsContainer.innerHTML = '';
-                        
-                        // 如果是選中的選項，根據位置顯示對應數量的亮星星
-                        if (i === index) {
-                            // 選中的選項：顯示對應數量的亮星星（位置 0 → 1顆，位置 1 → 2顆，等等）
-                            for (let j = 0; j < 5; j++) {
-                                const star = document.createElement('span');
-                                star.className = 'star';
-                                if (j < starsToShow) {
-                                    star.classList.add('star-filled');
-                                    star.textContent = '⭐';
-                                } else {
-                                    star.classList.add('star-empty');
-                                    star.textContent = '☆';
-                                }
-                                starsContainer.appendChild(star);
-                            }
+                    // 更新所有星星選項的 active 狀態
+                    // 選到位置 0 → 第 1 顆星亮（active），其他不亮
+                    // 選到位置 1 → 第 1、2 顆星亮（active），其他不亮
+                    // 選到位置 2 → 第 1、2、3 顆星亮（active），其他不亮
+                    // 選到位置 3 → 第 1、2、3、4 顆星亮（active），其他不亮
+                    // 選到位置 4 → 全部 5 顆星亮（active）
+                    currentSegments.forEach((segment, i) => {
+                        if (i <= index) {
+                            // 這個位置應該亮（在選中位置之前或等於選中位置）
+                            segment.classList.add('active');
                         } else {
-                            // 未選中的選項：顯示全部空星星
-                            for (let j = 0; j < 5; j++) {
-                                const star = document.createElement('span');
-                                star.className = 'star star-empty';
-                                star.textContent = '☆';
-                                starsContainer.appendChild(star);
-                            }
-                        }
-                    });
-                    
-                    // 更新所有選項的 active 狀態
-                    currentOptions.forEach((opt, i) => {
-                        if (i === index) {
-                            opt.classList.add('active');
-                        } else {
-                            opt.classList.remove('active');
+                            // 這個位置不應該亮（在選中位置之後）
+                            segment.classList.remove('active');
                         }
                     });
                     
                     selectedIndex = index;
-                    const selectedOption = currentOptions[index];
-                    selectedFeedback = selectedOption?.getAttribute('data-feedback') || String(index + 1);
+                    selectedFeedback = String(index + 1); // 分數 = 位置 + 1
                     
                     // 立即更新全局標記的選擇值（確保同步）
                     window._feedbackSelectedValue = selectedFeedback;
-                    console.log('🔄 [情緒量表] updateSelection: 索引', index, '→ 分數', selectedFeedback, '→ 顯示', starsToShow, '顆亮星');
+                    console.log('🔄 [情緒量表] updateSelection: 索引', index, '→ 分數', selectedFeedback, '→ 亮', starsToShow, '顆星');
                 }
                 
                 // 先執行一次更新，確保初始狀態正確
@@ -8041,9 +8040,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                                 // 強制更新 UI，不管 selectedIndex 是否相同（確保 UI 同步）
                                 console.log('✅ [情緒量表] 檢測到旋鈕轉動，立即更新 UI: 位置', position, '→ 索引', clampedIndex);
                                 updateSelection(clampedIndex);
-                                // 更新全局標記的選擇值（確保同步）
-                                window._feedbackSelectedValue = selectedFeedback;
-                                console.log('🔄 [情緒量表] 旋鈕選擇更新完成: 位置', position, '→ 索引', clampedIndex, '→ 分數', selectedFeedback);
+                                // updateSelection 已經更新了 window._feedbackSelectedValue，這裡不需要再更新
+                                console.log('🔄 [情緒量表] 旋鈕選擇更新完成: 位置', position, '→ 索引', clampedIndex, '→ 分數', window._feedbackSelectedValue);
                                 
                                 // 驗證 UI 是否真的更新了
                                 const currentSegments = document.querySelectorAll('#feedbackOptions .feedback-star-segment');
@@ -8099,9 +8097,10 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                                 // 隱藏選單
                                 feedbackState.style.display = 'none';
                                 
-                                // 返回選擇的回饋
-                                console.log('✅ 飛行回饋已收集（按鈕確認，獨立輪詢）:', selectedFeedback);
-                                resolve(selectedFeedback);
+                                // 返回選擇的回饋（使用全局標記的值）
+                                const finalFeedback = window._feedbackSelectedValue || selectedFeedback || '3';
+                                console.log('✅ 飛行回饋已收集（按鈕確認，獨立輪詢）:', finalFeedback);
+                                resolve(finalFeedback);
                             }
                         })
                         .catch(err => {
@@ -8119,8 +8118,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     clearInterval(buttonCheckInterval);
                     
                     feedbackState.style.display = 'none';
-                    console.log('⏰ 情緒量表等待超時，自動使用目前分數:', selectedFeedback);
-                    resolve(selectedFeedback);
+                    const finalFeedback = window._feedbackSelectedValue || selectedFeedback || '3';
+                    console.log('⏰ 情緒量表等待超時，自動使用目前分數:', finalFeedback);
+                    resolve(finalFeedback);
                 }, FEEDBACK_TIMEOUT_MS);
                 
                 // 點擊選項（桌面測試用）
@@ -8877,8 +8877,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 標記已提前降落，防止 Phase 6 的邏輯執行
             window._earlyLandingConfirmed = true;
             
-            // 🔧 改進：緊急降落流程 - 先顯示「降落準備中請稍等」5秒，然後顯示「機長準備廣播」，等語音準備好再播放
-            // 1. 先顯示「降落準備中請稍等」5秒
+            // 🔧 改進：緊急降落流程 - 立即進入 Phase 7 並播放音樂，然後顯示「降落準備中請稍等」5秒，再顯示「機長準備廣播」，等語音準備好再播放
+            // 0. 立即切換到 Phase 7 並播放音樂（讓音樂在背景播放）
+            console.log('0️⃣ [緊急降落] 立即切換到 Phase 7 並播放音樂...');
+            manualLandingTriggered = true;
+            window._earlyLandingConfirmed = true;
+            
+            // 先切換到 Phase 7（這樣 handleLanding 會立即播放音樂）
+            switchToPhase(Phase.LANDING);
+            
+            // 等待一小段時間確保 Phase 7 已初始化
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // 1. 顯示「降落準備中請稍等」5秒
             console.log('1️⃣ [緊急降落] 顯示「降落準備中請稍等」...');
             setBoardingStatus(true, '降落準備中請稍等...');
             await new Promise(resolve => setTimeout(resolve, 5000));
@@ -8888,7 +8899,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             setBoardingStatus(true, '機長準備廣播...');
             
             // 🔧 改進：提早降落時，Phase 5 不播放音樂，直接進入 Phase 7 時再播放新的 wakeup 音樂
-            // 移除 Phase 5 的音樂播放，避免與 Phase 7 的音樂衝突
+            // 音樂已在 Phase 7 進入時播放，這裡只需要調整音量（在語音播放時降低）
             
             // 3. 同時開始準備 TTS（提前生成降落內容）
             console.log('3️⃣ [緊急降落] 開始準備 TTS 語音...');
@@ -8966,7 +8977,11 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             console.log('5️⃣ [緊急降落] TTS 準備完成，顯示「機長廣播中」並播放 captain.mp3...');
             setBoardingStatus(true, '機長廣播中...');
             
-            // 🔧 改進：提早降落時，Phase 5 不播放音樂，所以這裡不需要調整音樂音量
+            // 🔧 改進：降低 Phase 7 的音樂音量（如果正在播放），讓語音更突出
+            if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                console.log('🔉 [緊急降落] 降低 Phase 7 音樂音量，讓語音更突出');
+                window._phase7WakeupMusic.volume = 0.15;
+            }
             
             try {
                 await playAudioFile('sounds/captain.mp3', 6);
@@ -8983,11 +8998,18 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     speed: 0.75
                 });
                 console.log('✅ TTS 語音播放完成');
+                
+                // 🔧 改進：語音播放完成後，恢復音樂音量
+                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                    console.log('🔉 [緊急降落] 語音播放完成，恢復音樂音量');
+                    fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
+                        console.warn('⚠️ 恢復音樂音量失敗:', err);
+                    });
+                }
             }
             
-            // 7. 觸發手動降落（直接跳轉到 Phase 7，Phase 7 會播放新的 wakeup 音樂）
-            console.log('7️⃣ [緊急降落] 觸發手動降落（進入 Phase 7，將播放新的 wakeup 音樂）...');
-            triggerManualLanding();
+            // 7. 不需要再調用 triggerManualLanding，因為已經在 Phase 7 了
+            console.log('7️⃣ [緊急降落] 語音播放完成，繼續 Phase 7 流程（已在 Phase 7，音樂已在背景播放）...');
         }
         
         // 為提前降落播放 wakeup 音樂（帶淡入效果）
@@ -9246,9 +9268,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 // 🔧 改進：如果是從 Phase 7 回到 Phase 0，重置最高 phase 為 0（允許重新開始）
                 // 同時確保所有切換到 Phase 0 的情況都重置狀態（包括第一次和後續的 loop）
                 if (isLandingToPhase0 || phase === Phase.POST_ARRIVAL || phase === 0) {
-                    if (isLandingToPhase0) {
-                        maxReachedPhase = Phase.POST_ARRIVAL;
-                        console.log('🔄 [Phase 不可逆] Phase 7 回到 Phase 0，重置最高 phase 為 0（允許重新開始）');
+                if (isLandingToPhase0) {
+                    maxReachedPhase = Phase.POST_ARRIVAL;
+                    console.log('🔄 [Phase 不可逆] Phase 7 回到 Phase 0，重置最高 phase 為 0（允許重新開始）');
                     }
                     
                     // 🔧 改進：重置所有布林值和狀態變數，準備新的飛行（確保第二次 loop 也能正常運作）
@@ -9278,7 +9300,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             const stateCountry = document.getElementById('stateCountry');
             const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
             
-            if (phase === Phase.POST_ARRIVAL || phase === 0) {
+                if (phase === Phase.POST_ARRIVAL || phase === 0) {
                 // 🔧 改進：確保 currentState 正確設置為 State.COUNTRY（允許按鈕正常運作）
                 if (currentState !== State.COUNTRY) {
                     currentState = State.COUNTRY;
@@ -9328,13 +9350,13 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     buttonPressTimeout = null;
                 }
                 console.log('✅ [Phase 0] 已清除按鈕狀態，準備接收新的按鈕輸入');
-            } else {
+                } else {
                 // 其他 Phase: 隱藏兩者
                 if (stateCountry) {
                     stateCountry.style.display = 'none';
                     stateCountry.classList.remove('active');
                 }
-                if (stateLandingCountryInfo) {
+            if (stateLandingCountryInfo) {
                     stateLandingCountryInfo.style.display = 'none';
                     stateLandingCountryInfo.classList.remove('active');
                     console.log('✅ [Phase ' + phase + '] 已隱藏 stateLandingCountryInfo');
@@ -11624,26 +11646,26 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 如果是提前降落，captain.mp3 和 TTS 已經在 confirmEarlyLanding 中播放過了
             if (!isEarlyLanding) {
                 // 正常降落：先播放 captain.mp3（6秒），然後播放正式降落語音
-                console.log('1️⃣ 播放 captain.mp3（6 秒）...');
-                await playAudioFile('sounds/captain.mp3', 6);
-                console.log('✅ captain.mp3 播放完成');
-                
-                // 播放正式降落語音（必須等待完成）
-                // 在播放語音期間，保持「機長廣播中」UI 顯示
-                if (landingData && landingData.announcement) {
-                    console.log('2️⃣ 播放降落語音...');
-                    await playAnnouncement(landingData.announcement, 'zh-TW', {
-                        volume: 1.0, // 語音最大音量
-                        waitForCompletion: true // 強制等待播放完成
-                    });
-                    console.log('✅ 降落語音播放完成');
-                } else if (announcementText) {
-                    // 如果 landingData 沒有生成，使用 announcementText
-                    console.log('2️⃣ 播放降落語音（使用預設文字）...');
-                    await playAnnouncement(announcementText, 'zh-TW', {
-                        volume: 1.0,
-                        waitForCompletion: true // 強制等待播放完成
-                    });
+            console.log('1️⃣ 播放 captain.mp3（6 秒）...');
+            await playAudioFile('sounds/captain.mp3', 6);
+            console.log('✅ captain.mp3 播放完成');
+            
+            // 播放正式降落語音（必須等待完成）
+            // 在播放語音期間，保持「機長廣播中」UI 顯示
+            if (landingData && landingData.announcement) {
+                console.log('2️⃣ 播放降落語音...');
+                await playAnnouncement(landingData.announcement, 'zh-TW', {
+                    volume: 1.0, // 語音最大音量
+                    waitForCompletion: true // 強制等待播放完成
+                });
+                console.log('✅ 降落語音播放完成');
+            } else if (announcementText) {
+                // 如果 landingData 沒有生成，使用 announcementText
+                console.log('2️⃣ 播放降落語音（使用預設文字）...');
+                await playAnnouncement(announcementText, 'zh-TW', {
+                    volume: 1.0,
+                    waitForCompletion: true // 強制等待播放完成
+                });
                 }
             } else {
                 console.log('ℹ️ [提前降落] captain.mp3 和 TTS 已在 confirmEarlyLanding 中播放，跳過');
@@ -11657,30 +11679,30 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             
             // 語音播放完成後，隱藏「機長廣播中」UI（如果不是提前降落，因為提前降落已經在上面隱藏了）
             if (!isEarlyLanding) {
-                setBoardingStatus(false);
+            setBoardingStatus(false);
             }
             
             // 🔧 改進：圖片應該已經在開始時就開始生成了，這裡只是確保
             // landingImagePromise 應該已經在函數開始時就定義了
             if (!landingImagePromise) {
                 console.warn('⚠️ landingImagePromise 未定義，重新生成...');
-                if (finalDestination) {
-                    landingImagePromise = (async () => {
-                        const url = await generateLandingImage(
-                            finalDestination.city,
-                            finalDestination.country,
-                            finalDestination.timezone || 'UTC',
-                            new Date().toISOString()
-                        );
-                        if (url) {
-                            window._manualLandingImageUrl = url;
+            if (finalDestination) {
+                landingImagePromise = (async () => {
+                    const url = await generateLandingImage(
+                        finalDestination.city,
+                        finalDestination.country,
+                        finalDestination.timezone || 'UTC',
+                        new Date().toISOString()
+                    );
+                    if (url) {
+                        window._manualLandingImageUrl = url;
                             destinationImageUrl = url;
-                            console.log('✅ 降落圖片生成成功:', url);
-                        } else {
-                            console.warn('⚠️ 降落圖片生成失敗');
-                        }
-                        return url;
-                    })();
+                        console.log('✅ 降落圖片生成成功:', url);
+                    } else {
+                        console.warn('⚠️ 降落圖片生成失敗');
+                    }
+                    return url;
+                })();
                 } else {
                     landingImagePromise = Promise.resolve(null);
                 }
@@ -11796,12 +11818,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     arrivalInfoEl.classList.remove('active');
                 }
                 
-                try {
-                    feedbackData = await showFlightFeedback(finalDestination);
-                    console.log('✅ 情緒量表作答完成，回饋數據:', feedbackData);
-                } catch (error) {
-                    console.error('❌ 顯示情緒量表失敗:', error);
-                    feedbackData = '3'; // 預設值
+            try {
+                feedbackData = await showFlightFeedback(finalDestination);
+                console.log('✅ 情緒量表作答完成，回饋數據:', feedbackData);
+            } catch (error) {
+                console.error('❌ 顯示情緒量表失敗:', error);
+                feedbackData = '3'; // 預設值
                 }
             }
             
@@ -11853,17 +11875,17 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.error('❌ [handleLanding] 無法保存：finalDestination 和 destinationData 都為 null');
             } else {
                 console.log('📤 [handleLanding] 準備保存新降落地點到 Firebase:', destinationToSave.city_zh || destinationToSave.city, destinationToSave.country_zh || destinationToSave.country);
-                saveSleepRecord({
-                    // 時間相關
-                    plannedMinutes: selectedTimer,              // 預期時間
-                    durationMinutes: actualDuration,            // 實際時間
-                    timeDiffMinutes: timeDiff,                  // 時間差異（分鐘）
-                    punctuality: punctuality,                   // 準時狀態（PERFECT / EARLY / LATE / ON_TIME）
-                    
-                    // 氣候相關
-                    directionPosition: selectedDirection,       // 氣候帶位置（0-4）
-                    climateZoneName: climateZoneName,            // 氣候帶名稱（例如「熱帶夢境」）
-                    
+            saveSleepRecord({
+                // 時間相關
+                plannedMinutes: selectedTimer,              // 預期時間
+                durationMinutes: actualDuration,            // 實際時間
+                timeDiffMinutes: timeDiff,                  // 時間差異（分鐘）
+                punctuality: punctuality,                   // 準時狀態（PERFECT / EARLY / LATE / ON_TIME）
+                
+                // 氣候相關
+                directionPosition: selectedDirection,       // 氣候帶位置（0-4）
+                climateZoneName: climateZoneName,            // 氣候帶名稱（例如「熱帶夢境」）
+                
                     // 目的地相關（使用 finalDestination，確保是新降落地點）
                     destinationCity: destinationToSave.city,
                     destinationCountry: destinationToSave.country,
@@ -11873,19 +11895,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     destinationLatitude: destinationToSave.latitude,
                     destinationLongitude: destinationToSave.longitude,
                     timezone: destinationToSave.timezone,
-                    isWormhole: isWormhole,                     // 是否是蟲洞目的地
-                    
-                    // 媒體內容
-                    imageUrl: finalImageUrl,                     // 降落圖片 URL（優先使用手動觸發的）
-                    announcementText: announcementText,          // 降落語音文字
+                isWormhole: isWormhole,                     // 是否是蟲洞目的地
+                
+                // 媒體內容
+                imageUrl: finalImageUrl,                     // 降落圖片 URL（優先使用手動觸發的）
+                announcementText: announcementText,          // 降落語音文字
                     
                     // 🔧 改進：保存 Phase 7 最後顯示的目的地資訊（時間、天氣、活動建議）
                     destinationInfo: destinationInfo || null,    // 目的地資訊（time, weather, feature）
-                    
-                    // 飛行回饋（實驗數據）
-                    flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
-                    
-                    wakeTime: new Date().toISOString()
+                
+                // 飛行回饋（實驗數據）
+                flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
+                
+                wakeTime: new Date().toISOString()
                 }).then(success => {
                     if (success) {
                         console.log('✅ [handleLanding] 新降落地點已成功保存到 Firebase');
@@ -11893,10 +11915,10 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     } else {
                         console.error('❌ [handleLanding] 保存到 Firebase 失敗');
                     }
-                }).catch(error => {
-                    // 即使儲存失敗，也不阻塞流程
+            }).catch(error => {
+                // 即使儲存失敗，也不阻塞流程
                     console.error('❌ [handleLanding] 儲存到 Firebase 時發生錯誤:', error);
-                });
+            });
             }
             
             // 🔧 改進：不清除 window._manualLandingImageUrl，因為 Phase 0 需要使用最新生成的圖片
@@ -11946,12 +11968,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             if (imageToShow && document.querySelector('.window-content')) {
                 const windowContent = document.querySelector('.window-content');
                 if (windowContent) {
-                    windowContent.innerHTML = '';
+                windowContent.innerHTML = '';
                     // 🔧 使用代理 URL 避免 CORS 問題
                     const proxiedUrl = getProxiedImageUrl(imageToShow);
                     windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
-                    windowContent.style.backgroundSize = 'cover';
-                    windowContent.style.backgroundPosition = 'center';
+                windowContent.style.backgroundSize = 'cover';
+                windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
                     console.log('✅ 目的地圖片已顯示在視窗中（最新生成的圖片）:', imageToShow);
                 }
@@ -11980,8 +12002,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.log('✅ [Phase 0] 隱藏 stateCountry，只顯示 stateLandingCountryInfo（統一資訊，與 Phase 7 一致）');
                 } else {
                     // 如果沒有降落後的資訊，才顯示 stateCountry（初始狀態）
-                    stateCountry.style.display = 'flex';
-                    stateCountry.classList.add('active');
+                stateCountry.style.display = 'flex';
+                stateCountry.classList.add('active');
                     console.log('✅ [Phase 0] 顯示 stateCountry（初始狀態）');
                 }
             }
