@@ -3878,24 +3878,28 @@
                             destinationClimateEl.textContent = '🌍 ' + selectedClimateZone.name + ' - ' + selectedClimateZone.description;
                         }
                         
-                        // 提前生成 TTS 語音文字與音檔
-                        console.log('🎤 生成起飛 TTS 語音文字與音檔（按鈕確認後）...');
-                        const climateZone = destinationData.climateZone || null;
-                        const announcementResult = generateTakeoffAnnouncement(
-                            destinationData,
-                            destinationData.country,
-                            selectedTimer,
-                            climateZone
-                        );
-                        
-                        if (announcementResult && announcementResult.text) {
-                            preparedAnnouncement = announcementResult.text;
-                            preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
-                            preparedAudioId = null;
-                            generateTtsAudio(announcementResult.text, 'zh-TW', announcementResult.gender, 0.8);
-                            console.log('✅ 起飛語音文字已準備（' + announcementResult.gender + ' 聲，語速 0.8）');
+                        // 🔧 改進：如果 TTS 已經在時機1準備好了，就不需要重新生成
+                        if (!preparedAnnouncement) {
+                            console.log('🎤 生成起飛 TTS 語音文字與音檔（按鈕確認後，時機1未生成）...');
+                            const climateZone = destinationData.climateZone || null;
+                            const announcementResult = generateTakeoffAnnouncement(
+                                destinationData,
+                                destinationData.country,
+                                selectedTimer,
+                                climateZone
+                            );
+                            
+                            if (announcementResult && announcementResult.text) {
+                                preparedAnnouncement = announcementResult.text;
+                                preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
+                                preparedAudioId = null;
+                                generateTtsAudio(announcementResult.text, 'zh-TW', announcementResult.gender, 0.8);
+                                console.log('✅ 起飛語音文字已準備（' + announcementResult.gender + ' 聲，語速 0.8）');
+                            } else {
+                                console.warn('⚠️ 起飛語音文字生成失敗');
+                            }
                         } else {
-                            console.warn('⚠️ 起飛語音文字生成失敗');
+                            console.log('✅ 起飛 TTS 語音已在時機1準備完成，直接使用（' + preparedAnnouncementGender + ' 聲）');
                         }
                         
                         // 切換到準備起飛狀態
@@ -8123,13 +8127,13 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     resolve(finalFeedback);
                 }, FEEDBACK_TIMEOUT_MS);
                 
-                // 點擊選項（桌面測試用）
-                options.forEach((opt, index) => {
+                // 點擊選項（桌面測試用）- 使用 starSegments
+                starSegments.forEach((segment, index) => {
                     // 移除舊的事件監聽器（如果有的話）
-                    const newOpt = opt.cloneNode(true);
-                    opt.parentNode.replaceChild(newOpt, opt);
+                    const newSegment = segment.cloneNode(true);
+                    segment.parentNode.replaceChild(newSegment, segment);
                     
-                    newOpt.addEventListener('click', () => {
+                    newSegment.addEventListener('click', () => {
                         if (buttonPressHandled) return;
                         buttonPressHandled = true;
                         knobSelectionActive = false;
@@ -8138,12 +8142,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         clearInterval(buttonCheckInterval);
                         clearTimeout(timeoutId);
                         
+                        // 更新選擇
                         updateSelection(index);
+                        
+                        // 清除標記
+                        window._feedbackWaitingForButton = false;
+                        
+                        // 隱藏選單
                         feedbackState.style.display = 'none';
                         
-                        const feedback = newOpt.getAttribute('data-feedback') || String(index + 1);
-                        console.log('✅ 飛行回饋已收集（點擊）:', feedback);
-                        resolve(feedback);
+                        // 返回選擇的回饋（使用全局標記的值）
+                        const finalFeedback = window._feedbackSelectedValue || String(index + 1);
+                        console.log('✅ 飛行回饋已收集（點擊）:', finalFeedback);
+                        resolve(finalFeedback);
                     });
                 });
             });
@@ -8901,14 +8912,14 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 🔧 改進：提早降落時，Phase 5 不播放音樂，直接進入 Phase 7 時再播放新的 wakeup 音樂
             // 音樂已在 Phase 7 進入時播放，這裡只需要調整音量（在語音播放時降低）
             
-            // 3. 同時開始準備 TTS（提前生成降落內容）
-            console.log('3️⃣ [緊急降落] 開始準備 TTS 語音...');
+            // 3. 同時開始準備 TTS 文字內容和預先生成音頻（並行進行，爭取時間）
+            console.log('3️⃣ [緊急降落] 開始準備 TTS 語音（並行生成音頻和文字）...');
             const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
             const punctuality = calculatePunctuality(selectedTimer, actualDuration);
             const timeDiff = actualDuration - selectedTimer;
             const timeDiffPercent = (timeDiff / selectedTimer) * 100;
             
-            // 提前計算目的地和生成降落內容
+            // 提前計算目的地和生成降落內容（異步進行）
             let finalDestination = destinationData || null;
             let isWormhole = false;
             const landingContentPromise = (async () => {
@@ -8961,7 +8972,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     window._preGeneratedFinalDestination = finalDestination;
                     window._preGeneratedIsWormhole = isWormhole;
                     
-                    console.log('✅ [緊急降落] TTS 內容已準備完成');
+                    console.log('✅ [緊急降落] TTS 文字內容已準備完成');
                     return landingDataResult;
                 } catch (error) {
                     console.error('❌ [緊急降落] 準備 TTS 時發生錯誤:', error);
@@ -8969,12 +8980,111 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             })();
             
-            // 4. 等待 TTS 準備完成（確保 TTS 準備好後再播放 captain.mp3）
-            console.log('4️⃣ [緊急降落] 等待 TTS 準備完成...');
+            // 4. 先預先生成 TTS 音頻（使用臨時文字，不等待完整文字內容）
+            console.log('4️⃣ [緊急降落] 先預先生成 TTS 音頻（使用臨時文字模板，爭取時間）...');
+            let ttsReady = false;
+            let ttsAudioPromise = null;
+            
+            // 使用一個通用的臨時文字模板來預先生成音頻
+            const tempAnnouncement = '各位旅客，我們即將開始降落程序。請您慢慢醒來，輕輕活動一下身體。我們即將抵達目的地，請您準備好回到現實世界。';
+            const tempGender = 'male'; // 預設使用男聲
+            
+            try {
+                const TTS_BASE = 'http://127.0.0.1:5005';
+                const voiceMap = {
+                    'male': 'onyx',
+                    'female': 'nova'
+                };
+                const selectedVoice = voiceMap[tempGender] || 'onyx';
+                const openaiSpeed = Math.max(0.7, Math.min(0.9, 0.75 * 1.1));
+                
+                console.log(`🎤 [緊急降落] 預先生成 TTS 音頻（臨時模板，${tempGender} 聲，語速 ${openaiSpeed.toFixed(2)}）...`);
+                ttsAudioPromise = fetch(TTS_BASE + '/tts/play', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: tempAnnouncement,
+                        languageCode: 'zh',
+                        voice: selectedVoice,
+                        speed: openaiSpeed
+                    }),
+                    timeout: 15000 // 15 秒超時
+                }).then(async (ttsResponse) => {
+                    if (ttsResponse.ok) {
+                        const ttsResult = await ttsResponse.json();
+                        if (ttsResult.success) {
+                            ttsReady = true;
+                            console.log('✅ [緊急降落] TTS 音頻已預先生成完成（臨時模板），可以立即播放');
+                            return true;
+                        } else {
+                            console.warn('⚠️ [緊急降落] TTS 音頻生成失敗:', ttsResult);
+                            return false;
+                        }
+                    } else {
+                        console.warn('⚠️ [緊急降落] TTS API 響應失敗:', ttsResponse.status);
+                        return false;
+                    }
+                }).catch((error) => {
+                    console.warn('⚠️ [緊急降落] 預先生成 TTS 音頻時發生錯誤:', error);
+                    return false;
+                });
+            } catch (error) {
+                console.warn('⚠️ [緊急降落] 預先生成 TTS 音頻時發生錯誤:', error);
+            }
+            
+            // 5. 等待 TTS 文字內容準備完成（與音頻生成並行進行）
+            console.log('5️⃣ [緊急降落] 等待 TTS 文字內容準備完成（與音頻生成並行）...');
             const landingData = await landingContentPromise;
             
-            // 5. TTS 準備完成後，顯示「機長廣播中」並播放 captain.mp3
-            console.log('5️⃣ [緊急降落] TTS 準備完成，顯示「機長廣播中」並播放 captain.mp3...');
+            // 6. 如果最終文字內容與臨時模板不同，且音頻已生成，可以選擇重新生成或使用臨時音頻
+            // 為了爭取時間，我們先使用臨時音頻，如果文字內容已準備好，則使用最終文字內容重新生成音頻
+            if (landingData && landingData.announcement && landingData.announcement !== tempAnnouncement) {
+                console.log('🔄 [緊急降落] 最終文字內容已準備，使用最終內容重新生成 TTS 音頻...');
+                try {
+                    const TTS_BASE = 'http://127.0.0.1:5005';
+                    const voiceMap = {
+                        'male': 'onyx',
+                        'female': 'nova'
+                    };
+                    const selectedVoice = voiceMap[landingData.gender || 'male'] || 'onyx';
+                    const openaiSpeed = Math.max(0.7, Math.min(0.9, 0.75 * 1.1));
+                    
+                    console.log(`🎤 [緊急降落] 使用最終文字重新生成 TTS 音頻（${landingData.gender || 'male'} 聲，語速 ${openaiSpeed.toFixed(2)}）...`);
+                    const finalTtsResponse = await fetch(TTS_BASE + '/tts/play', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            text: landingData.announcement,
+                            languageCode: 'zh',
+                            voice: selectedVoice,
+                            speed: openaiSpeed
+                        }),
+                        timeout: 15000 // 15 秒超時
+                    });
+                    
+                    if (finalTtsResponse.ok) {
+                        const finalTtsResult = await finalTtsResponse.json();
+                        if (finalTtsResult.success) {
+                            ttsReady = true;
+                            console.log('✅ [緊急降落] 最終 TTS 音頻已生成完成，可以立即播放');
+                        } else {
+                            console.warn('⚠️ [緊急降落] 最終 TTS 音頻生成失敗，使用臨時音頻:', finalTtsResult);
+                        }
+                    } else {
+                        console.warn('⚠️ [緊急降落] 最終 TTS API 響應失敗，使用臨時音頻:', finalTtsResponse.status);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ [緊急降落] 重新生成 TTS 音頻時發生錯誤，使用臨時音頻:', error);
+                }
+            }
+            
+            // 7. 等待音頻生成完成（確保音頻準備好）
+            if (ttsAudioPromise) {
+                await ttsAudioPromise;
+            }
+            
+            // 6. TTS 音頻準備完成後，顯示「機長廣播中」並播放 captain.mp3
+            console.log('6️⃣ [緊急降落] TTS 音頻已準備好，顯示「機長廣播中」並播放 captain.mp3...');
             setBoardingStatus(true, '機長廣播中...');
             
             // 🔧 改進：降低 Phase 7 的音樂音量（如果正在播放），讓語音更突出
@@ -8990,9 +9100,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.warn('⚠️ captain.mp3 播放失敗:', error);
             }
             
-            // 6. captain.mp3 播完後，立即播放 TTS（已經準備好了）
+            // 9. captain.mp3 播完後，立即播放 TTS（已經預先生成好了，應該可以立即播放）
             if (landingData && landingData.announcement) {
-                console.log('6️⃣ [緊急降落] 播放 TTS 語音...');
+                console.log('9️⃣ [緊急降落] captain.mp3 播放完成，立即播放 TTS 語音（已預先生成）...');
                 await playAnnouncement(landingData.announcement, 'zh-TW', {
                     gender: landingData.gender || 'male',
                     speed: 0.75
@@ -9008,8 +9118,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             }
             
-            // 7. 不需要再調用 triggerManualLanding，因為已經在 Phase 7 了
-            console.log('7️⃣ [緊急降落] 語音播放完成，繼續 Phase 7 流程（已在 Phase 7，音樂已在背景播放）...');
+            // 10. 不需要再調用 triggerManualLanding，因為已經在 Phase 7 了
+            console.log('🔟 [緊急降落] 語音播放完成，繼續 Phase 7 流程（已在 Phase 7，音樂已在背景播放）...');
         }
         
         // 為提前降落播放 wakeup 音樂（帶淡入效果）
@@ -10797,12 +10907,50 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 // 顯示「機長準備廣播」
                 setBoardingStatus(true, '機長準備廣播...');
                 
-                // 1. 準備 TTS（生成準備降落的語音）
-                console.log('1️⃣ [Phase 6] 準備 TTS 語音...');
+                // 1. 準備 TTS 文字內容（生成準備降落的語音文字）
+                console.log('1️⃣ [Phase 6] 準備 TTS 文字內容...');
                 const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
                 
-                // 2. 顯示「機長廣播中」並播放 captain.mp3
-                console.log('2️⃣ [Phase 6] 顯示「機長廣播中」並播放 captain.mp3...');
+                // 2. 預先生成 TTS 音頻（確保音頻準備好後再播放 captain.mp3）
+                console.log('2️⃣ [Phase 6] 預先生成 TTS 音頻（確保音頻準備好後再播放 captain.mp3）...');
+                let ttsReady = false;
+                if (wakeUpAnnouncement) {
+                    try {
+                        const TTS_BASE = 'http://127.0.0.1:5005';
+                        const selectedVoice = 'onyx'; // 使用男聲
+                        const openaiSpeed = Math.max(0.7, Math.min(0.9, 0.8 * 1.1));
+                        
+                        console.log(`🎤 [Phase 6] 預先生成 TTS 音頻（語速 ${openaiSpeed.toFixed(2)}）...`);
+                        const ttsResponse = await fetch(TTS_BASE + '/tts/play', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                text: wakeUpAnnouncement,
+                                languageCode: 'zh',
+                                voice: selectedVoice,
+                                speed: openaiSpeed
+                            }),
+                            timeout: 15000 // 15 秒超時
+                        });
+                        
+                        if (ttsResponse.ok) {
+                            const ttsResult = await ttsResponse.json();
+                            if (ttsResult.success) {
+                                ttsReady = true;
+                                console.log('✅ [Phase 6] TTS 音頻已預先生成完成，可以立即播放');
+                            } else {
+                                console.warn('⚠️ [Phase 6] TTS 音頻生成失敗:', ttsResult);
+                            }
+                        } else {
+                            console.warn('⚠️ [Phase 6] TTS API 響應失敗:', ttsResponse.status);
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ [Phase 6] 預先生成 TTS 音頻時發生錯誤:', error);
+                    }
+                }
+                
+                // 5. TTS 音頻準備完成後，顯示「機長廣播中」並播放 captain.mp3
+                console.log('5️⃣ [Phase 6] TTS 音頻已準備好，顯示「機長廣播中」並播放 captain.mp3...');
                 setBoardingStatus(true, '機長廣播中...');
                 
                 try {
@@ -10812,9 +10960,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.warn('⚠️ captain.mp3 播放失敗:', error);
                 }
                 
-                // 3. captain.mp3 播完後，立即播放準備降落的語音（TTS）
+                // 6. captain.mp3 播完後，立即播放準備降落的語音（TTS 已預先生成，應該可以立即播放）
                 if (wakeUpAnnouncement) {
-                    console.log('3️⃣ [Phase 6] 播放準備降落的語音（TTS）...');
+                    console.log('6️⃣ [Phase 6] captain.mp3 播放完成，立即播放準備降落的語音（TTS 已預先生成）...');
                     await playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
                         volume: 1.0, // 語音最大音量
                         rate: 0.8,
