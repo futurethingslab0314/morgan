@@ -11551,40 +11551,62 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // ============================================================================
             // 步驟 4: 語音A生成好後，播放 captain.mp3，然後立即播放語音A（音樂小聲）
             // ============================================================================
-            console.log('4️⃣ [Phase 7] 語音A已準備好，播放 captain.mp3...');
-            setBoardingStatus(true, '機長廣播中...');
-            
-            // 降低音樂音量（讓語音更突出）
-            if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                console.log('🔉 [Phase 7] 降低音樂音量，讓語音更突出');
-                window._phase7WakeupMusic.volume = 0.15;
-            }
-            
-            // 播放 captain.mp3
-            try {
-                await playAudioFile('sounds/captain.mp3', 6);
-                console.log('✅ captain.mp3 播放完成');
-            } catch (error) {
-                console.warn('⚠️ captain.mp3 播放失敗:', error);
-            }
-            
-            // captain.mp3 播放完後，立即播放語音A
-            if (landingData && landingData.announcement) {
-                console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
-                await playAnnouncement(landingData.announcement, 'zh-TW', {
-                    gender: landingData.gender || 'male',
-                    speed: 0.75,
-                    volume: 1.0
-                });
-                console.log('✅ 語音A播放完成');
+            // 🔧 改進：檢查是否已經在 Phase 6 播放過語音（準時/遲到降落的情況）
+            // 如果是提早降落（isEarlyLanding），需要播放語音A
+            // 如果是準時/遲到降落（manualLandingTriggered），已經在 Phase 6 播放過，不需要重複播放
+            if (isEarlyLanding) {
+                // 提早降落：需要播放語音A
+                console.log('4️⃣ [Phase 7] 提早降落，語音A已準備好，播放 captain.mp3...');
+                setBoardingStatus(true, '機長廣播中...');
                 
-                // 語音A播放完成後，恢復音樂音量
+                // 降低音樂音量（讓語音更突出）
                 if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    console.log('🔉 [Phase 7] 語音A播放完成，恢復音樂音量');
-                    fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
-                        console.warn('⚠️ 恢復音樂音量失敗:', err);
-                    });
+                    console.log('🔉 [Phase 7] 降低音樂音量，讓語音更突出');
+                    window._phase7WakeupMusic.volume = 0.15;
                 }
+                
+                // 播放 captain.mp3
+                try {
+                    await playAudioFile('sounds/captain.mp3', 6);
+                    console.log('✅ captain.mp3 播放完成');
+                } catch (error) {
+                    console.warn('⚠️ captain.mp3 播放失敗:', error);
+                }
+                
+                // captain.mp3 播放完後，立即播放語音A
+                if (landingData && landingData.announcement) {
+                    console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
+                    await playAnnouncement(landingData.announcement, 'zh-TW', {
+                        gender: landingData.gender || 'male',
+                        speed: 0.75,
+                        volume: 1.0
+                    });
+                    console.log('✅ 語音A播放完成');
+                    
+                    // 語音A播放完成後，恢復音樂音量
+                    if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                        console.log('🔉 [Phase 7] 語音A播放完成，恢復音樂音量');
+                        fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
+                            console.warn('⚠️ 恢復音樂音量失敗:', err);
+                        });
+                    }
+                }
+            } else if (manualLandingTriggered) {
+                // 準時/遲到降落：已經在 Phase 6 播放過語音，不需要重複播放
+                console.log('⏭️ [Phase 7] 準時/遲到降落，已在 Phase 6 播放過語音，跳過語音A播放');
+                // 確保音樂音量正常（因為 Phase 6 已經調整過音量）
+                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                    // 如果音樂音量還是 0.15，恢復到 0.6
+                    if (window._phase7WakeupMusic.volume < 0.5) {
+                        console.log('🔉 [Phase 7] 恢復音樂音量到正常水平');
+                        fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
+                            console.warn('⚠️ 恢復音樂音量失敗:', err);
+                        });
+                    }
+                }
+            } else {
+                // 其他情況（不應該發生，但為了安全起見）
+                console.warn('⚠️ [Phase 7] 未知的降落類型，跳過語音A播放');
             }
             
             // 隱藏機長廣播 UI
