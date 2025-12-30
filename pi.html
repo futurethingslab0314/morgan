@@ -3879,22 +3879,22 @@
                         // 🔧 改進：如果 TTS 已經在時機1準備好了，就不需要重新生成
                         if (!preparedAnnouncement) {
                             console.log('🎤 生成起飛 TTS 語音文字與音檔（按鈕確認後，時機1未生成）...');
-                            const climateZone = destinationData.climateZone || null;
-                            const announcementResult = generateTakeoffAnnouncement(
-                                destinationData,
-                                destinationData.country,
-                                selectedTimer,
-                                climateZone
-                            );
-                            
-                            if (announcementResult && announcementResult.text) {
-                                preparedAnnouncement = announcementResult.text;
-                                preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
-                                preparedAudioId = null;
+                        const climateZone = destinationData.climateZone || null;
+                        const announcementResult = generateTakeoffAnnouncement(
+                            destinationData,
+                            destinationData.country,
+                            selectedTimer,
+                            climateZone
+                        );
+                        
+                        if (announcementResult && announcementResult.text) {
+                            preparedAnnouncement = announcementResult.text;
+                            preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
+                            preparedAudioId = null;
                                 generateTtsAudio(announcementResult.text, 'zh-TW', announcementResult.gender, 0.8);
                                 console.log('✅ 起飛語音文字已準備（' + announcementResult.gender + ' 聲，語速 0.8）');
-                            } else {
-                                console.warn('⚠️ 起飛語音文字生成失敗');
+                        } else {
+                            console.warn('⚠️ 起飛語音文字生成失敗');
                             }
                         } else {
                             console.log('✅ 起飛 TTS 語音已在時機1準備完成，直接使用（' + preparedAnnouncementGender + ' 聲）');
@@ -4349,13 +4349,16 @@
                 let timeoutId = null;
                 let resolved = false;
                 
-                // 如果指定了最大播放時長，必須等待完整的時長
+                // 🔧 改進：先設置 timeout（如果指定了最大播放時長）
                 if (maxDuration && maxDuration > 0) {
+                    // 設置 timeout，在指定時間後停止音頻
                     timeoutId = setTimeout(() => {
                         if (resolved) return;
                         resolved = true;
                         try {
+                            if (!audio.paused) {
                             audio.pause();
+                            }
                             audio.currentTime = 0;
                             console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止`);
                         } catch (e) {
@@ -4395,11 +4398,15 @@
                     resolve(); // 即使失敗也繼續
                 };
                 
-                // 載入完成後播放
+                // 🔧 改進：載入完成後立即播放（不等待）
                 audio.addEventListener('loadeddata', () => {
                     console.log('📥 音頻已載入，開始播放:', url);
                     audio.play().then(() => {
                         console.log('▶️ 音頻開始播放:', url);
+                        // 如果指定了最大播放時長，記錄開始時間
+                        if (maxDuration && maxDuration > 0) {
+                            console.log(`⏱️ 音頻將在 ${maxDuration} 秒後停止`);
+                        }
                     }).catch((error) => {
                         if (resolved) return;
                         resolved = true;
@@ -4417,6 +4424,9 @@
                     console.error('❌ 音頻載入失敗:', url);
                     resolve();
                 }, { once: true });
+                
+                // 🔧 改進：立即開始載入音頻
+                audio.load();
             });
         }
         
@@ -7371,7 +7381,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         captainState.style.display = 'flex';
                         captainState.classList.add('active');
                         
-                        // 🔧 改進：先顯示「準備啟航」4 秒，然後切換到「📢 機長廣播中」
+                        // 🔧 改進：根據當前 Phase 顯示不同的標題
                         const stateLabel = captainState.querySelector('.state-label');
                         if (stateLabel) {
                             // 清除之前的 timeout（如果有的話）
@@ -7380,18 +7390,33 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                                 window._captainAnnouncementTimeout = null;
                             }
                             
-                            // 先設置為「準備啟航」
-                            stateLabel.textContent = '準備啟航';
-                            console.log('✅ [setBoardingStatus] 顯示「準備啟航」');
-                            
-                            // 4 秒後切換到「📢 機長廣播中」
-                            window._captainAnnouncementTimeout = setTimeout(() => {
-                                if (captainState.classList.contains('active')) {
+                            // 根據當前 Phase 決定顯示的內容
+                            if (currentPhase === Phase.DESCENT || currentPhase === 6) {
+                                // Phase 6: 顯示「準備降落」
+                                stateLabel.textContent = '準備降落';
+                                console.log('✅ [setBoardingStatus] Phase 6 顯示「準備降落」');
+                            } else if (currentPhase === Phase.LANDING || currentPhase === 7) {
+                                // Phase 7: 顯示「降落中」或「機長廣播中」（根據 message 決定）
+                                if (message && message.includes('降落')) {
+                                    stateLabel.textContent = '🛬 降落';
+                                } else {
                                     stateLabel.textContent = '📢 機長廣播中';
-                                    console.log('✅ [setBoardingStatus] 切換到「📢 機長廣播中」');
                                 }
-                                window._captainAnnouncementTimeout = null;
-                            }, 4000);
+                                console.log('✅ [setBoardingStatus] Phase 7 顯示:', stateLabel.textContent);
+                            } else {
+                                // Phase 4 或其他: 先顯示「準備啟航」4 秒，然後切換到「📢 機長廣播中」
+                                stateLabel.textContent = '準備啟航';
+                                console.log('✅ [setBoardingStatus] 顯示「準備啟航」');
+                                
+                                // 4 秒後切換到「📢 機長廣播中」
+                                window._captainAnnouncementTimeout = setTimeout(() => {
+                                    if (captainState.classList.contains('active')) {
+                                        stateLabel.textContent = '📢 機長廣播中';
+                                        console.log('✅ [setBoardingStatus] 切換到「📢 機長廣播中」');
+                                    }
+                                    window._captainAnnouncementTimeout = null;
+                                }, 4000);
+                            }
                         }
                         
                         // 更新機長廣播訊息
@@ -7983,7 +8008,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         if (i <= index) {
                             // 這個位置應該亮（在選中位置之前或等於選中位置）
                             segment.classList.add('active');
-                        } else {
+                            } else {
                             // 這個位置不應該亮（在選中位置之後）
                             segment.classList.remove('active');
                         }
@@ -8906,8 +8931,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 先切換到 Phase 7（這樣 handleLanding 會立即播放音樂）
             switchToPhase(Phase.LANDING);
             
-            // 等待一小段時間確保 Phase 7 已初始化
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // 🔧 改進：等待 Phase 7 初始化並確保音樂已開始播放
+            // 等待更長時間確保 handleLanding 已執行並音樂已開始播放
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             // 🔧 改進：同時顯示「降落準備中請稍等...」和開始準備 TTS，以拖時間讓 TTS 有時間生成
             // 1. 顯示「降落準備中請稍等...」
@@ -9116,6 +9142,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             
             if (!musicUrl) {
                 console.warn('⚠️ [Phase 7] 找不到 wakeup 音樂文件，跳過播放');
+                // 確保設置為 null，避免後續代碼出錯
+                window._phase7WakeupMusic = null;
                 return;
             }
             
@@ -9130,17 +9158,30 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             });
             
             // 音樂慢慢淡入（2秒淡入）
+            // 🔧 改進：清理之前的淡入 interval（如果有的話）
+            if (window._phase7MusicFadeInInterval) {
+                clearInterval(window._phase7MusicFadeInInterval);
+                window._phase7MusicFadeInInterval = null;
+            }
+            
             const fadeInDuration = 2000; // 2秒淡入
             const targetVolume = 0.6; // 目標音量
             const startTime = Date.now();
             
-            const fadeInInterval = setInterval(() => {
+            window._phase7MusicFadeInInterval = setInterval(() => {
+                if (!audio || audio.paused) {
+                    clearInterval(window._phase7MusicFadeInInterval);
+                    window._phase7MusicFadeInInterval = null;
+                    return;
+                }
+                
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / fadeInDuration, 1);
                 audio.volume = targetVolume * progress;
                 
                 if (progress >= 1) {
-                    clearInterval(fadeInInterval);
+                    clearInterval(window._phase7MusicFadeInInterval);
+                    window._phase7MusicFadeInInterval = null;
                     audio.volume = targetVolume;
                     console.log('✅ [Phase 7] wakeup 音樂淡入完成');
                 }
@@ -9149,10 +9190,20 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 保存引用到新的全局變數，以便後續調整音量或停止
             window._phase7WakeupMusic = audio;
             
+            // 🔧 改進：等待音樂開始播放（確保音樂在返回前已經開始）
+            // 等待一小段時間確保音樂已經開始播放
+            await new Promise(resolve => setTimeout(resolve, 100));
+            console.log('✅ [Phase 7] wakeup 音樂已開始播放');
+            
             // 音樂播放結束時清理
             audio.onended = () => {
                 console.log('✅ [Phase 7] wakeup 音樂播放完成');
                 window._phase7WakeupMusic = null;
+                // 清理淡入 interval（如果還在運行）
+                if (window._phase7MusicFadeInInterval) {
+                    clearInterval(window._phase7MusicFadeInInterval);
+                    window._phase7MusicFadeInInterval = null;
+                }
             };
         }
 
@@ -9317,8 +9368,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 if (stateLandingCountryInfo && stateLandingCountryInfo.classList.contains('active')) {
                     // 如果有降落後的資訊，只顯示它（與 Phase 7 效果一致）
                     if (stateCountry) {
-                        stateCountry.style.display = 'none';
-                        stateCountry.classList.remove('active');
+                    stateCountry.style.display = 'none';
+                    stateCountry.classList.remove('active');
                         console.log('✅ [Phase ' + phase + '] 隱藏 stateCountry，只顯示 stateLandingCountryInfo（統一資訊）');
                     }
                     console.log('✅ [Phase ' + phase + '] stateLandingCountryInfo 已顯示，保持顯示（統一資訊）');
@@ -10506,6 +10557,52 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 🔧 改進：清除睡眠時間相關狀態
             sleepStartTime = null;
             
+            // 🔧 改進：清理 Phase 6 相關的定時器和狀態
+            if (window._phase6AutoPlayTimeout) {
+                clearTimeout(window._phase6AutoPlayTimeout);
+                window._phase6AutoPlayTimeout = null;
+                console.log('✅ [resetFlightState] 已清理 Phase 6 自動播放 timeout');
+            }
+            if (window._phase6VolumeFadeInterval) {
+                clearInterval(window._phase6VolumeFadeInterval);
+                window._phase6VolumeFadeInterval = null;
+                console.log('✅ [resetFlightState] 已清理 Phase 6 音量調整 interval');
+            }
+            if (window._phase6MusicFadeInInterval) {
+                clearInterval(window._phase6MusicFadeInInterval);
+                window._phase6MusicFadeInInterval = null;
+                console.log('✅ [resetFlightState] 已清理 Phase 6 音樂淡入 interval');
+            }
+            
+            // 🔧 改進：清理 Phase 6 的音樂和狀態
+            if (descentWakeupMusic) {
+                try {
+                    descentWakeupMusic.pause();
+                    descentWakeupMusic.currentTime = 0;
+                    descentWakeupMusic = null;
+                } catch (e) {
+                    console.warn('⚠️ [resetFlightState] 停止 descentWakeupMusic 時發生錯誤:', e);
+                }
+            }
+            descentAnnouncementPlayed = false;
+            descentMusicPlayCount = 0;
+            
+            // 🔧 改進：清理 Phase 7 的音樂和定時器
+            if (window._phase7WakeupMusic) {
+                try {
+                    window._phase7WakeupMusic.pause();
+                    window._phase7WakeupMusic.currentTime = 0;
+                    window._phase7WakeupMusic = null;
+                } catch (e) {
+                    console.warn('⚠️ [resetFlightState] 停止 _phase7WakeupMusic 時發生錯誤:', e);
+                }
+            }
+            if (window._phase7MusicFadeInInterval) {
+                clearInterval(window._phase7MusicFadeInInterval);
+                window._phase7MusicFadeInInterval = null;
+                console.log('✅ [resetFlightState] 已清理 Phase 7 音樂淡入 interval');
+            }
+            
             // 🔧 改進：確保進度條完全隱藏並重置（但不設置 display: none，只設置 visibility 和 opacity）
             // 這樣在第二次進入 Phase 5 時，handleCruise 可以正確顯示進度條
             const progressWrapper = document.getElementById('flightProgressWrapper');
@@ -10558,8 +10655,25 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // Phase 6: 降落前 5 分鐘
             console.log('🛬 [handleDescent] 準備降落（5分鐘前）');
             
-            // 顯示「準備降落」UI在info-bar中
-            setBoardingStatus(true, '準備降落...');
+            // 🔧 改進：清理之前的定時器和狀態（防止重複執行）
+            if (window._phase6AutoPlayTimeout) {
+                clearTimeout(window._phase6AutoPlayTimeout);
+                window._phase6AutoPlayTimeout = null;
+                console.log('✅ [handleDescent] 已清理之前的 Phase 6 自動播放 timeout');
+            }
+            if (window._phase6VolumeFadeInterval) {
+                clearInterval(window._phase6VolumeFadeInterval);
+                window._phase6VolumeFadeInterval = null;
+                console.log('✅ [handleDescent] 已清理之前的 Phase 6 音量調整 interval');
+            }
+            if (window._phase6MusicFadeInInterval) {
+                clearInterval(window._phase6MusicFadeInInterval);
+                window._phase6MusicFadeInInterval = null;
+                console.log('✅ [handleDescent] 已清理之前的 Phase 6 音樂淡入 interval');
+            }
+            
+            // 顯示「按下按鈕準備進行降落程序」UI在info-bar中
+            setBoardingStatus(true, '按下按鈕準備進行降落程序...');
             console.log('   descentAnnouncementPlayed:', descentAnnouncementPlayed);
             console.log('   currentPhase:', currentPhase);
             
@@ -10649,7 +10763,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         try {
                         console.log(`   🔍 嘗試路徑: ${musicPath}`);
                         descentWakeupMusic = new Audio(musicPath);
-                        descentWakeupMusic.volume = 0.6; // 初始音量（較大聲）
+                        descentWakeupMusic.volume = 0; // 初始音量為 0，準備淡入到 0.15
                         descentWakeupMusic.loop = false;
                         descentWakeupMusic.preload = 'auto';
                         
@@ -10727,9 +10841,36 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                             descentWakeupMusic.load();
                         });
                         
-                        // 開始播放
-                        console.log(`▶️ 開始播放喚醒音樂: ${musicPath}`);
+                        // 開始播放（從靜音開始）
+                        console.log(`▶️ 開始播放喚醒音樂（淡入到 0.15）: ${musicPath}`);
                         await descentWakeupMusic.play();
+                        
+                        // 音樂慢慢淡入到 0.15（2秒淡入）
+                        // 🔧 改進：清理之前的淡入 interval（如果有的話）
+                        if (window._phase6MusicFadeInInterval) {
+                            clearInterval(window._phase6MusicFadeInInterval);
+                            window._phase6MusicFadeInInterval = null;
+                        }
+                        
+                        const fadeInDuration = 2000; // 2秒淡入
+                        const fadeInStartTime = Date.now();
+                        window._phase6MusicFadeInInterval = setInterval(() => {
+                            if (!descentWakeupMusic || descentWakeupMusic.paused) {
+                                clearInterval(window._phase6MusicFadeInInterval);
+                                window._phase6MusicFadeInInterval = null;
+                                return;
+                            }
+                            const elapsed = Date.now() - fadeInStartTime;
+                            const progress = Math.min(elapsed / fadeInDuration, 1);
+                            descentWakeupMusic.volume = 0.15 * progress;
+                            
+                            if (progress >= 1) {
+                                clearInterval(window._phase6MusicFadeInInterval);
+                                window._phase6MusicFadeInInterval = null;
+                                console.log(`✅ 喚醒音樂已淡入到 0.15: ${musicPath}`);
+                            }
+                        }, 50); // 每 50ms 更新一次音量
+                        
                         console.log(`✅ 喚醒音樂已開始播放: ${musicPath}`);
                         
                         musicLoaded = true;
@@ -10747,11 +10888,115 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.warn('⚠️ 無法載入喚醒音樂（所有路徑都失敗），將繼續執行但不播放音樂');
                 } else {
                     console.log(`✅ 喚醒音樂載入成功，使用路徑: ${musicPathUsed}`);
+                    
+                    // 🔧 改進：Phase 6 自動播放流程
+                    // 1. 音樂以 0.15 音量淡入播放（已完成）
+                    // 2. 10 秒後自動播放準備降落的喚醒語音
+                    // 3. 語音播放完後，音樂慢慢變大聲
+                    // 4. 當用戶按下按鈕後，才進入 Phase 7 程序
+                    console.log('✅ [Phase 6] 音樂已開始播放（0.15 音量），10 秒後自動播放喚醒語音...');
+                    
+                    // 🔧 改進：清理之前的自動播放 timeout（如果有的話）
+                    if (window._phase6AutoPlayTimeout) {
+                        clearTimeout(window._phase6AutoPlayTimeout);
+                        window._phase6AutoPlayTimeout = null;
+                    }
+                    
+                    // 10 秒後自動播放準備降落的喚醒語音
+                    window._phase6AutoPlayTimeout = setTimeout(async () => {
+                        // 清除 timeout 引用
+                        window._phase6AutoPlayTimeout = null;
+                        if (!descentWakeupMusic || descentWakeupMusic.paused) {
+                            console.warn('⚠️ [Phase 6] 音樂已停止，跳過自動播放喚醒語音');
+                            return;
+                        }
+                        
+                        console.log('🔊 [Phase 6] 10 秒後自動播放準備降落的喚醒語音...');
+                        const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                        
+                        // 預先生成 TTS 音頻
+                        let phase6VoiceAudioId = null;
+                        try {
+                            phase6VoiceAudioId = await generateTtsAudio(
+                                wakeUpAnnouncement,
+                                'zh-TW',
+                                'male',
+                                0.8
+                            );
+                            console.log('✅ [Phase 6] TTS 音頻已預先生成完成，audio_id:', phase6VoiceAudioId);
+                        } catch (err) {
+                            console.warn('⚠️ [Phase 6] TTS 音頻預先生成失敗:', err);
+                        }
+                        
+                        // 降低音樂音量（讓語音更突出）
+                        if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                            console.log('🔉 [Phase 6] 降低音樂音量，讓語音更突出');
+                            descentWakeupMusic.volume = 0.15;
+                        }
+                        
+                        // 播放語音
+                        try {
+                            if (phase6VoiceAudioId) {
+                                console.log('✅ [Phase 6] 使用已預先生成的 TTS 音頻，audio_id:', phase6VoiceAudioId);
+                                await playCachedTts(phase6VoiceAudioId);
+                                console.log('✅ 準備降落的語音播放完成');
+                            } else {
+                                // 如果預先生成失敗，回退到 playAnnouncement
+                                console.warn('⚠️ [Phase 6] TTS 音頻未預先生成，使用 playAnnouncement 生成並播放');
+                                await playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
+                                    volume: 1.0,
+                                    rate: 0.8,
+                                    pitch: 0.9,
+                                    waitForCompletion: true
+                                });
+                                console.log('✅ 準備降落的語音播放完成');
+                            }
+                        } catch (err) {
+                            console.warn('⚠️ [Phase 6] 播放喚醒語音失敗:', err);
+                        }
+                        
+                        // 語音播放完成後，慢慢將音樂音量調大（從 0.15 到 0.6）
+                        if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                            console.log('✅ 機長語音播放完成，開始慢慢調大音樂音量（0.15 → 0.6）');
+                            
+                            // 🔧 改進：清理之前的音量調整 interval（如果有的話）
+                            if (window._phase6VolumeFadeInterval) {
+                                clearInterval(window._phase6VolumeFadeInterval);
+                                window._phase6VolumeFadeInterval = null;
+                            }
+                            
+                            const targetVolume = 0.6;
+                            const startVolume = 0.15;
+                            const duration = 3000; // 3 秒
+                            const startTime = Date.now();
+                            
+                            window._phase6VolumeFadeInterval = setInterval(() => {
+                                if (!descentWakeupMusic || descentWakeupMusic.paused) {
+                                    clearInterval(window._phase6VolumeFadeInterval);
+                                    window._phase6VolumeFadeInterval = null;
+                                    return;
+                                }
+                                
+                                const elapsed = Date.now() - startTime;
+                                const progress = Math.min(elapsed / duration, 1);
+                                
+                                // 使用緩動函數（ease-in-out）
+                                const easedProgress = progress < 0.5 
+                                    ? 2 * progress * progress 
+                                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                                
+                                const currentVolume = startVolume + (targetVolume - startVolume) * easedProgress;
+                                descentWakeupMusic.volume = currentVolume;
+                                
+                                if (progress >= 1) {
+                                    clearInterval(window._phase6VolumeFadeInterval);
+                                    window._phase6VolumeFadeInterval = null;
+                                    console.log('✅ 音樂音量已調回正常（0.6）');
+                                }
+                            }, 50); // 每 50ms 更新一次音量
+                        }
+                    }, 10000); // 10 秒後自動播放
                 }
-                
-                // 🔧 改進：Phase 6 只播放音樂，等待用戶按按鈕後再播放語音
-                // 語音播放將在 triggerManualLanding() 中處理
-                console.log('✅ [Phase 6] 音樂已開始播放，等待用戶按按鈕...');
             } catch (error) {
                 console.error('❌ 無法播放喚醒音樂:', error);
                 console.error('   錯誤詳情:', error.message);
@@ -10811,6 +11056,20 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
         async function triggerManualLanding() {
             console.log('🛬 手動觸發降落流程（Phase 6 → Phase 7）');
             
+            // 🔧 改進：清理 Phase 6 的自動播放 timeout（如果用戶在 10 秒內按了按鈕）
+            if (window._phase6AutoPlayTimeout) {
+                clearTimeout(window._phase6AutoPlayTimeout);
+                window._phase6AutoPlayTimeout = null;
+                console.log('✅ [triggerManualLanding] 已清理 Phase 6 自動播放 timeout');
+            }
+            
+            // 🔧 改進：清理 Phase 6 的音量調整 interval（如果正在調整）
+            if (window._phase6VolumeFadeInterval) {
+                clearInterval(window._phase6VolumeFadeInterval);
+                window._phase6VolumeFadeInterval = null;
+                console.log('✅ [triggerManualLanding] 已清理 Phase 6 音量調整 interval');
+            }
+            
             // 如果在播放喚醒音樂期間按下，將音樂音量調小，繼續播放
             if (descentWakeupMusic && !descentWakeupMusic.paused) {
                 console.log('🔉 調低喚醒音樂音量，凸顯機長語音');
@@ -10827,121 +11086,20 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             }
             
             // 🔧 改進：準時/延後降落時，在 Phase 6 按按鈕後：
-            // 1. 準備 TTS（生成準備降落的語音）
-            // 2. 播放 captain.mp3
-            // 3. 播放準備降落的語音（TTS）
-            // 4. 然後進入 Phase 7
+            // Phase 6 已經在 10 秒後自動播放了喚醒語音，所以按按鈕後直接進入 Phase 7
             
             // 檢查是否是準時/延後降落（Phase 6）
             if (currentPhase === Phase.DESCENT || currentPhase === 6) {
-                console.log('✅ [Phase 6] 準時/延後降落，開始準備 TTS 和播放語音...');
+                console.log('✅ [Phase 6] 準時/延後降落，按按鈕後直接進入 Phase 7...');
                 
-                // 顯示「機長準備廣播」
-                setBoardingStatus(true, '機長準備廣播...');
-                
-                // 1. 準備 TTS 文字內容（生成準備降落的語音文字）
-                console.log('1️⃣ [Phase 6] 準備 TTS 文字內容...');
-                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
-                
-                // 2. 預先生成 TTS 音頻（使用 /tts/generate，只生成不播放）
-                console.log('2️⃣ [Phase 6] 預先生成 TTS 音頻（在 captain.mp3 播放的同時生成）...');
-                let phase6VoiceAudioId = null;
-                if (wakeUpAnnouncement) {
-                    try {
-                        // 在背景生成 TTS 音頻，不阻塞流程
-                        const phase6VoicePromise = generateTtsAudio(
-                            wakeUpAnnouncement,
-                            'zh-TW',
-                            'male',
-                            0.8
-                        ).then(() => {
-                            phase6VoiceAudioId = preparedAudioId;
-                            console.log('✅ [Phase 6] TTS 音頻已預先生成完成，audio_id:', phase6VoiceAudioId);
-                        }).catch(err => {
-                            console.warn('⚠️ [Phase 6] TTS 音頻預先生成失敗:', err);
-                        });
-                        
-                        // 不等待生成完成，繼續執行（在播放 captain.mp3 的同時生成）
-                    } catch (error) {
-                        console.warn('⚠️ [Phase 6] 預先生成 TTS 音頻時發生錯誤:', error);
-                    }
-                }
-                
-                // 5. 顯示「機長廣播中」並播放 captain.mp3
-                console.log('5️⃣ [Phase 6] 顯示「機長廣播中」並播放 captain.mp3...');
-                setBoardingStatus(true, '機長廣播中...');
-                
-                // 🔧 改進：降低音樂音量（讓語音更突出）
-                if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                    console.log('🔉 [Phase 6] 降低音樂音量，讓語音更突出');
-                    descentWakeupMusic.volume = 0.15;
-                }
-                
-                try {
-                    await playAudioFile('sounds/captain.mp3', 6);
-                    console.log('✅ captain.mp3 播放完成');
-                } catch (error) {
-                    console.warn('⚠️ captain.mp3 播放失敗:', error);
-                }
-                
-                // 6. captain.mp3 播完後，立即播放已預先生成的準備降落語音
-                if (wakeUpAnnouncement) {
-                    console.log('6️⃣ [Phase 6] captain.mp3 播放完成，立即播放準備降落的語音...');
-                    
-                    // 如果 TTS 音頻已預先生成，使用 playCachedTts 播放
-                    if (phase6VoiceAudioId) {
-                        console.log('✅ [Phase 6] 使用已預先生成的 TTS 音頻，audio_id:', phase6VoiceAudioId);
-                        await playCachedTts(phase6VoiceAudioId);
-                        console.log('✅ 準備降落的語音播放完成');
-                    } else {
-                        // 如果預先生成失敗，回退到 playAnnouncement
-                        console.warn('⚠️ [Phase 6] TTS 音頻未預先生成，使用 playAnnouncement 生成並播放');
-                        await playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
-                            volume: 1.0,
-                            rate: 0.8,
-                            pitch: 0.9,
-                            waitForCompletion: true
-                        });
-                        console.log('✅ 準備降落的語音播放完成');
-                    }
-                    
-                    // 語音播放完成後，慢慢將音樂音量調大
-                    if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                        console.log('✅ 機長語音播放完成，開始慢慢調大音樂音量');
-                        // 使用漸進式音量調整（從 0.15 慢慢調到 0.6，持續 3 秒）
-                        const targetVolume = 0.6;
-                        const startVolume = 0.15;
-                        const duration = 3000; // 3 秒
-                        const startTime = Date.now();
-                        
-                        const volumeFadeInterval = setInterval(() => {
-                            const elapsed = Date.now() - startTime;
-                            const progress = Math.min(elapsed / duration, 1);
-                            
-                            // 使用緩動函數（ease-in-out）
-                            const easedProgress = progress < 0.5 
-                                ? 2 * progress * progress 
-                                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                            
-                            const currentVolume = startVolume + (targetVolume - startVolume) * easedProgress;
-                            descentWakeupMusic.volume = currentVolume;
-                            
-                            if (progress >= 1) {
-                                clearInterval(volumeFadeInterval);
-                                console.log('✅ 音樂音量已調回正常（0.6）');
-                            }
-                        }, 50); // 每 50ms 更新一次音量
-                    }
-                }
-                
-                // 4. 隱藏「機長廣播中」UI
+                // 隱藏「按下按鈕準備進行降落程序」UI
                 setBoardingStatus(false);
                 
-                // 5. 標記手動觸發，讓 handleLanding() 知道這是手動觸發的
+                // 標記手動觸發，讓 handleLanding() 知道這是手動觸發的
                 manualLandingTriggered = true;
                 
-                // 6. 切換到 Phase 7，讓 handleLanding() 執行降落程序
-                console.log('4️⃣ [Phase 6] 語音播放完成，切換到 Phase 7...');
+                // 直接切換到 Phase 7，讓 handleLanding() 執行降落程序
+                console.log('🛬 [Phase 6] 切換到 Phase 7...');
                 switchToPhase(Phase.LANDING);
                 return;
             }
@@ -11269,19 +11427,21 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 
                 // 🔧 改進：第一人稱機翼視角（完全沒有窗戶框，純粹的機翼和城市風景）
                 // 如果有參考圖片，在 prompt 中強調要參考其風格
-                let prompt = 'Square 1024x1024 first-person view from inside airplane cabin looking out through window opening, ' +
+                // ⚠️ CRITICAL: 在 prompt 開頭就明確說明不要窗框，避免 AI 誤解
+                let prompt = 'CRITICAL: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries whatsoever. ' +
+                    'Square 1024x1024 full-frame edge-to-edge composition, first-person view from inside airplane cabin looking directly outward, ' +
                     'WING: Large bright blue airplane wing extending diagonally from lower left to middle right, ' +
-                    'Boeing 787 Dreamliner style, seen from passenger window perspective inside cabin, ' +
+                    'Boeing 787 Dreamliner style, seen from passenger seat perspective inside cabin, ' +
                     'slightly upturned wingtip (sharklet) visible on left side, ' +
                     'two engine nacelles underneath in darker blue, ' +
                     'subtle panel lines in lighter blue on wing surface, ' +
                     'wing occupies foreground bottom portion, creating immersive first-person depth from inside cabin. ' +
-                    'VIEWPOINT: First-person perspective from inside airplane cabin, looking out through window opening, ' +
-                    'ABSOLUTELY NO window frames, NO window borders, NO window edges, NO window structure, NO glass panes, NO glass reflections, NO window frame elements visible - pure unobstructed view through window opening, as if looking directly out from inside the cabin, no visible window frame or structure whatsoever. ' +
+                    'VIEWPOINT: First-person perspective from inside airplane cabin, looking directly outward, image fills entire frame from edge to edge with no visible borders or frames. ' +
+                    'COMPOSITION: The entire image must be edge-to-edge, full-frame, with absolutely no visible borders, frames, or window structures. The view should appear as if the camera lens is directly at the cabin wall, with no window frame visible. Image must fill 100% of the frame from edge to edge. ' +
                     'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' + timeSegment + ' (' + weatherState + '), ' + skyFeature + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing. ' +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
-                    'CRITICAL: First-person view from inside airplane cabin looking out, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective looking out through window opening without any visible window frame elements.';
+                    'FINAL REQUIREMENT: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective with image filling entire frame from edge to edge, no visible window frame elements whatsoever.';
                 
                 // 如果有參考圖片，在 prompt 開頭加入風格參考說明
                 if (referenceImageBase64) {
@@ -11378,12 +11538,18 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             console.log('🛬 [Phase 7] 降落流程開始執行');
             
             // ============================================================================
-            // 步驟 1: 進入 Phase 7，先播放 wakeup 音樂
+            // 步驟 1: 進入 Phase 7，先播放 wakeup 音樂（必須立即播放，不阻塞）
             // ============================================================================
-            console.log('1️⃣ [Phase 7] 播放 wakeup 音樂...');
-            playWakeupMusicForPhase7().catch(err => {
+            console.log('1️⃣ [Phase 7] 立即播放 wakeup 音樂...');
+            // 🔧 改進：立即開始播放音樂（不等待完成），確保音樂在後續流程之前就開始
+            // 但等待一小段時間確保音樂已開始播放
+            const musicPromise = playWakeupMusicForPhase7().catch(err => {
                 console.warn('⚠️ [Phase 7] 播放 wakeup 音樂失敗:', err);
             });
+            
+            // 等待一小段時間確保音樂已開始播放（不等待完整淡入）
+            await new Promise(resolve => setTimeout(resolve, 300));
+            console.log('✅ [Phase 7] wakeup 音樂已開始播放');
             
             // 停止 takeoff2.mp4 的可見性檢查（但保持影片播放）
             console.log('🔄 [Phase 7] 停止 takeoff2.mp4 可見性檢查，保持播放直到 landing.mp4 準備就緒');
@@ -11393,7 +11559,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     window._takeoff2VisibilityCheck = null;
                     console.log('✅ [Phase 7] 已停止 takeoff2.mp4 可見性檢查');
                 }
-            } catch (e) {
+                        } catch (e) {
                 console.warn('⚠️ [Phase 7] 停止可見性檢查時發生錯誤:', e);
             }
             
@@ -11405,7 +11571,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             } catch (e) {
                 console.warn('⚠️ [Phase 7] 清除 sleepTimer 時發生錯誤:', e);
-            }
+                }
             
             // ============================================================================
             // 步驟 2: 計算新的降落地點
@@ -11433,11 +11599,11 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             } else {
                 // 正常降落：計算最終目的地
                 try {
-                    const climateZone = destinationData?.climateZone || null;
-                    finalDestination = await destinationCalculator.findDestination(
-                        actualDuration,
-                        selectedDirection,
-                        punctuality,
+                const climateZone = destinationData?.climateZone || null;
+                finalDestination = await destinationCalculator.findDestination(
+                    actualDuration,
+                    selectedDirection,
+                    punctuality,
                         climateZone
                     );
                     
@@ -11446,12 +11612,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     if (wormholeChance < 1/7) {
                         console.log('🌀 [蟲洞效應] 觸發機率：' + (wormholeChance * 100).toFixed(2) + '%，觸發蟲洞效應！');
                         const originalDestination = finalDestination;
-                        finalDestination = await destinationCalculator.findDestinationWithWormhole(
-                            selectedDirection,
-                            climateZone
-                        );
+                    finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
                         if (finalDestination) {
-                            isWormhole = true;
+                    isWormhole = true;
                             finalDestination.wormhole = true;
                         }
                     } else if (!finalDestination) {
@@ -11459,29 +11625,29 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                             selectedDirection,
                             climateZone
                         );
-                        if (finalDestination) {
+                if (finalDestination) {
                             isWormhole = true;
                         }
-                    }
-                    
+                }
+                
                     if (climateZone && finalDestination) {
                         finalDestination.climateZone = climateZone;
                     }
-                } catch (error) {
-                    console.error('❌ 計算最終目的地失敗:', error);
-                    // 如果失敗，嘗試觸發蟲洞效應
-                    try {
-                        const climateZone = destinationData?.climateZone || null;
-                        finalDestination = await destinationCalculator.findDestinationWithWormhole(
-                            selectedDirection,
-                            climateZone
-                        );
-                        if (finalDestination) {
+            } catch (error) {
+                console.error('❌ 計算最終目的地失敗:', error);
+                // 如果失敗，嘗試觸發蟲洞效應
+                try {
+                    const climateZone = destinationData?.climateZone || null;
+                    finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                        selectedDirection,
+                        climateZone
+                    );
+                    if (finalDestination) {
                             isWormhole = true;
-                        }
-                    } catch (wormholeError) {
-                        console.error('❌ 蟲洞效應也失敗:', wormholeError);
                     }
+                } catch (wormholeError) {
+                    console.error('❌ 蟲洞效應也失敗:', wormholeError);
+                }
                 }
             }
             
@@ -11600,14 +11766,20 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 // 降低音樂音量（讓語音更突出）
                 if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
                     console.log('🔉 [Phase 7] 降低音樂音量，讓語音更突出');
-                    window._phase7WakeupMusic.volume = 0.15;
+                    try {
+                        window._phase7WakeupMusic.volume = 0.15;
+                    } catch (err) {
+                        console.warn('⚠️ [Phase 7] 設置音樂音量失敗:', err);
+                    }
+                } else {
+                    console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法降低音量');
                 }
                 
                 // 播放 captain.mp3
                 try {
                     await playAudioFile('sounds/captain.mp3', 6);
                     console.log('✅ captain.mp3 播放完成');
-                } catch (error) {
+            } catch (error) {
                     console.warn('⚠️ captain.mp3 播放失敗:', error);
                 }
                 
@@ -11635,9 +11807,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     // 語音A播放完成後，恢復音樂音量
                     if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
                         console.log('🔉 [Phase 7] 語音A播放完成，恢復音樂音量');
-                        fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
-                            console.warn('⚠️ 恢復音樂音量失敗:', err);
-                        });
+                        try {
+                            fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
+                                console.warn('⚠️ 恢復音樂音量失敗:', err);
+                            });
+                        } catch (err) {
+                            console.warn('⚠️ [Phase 7] 恢復音樂音量時發生錯誤:', err);
+                        }
+                    } else {
+                        console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法恢復音量');
                     }
                 }
             } else {
@@ -11649,13 +11827,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 // 確保音樂音量正常（因為 Phase 6 已經調整過音量）
                 // 但也要檢查 Phase 7 的音樂（因為 Phase 7 會播放新的 wakeup 音樂）
                 if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    // 如果音樂音量還是 0.15，恢復到 0.6
-                    if (window._phase7WakeupMusic.volume < 0.5) {
-                        console.log('🔉 [Phase 7] 恢復音樂音量到正常水平');
-                        fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
-                            console.warn('⚠️ 恢復音樂音量失敗:', err);
-                        });
+                    try {
+                        // 如果音樂音量還是 0.15，恢復到 0.6
+                        if (window._phase7WakeupMusic.volume < 0.5) {
+                            console.log('🔉 [Phase 7] 恢復音樂音量到正常水平');
+                            fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
+                                console.warn('⚠️ 恢復音樂音量失敗:', err);
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('⚠️ [Phase 7] 檢查/恢復音樂音量時發生錯誤:', err);
                     }
+                } else {
+                    console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停');
                 }
                 
                 // 也要檢查 Phase 6 的音樂（descentWakeupMusic）是否還在播放
@@ -11742,12 +11926,12 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 確保圖片A已顯示（如果還沒顯示）
             const finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
             if (finalImageUrl && document.querySelector('.window-content')) {
-                const windowContent = document.querySelector('.window-content');
+            const windowContent = document.querySelector('.window-content');
                 const proxiedUrl = getProxiedImageUrl(finalImageUrl);
                 if (!windowContent.style.backgroundImage || !windowContent.style.backgroundImage.includes(proxiedUrl)) {
                     windowContent.innerHTML = '';
-                    windowContent.style.zIndex = '1000';
-                    windowContent.style.position = 'relative';
+                windowContent.style.zIndex = '1000';
+                windowContent.style.position = 'relative';
                     windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                     windowContent.style.backgroundSize = 'cover';
                     windowContent.style.backgroundPosition = 'center';
@@ -11786,6 +11970,14 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 
                 // 播放已預先生成的語音B
                 console.log('🔊 [Phase 7] 播放語音B（新城市介紹）...');
+                
+                // 🔧 改進：在播放語音B之前，淡出背景音樂（3秒）
+                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                    console.log('🔉 [Phase 7] 開始淡出背景音樂（3秒）...');
+                    fadeOutAudio(window._phase7WakeupMusic, 3000).catch(err => {
+                        console.warn('⚠️ 淡出背景音樂失敗:', err);
+                    });
+                }
                 
                 // 如果語音B已預先生成，使用 playCachedTts 播放
                 if (window._phase7VoiceBAudioId) {
@@ -11922,13 +12114,13 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 if (windowContent) {
                     // 先清除舊圖片
                     windowContent.style.backgroundImage = 'none';
-                    windowContent.innerHTML = '';
+                windowContent.innerHTML = '';
                     
                     // 然後顯示新圖片
                     const proxiedUrl = getProxiedImageUrl(imageToShow);
                     windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
-                    windowContent.style.backgroundSize = 'cover';
-                    windowContent.style.backgroundPosition = 'center';
+                windowContent.style.backgroundSize = 'cover';
+                windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
                     console.log('✅ [handleLanding] 目的地圖片已顯示在視窗中（最新生成的圖片，已清除舊圖片）:', imageToShow);
                 }
@@ -11967,7 +12159,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             
             console.log('✅ 降落完成，已切換到 Phase 0 (POST_ARRIVAL)，顯示目的地圖片和國家資訊');
             
-        } catch (error) {
+            } catch (error) {
                 // 即使出錯，也確保流程能繼續
                 console.error('❌ [Phase 7] handleLanding() 執行過程中發生錯誤:', error);
                 console.error('   錯誤堆疊:', error.stack);
