@@ -1047,7 +1047,7 @@
             align-items: center;
             justify-content: center; /* 置中對齊主要內容 */
             gap: 24px;
-            padding: 20px 32px 20px 180px; /* 🔧 改進：左邊增加 padding，為「所在位置」留出空間 */
+            padding: 20px 32px; /* 🔧 改進：移除左邊 padding，不再顯示舊地點 */
             background: rgba(255, 255, 255, 0.98);
             width: 100%;
             box-sizing: border-box;
@@ -1079,14 +1079,12 @@
         }
 
         .landing-country-text {
-            flex: 1;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            min-width: 0;
             align-items: center; /* 置中對齊 */
             text-align: center; /* 文字置中 */
-            max-width: calc(100% - 200px); /* 🔧 改進：限制最大寬度，避免和左邊重疊 */
+            flex-shrink: 0; /* 不縮小，保持內容寬度 */
         }
 
         .landing-country-name {
@@ -5296,6 +5294,8 @@
                     // 確保 window-content 在最上層，並且清除所有內容
                     windowContent.style.zIndex = '1000';
                     windowContent.style.position = 'relative';
+                    // 🔧 改進：先清除舊圖片，再顯示新圖片
+                    windowContent.style.backgroundImage = 'none';
                     windowContent.innerHTML = ''; // 清除所有內容（包括文字和 icon）
                 // 🔧 使用代理 URL 避免 CORS 問題
                 const proxiedUrl = getProxiedImageUrl(landingImageUrl);
@@ -5303,7 +5303,7 @@
                     windowContent.style.backgroundSize = 'cover';
                     windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
-                    console.log('🖼️ 降落圖片已顯示（landing.mp4 之後）');
+                    console.log('🖼️ [playLandingVideoAndShowImage] 新降落圖片已顯示（已清除舊圖片）:', landingImageUrl);
                     
                     // 🔧 改進：圖片顯示後，隱藏「降落中，請稍後」UI
                     setBoardingStatus(false);
@@ -5334,6 +5334,8 @@
                             // 顯示圖片
                             windowContent.style.zIndex = '1000';
                             windowContent.style.position = 'relative';
+                            // 🔧 改進：先清除舊圖片，再顯示新圖片
+                            windowContent.style.backgroundImage = 'none';
                             windowContent.innerHTML = '';
                             const proxiedUrl = getProxiedImageUrl(landingImageUrl);
                             windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
@@ -5342,6 +5344,7 @@
                             windowContent.style.backgroundRepeat = 'no-repeat';
                             windowContent.style.opacity = '0';
                             windowContent.style.transition = 'opacity 0.5s';
+                            console.log('🖼️ [playLandingVideoAndShowImage] 新降落圖片已準備顯示（已清除舊圖片）:', landingImageUrl);
                             
                             // 淡入圖片
                             setTimeout(() => {
@@ -8343,12 +8346,10 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         `;
                     }
                     
-                    // 🔧 改進：顯示所在位置（左邊）
-                    if (currentLocationEl && currentLocationTextEl) {
-                        const countryEl = document.getElementById('currentCountry');
-                        const locationText = countryEl ? countryEl.textContent.trim() : '目前位置';
-                        currentLocationTextEl.textContent = locationText;
-                        currentLocationEl.style.display = 'flex';
+                    // 🔧 改進：隱藏所在位置（左邊），不再顯示舊地點
+                    if (currentLocationEl) {
+                        currentLocationEl.style.display = 'none';
+                        console.log('✅ 已隱藏左邊的舊地點資訊');
                     }
                     
                     // 顯示目的地資訊
@@ -8361,31 +8362,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 const countryName = destination.country_zh || destination.country || '';
                 console.log('✅ 降落國家資訊已更新到 stateCountry:', cityName, countryName);
                 
-                // 🔧 播放歡迎語音（優先使用已生成的語音文字，如果沒有則生成）
-                let welcomeMessage;
-                if (window._preGeneratedWelcomeMessage) {
-                    console.log('✅ [showLandingCountryInfo] 使用已生成的歡迎語音');
-                    welcomeMessage = window._preGeneratedWelcomeMessage;
-                    // 清除已使用的語音文字
-                    delete window._preGeneratedWelcomeMessage;
-                } else {
-                    console.log('⚠️ [showLandingCountryInfo] 未找到已生成的歡迎語音，重新生成...');
-                    welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
-                }
-                console.log('📢 準備播放歡迎語音:', welcomeMessage);
-                
-                try {
-                    // 🔧 改進：使用男聲和更慢的語速，更溫柔
-                    await playAnnouncement(welcomeMessage, 'zh-TW', {
-                        volume: 1.0,
-                        waitForCompletion: true,
-                        rate: 0.75,      // 🔧 較慢的語速，更溫柔
-                        gender: 'male'   // 🔧 使用男聲（歡迎語音）
-                    });
-                    console.log('✅ 歡迎語音播放完成');
-                } catch (error) {
-                    console.warn('⚠️ 播放歡迎語音失敗:', error);
-                }
+                // 🔧 改進：不在此處播放語音，語音播放統一在 handleLanding 中處理
+                // 只負責顯示 UI，不播放語音
+                console.log('✅ [showLandingCountryInfo] 只顯示 UI，不播放語音（語音播放統一在 handleLanding 中處理）');
                 
                 resolve();
             });
@@ -9284,23 +9263,31 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.log('✅ [Phase 0] 已重置 currentState 為 State.COUNTRY');
                 }
                 
-                // 🔧 改進：確保使用最新生成的圖片
+                // 🔧 改進：確保使用最新生成的圖片（優先使用 window._manualLandingImageUrl）
+                // 如果沒有新生成的圖片，才使用 destinationImageUrl
                 const latestImageUrl = window._manualLandingImageUrl || destinationImageUrl;
                 if (latestImageUrl) {
                     console.log('🖼️ [Phase 0] 使用最新生成的圖片:', latestImageUrl);
+                    // 確保 destinationImageUrl 也更新為最新圖片
                     destinationImageUrl = latestImageUrl;
                     
-                    // 立即顯示新圖片
+                    // 立即顯示新圖片（清除舊圖片，避免顯示舊的）
                     const windowContent = document.querySelector('.window-content');
                     if (windowContent) {
+                        // 先清除舊圖片
+                        windowContent.style.backgroundImage = 'none';
                         windowContent.innerHTML = '';
+                        
+                        // 然後顯示新圖片
                         const proxiedUrl = getProxiedImageUrl(latestImageUrl);
                         windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                         windowContent.style.backgroundSize = 'cover';
                         windowContent.style.backgroundPosition = 'center';
                         windowContent.style.backgroundRepeat = 'no-repeat';
-                        console.log('✅ [Phase 0] 新生成的圖片已顯示');
+                        console.log('✅ [Phase 0] 新生成的圖片已顯示（已清除舊圖片）');
                     }
+                } else {
+                    console.log('⚠️ [Phase 0] 沒有新生成的圖片，將從 Firebase 載入');
                 }
                 
                 // Phase 0: 優先顯示 stateLandingCountryInfo（降落後的統一資訊），隱藏 stateCountry
@@ -9489,6 +9476,18 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
 
         async function handleTakeoffPrep() {
             console.log('🎬 handleTakeoffPrep 被調用');
+            
+            // 🔧 改進：開始新飛行時，清除舊的圖片 URL（確保新飛行顯示新圖片）
+            // 清除 Phase 7 生成的圖片 URL，讓新飛行可以生成新的圖片
+            if (window._manualLandingImageUrl) {
+                console.log('🔄 [handleTakeoffPrep] 清除舊的降落圖片 URL，準備新飛行');
+                window._manualLandingImageUrl = null;
+                delete window._manualLandingImageUrl;
+            }
+            if (window._phase7ImageAPromise) {
+                delete window._phase7ImageAPromise;
+            }
+            // 不清除 destinationImageUrl，因為它會在載入新記錄時更新
             console.log('📊 目的地資料:', destinationData);
             console.log('📊 選擇的時長:', selectedTimer);
             
@@ -10389,12 +10388,11 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             preparedAnnouncement = null;
             preparedAnnouncementGender = 'male';
             
-            // 清除目的地圖片（讓新的飛行可以顯示新的圖片）
-            const windowContent = document.querySelector('.window-content');
-            if (windowContent) {
-                // 清除背景圖片，但不影響新的飛行
-                // destinationImageUrl 會在載入新記錄時更新，或在新的飛行時生成
-            }
+            // 🔧 改進：開始新飛行時，清除舊的圖片 URL（確保新飛行顯示新圖片）
+            // 注意：這裡不清除 window._manualLandingImageUrl，因為 Phase 0 還需要使用最新生成的圖片
+            // 但在開始新飛行時（handleTakeoffPrep 或 prepareForTakeoff）會清除
+            // 這裡只清除 destinationImageUrl，讓新飛行可以生成新的圖片
+            console.log('🔄 [resetFlightState] 準備清除舊的圖片 URL（但保留 _manualLandingImageUrl 供 Phase 0 使用）');
             
             // 清除進度條
             const wrapper = document.getElementById('flightProgressWrapper');
@@ -10436,25 +10434,36 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             preparedAnnouncement = null;
             preparedAnnouncementGender = 'male';
             
-            // 🔧 改進：清除圖片相關的全局變數（但保留 _manualLandingImageUrl 供 Phase 0 使用）
+            // 🔧 改進：清除圖片相關的全局變數
             window._earlyLandingImagePromise = null;
             delete window._earlyLandingImagePromise;
-            // 注意：不清除 window._manualLandingImageUrl，因為 Phase 0 需要使用最新生成的圖片
-            // window._manualLandingImageUrl 會在下次生成新圖片時自動更新
+            // 清除 Phase 7 的圖片 Promise
+            if (window._phase7ImageAPromise) {
+                delete window._phase7ImageAPromise;
+            }
+            // 🔧 改進：開始新飛行時，清除舊的圖片 URL（確保新飛行顯示新圖片）
+            // 但保留 window._manualLandingImageUrl 供 Phase 0 使用，直到開始新飛行
+            // 當開始新飛行（Phase 1 或之後）時，會清除它
+            // 注意：這裡不清除，因為 Phase 0 還需要使用最新生成的圖片
+            // 但在開始新飛行時（prepareForTakeoff 或 handleTakeoffPrep）會清除
             
             // 🔧 改進：清除睡眠時間相關狀態
             sleepStartTime = null;
             
-            // 🔧 改進：確保進度條完全隱藏並重置
+            // 🔧 改進：確保進度條完全隱藏並重置（但不設置 display: none，只設置 visibility 和 opacity）
+            // 這樣在第二次進入 Phase 5 時，handleCruise 可以正確顯示進度條
             const progressWrapper = document.getElementById('flightProgressWrapper');
             if (progressWrapper) {
-                progressWrapper.style.display = 'none';
+                // 只設置 visibility 和 opacity，不設置 display: none
+                // 這樣 handleCruise 可以通過設置 display: block 來顯示
                 progressWrapper.style.visibility = 'hidden';
                 progressWrapper.style.opacity = '0';
+                // 重置進度條的進度
                 const fill = document.getElementById('flightProgressFill');
                 const glow = document.getElementById('flightProgressGlow');
                 if (fill) fill.style.width = '0%';
                 if (glow) glow.style.left = '0%';
+                console.log('✅ [resetFlightState] 進度條已隱藏並重置（保留 display 屬性，供 handleCruise 使用）');
             }
             
             // 🔧 改進：清除所有機長廣播相關 UI
@@ -11764,14 +11773,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 這樣可以確保 Phase 0 時顯示的是最新生成的圖片，而不是從 Firebase 載入的舊圖片
             console.log('✅ [handleLanding] 保留 window._manualLandingImageUrl 供 Phase 0 使用:', window._manualLandingImageUrl);
             
-            // 填寫完情緒量表後，顯示國家資訊在 bar 上
-            console.log('📋 情緒量表填寫完成，準備顯示國家資訊...');
-            console.log('   當前階段:', currentPhase);
-            console.log('   當前狀態:', currentState);
-            
-            // showLandingCountryInfo 會隱藏情緒量表並顯示國家資訊（在底部 bar 上）
-            await showLandingCountryInfo(finalDestination);
-            console.log('✅ 國家資訊已顯示在底部 bar，情緒量表已隱藏');
+            // 🔧 改進：showLandingCountryInfo 已在步驟 7 中調用並顯示文字B，這裡不需要重複調用
+            // 文字B和語音B已在步驟 7 中處理完成
+            console.log('✅ [handleLanding] 文字B和語音B已在步驟 7 中處理完成，不需要重複調用 showLandingCountryInfo');
             
             // 直接切換到 Phase 0 (POST_ARRIVAL)
             console.log('🔄 準備切換到 Phase 0 (POST_ARRIVAL)...');
@@ -11802,19 +11806,25 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             console.log('   切換後 - 當前階段:', currentPhase, '當前狀態:', currentState);
             
             // 確保目的地圖片顯示在 800x800 視窗中（優先使用最新生成的圖片）
+            // 🔧 改進：確保使用最新生成的圖片，清除舊圖片
             const imageToShow = window._manualLandingImageUrl || destinationImageUrl;
             if (imageToShow && document.querySelector('.window-content')) {
                 const windowContent = document.querySelector('.window-content');
                 if (windowContent) {
-                windowContent.innerHTML = '';
-                    // 🔧 使用代理 URL 避免 CORS 問題
+                    // 先清除舊圖片
+                    windowContent.style.backgroundImage = 'none';
+                    windowContent.innerHTML = '';
+                    
+                    // 然後顯示新圖片
                     const proxiedUrl = getProxiedImageUrl(imageToShow);
                     windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
-                windowContent.style.backgroundSize = 'cover';
-                windowContent.style.backgroundPosition = 'center';
+                    windowContent.style.backgroundSize = 'cover';
+                    windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
-                    console.log('✅ 目的地圖片已顯示在視窗中（最新生成的圖片）:', imageToShow);
+                    console.log('✅ [handleLanding] 目的地圖片已顯示在視窗中（最新生成的圖片，已清除舊圖片）:', imageToShow);
                 }
+            } else {
+                console.warn('⚠️ [handleLanding] 沒有圖片可顯示');
             }
             
             // 🔧 改進：保留 stateLandingCountryInfo 顯示（不要立即隱藏）
