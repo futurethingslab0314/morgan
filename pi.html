@@ -413,71 +413,58 @@
             flex: 1;
             padding: 8px 4px; /* 減少 padding */
             align-items: center; /* 垂直居中 */
+            justify-content: center; /* 水平居中 */
             min-height: 0; /* 允許縮小 */
         }
         
-        #stateFlightFeedback .feedback-option {
-            min-width: 100px;
-            max-width: 120px;
-            padding: 12px 8px;
-            font-size: 12px;
-            opacity: 0.3 !important; /* 預設半透明 */
-            transform: scale(1) !important; /* 預設大小 */
-            transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, border 0.2s ease !important;
-            background: rgba(255, 255, 255, 0.05) !important;
-            border: 2px solid rgba(255, 255, 255, 0.1) !important;
-        }
-        
-        #stateFlightFeedback .feedback-option.active {
-            opacity: 1 !important; /* 選中時完全不透明 */
-            transform: scale(1.15) !important; /* 選中時放大 */
-            background: rgba(255, 107, 53, 0.3) !important; /* 選中時有背景色 */
-            border: 3px solid #ff6b35 !important; /* 選中時有邊框 */
-            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4) !important; /* 選中時有陰影 */
-        }
-        
-        #stateFlightFeedback .climate-icon {
-            font-size: 20px;
-        }
-        
-        /* 星星評分樣式 */
-        #stateFlightFeedback .feedback-stars {
+        /* 星星條容器 - 類似選睡眠時長的樣式 */
+        #stateFlightFeedback .feedback-stars-container {
             display: flex;
-            justify-content: center;
+            gap: 12px;
             align-items: center;
-            gap: 4px;
-            margin-bottom: 4px;
+            justify-content: center;
+            width: 100%;
+            max-width: 600px;
         }
         
-        #stateFlightFeedback .feedback-stars .star {
-            font-size: 18px;
-            line-height: 1;
-            transition: transform 0.2s ease, filter 0.2s ease;
+        /* 單個星星選項 - 類似 timer-segment-fill */
+        #stateFlightFeedback .feedback-star-segment {
+            flex: 1;
+            min-width: 80px;
+            max-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
-        #stateFlightFeedback .feedback-stars .star-filled {
-            color: #ffd700;
-            filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.6));
+        /* 星星填充區域 - 類似 timer-segment-fill */
+        #stateFlightFeedback .feedback-star-fill {
+            width: 100%;
+            height: 60px; /* 固定高度，所有格子相同 */
+            background: transparent; /* 預設透明（只有邊框） */
+            border: 2px solid #ffb399;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            transition: all 0.2s ease;
+            color: #ffb399; /* 預設星星顏色（未選中） */
         }
         
-        #stateFlightFeedback .feedback-stars .star-empty {
-            color: #ccc;
-            opacity: 0.4;
+        /* 選中的星星 - 填充橙色 */
+        #stateFlightFeedback .feedback-star-segment.active .feedback-star-fill {
+            background: #ff6b35; /* 選中的完全填充橙色 */
+            border-color: #ff6b35;
+            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+            color: #fff; /* 選中時星星變白色 */
         }
         
-        #stateFlightFeedback .feedback-option.active .feedback-stars .star-filled {
-            transform: scale(1.2);
-            filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.9));
-        }
-        
-        #stateFlightFeedback .climate-name {
-            font-size: 13px; /* 稍微減小字體 */
-            margin-top: 4px;
-        }
-        
-        #stateFlightFeedback .climate-desc {
-            font-size: 11px; /* 稍微減小字體 */
-            margin-top: 2px;
+        /* 未選中的星星保持邊框樣式 */
+        #stateFlightFeedback .feedback-star-segment:not(.active) .feedback-star-fill {
+            background: transparent;
+            border-color: #ffb399;
+            color: #ffb399;
         }
 
         .info-state.active {
@@ -1492,55 +1479,23 @@
     <div class="info-state" id="stateFlightFeedback" style="display: none;">
         <div class="state-label">💭 你對這次睡眠體驗的感覺如何？</div>
         <div class="options-container" id="feedbackOptions">
-            <div class="angle-option climate-option feedback-option" data-feedback="1" data-position="0" id="feedbackOption0">
-                <div class="climate-icon feedback-stars">
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
+            <!-- 單一星星條，包含 5 顆星星，根據旋鈕位置（0-4）顯示對應數量的亮星星（1-5 顆） -->
+            <div class="feedback-stars-container">
+                <div class="feedback-star-segment" data-position="0">
+                    <div class="feedback-star-fill">⭐</div>
                 </div>
-                <div class="climate-desc">不喜歡</div>
-            </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="2" data-position="1" id="feedbackOption1">
-                <div class="climate-icon feedback-stars">
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
+                <div class="feedback-star-segment" data-position="1">
+                    <div class="feedback-star-fill">⭐</div>
                 </div>
-                <div class="climate-desc">不太喜歡</div>
-            </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="3" data-position="2" id="feedbackOption2">
-                <div class="climate-icon feedback-stars">
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
+                <div class="feedback-star-segment" data-position="2">
+                    <div class="feedback-star-fill">⭐</div>
                 </div>
-                <div class="climate-desc">普通</div>
-            </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="4" data-position="3" id="feedbackOption3">
-                <div class="climate-icon feedback-stars">
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
+                <div class="feedback-star-segment" data-position="3">
+                    <div class="feedback-star-fill">⭐</div>
                 </div>
-                <div class="climate-desc">喜歡</div>
-            </div>
-            <div class="angle-option climate-option feedback-option" data-feedback="5" data-position="4" id="feedbackOption4">
-                <div class="climate-icon feedback-stars">
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
-                    <span class="star star-empty">☆</span>
+                <div class="feedback-star-segment" data-position="4">
+                    <div class="feedback-star-fill">⭐</div>
                 </div>
-                <div class="climate-desc">很喜歡</div>
             </div>
         </div>
         <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
@@ -5114,7 +5069,7 @@
         }
 
         // 播放降落影片（landing.mp4 一次），結束後無縫切換到降落圖片
-        async function playLandingVideoAndShowImage(landingImagePromise) {
+        async function playLandingVideoAndShowImage(landingImagePromise, finalDestination = null) {
             // 🔧 改進：在 landing.mp4 播放時顯示「降落中，請稍後」UI（使用統一的設計）
             console.log('🛬 [landing.mp4] 播放降落影片，顯示「降落中，請稍後」UI...');
             setBoardingStatus(true, '降落中，請稍後...');
@@ -5253,16 +5208,32 @@
                 landingVideo.addEventListener('error', () => resolve(), { once: true });
             });
             
-            console.log('⏹️ landing.mp4 播放結束，準備顯示降落圖片');
+            console.log('⏹️ landing.mp4 播放結束，立即顯示情緒量表（不管圖片是否生成）');
             
-            // 🔧 改進：landing.mp4 播放結束後，先不隱藏「降落中，請稍後」UI
-            // 等到圖片顯示後再隱藏，並顯示目的地資訊
-            console.log('⏳ [landing.mp4] 保持「降落中，請稍後」UI，等待圖片顯示...');
+            // 🔧 改進：landing.mp4 播放到最後一幀時，立即顯示情緒量表，不管圖片是否已經生成
+            // 停留在 landing.mp4 的最後一幀
+            landingVideo.pause();
+            // 確保停留在最後一幀
+            if (landingVideo.duration && !isNaN(landingVideo.duration)) {
+                landingVideo.currentTime = Math.max(0, landingVideo.duration - 0.1);
+            }
             
-            // 🔧 改進：在等待生圖時，先顯示情緒量表讓使用者先做
-            console.log('📋 [landing.mp4] 在等待生圖時，先顯示情緒量表...');
+            // 隱藏「降落中，請稍後」UI
+            setBoardingStatus(false);
+            console.log('✅ [landing.mp4] 已隱藏「降落中，請稍後」UI');
             
-            // 檢查圖片是否已經準備好
+            // 🔧 改進：立即顯示情緒量表（不管圖片是否生成）
+            // 如果 finalDestination 存在，立即顯示情緒量表
+            if (finalDestination) {
+                console.log('📋 [landing.mp4] 立即顯示情緒量表（不管圖片是否生成）...');
+                // 使用全局變數來傳遞情緒量表的 Promise，讓 handleLanding 可以等待
+                window._landingFeedbackPromise = showFlightFeedback(finalDestination);
+                console.log('✅ [landing.mp4] 情緒量表已顯示');
+            } else {
+                console.warn('⚠️ [landing.mp4] finalDestination 為 null，無法顯示情緒量表');
+            }
+            
+            // 檢查圖片是否已經準備好（但不等待，在背景處理）
             let landingImageUrl = null;
             let imageReady = false;
             try {
@@ -5273,17 +5244,12 @@
                 ]);
                 if (landingImageUrl) {
                     imageReady = true;
+                    console.log('✅ [landing.mp4] 圖片已準備好，立即顯示');
+                } else {
+                    console.log('⏳ [landing.mp4] 圖片尚未準備好，將在情緒量表顯示期間繼續生成');
                 }
             } catch (e) {
                 console.warn('⚠️ 獲取降落圖片時發生錯誤:', e);
-            }
-            
-            // 如果圖片還沒準備好，先顯示情緒量表
-            if (!imageReady) {
-                console.log('⏳ [landing.mp4] 圖片尚未準備好，先顯示情緒量表讓使用者填寫...');
-                // 這裡會返回一個 Promise，等待使用者填寫完情緒量表
-                // 注意：這裡需要傳入 finalDestination，但我們需要從外部獲取
-                // 暫時先顯示情緒量表，圖片生成會在後續處理
             }
             
             if (landingImageUrl) {
@@ -7996,9 +7962,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 // 先執行一次更新，確保初始狀態正確
                 updateSelection(selectedIndex);
                 
-                // 旋鈕選擇邏輯（5 個選項，直接對應旋鈕位置 0-4）
+                // 旋鈕選擇邏輯（5 個星星選項，直接對應旋鈕位置 0-4）
                 let knobSelectionActive = true;
-                const maxIndex = options.length > 0 ? options.length - 1 : 4;
+                const maxIndex = starSegments.length > 0 ? starSegments.length - 1 : 4;
                 const FEEDBACK_TIMEOUT_MS = 30000; // 最多等待 30 秒
                 let buttonPressHandled = false;
                 let lastKnobPositionForFeedback = null; // 記錄上次的旋鈕位置，用於檢測變化
@@ -8077,22 +8043,19 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                                 console.log('🔄 [情緒量表] 旋鈕選擇更新完成: 位置', position, '→ 索引', clampedIndex, '→ 分數', selectedFeedback);
                                 
                                 // 驗證 UI 是否真的更新了
-                                const currentOptions = document.querySelectorAll('#feedbackOptions .feedback-option');
-                                const activeCount = Array.from(currentOptions).filter(opt => opt.classList.contains('active')).length;
-                                console.log('🔍 [情緒量表] UI 驗證: 總選項數=', currentOptions.length, 'active 數量=', activeCount, '應該只有 1 個 active');
+                                const currentSegments = document.querySelectorAll('#feedbackOptions .feedback-star-segment');
+                                const activeCount = Array.from(currentSegments).filter(seg => seg.classList.contains('active')).length;
+                                const expectedActiveCount = clampedIndex + 1; // 應該亮的星星數量 = 位置 + 1
+                                console.log('🔍 [情緒量表] UI 驗證: 總星星數=', currentSegments.length, 'active 數量=', activeCount, '應該有', expectedActiveCount, '顆星亮');
                                 
-                                if (activeCount !== 1) {
-                                    console.error('❌ [情緒量表] UI 更新異常！應該只有 1 個 active，但發現', activeCount, '個');
+                                if (activeCount !== expectedActiveCount) {
+                                    console.warn('⚠️ [情緒量表] UI 更新異常！應該有', expectedActiveCount, '顆星亮，但發現', activeCount, '顆');
                                     // 強制修復
-                                    currentOptions.forEach((opt, i) => {
-                                        if (i === clampedIndex) {
-                                            opt.classList.add('active');
-                                            opt.style.opacity = '1';
-                                            opt.style.transform = 'scale(1.05)';
+                                    currentSegments.forEach((seg, i) => {
+                                        if (i <= clampedIndex) {
+                                            seg.classList.add('active');
                                         } else {
-                                            opt.classList.remove('active');
-                                            opt.style.opacity = '0.6';
-                                            opt.style.transform = 'scale(1)';
+                                            seg.classList.remove('active');
                                         }
                                     });
                                     console.log('🔧 [情緒量表] 已強制修復 UI');
@@ -8921,12 +8884,11 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             console.log('2️⃣ [緊急降落] 顯示「機長準備廣播」...');
             setBoardingStatus(true, '機長準備廣播...');
             
-            // 3. 立即開始播放 wakeup 音樂（不等待，讓音樂先開始）
-            console.log('3️⃣ [緊急降落] 立即開始播放 wakeup 音樂（淡入）...');
-            playWakeupMusicForEarlyLanding().catch(err => console.warn('⚠️ 音樂播放錯誤:', err));
+            // 🔧 改進：提早降落時，Phase 5 不播放音樂，直接進入 Phase 7 時再播放新的 wakeup 音樂
+            // 移除 Phase 5 的音樂播放，避免與 Phase 7 的音樂衝突
             
-            // 4. 同時開始準備 TTS（提前生成降落內容）
-            console.log('4️⃣ [緊急降落] 開始準備 TTS 語音...');
+            // 3. 同時開始準備 TTS（提前生成降落內容）
+            console.log('3️⃣ [緊急降落] 開始準備 TTS 語音...');
             const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
             const punctuality = calculatePunctuality(selectedTimer, actualDuration);
             const timeDiff = actualDuration - selectedTimer;
@@ -8993,19 +8955,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             })();
             
-            // 5. 等待 TTS 準備完成（確保 TTS 準備好後再播放 captain.mp3）
-            console.log('5️⃣ [緊急降落] 等待 TTS 準備完成...');
+            // 4. 等待 TTS 準備完成（確保 TTS 準備好後再播放 captain.mp3）
+            console.log('4️⃣ [緊急降落] 等待 TTS 準備完成...');
             const landingData = await landingContentPromise;
             
-            // 6. TTS 準備完成後，顯示「機長廣播中」並播放 captain.mp3
-            console.log('6️⃣ [緊急降落] TTS 準備完成，顯示「機長廣播中」並播放 captain.mp3...');
+            // 5. TTS 準備完成後，顯示「機長廣播中」並播放 captain.mp3
+            console.log('5️⃣ [緊急降落] TTS 準備完成，顯示「機長廣播中」並播放 captain.mp3...');
             setBoardingStatus(true, '機長廣播中...');
             
-            // 🔧 改進：在播放 captain.mp3 和 TTS 時，降低音樂音量
-            if (window._earlyLandingWakeupMusic) {
-                window._earlyLandingWakeupMusic.volume = 0.15;
-                console.log('🔉 [緊急降落] 已降低音樂音量至 0.15（機長廣播時）');
-            }
+            // 🔧 改進：提早降落時，Phase 5 不播放音樂，所以這裡不需要調整音樂音量
             
             try {
                 await playAudioFile('sounds/captain.mp3', 6);
@@ -9014,24 +8972,18 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 console.warn('⚠️ captain.mp3 播放失敗:', error);
             }
             
-            // 7. captain.mp3 播完後，立即播放 TTS（已經準備好了）
+            // 6. captain.mp3 播完後，立即播放 TTS（已經準備好了）
             if (landingData && landingData.announcement) {
-                console.log('7️⃣ [緊急降落] 播放 TTS 語音...');
+                console.log('6️⃣ [緊急降落] 播放 TTS 語音...');
                 await playAnnouncement(landingData.announcement, 'zh-TW', {
                     gender: landingData.gender || 'male',
                     speed: 0.75
                 });
                 console.log('✅ TTS 語音播放完成');
-                
-                // TTS 播放完成後，恢復音樂音量
-                if (window._earlyLandingWakeupMusic) {
-                    fadeInAudio(window._earlyLandingWakeupMusic, 2000, 0.6);
-                    console.log('🔉 [緊急降落] TTS 播放完成，恢復音樂音量至 0.6');
-                }
             }
             
-            // 8. 觸發手動降落（直接跳轉到 Phase 7）
-            console.log('8️⃣ [緊急降落] 觸發手動降落...');
+            // 7. 觸發手動降落（直接跳轉到 Phase 7，Phase 7 會播放新的 wakeup 音樂）
+            console.log('7️⃣ [緊急降落] 觸發手動降落（進入 Phase 7，將播放新的 wakeup 音樂）...');
             triggerManualLanding();
         }
         
@@ -9100,6 +9052,104 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             
             // 保存引用，以便後續調整音量
             window._earlyLandingWakeupMusic = audio;
+        }
+
+        // 🔧 新增：為 Phase 7 播放新的 wakeup 音樂（進入降落階段時播放）
+        async function playWakeupMusicForPhase7() {
+            // 先淡出現有的音樂（如果有的話）
+            if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                console.log('🔉 [Phase 7] 淡出現有的 descentWakeupMusic...');
+                await fadeOutAudio(descentWakeupMusic, 1000);
+                try {
+                    descentWakeupMusic.pause();
+                    descentWakeupMusic = null;
+                } catch (e) {
+                    console.warn('⚠️ [Phase 7] 停止 descentWakeupMusic 時發生錯誤:', e);
+                }
+            }
+            
+            // 如果還有提前降落的音樂在播放，也淡出
+            if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
+                console.log('🔉 [Phase 7] 淡出現有的 _earlyLandingWakeupMusic...');
+                await fadeOutAudio(window._earlyLandingWakeupMusic, 1000);
+                try {
+                    window._earlyLandingWakeupMusic.pause();
+                    window._earlyLandingWakeupMusic = null;
+                } catch (e) {
+                    console.warn('⚠️ [Phase 7] 停止 _earlyLandingWakeupMusic 時發生錯誤:', e);
+                }
+            }
+            
+            // 隨機選擇一首新的 wakeup 音樂
+            const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
+            const randomMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
+            
+            // 嘗試多個路徑
+            const possiblePaths = [
+                randomMusic,
+                './' + randomMusic,
+                'sounds/' + randomMusic,
+                './sounds/' + randomMusic,
+                '/sounds/' + randomMusic
+            ];
+            
+            let musicUrl = null;
+            for (const path of possiblePaths) {
+                try {
+                    const testAudio = new Audio(path);
+                    await new Promise((resolve, reject) => {
+                        testAudio.oncanplaythrough = resolve;
+                        testAudio.onerror = reject;
+                        testAudio.load();
+                        setTimeout(resolve, 500); // 超時保護
+                    });
+                    musicUrl = path;
+                    break;
+                } catch (e) {
+                    // 繼續嘗試下一個路徑
+                }
+            }
+            
+            if (!musicUrl) {
+                console.warn('⚠️ [Phase 7] 找不到 wakeup 音樂文件，跳過播放');
+                return;
+            }
+            
+            console.log('🎵 [Phase 7] 播放新的 wakeup 音樂（淡入）:', musicUrl);
+            const audio = new Audio(musicUrl);
+            audio.volume = 0; // 初始音量為 0，準備淡入
+            audio.loop = false;
+            
+            // 播放音樂（從靜音開始）
+            await audio.play().catch(err => {
+                console.warn('⚠️ [Phase 7] 播放 wakeup 音樂失敗:', err);
+            });
+            
+            // 音樂慢慢淡入（2秒淡入）
+            const fadeInDuration = 2000; // 2秒淡入
+            const targetVolume = 0.6; // 目標音量
+            const startTime = Date.now();
+            
+            const fadeInInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / fadeInDuration, 1);
+                audio.volume = targetVolume * progress;
+                
+                if (progress >= 1) {
+                    clearInterval(fadeInInterval);
+                    audio.volume = targetVolume;
+                    console.log('✅ [Phase 7] wakeup 音樂淡入完成');
+                }
+            }, 16); // 約 60fps
+            
+            // 保存引用到新的全局變數，以便後續調整音量或停止
+            window._phase7WakeupMusic = audio;
+            
+            // 音樂播放結束時清理
+            audio.onended = () => {
+                console.log('✅ [Phase 7] wakeup 音樂播放完成');
+                window._phase7WakeupMusic = null;
+            };
         }
 
         // 記錄深夜服務事件（睡眠中斷）
@@ -10314,6 +10364,24 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     // 忽略錯誤
                 }
             }
+            // 清除 Phase 7 的 wakeup 音樂
+            if (window._phase7WakeupMusic) {
+                try {
+                    window._phase7WakeupMusic.pause();
+                    window._phase7WakeupMusic = null;
+                } catch (e) {
+                    // 忽略錯誤
+                }
+            }
+            // 清除 Phase 6 的 descentWakeupMusic
+            if (descentWakeupMusic) {
+                try {
+                    descentWakeupMusic.pause();
+                    descentWakeupMusic = null;
+                } catch (e) {
+                    // 忽略錯誤
+                }
+            }
             
             // 清除準備好的語音
             preparedAnnouncement = null;
@@ -10614,65 +10682,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     console.log(`✅ 喚醒音樂載入成功，使用路徑: ${musicPathUsed}`);
                 }
                 
-                // 同時播放準備降落的喚醒語音
-                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
-                if (wakeUpAnnouncement) {
-                    // 在播放語音前，先將音樂音量調小
-                    if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                        console.log('🔉 調低喚醒音樂音量（0.6 → 0.15），凸顯機長語音');
-                        descentWakeupMusic.volume = 0.15; // 調小音量，讓語音更突出
-                    }
-                    
-                    // 播放語音（使用較大音量）
-                    playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
-                        volume: 1.0, // 語音最大音量
-                        rate: 0.8,
-                        pitch: 0.9
-                    }).then(() => {
-                        // 語音播放完成後，慢慢將音樂音量調大
-                        console.log('✅ 機長語音播放完成，開始慢慢調大音樂音量');
-                        if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                            // 使用漸進式音量調整（從 0.15 慢慢調到 0.6，持續 3 秒）
-                            const targetVolume = 0.6;
-                            const startVolume = 0.15;
-                            const duration = 3000; // 3 秒
-                            const startTime = Date.now();
-                            
-                            const volumeFadeInterval = setInterval(() => {
-                                const elapsed = Date.now() - startTime;
-                                const progress = Math.min(elapsed / duration, 1);
-                                
-                                // 使用緩動函數（ease-in-out）
-                                const easedProgress = progress < 0.5 
-                                    ? 2 * progress * progress 
-                                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                                
-                                const currentVolume = startVolume + (targetVolume - startVolume) * easedProgress;
-                                descentWakeupMusic.volume = currentVolume;
-                                
-                                if (progress >= 1) {
-                                    clearInterval(volumeFadeInterval);
-                                    console.log('✅ 音樂音量已調回正常（0.6）');
-                                }
-                            }, 50); // 每 50ms 更新一次音量
-                        }
-                    }).catch(error => {
-                        console.warn('⚠️ 播放準備降落語音失敗:', error);
-                        // 即使語音失敗，也將音樂音量調回
-                        if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                            descentWakeupMusic.volume = 0.6;
-                        }
-                    });
-                }
+                // 🔧 改進：Phase 6 只播放音樂，等待用戶按按鈕後再播放語音
+                // 語音播放將在 triggerManualLanding() 中處理
+                console.log('✅ [Phase 6] 音樂已開始播放，等待用戶按按鈕...');
             } catch (error) {
                 console.error('❌ 無法播放喚醒音樂:', error);
                 console.error('   錯誤詳情:', error.message);
                 console.error('   錯誤堆疊:', error.stack);
-                // 如果音樂播放失敗，仍然播放語音
-                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
-                if (wakeUpAnnouncement) {
-                    await playAnnouncement(wakeUpAnnouncement, 'zh-TW');
-                }
+                // 如果音樂播放失敗，仍然可以繼續（語音將在按鈕按下後播放）
+                console.log('⚠️ 音樂播放失敗，但可以繼續等待按鈕按下');
                 }
             }
         }
@@ -10722,9 +10740,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             return templates[Math.floor(Math.random() * templates.length)];
         }
 
-        // 手動觸發降落（在 Phase 6 按下按鈕，只切換到 Phase 7，不執行降落程序）
-        function triggerManualLanding() {
-            console.log('🛬 手動觸發降落流程（切換到 Phase 7）');
+        // 手動觸發降落（在 Phase 6 按下按鈕，準備 TTS、播放語音後切換到 Phase 7）
+        async function triggerManualLanding() {
+            console.log('🛬 手動觸發降落流程（Phase 6 → Phase 7）');
             
             // 如果在播放喚醒音樂期間按下，將音樂音量調小，繼續播放
             if (descentWakeupMusic && !descentWakeupMusic.paused) {
@@ -10734,12 +10752,93 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 descentWakeupMusic.onended = null;
             }
             
-            // 如果在播放提前降落的 wakeup 音樂，也調小音量
+            // 🔧 改進：提早降落時，Phase 5 不播放音樂，所以這裡不需要處理 _earlyLandingWakeupMusic
+            // 但如果還有提前降落的音樂在播放（舊版本可能還有），也調小音量
             if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
-                console.log('🔉 調低提前降落 wakeup 音樂音量，凸顯機長語音');
+                console.log('🔉 調低提前降落 wakeup 音樂音量（舊版本殘留），凸顯機長語音');
                 window._earlyLandingWakeupMusic.volume = 0.15; // 調小音量，讓語音更突出
             }
             
+            // 🔧 改進：準時/延後降落時，在 Phase 6 按按鈕後：
+            // 1. 準備 TTS（生成準備降落的語音）
+            // 2. 播放 captain.mp3
+            // 3. 播放準備降落的語音（TTS）
+            // 4. 然後進入 Phase 7
+            
+            // 檢查是否是準時/延後降落（Phase 6）
+            if (currentPhase === Phase.DESCENT || currentPhase === 6) {
+                console.log('✅ [Phase 6] 準時/延後降落，開始準備 TTS 和播放語音...');
+                
+                // 顯示「機長準備廣播」
+                setBoardingStatus(true, '機長準備廣播...');
+                
+                // 1. 準備 TTS（生成準備降落的語音）
+                console.log('1️⃣ [Phase 6] 準備 TTS 語音...');
+                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                
+                // 2. 顯示「機長廣播中」並播放 captain.mp3
+                console.log('2️⃣ [Phase 6] 顯示「機長廣播中」並播放 captain.mp3...');
+                setBoardingStatus(true, '機長廣播中...');
+                
+                try {
+                    await playAudioFile('sounds/captain.mp3', 6);
+                    console.log('✅ captain.mp3 播放完成');
+                } catch (error) {
+                    console.warn('⚠️ captain.mp3 播放失敗:', error);
+                }
+                
+                // 3. captain.mp3 播完後，立即播放準備降落的語音（TTS）
+                if (wakeUpAnnouncement) {
+                    console.log('3️⃣ [Phase 6] 播放準備降落的語音（TTS）...');
+                    await playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
+                        volume: 1.0, // 語音最大音量
+                        rate: 0.8,
+                        pitch: 0.9
+                    });
+                    console.log('✅ 準備降落的語音播放完成');
+                    
+                    // 語音播放完成後，慢慢將音樂音量調大
+                    if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                        console.log('✅ 機長語音播放完成，開始慢慢調大音樂音量');
+                        // 使用漸進式音量調整（從 0.15 慢慢調到 0.6，持續 3 秒）
+                        const targetVolume = 0.6;
+                        const startVolume = 0.15;
+                        const duration = 3000; // 3 秒
+                        const startTime = Date.now();
+                        
+                        const volumeFadeInterval = setInterval(() => {
+                            const elapsed = Date.now() - startTime;
+                            const progress = Math.min(elapsed / duration, 1);
+                            
+                            // 使用緩動函數（ease-in-out）
+                            const easedProgress = progress < 0.5 
+                                ? 2 * progress * progress 
+                                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                            
+                            const currentVolume = startVolume + (targetVolume - startVolume) * easedProgress;
+                            descentWakeupMusic.volume = currentVolume;
+                            
+                            if (progress >= 1) {
+                                clearInterval(volumeFadeInterval);
+                                console.log('✅ 音樂音量已調回正常（0.6）');
+                            }
+                        }, 50); // 每 50ms 更新一次音量
+                    }
+                }
+                
+                // 4. 隱藏「機長廣播中」UI
+                setBoardingStatus(false);
+                
+                // 5. 標記手動觸發，讓 handleLanding() 知道這是手動觸發的
+                manualLandingTriggered = true;
+                
+                // 6. 切換到 Phase 7，讓 handleLanding() 執行降落程序
+                console.log('4️⃣ [Phase 6] 語音播放完成，切換到 Phase 7...');
+                switchToPhase(Phase.LANDING);
+                return;
+            }
+            
+            // 提早降落時，直接切換到 Phase 7（語音已在 confirmEarlyLanding 中播放）
             // 標記手動觸發，讓 handleLanding() 知道這是手動觸發的
             manualLandingTriggered = true;
             
@@ -11199,9 +11298,15 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 標記已執行，防止重複（在開始時就標記，即使後續出錯也不會重複執行）
             landingExecuted = true;
             
+            // 🔧 改進：進入 Phase 7 時播放新的 wakeup 音樂（讓流程不會很乾）
+            console.log('🎵 [Phase 7] 開始播放新的 wakeup 音樂...');
+            playWakeupMusicForPhase7().catch(err => {
+                console.warn('⚠️ [Phase 7] 播放 wakeup 音樂失敗:', err);
+            });
+            
             // 🔧 改進：不立即停止 takeoff2.mp4，而是等待 landing.mp4 準備好
             // 停止 takeoff2.mp4 的可見性檢查（但保持影片播放）
-            console.log('🔄 [Phase 7] 停止 takeoff2.mp4 可見性檢查，但保持播放直到 landing.mp4 準備就緒');
+            console.log('🔄 [Phase 7] 停止 takeoff2.mp4 可見性檢查，保持播放直到 landing.mp4 準備就緒');
             try {
                 if (window._takeoff2VisibilityCheck) {
                     clearInterval(window._takeoff2VisibilityCheck);
@@ -11317,9 +11422,11 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
                 
                 if (finalDestination) {
+                    // 🔧 改進：立即更新 destinationData，確保後續流程使用最新目的地
                     destinationData = finalDestination;
                     console.log('✅ 最終目的地計算完成:', finalDestination);
                     console.log('📍 目的地: ' + finalDestination.city + ', ' + finalDestination.country);
+                    console.log('📍 [handleLanding] 已更新 destinationData 為 finalDestination（確保新降落地點正確保存）');
                     
                     // 🔧 改進：如果圖片還沒開始生成，立即開始生成（不等待後續流程）
                     if (!landingImagePromise || landingImagePromise === Promise.resolve(null)) {
@@ -11426,16 +11533,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 檢查是否是提前降落（提前降落時 wakeup 音樂已經在播放，但還是需要完整的降落流程）
             const isEarlyLanding = window._earlyLandingConfirmed || false;
             
-            // 🔧 改進：提前降落時，wakeup 音樂已經在播放（正在淡入），需要保持小音量以突出機長語音
-            if (isEarlyLanding && window._earlyLandingWakeupMusic) {
-                console.log('🔉 [提前降落] 保持 wakeup 音樂小音量，凸顯機長語音');
-                try {
-                    // 確保音樂音量保持小聲（0.15），讓語音更突出
-                    window._earlyLandingWakeupMusic.volume = 0.15;
-                } catch (e) {
-                    console.warn('⚠️ 調整 wakeup 音樂音量失敗:', e);
-                }
-            }
+            // 🔧 改進：提早降落時，Phase 5 不播放音樂，Phase 7 會播放新的 wakeup 音樂
+            // 所以這裡不需要處理 _earlyLandingWakeupMusic（因為它不存在）
             
             // 生成降落內容（使用最終確定的目的地）
             console.log('📝 [降落] 生成降落內容...');
@@ -11550,55 +11649,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 setBoardingStatus(false);
             }
             
-            // 🔧 改進：語音播放完成後，如果是提前降落，將音樂音量放大
-            // 注意：這個邏輯會在 playAnnouncement 的 onend 回調中執行，確保語音完全播放完成
-            // 這裡設置一個標記，讓 playAnnouncement 知道需要在語音完成後放大音樂
-            if (isEarlyLanding && window._earlyLandingWakeupMusic) {
-                // 設置一個回調函數，在語音播放完成後執行
-                window._shouldFadeInMusicAfterAnnouncement = () => {
-                    console.log('🔉 [提前降落] 機長廣播完成，將 wakeup 音樂音量放大');
-                    try {
-                        // 額外等待 500ms，確保語音完全結束
-                        setTimeout(() => {
-                            // 🔧 改進：檢查 window._earlyLandingWakeupMusic 是否存在
-                            if (!window._earlyLandingWakeupMusic) {
-                                console.warn('⚠️ window._earlyLandingWakeupMusic 為 null，無法調整音量');
-                                return;
-                            }
-                            
-                            // 音樂慢慢淡入到正常音量（0.6）
-                            const fadeInDuration = 2000; // 2秒淡入，更平滑
-                            const targetVolume = 0.6;
-                            const startVolume = window._earlyLandingWakeupMusic.volume || 0;
-                            const startTime = Date.now();
-                            
-                            const fadeInInterval = setInterval(() => {
-                                if (!window._earlyLandingWakeupMusic) {
-                                    clearInterval(fadeInInterval);
-                                    return;
-                                }
-                                
-                                const elapsed = Date.now() - startTime;
-                                const progress = Math.min(elapsed / fadeInDuration, 1);
-                                window._earlyLandingWakeupMusic.volume = startVolume + (targetVolume - startVolume) * progress;
-                                
-                                if (progress >= 1) {
-                                    clearInterval(fadeInInterval);
-                                    if (window._earlyLandingWakeupMusic) {
-                                        window._earlyLandingWakeupMusic.volume = targetVolume;
-                                    }
-                                    console.log('✅ wakeup 音樂音量已放大到正常音量');
-                                }
-                            }, 16); // 約 60fps
-                        }, 500); // 額外 500ms 緩衝
-                    } catch (e) {
-                        console.warn('⚠️ 放大 wakeup 音樂音量失敗:', e);
-                    }
-                };
-            } else {
-                // 🔧 改進：如果 window._earlyLandingWakeupMusic 為 null，跳過音量調整
-                console.log('ℹ️ [提前降落] window._earlyLandingWakeupMusic 為 null，跳過音量調整');
-            }
+            // 🔧 改進：提早降落時，Phase 5 不播放音樂，Phase 7 會播放新的 wakeup 音樂
+            // 所以這裡不需要處理音樂音量調整（因為 Phase 5 沒有音樂）
             
             // 語音播放完成後，隱藏「機長廣播中」UI（如果不是提前降落，因為提前降落已經在上面隱藏了）
             if (!isEarlyLanding) {
@@ -11634,7 +11686,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             // 播放 landing.mp4，結束後無縫切換到降落圖片（必須在 TTS 完成後）
             console.log('4️⃣ 播放 landing.mp4（TTS 已完成）...');
             try {
-                await playLandingVideoAndShowImage(landingImagePromise);
+                await playLandingVideoAndShowImage(landingImagePromise, finalDestination);
                 console.log('✅ landing.mp4 播放完成，已切換到降落圖片');
             } catch (error) {
                 console.error('❌ landing.mp4 播放失敗:', error);
@@ -11696,7 +11748,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     climateZoneOptions[selectedDirection].name : null);
             
             // 確保 800x800 視窗內（.window-content）沒有任何文字和 icon
-            const windowContent = document.querySelector('.window-content');
+            let windowContent = document.querySelector('.window-content');
             if (windowContent) {
                 windowContent.innerHTML = ''; // 清除所有內容
                 windowContent.style.zIndex = '1000';
@@ -11718,55 +11770,21 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 videoContainerEl.style.display = 'none';
             }
             
-            // 🔧 改進：檢查圖片是否已準備好，如果沒有，先顯示情緒量表
-            let imageReady = false;
-            try {
-                const imageCheck = await Promise.race([
-                    landingImagePromise.then(() => true),
-                    new Promise(resolve => setTimeout(() => resolve(false), 100))
-                ]);
-                imageReady = imageCheck;
-            } catch (e) {
-                console.warn('⚠️ 檢查圖片狀態時發生錯誤:', e);
-            }
-            
-            // 🔧 改進：檢查圖片是否已準備好，如果沒有，先顯示情緒量表
+            // 🔧 改進：情緒量表已在 playLandingVideoAndShowImage 中顯示（landing.mp4 結束時）
+            // 這裡只需要等待情緒量表完成，並處理圖片顯示
             let feedbackData = null;
-            if (!imageReady && finalDestination) {
-                console.log('⏳ 圖片尚未準備好，先顯示情緒量表讓使用者填寫...');
-                // 先顯示情緒量表，不等待圖片
-                const feedbackPromise = showFlightFeedback(finalDestination);
-                
-                // 同時等待圖片生成並顯示
-                const imagePromise = landingImagePromise.then(url => {
-                    if (url) {
-                        const windowContent = document.querySelector('.window-content');
-                        if (windowContent) {
-                            const proxiedUrl = getProxiedImageUrl(url);
-                            windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
-                            windowContent.style.backgroundSize = 'cover';
-                            windowContent.style.backgroundPosition = 'center';
-                            windowContent.style.backgroundRepeat = 'no-repeat';
-                            console.log('✅ 降落圖片已顯示（在情緒量表填寫期間）');
-                        }
-                        // 更新 finalImageUrl
-                        window._manualLandingImageUrl = url;
-                        destinationImageUrl = url;
-                    }
-                    return url;
-                }).catch(e => {
-                    console.warn('⚠️ 圖片生成失敗:', e);
-                    return null;
-                });
-                
+            
+            // 檢查情緒量表是否已經在 playLandingVideoAndShowImage 中顯示
+            if (window._landingFeedbackPromise) {
+                console.log('📋 [handleLanding] 情緒量表已在 landing.mp4 結束時顯示，等待完成...');
                 // 等待情緒量表完成
-                feedbackData = await feedbackPromise;
-                console.log('✅ 情緒量表填寫完成，繼續流程...');
-                
-                // 確保圖片已生成（如果還沒生成完成，繼續等待）
-                await imagePromise;
+                feedbackData = await window._landingFeedbackPromise;
+                console.log('✅ 情緒量表填寫完成，回饋數據:', feedbackData);
+                // 清除 Promise
+                delete window._landingFeedbackPromise;
             } else {
-                // 圖片已準備好，正常流程
+                // 如果情緒量表沒有在 playLandingVideoAndShowImage 中顯示（備用方案）
+                console.log('⚠️ [handleLanding] 情緒量表未在 landing.mp4 結束時顯示，現在顯示...');
                 hideAllStateUI();
                 
                 const arrivalInfoEl = document.getElementById('stateArrivalInfo');
@@ -11775,58 +11793,99 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     arrivalInfoEl.classList.remove('active');
                 }
                 
-                // 顯示飛行回饋選單（情緒量表）在 bar 上 - 必須填寫完才能繼續
-                console.log('📋 顯示情緒量表...');
-                
-                // 顯示飛行回饋選單（情緒量表）在 bar 上 - 必須填寫完才能繼續
                 try {
                     feedbackData = await showFlightFeedback(finalDestination);
                     console.log('✅ 情緒量表作答完成，回饋數據:', feedbackData);
                 } catch (error) {
                     console.error('❌ 顯示情緒量表失敗:', error);
-                    // 即使失敗也繼續流程
                     feedbackData = '3'; // 預設值
                 }
             }
             
+            // 🔧 改進：在情緒量表顯示期間，同時等待圖片生成並顯示（如果還沒顯示）
+            if (!windowContent) {
+                windowContent = document.querySelector('.window-content');
+            }
+            if (windowContent && (!windowContent.style.backgroundImage || windowContent.style.backgroundImage === 'none')) {
+                console.log('⏳ [handleLanding] 圖片尚未顯示，等待圖片生成...');
+                try {
+                    const landingImageUrl = await landingImagePromise;
+                    if (landingImageUrl) {
+                        const proxiedUrl = getProxiedImageUrl(landingImageUrl);
+                        windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
+                        windowContent.style.backgroundSize = 'cover';
+                        windowContent.style.backgroundPosition = 'center';
+                        windowContent.style.backgroundRepeat = 'no-repeat';
+                        console.log('✅ 降落圖片已顯示（在情緒量表填寫期間或之後）');
+                        // 更新 finalImageUrl
+                        window._manualLandingImageUrl = landingImageUrl;
+                        destinationImageUrl = landingImageUrl;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 圖片生成失敗:', e);
+                }
+            } else {
+                console.log('✅ [handleLanding] 圖片已在 landing.mp4 結束時顯示');
+            }
+            
+            // 🔧 改進：確保 finalDestination 和 destinationData 一致（強制同步）
+            if (finalDestination && (!destinationData || destinationData !== finalDestination)) {
+                destinationData = finalDestination;
+                console.log('📍 [handleLanding] 在保存前強制同步 destinationData 為 finalDestination');
+            }
+            
             // 儲存到 Firebase（包含回饋數據）- 不阻塞流程，即使失敗也繼續
-            saveSleepRecord({
-                // 時間相關
-                plannedMinutes: selectedTimer,              // 預期時間
-                durationMinutes: actualDuration,            // 實際時間
-                timeDiffMinutes: timeDiff,                  // 時間差異（分鐘）
-                punctuality: punctuality,                   // 準時狀態（PERFECT / EARLY / LATE / ON_TIME）
-                
-                // 氣候相關
-                directionPosition: selectedDirection,       // 氣候帶位置（0-4）
-                climateZoneName: climateZoneName,            // 氣候帶名稱（例如「熱帶夢境」）
-                
-                // 目的地相關
-                destinationCity: finalDestination.city,
-                destinationCountry: finalDestination.country,
-                destinationCityZh: finalDestination.city_zh,
-                destinationCountryZh: finalDestination.country_zh,
-                countryCode: finalDestination.country_iso_code,
-                destinationLatitude: finalDestination.latitude,
-                destinationLongitude: finalDestination.longitude,
-                timezone: finalDestination.timezone,
-                isWormhole: isWormhole,                     // 是否是蟲洞目的地
-                
-                // 媒體內容
-                imageUrl: finalImageUrl,                     // 降落圖片 URL（優先使用手動觸發的）
-                announcementText: announcementText,          // 降落語音文字
-                
-                // 🔧 改進：保存 Phase 7 最後顯示的目的地資訊（時間、天氣、活動建議）
-                destinationInfo: destinationInfo || null,    // 目的地資訊（time, weather, feature）
-                
-                // 飛行回饋（實驗數據）
-                flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
-                
-                wakeTime: new Date().toISOString()
-            }).catch(error => {
-                // 即使儲存失敗，也不阻塞流程
-                console.warn('⚠️ 儲存到 Firebase 失敗，但不影響流程:', error);
-            });
+            // 🔧 改進：使用 finalDestination（確保是新降落地點，不是舊的 destinationData）
+            const destinationToSave = finalDestination || destinationData;
+            if (!destinationToSave) {
+                console.error('❌ [handleLanding] 無法保存：finalDestination 和 destinationData 都為 null');
+            } else {
+                console.log('📤 [handleLanding] 準備保存新降落地點到 Firebase:', destinationToSave.city_zh || destinationToSave.city, destinationToSave.country_zh || destinationToSave.country);
+                saveSleepRecord({
+                    // 時間相關
+                    plannedMinutes: selectedTimer,              // 預期時間
+                    durationMinutes: actualDuration,            // 實際時間
+                    timeDiffMinutes: timeDiff,                  // 時間差異（分鐘）
+                    punctuality: punctuality,                   // 準時狀態（PERFECT / EARLY / LATE / ON_TIME）
+                    
+                    // 氣候相關
+                    directionPosition: selectedDirection,       // 氣候帶位置（0-4）
+                    climateZoneName: climateZoneName,            // 氣候帶名稱（例如「熱帶夢境」）
+                    
+                    // 目的地相關（使用 finalDestination，確保是新降落地點）
+                    destinationCity: destinationToSave.city,
+                    destinationCountry: destinationToSave.country,
+                    destinationCityZh: destinationToSave.city_zh,
+                    destinationCountryZh: destinationToSave.country_zh,
+                    countryCode: destinationToSave.country_iso_code,
+                    destinationLatitude: destinationToSave.latitude,
+                    destinationLongitude: destinationToSave.longitude,
+                    timezone: destinationToSave.timezone,
+                    isWormhole: isWormhole,                     // 是否是蟲洞目的地
+                    
+                    // 媒體內容
+                    imageUrl: finalImageUrl,                     // 降落圖片 URL（優先使用手動觸發的）
+                    announcementText: announcementText,          // 降落語音文字
+                    
+                    // 🔧 改進：保存 Phase 7 最後顯示的目的地資訊（時間、天氣、活動建議）
+                    destinationInfo: destinationInfo || null,    // 目的地資訊（time, weather, feature）
+                    
+                    // 飛行回饋（實驗數據）
+                    flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
+                    
+                    wakeTime: new Date().toISOString()
+                }).then(success => {
+                    if (success) {
+                        console.log('✅ [handleLanding] 新降落地點已成功保存到 Firebase');
+                        console.log('📍 保存的目的地:', destinationToSave.city_zh || destinationToSave.city, destinationToSave.country_zh || destinationToSave.country);
+                    } else {
+                        console.error('❌ [handleLanding] 保存到 Firebase 失敗');
+                    }
+                }).catch(error => {
+                    // 即使儲存失敗，也不阻塞流程
+                    console.error('❌ [handleLanding] 儲存到 Firebase 時發生錯誤:', error);
+                });
+            }
             
             // 🔧 改進：不清除 window._manualLandingImageUrl，因為 Phase 0 需要使用最新生成的圖片
             // 只有在開始新的飛行時（Phase 1 或之後），才清除它
@@ -11863,13 +11922,13 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 destinationImageUrl = latestImageUrl;
             }
             
-            // 🔧 改進：確保 destinationData 已更新為 finalDestination（如果有的話）
-            if (finalDestination && !destinationData) {
+            // 🔧 改進：確保 destinationData 已更新為 finalDestination（強制更新，確保新降落地點正確）
+            if (finalDestination) {
                 destinationData = finalDestination;
-                console.log('📍 [切換到 Phase 0] 已更新 destinationData 為 finalDestination');
-            } else if (finalDestination && destinationData !== finalDestination) {
-                destinationData = finalDestination;
-                console.log('📍 [切換到 Phase 0] 已更新 destinationData 為 finalDestination');
+                console.log('📍 [切換到 Phase 0] 已強制更新 destinationData 為 finalDestination（新降落地點）');
+                console.log('📍 [切換到 Phase 0] 新目的地:', finalDestination.city_zh || finalDestination.city, finalDestination.country_zh || finalDestination.country);
+            } else {
+                console.warn('⚠️ [切換到 Phase 0] finalDestination 為 null，無法更新 destinationData');
             }
             
             switchToPhase(Phase.POST_ARRIVAL); // 從 Phase 7 回到 Phase 0，這是允許的
