@@ -219,10 +219,30 @@
         .flight-progress-meta {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
             font-size: 11px;
             color: #bbb;
             margin-top: 4px;
-            padding: 0 2px;
+            padding: 0;
+            width: 100%;
+            position: relative;
+        }
+        
+        #flightProgressStartLabel {
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            flex-shrink: 0;
+            text-align: left;
+        }
+        
+        #flightProgressEndLabel {
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            flex-shrink: 0;
+            text-align: right;
+            margin-left: auto;
         }
 
         /* 下一步按鈕 */
@@ -1281,19 +1301,17 @@
             </div>
             <div class="flight-progress-meta">
                 <span id="flightProgressStartLabel">
-                    <span id="flightProgressStartFlag" style="font-size: 16px; margin-right: 4px;">🏳️</span>
                     目前位置
                 </span>
                 <span id="flightProgressEndLabel">
-                    <span id="flightProgressEndFlag" style="font-size: 16px; margin-right: 4px;">🏳️</span>
-                    ???
+                    載入中...
                 </span>
             </div>
         </div>
 
         <!-- 計算目的地動畫 -->
         <div class="info-state" id="stateCalculating" style="display: none;">
-            <div class="state-label">✈️ 計算目的地中2</div>
+            <div class="state-label">✈️ 計算目的地...</div>
             <div class="calculating-content" style="margin-top: 30px; text-align: center;">
                 <div class="calculating-spinner">
                     <div class="spinner-circle"></div>
@@ -4327,76 +4345,35 @@
                     // 左邊顯示目前位置（國家名稱），右邊顯示預設目的地（保留 HTML 結構）
                     try {
                         const countryEl = document.getElementById('currentCountry');
-                        const countryFlagEl = document.querySelector('.country-flag');
-                        const startFlagEl = document.getElementById('flightProgressStartFlag');
                         const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
-                        const originFlag = countryFlagEl && countryFlagEl.textContent.trim() !== '🏳️' ? countryFlagEl.textContent.trim() : '🏳️';
                         
-                        // 更新起點國旗
-                        if (startFlagEl) {
-                            startFlagEl.textContent = originFlag;
-                        }
-                        // 更新起點文字（保留 HTML 結構）
-                        const startTextNode = Array.from(startLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                        if (startTextNode) {
-                            startTextNode.textContent = ' ' + (countryText || '目前位置');
-                        } else {
-                            startLabel.appendChild(document.createTextNode(' ' + (countryText || '目前位置')));
-                        }
+                        // 更新起點文字（移除國旗）
+                        startLabel.textContent = countryText || '目前位置';
                     } catch (e) {
-                        const startFlagEl = document.getElementById('flightProgressStartFlag');
-                        if (startFlagEl) {
-                            startFlagEl.textContent = '🏳️';
-                        }
-                        const startTextNode = Array.from(startLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                        if (startTextNode) {
-                            startTextNode.textContent = ' 目前位置';
-                        } else {
-                            startLabel.appendChild(document.createTextNode(' 目前位置'));
-                        }
+                        startLabel.textContent = '目前位置';
                     }
                     
-                    // 右邊顯示預設目的地（如果有 destinationData，保留 HTML 結構）
-                    const endFlagEl = document.getElementById('flightProgressEndFlag');
+                    // 右邊顯示預設目的地（移除國旗）
                     if (destinationData) {
-                        const destinationName = destinationData.city_zh || destinationData.city || destinationData.country_zh || destinationData.country || '???';
-                        // 更新終點國旗
-                        if (endFlagEl) {
-                            const countryCode = destinationData.country_iso_code || '';
-                            let flagEmoji = '🏳️';
-                            if (countryCode && countryCode.length === 2) {
-                                try {
-                                    const codePoints = countryCode
-                                        .toUpperCase()
-                                        .split('')
-                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
-                                    if (codePoints.length === 2) {
-                                        flagEmoji = String.fromCodePoint(...codePoints);
-                                    }
-                                } catch (e) {
-                                    console.warn('⚠️ [進度條] 生成終點國旗 emoji 時發生錯誤:', e);
-                                }
-                            }
-                            endFlagEl.textContent = flagEmoji;
-                        }
-                        // 更新終點文字（保留 HTML 結構）
-                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                        if (endTextNode) {
-                            endTextNode.textContent = ' ' + destinationName;
+                        const city = destinationData.city_zh || destinationData.city || '';
+                        const country = destinationData.country_zh || destinationData.country || '';
+                        let destinationName = '';
+                        
+                        if (city && country) {
+                            destinationName = `${city}, ${country}`;
+                        } else if (city) {
+                            destinationName = city;
+                        } else if (country) {
+                            destinationName = country;
                         } else {
-                            endLabel.appendChild(document.createTextNode(' ' + destinationName));
+                            destinationName = '載入中...';  // 🔧 改進：使用「載入中...」而不是「???」
                         }
+                        
+                        // 更新終點文字（移除國旗）
+                        endLabel.textContent = destinationName;
                     } else {
-                        // 更新終點為預設值（保留 HTML 結構）
-                        if (endFlagEl) {
-                            endFlagEl.textContent = '🏳️';
-                        }
-                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                        if (endTextNode) {
-                            endTextNode.textContent = ' ???';
-                        } else {
-                            endLabel.appendChild(document.createTextNode(' ???'));
-                        }
+                        // 更新終點為預設值（移除國旗）
+                        endLabel.textContent = '載入中...';  // 🔧 改進：使用「載入中...」而不是「???」
                     }
                     
                     // 先清掉舊的計時器
@@ -7601,7 +7578,7 @@
                                 console.log('✅ [setBoardingStatus] Phase 7 顯示:', stateLabel.textContent);
                             } else {
                                 // Phase 4 或其他: 先顯示「準備啟航」4 秒，然後切換到「📢 機長廣播中」
-                                stateLabel.textContent = '準備啟航';
+                                stateLabel.textContent = '🛩️準備啟航';
                                 console.log('✅ [setBoardingStatus] 顯示「準備啟航」');
                                 
                                 // 4 秒後切換到「📢 機長廣播中」
@@ -9943,32 +9920,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         console.warn('⚠️ [Phase 7] 關閉飛行進度條時發生小問題:', e);
                     }
                     
-                    // 🔧 改進：在進入 Phase 7 時立即開始生成降落圖片（提前生成）
-                    // 使用 destinationData 或提前準備好的目的地
-                    const earlyDestination = window._preGeneratedFinalDestination || destinationData;
-                    if (earlyDestination && !window._earlyLandingImagePromise) {
-                        console.log('🖼️ [Phase 7] 立即開始生成降落圖片（提前生成）...');
-                        window._earlyLandingImagePromise = (async () => {
-                            try {
-                                const url = await generateLandingImage(
-                                    earlyDestination.city,
-                                    earlyDestination.country,
-                                    earlyDestination.timezone || 'UTC',
-                                    new Date().toISOString()
-                                );
-                                if (url) {
-                                    window._manualLandingImageUrl = url;
-                                    console.log('✅ [Phase 7] 降落圖片已提前生成:', url);
-                                } else {
-                                    console.warn('⚠️ [Phase 7] 降落圖片生成失敗');
-                                }
-                                return url;
-                            } catch (error) {
-                                console.error('❌ [Phase 7] 生成降落圖片時發生錯誤:', error);
-                                return null;
-                            }
-                        })();
-                    }
+                    // 🔧 改進：在進入 Phase 7 時，圖片生成統一由 handleLanding() 處理
+                    // 不在這裡提前生成，避免重複生成
+                    console.log('🖼️ [Phase 7] 圖片生成將由 handleLanding() 統一處理，避免重複生成');
                     
                     // 然後調用 handleLanding()
                     handleLanding();
@@ -10774,15 +10728,12 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     fill.style.width = '0%';
                     glow.style.left = '0%';
 
-                    // 左邊顯示目前位置（城市, 國家）和國旗
+                    // 左邊顯示目前位置（城市, 國家）
                     try {
                         const countryEl = document.getElementById('currentCountry');
-                        const countryFlagEl = document.querySelector('.country-flag');
-                        const startFlagEl = document.getElementById('flightProgressStartFlag');
                         
                         // 獲取起點資訊
                         let originText = '目前位置';
-                        let originFlag = '🏳️';
                         
                         if (countryEl) {
                             const countryText = countryEl.textContent.trim();
@@ -10792,35 +10743,16 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             }
                         }
                         
-                        // 獲取起點國旗
-                        if (countryFlagEl) {
-                            const flagText = countryFlagEl.textContent.trim();
-                            if (flagText && flagText !== '🏳️') {
-                                originFlag = flagText;
-                            }
-                        }
+                        // 更新起點標籤（移除國旗）
+                        startLabel.textContent = originText;
                         
-                        // 更新起點標籤和國旗（保留 HTML 結構）
-                        if (startFlagEl) {
-                            startFlagEl.textContent = originFlag;
-                        }
-                        // 只更新文字部分，保留國旗元素
-                        const textNode = Array.from(startLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                        if (textNode) {
-                            textNode.textContent = ' ' + originText;  // 添加空格分隔國旗和文字
-                        } else {
-                            // 如果沒有文字節點，創建一個
-                            startLabel.appendChild(document.createTextNode(' ' + originText));
-                        }
-                        
-                        console.log('✅ [進度條] 起點資訊已更新:', originText, originFlag);
+                        console.log('✅ [進度條] 起點資訊已更新:', originText);
                     } catch (e) {
                         console.warn('⚠️ [進度條] 更新起點資訊時發生錯誤:', e);
                         startLabel.textContent = '目前位置';
                     }
                     
-                    // 右邊顯示預設目的地（城市, 國家）和國旗
-                    const endFlagEl = document.getElementById('flightProgressEndFlag');
+                    // 右邊顯示預設目的地（城市, 國家）
                     if (destinationData) {
                         // 構建目的地文字（城市, 國家）
                         const city = destinationData.city_zh || destinationData.city || '';
@@ -10834,51 +10766,17 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         } else if (country) {
                             destinationName = country;
                         } else {
-                            destinationName = '???';
+                            destinationName = '載入中...';  // 🔧 改進：使用「載入中...」而不是「???」
                         }
                         
-                        // 更新終點國旗
-                        if (endFlagEl) {
-                            const countryCode = destinationData.country_iso_code || '';
-                            let flagEmoji = '🏳️';
-                            if (countryCode && countryCode.length === 2) {
-                                try {
-                                    const codePoints = countryCode
-                                        .toUpperCase()
-                                        .split('')
-                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
-                                    if (codePoints.length === 2) {
-                                        flagEmoji = String.fromCodePoint(...codePoints);
-                                    }
-                                } catch (e) {
-                                    console.warn('⚠️ [進度條] 生成終點國旗 emoji 時發生錯誤:', e);
-                                }
-                            }
-                            endFlagEl.textContent = flagEmoji;
-                        }
+                        // 更新終點文字（移除國旗）
+                        endLabel.textContent = destinationName;
                         
-                        // 更新終點文字（保留 HTML 結構）
-                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                        if (endTextNode) {
-                            endTextNode.textContent = ' ' + destinationName;  // 添加空格分隔國旗和文字
-                        } else {
-                            // 如果沒有文字節點，創建一個
-                            endLabel.appendChild(document.createTextNode(' ' + destinationName));
-                        }
-                        
-                        console.log('✅ [進度條] 終點資訊已更新:', destinationName, endFlagEl ? endFlagEl.textContent : '');
+                        console.log('✅ [進度條] 終點資訊已更新:', destinationName);
                     } else {
-                        // 更新終點為預設值（保留 HTML 結構）
-                        if (endFlagEl) {
-                            endFlagEl.textContent = '🏳️';
-                        }
-                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-                        if (endTextNode) {
-                            endTextNode.textContent = ' ???';
-                        } else {
-                            endLabel.appendChild(document.createTextNode(' ???'));
-                        }
-                        console.warn('⚠️ [進度條] destinationData 不存在，無法更新終點資訊');
+                        // 更新終點為預設值（移除國旗）
+                        endLabel.textContent = '載入中...';  // 🔧 改進：使用「載入中...」而不是「???」
+                        console.warn('⚠️ [進度條] destinationData 不存在，顯示「載入中...」');
                     }
 
                     // 先清掉舊的計時器
@@ -12449,7 +12347,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             setBoardingStatus(false);
             
             // 開始生成圖片A（背景進行，只生成一次）
-            if (finalDestination && !window._phase7ImageAPromise) {
+            // 🔧 改進：統一檢查所有可能的圖片 Promise，避免重複生成
+            if (finalDestination && !window._phase7ImageAPromise && !window._earlyLandingImagePromise) {
                 console.log('🖼️ [Phase 7] 開始生成圖片A（背景進行，只生成一次）...');
                 window._phase7ImageAPromise = (async () => {
                     // 🔧 改進：先獲取天氣信息，然後傳入圖片生成
@@ -12480,8 +12379,16 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 })();
                 landingImagePromise = window._phase7ImageAPromise;
             } else if (window._phase7ImageAPromise) {
-                console.log('✅ [Phase 7] 圖片A已在生成中，使用現有的 Promise');
+                console.log('✅ [Phase 7] 圖片A已在生成中（使用 _phase7ImageAPromise），使用現有的 Promise');
                 landingImagePromise = window._phase7ImageAPromise;
+            } else if (window._earlyLandingImagePromise) {
+                console.log('✅ [Phase 7] 圖片A已在生成中（使用 _earlyLandingImagePromise），使用現有的 Promise');
+                landingImagePromise = window._earlyLandingImagePromise;
+                // 🔧 改進：統一轉移到 _phase7ImageAPromise，避免重複生成
+                window._phase7ImageAPromise = window._earlyLandingImagePromise;
+                window._earlyLandingImagePromise = null;
+            } else {
+                console.warn('⚠️ [Phase 7] 沒有 finalDestination 或圖片 Promise 已存在，跳過圖片生成');
             }
             
             // ============================================================================
