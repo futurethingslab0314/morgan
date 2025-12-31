@@ -4324,21 +4324,79 @@
                     fill.style.width = '0%';
                     glow.style.left = '0%';
                     
-                    // 左邊顯示目前位置（國家名稱），右邊顯示預設目的地
+                    // 左邊顯示目前位置（國家名稱），右邊顯示預設目的地（保留 HTML 結構）
                     try {
                         const countryEl = document.getElementById('currentCountry');
+                        const countryFlagEl = document.querySelector('.country-flag');
+                        const startFlagEl = document.getElementById('flightProgressStartFlag');
                         const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
-                        startLabel.textContent = countryText || '目前位置';
+                        const originFlag = countryFlagEl && countryFlagEl.textContent.trim() !== '🏳️' ? countryFlagEl.textContent.trim() : '🏳️';
+                        
+                        // 更新起點國旗
+                        if (startFlagEl) {
+                            startFlagEl.textContent = originFlag;
+                        }
+                        // 更新起點文字（保留 HTML 結構）
+                        const startTextNode = Array.from(startLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (startTextNode) {
+                            startTextNode.textContent = ' ' + (countryText || '目前位置');
+                        } else {
+                            startLabel.appendChild(document.createTextNode(' ' + (countryText || '目前位置')));
+                        }
                     } catch (e) {
-                        startLabel.textContent = '目前位置';
+                        const startFlagEl = document.getElementById('flightProgressStartFlag');
+                        if (startFlagEl) {
+                            startFlagEl.textContent = '🏳️';
+                        }
+                        const startTextNode = Array.from(startLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (startTextNode) {
+                            startTextNode.textContent = ' 目前位置';
+                        } else {
+                            startLabel.appendChild(document.createTextNode(' 目前位置'));
+                        }
                     }
                     
-                    // 右邊顯示預設目的地（如果有 destinationData）
+                    // 右邊顯示預設目的地（如果有 destinationData，保留 HTML 結構）
+                    const endFlagEl = document.getElementById('flightProgressEndFlag');
                     if (destinationData) {
                         const destinationName = destinationData.city_zh || destinationData.city || destinationData.country_zh || destinationData.country || '???';
-                        endLabel.textContent = destinationName;
+                        // 更新終點國旗
+                        if (endFlagEl) {
+                            const countryCode = destinationData.country_iso_code || '';
+                            let flagEmoji = '🏳️';
+                            if (countryCode && countryCode.length === 2) {
+                                try {
+                                    const codePoints = countryCode
+                                        .toUpperCase()
+                                        .split('')
+                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                                    if (codePoints.length === 2) {
+                                        flagEmoji = String.fromCodePoint(...codePoints);
+                                    }
+                                } catch (e) {
+                                    console.warn('⚠️ [進度條] 生成終點國旗 emoji 時發生錯誤:', e);
+                                }
+                            }
+                            endFlagEl.textContent = flagEmoji;
+                        }
+                        // 更新終點文字（保留 HTML 結構）
+                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (endTextNode) {
+                            endTextNode.textContent = ' ' + destinationName;
+                        } else {
+                            endLabel.appendChild(document.createTextNode(' ' + destinationName));
+                        }
                     } else {
-                        endLabel.textContent = '???';
+                        // 更新終點為預設值（保留 HTML 結構）
+                        if (endFlagEl) {
+                            endFlagEl.textContent = '🏳️';
+                        }
+                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (endTextNode) {
+                            endTextNode.textContent = ' ???';
+                        } else {
+                            endLabel.appendChild(document.createTextNode(' ???'));
+                        }
                     }
                     
                     // 先清掉舊的計時器
@@ -10637,10 +10695,17 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             }
                         }
                         
-                        // 更新起點標籤和國旗
-                        startLabel.textContent = originText;
+                        // 更新起點標籤和國旗（保留 HTML 結構）
                         if (startFlagEl) {
                             startFlagEl.textContent = originFlag;
+                        }
+                        // 只更新文字部分，保留國旗元素
+                        const textNode = Array.from(startLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (textNode) {
+                            textNode.textContent = ' ' + originText;  // 添加空格分隔國旗和文字
+                        } else {
+                            // 如果沒有文字節點，創建一個
+                            startLabel.appendChild(document.createTextNode(' ' + originText));
                         }
                         
                         console.log('✅ [進度條] 起點資訊已更新:', originText, originFlag);
@@ -10667,8 +10732,6 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             destinationName = '???';
                         }
                         
-                        endLabel.textContent = destinationName;
-                        
                         // 更新終點國旗
                         if (endFlagEl) {
                             const countryCode = destinationData.country_iso_code || '';
@@ -10689,11 +10752,26 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             endFlagEl.textContent = flagEmoji;
                         }
                         
+                        // 更新終點文字（保留 HTML 結構）
+                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (endTextNode) {
+                            endTextNode.textContent = ' ' + destinationName;  // 添加空格分隔國旗和文字
+                        } else {
+                            // 如果沒有文字節點，創建一個
+                            endLabel.appendChild(document.createTextNode(' ' + destinationName));
+                        }
+                        
                         console.log('✅ [進度條] 終點資訊已更新:', destinationName, endFlagEl ? endFlagEl.textContent : '');
                     } else {
-                        endLabel.textContent = '???';
+                        // 更新終點為預設值（保留 HTML 結構）
                         if (endFlagEl) {
                             endFlagEl.textContent = '🏳️';
+                        }
+                        const endTextNode = Array.from(endLabel.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (endTextNode) {
+                            endTextNode.textContent = ' ???';
+                        } else {
+                            endLabel.appendChild(document.createTextNode(' ???'));
                         }
                         console.warn('⚠️ [進度條] destinationData 不存在，無法更新終點資訊');
                     }
