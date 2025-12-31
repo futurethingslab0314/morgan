@@ -243,7 +243,7 @@ ${taskGuidanceText ? `任務完成後指引：${taskGuidanceText}` : ''}
 - Closing: Make passengers feel they "arrived at themselves" and "arrived at ${city}'s emotional atmosphere"
 
 ${greetingHint}`
-                    : `根據以下結構化 Prompt 設計生成降落廣播（60-80字，保持簡潔有趣）。
+                    : `根據以下結構化 Prompt 設計生成降落廣播（60-80字，保持簡潔有趣且情感豐富）。
 
 【輸入變數 (Inputs)】
 - 目的地：${city}，${country}${countryCode ? ` (${countryCode})` : ''}
@@ -257,14 +257,20 @@ ${greetingHint}`
 3. 時間情境 → 音調調整：${toneAdjustment}
 
 【生成要求】
-- 語氣：${toneAdjustment}
-- 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
-- 自然地融入降落狀況的敘事背景
-- 描述【${city}】天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
-- 文化氛圍：「${culturalContext || mentalState.culturalMood}」
-- 內在狀態：「${mentalState.state}」— ${mentalState.description}
-- 任務完成：${taskGuidanceText}
-- 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+- 語氣：${toneAdjustment}（必須強烈且明確地表達情感，不要平淡）
+- 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯（語氣要生動有活力）
+- 自然地融入降落狀況的敘事背景（要讓乘客感受到情境的真實感和臨場感）
+- 描述【${city}】天氣，與任務融合。${landingWeatherGuidance.zh}。生動且具體，讓乘客能感受到天氣的質感。
+- 文化氛圍：「${culturalContext || mentalState.culturalMood}」（要讓乘客感受到當地的文化氣息）
+- 內在狀態：「${mentalState.state}」— ${mentalState.description}（要讓乘客感受到內在的轉變）
+- 任務完成：${taskGuidanceText}（語氣要肯定且溫暖）
+- 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」（要有強烈的歸屬感和完成感）
+
+【重要提醒】
+- 必須完整表達，不要中途截斷
+- 語氣要有力度和感染力，不要平淡
+- 每個句子都要有情感色彩，讓乘客感受到真實的情緒
+- 確保內容完整，不會因為 token 限制而被截斷
 
 ${greetingHint}`;
 
@@ -389,8 +395,8 @@ ${prompt}`;
         const response = await openai.chat.completions.create({
             model: "gpt-4-turbo", // 🔧 使用 GPT-4 Turbo（GPT-4o 已移除，使用穩定可用的 GPT-4 Turbo）
             messages: [{ role: "user", content: prompt }],
-            temperature: 0.8,
-            max_tokens: 200  // 🔧 縮短：從 400 減少到 200，確保生成簡潔的語音（60-80字約需 100-150 tokens）
+            temperature: 0.9,  // 🔧 提高溫度以增加創意和情感表達
+            max_tokens: 300  // 🔧 增加 token 限制，確保內容完整且不會被截斷（60-80字約需 150-200 tokens，預留緩衝）
         });
 
         const announcement = response.choices[0].message.content.trim();
