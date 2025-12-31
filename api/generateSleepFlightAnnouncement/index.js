@@ -93,7 +93,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { announcementType, city, country, countryCode, currentLocation, flightTime, timerDuration, punctuality, localTimeInfo, taskType, uiLanguage } = req.body;
+        const { announcementType, city, country, countryCode, currentLocation, flightTime, timerDuration, punctuality, localTimeInfo, taskType, uiLanguage, landingSituation, situationNarrative, toneAdjustment, culturalContext, timeDiffMinutes } = req.body;
 
         if (!announcementType || !city || !country) {
             res.status(400).json({ error: '缺少必要參數' });
@@ -216,10 +216,65 @@ ${greetingHint}`;
 ${taskGuidanceText ? `任務完成後指引：${taskGuidanceText}` : ''}
 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」`;
 
-            if (punctuality && punctuality.status) {
+            // 🔧 結構化 Prompt 設計：如果有傳入降落狀況的轉換邏輯，優先使用
+            if (landingSituation && situationNarrative && toneAdjustment) {
+                const structuredPrompt = isEnglish
+                    ? `Generate a landing announcement based on the following structured prompt design (60-80 words, keep it concise and engaging).
+
+【Input Variables (Inputs)】
+- Destination: ${city}, ${country}${countryCode ? ` (${countryCode})` : ''}
+- Landing Situation: ${landingSituation}
+- Local Time: ${landingTimeInfo || `${localTimeInfo?.localTimeString || ''} (${localTimeInfo?.timeContext || ''})`}
+- Cultural Context: "${culturalContext || mentalState.culturalMood}"
+
+【Prompt Conversion Logic (Design Logic)】
+1. Landing Situation → Narrative Background: ${situationNarrative}
+2. Cultural Context → Local Cultural Tone: ${culturalContext || mentalState.culturalMood}
+3. Time Context → Tone Adjustment: ${toneAdjustment}
+
+【Generation Requirements】
+- Tone: ${toneAdjustment}
+- Start with local greeting: "${greeting || 'Hello'}" (translate)
+- Incorporate the landing situation narrative naturally
+- Describe weather at ${city}, integrate with task. ${landingWeatherGuidance.en}. Vivid.
+- Cultural mood: "${culturalContext || mentalState.culturalMood}"
+- Inner state: "${mentalState.stateEn}" — ${mentalState.description}
+- Task completion: ${taskGuidanceText}
+- Closing: Make passengers feel they "arrived at themselves" and "arrived at ${city}'s emotional atmosphere"
+
+${greetingHint}`
+                    : `根據以下結構化 Prompt 設計生成降落廣播（60-80字，保持簡潔有趣）。
+
+【輸入變數 (Inputs)】
+- 目的地：${city}，${country}${countryCode ? ` (${countryCode})` : ''}
+- 降落狀況：${landingSituation}
+- 當地時間：${landingTimeInfo || `${localTimeInfo?.localTimeString || ''}（${localTimeInfo?.timeContext || ''}）`}
+- 文化特色：${culturalContext || mentalState.culturalMood}
+
+【Prompt 轉換邏輯 (Design Logic)】
+1. 降落狀況 → 敘事背景：${situationNarrative}
+2. 文化特色 → 當地文化語氣：${culturalContext || mentalState.culturalMood}
+3. 時間情境 → 音調調整：${toneAdjustment}
+
+【生成要求】
+- 語氣：${toneAdjustment}
+- 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
+- 自然地融入降落狀況的敘事背景
+- 描述【${city}】天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
+- 文化氛圍：「${culturalContext || mentalState.culturalMood}」
+- 內在狀態：「${mentalState.state}」— ${mentalState.description}
+- 任務完成：${taskGuidanceText}
+- 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+
+${greetingHint}`;
+
+                prompt = structuredPrompt;
+                console.log(`✅ [API] 使用結構化 Prompt 設計（降落狀況：${landingSituation}）`);
+                console.log(`📋 [API] 完整 Prompt：\n${structuredPrompt}`);
+            } else if (punctuality && punctuality.status) {
                 const statusPrompts = {
                     'PERFECT': isEnglish
-                        ? `Generate a "perfect on-time landing" announcement (150-180 words). ${approachAvoidance}
+                        ? `Generate a "perfect on-time landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
 Tone = 40% aviation + 30% gentle guidance + 30% inner narrative.
 1. Start: "Ladies and gentlemen, this is your captain. Focus Airlines flight ${flightNumber} has landed on time at 【${city}】."
 2. Time & weather: ${landingTimeInfo} Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.
@@ -228,7 +283,7 @@ Tone = 40% aviation + 30% gentle guidance + 30% inner narrative.
 5. Task completion: ${taskGuidanceText}
 6. Closing: "Thank you for choosing Focus Airlines. We wish you a pleasant journey in 【${city}】."
 ${greetingHint}`
-                        : `生成「完美準時降落」廣播（150-180字）。${approachAvoidance}
+                        : `生成「完美準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
 語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
 1. 開場：「各位乘客，我是機長。本次 Focus Airlines 航班 ${flightNumber} 已順利準時降落於【${city}】。」
 2. 時間和天氣：${landingTimeInfo} 描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
@@ -239,14 +294,14 @@ ${greetingHint}`
 ${greetingHint}`,
 
                     'EARLY': isEnglish
-                        ? `Generate an "early landing" announcement (120 words). Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
+                        ? `Generate an "early landing" announcement (60-80 words, keep it concise). Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 1. Greeting: "${greeting || 'Hello'}" (translate)
 2. Early arrival: "We have arrived early at 【${city}】."
 3. Weather: Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.
 4. Inner state: ${innerStatePrompt}
 5. Closing: Make passengers feel they gained inner harvest even with early landing.
 ${greetingHint}`
-                        : `生成「提早降落」廣播（120字）。語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
+                        : `生成「提早降落」廣播（60-80字，保持簡潔）。語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 提早宣告：「我們提早到達了【${city}】。」
 3. 天氣：描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
@@ -255,7 +310,7 @@ ${greetingHint}`
 ${greetingHint}`,
 
                     'LATE': isEnglish
-                        ? `Generate a "delayed landing" announcement (150 words). ${approachAvoidance}
+                        ? `Generate a "delayed landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
 Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 1. Greeting: "${greeting || 'Hello'}" (translate)
 2. Apology: "Sorry, this flight has been delayed."
@@ -265,7 +320,7 @@ Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 6. Inner state: ${innerStatePrompt}
 7. Closing: Make passengers feel they arrived at themselves and destination despite delay.
 ${greetingHint}`
-                        : `生成「誤點降落」廣播（150字）。${approachAvoidance}
+                        : `生成「誤點降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 歉意宣告：「抱歉，本次航班延誤。」
@@ -277,7 +332,7 @@ ${greetingHint}`
 ${greetingHint}`,
 
                     'ON_TIME': isEnglish
-                        ? `Generate an "on-time landing" announcement (100 words). ${approachAvoidance}
+                        ? `Generate an "on-time landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
 Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 1. Greeting: "${greeting || 'Hello'}" (translate)
 2. Landing: "This flight has landed on time at 【${city}】."
@@ -286,7 +341,7 @@ Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 5. Thanks: Thank passengers for completing the journey
 6. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
 ${greetingHint}`
-                        : `生成「準時降落」廣播（100字）。${approachAvoidance}
+                        : `生成「準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 降落宣告：「本次航班順利準時降落於【${city}】。」
@@ -300,7 +355,7 @@ ${greetingHint}`
                 prompt = statusPrompts[punctuality.status] || statusPrompts['ON_TIME'];
             } else {
                 prompt = isEnglish
-                    ? `Generate a landing announcement (100 words). Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
+                    ? `Generate a landing announcement (60-80 words, keep it concise). Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 1. Welcome to destination
 2. Destination: ${city} (${country})
 3. ${landingTimeInfo || 'Time info'}
@@ -309,7 +364,7 @@ ${greetingHint}`
 6. ${timerDuration ? 'Congratulations on completing the flight task' : 'Remind passengers to confirm landing'}
 7. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
 ${greetingHint}`
-                    : `生成降落廣播（100字）。語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
+                    : `生成降落廣播（60-80字，保持簡潔）。語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 歡迎到達目的地
 2. 目的地：${city} (${country})
 3. ${landingTimeInfo || '時間資訊'}
@@ -335,7 +390,7 @@ ${prompt}`;
             model: "gpt-4-turbo", // 🔧 使用 GPT-4 Turbo（GPT-4o 已移除，使用穩定可用的 GPT-4 Turbo）
             messages: [{ role: "user", content: prompt }],
             temperature: 0.8,
-            max_tokens: 400
+            max_tokens: 200  // 🔧 縮短：從 400 減少到 200，確保生成簡潔的語音（60-80字約需 100-150 tokens）
         });
 
         const announcement = response.choices[0].message.content.trim();

@@ -1557,6 +1557,37 @@
 
         let currentPhase = Phase.POST_ARRIVAL;
         let currentState = State.COUNTRY;
+        // 🔧 國家文化特色數據（用於 Prompt 轉換邏輯）
+        const COUNTRY_MENTAL_STATE = {
+            'JP': { state: '專注', stateEn: 'Focus', description: '那裡的安靜，是你即將借用的專注。在這段旅程中，請讓自己的心像清晨的街道一樣乾淨、明確。', culturalMood: '乾淨、秩序、清晰、安靜的質感' },
+            'KR': { state: '平衡', stateEn: 'Balance', description: '那裡的節奏，提醒你找到內在的平衡。讓接下來的時間，成為你重新對齊自己的機會。', culturalMood: '節奏感、和諧、精緻' },
+            'CN': { state: '沉穩', stateEn: 'Steadiness', description: '那裡的深度，會帶你回到內心的沉穩。讓你的思緒像古老的智慧一樣，安靜而有力。', culturalMood: '深度、古老智慧、穩重' },
+            'HK': { state: '效率', stateEn: 'Efficiency', description: '那裡的節奏，會成為你的啟動訊號。在這段時間裡，把注意力放在你想前進的方向。', culturalMood: '節奏、效率、活力' },
+            'TW': { state: '親和', stateEn: 'Warmth', description: '那裡的親和，提醒你回到內心的溫暖。讓接下來的時間，成為你與自己重新連結的機會。', culturalMood: '親和、溫暖、人情味' },
+            'TH': { state: '放鬆', stateEn: 'Relaxation', description: '那裡的從容，會帶你回到內心的放鬆。讓你的呼吸像微風一樣輕柔、自然。', culturalMood: '柔軟、鬆弛、微笑文化、從容' },
+            'SG': { state: '清晰', stateEn: 'Clarity', description: '那裡的秩序，提醒你整理內心的空間。讓接下來的時間，成為你重新釐清方向的機會。', culturalMood: '秩序、清晰、整潔' },
+            'MY': { state: '多元', stateEn: 'Diversity', description: '那裡的包容，提醒你接納自己的不同面向。讓你的心像多元文化一樣，豐富而和諧。', culturalMood: '多元、包容、和諧' },
+            'ID': { state: '活力', stateEn: 'Vitality', description: '那裡的熱情，會點燃你內在的活力。讓接下來的時間，成為你重新啟動的機會。', culturalMood: '熱情、活力、生命力' },
+            'PH': { state: '明亮', stateEn: 'Brightness', description: '陽光只是象徵——提醒你把自己調回明亮。讓心裡的空間重新亮起來。', culturalMood: '陽光、明亮、人情、溫度' },
+            'VN': { state: '韌性', stateEn: 'Resilience', description: '那裡的堅韌，提醒你內在的力量。讓接下來的時間，成為你重新發現自己韌性的機會。', culturalMood: '堅韌、生命力、韌性' },
+            'IN': { state: '覺察', stateEn: 'Awareness', description: '多層次的文化提醒你，情緒可以被感受、被允許。請用幾次呼吸，回到自己的覺察。', culturalMood: '多層次、豐富、覺察' },
+            'FR': { state: '優雅從容', stateEn: 'Poise', description: '法國的步調帶著一種不慌不忙的美。在這趟旅程中，也讓你的心保持從容。', culturalMood: '優雅、從容、不慌不忙' },
+            'GB': { state: '沉著', stateEn: 'Composure', description: '那裡的沉穩，會帶你回到內心的平靜。讓你的思緒像午後的茶一樣，溫和而清晰。', culturalMood: '霧氣、穩定、距離感、沉穩' },
+            'DE': { state: '精準', stateEn: 'Precision', description: '那裡的精準，提醒你回到內心的秩序。讓接下來的時間，成為你重新對齊目標的機會。', culturalMood: '精準、秩序、嚴謹' },
+            'IT': { state: '熱情', stateEn: 'Passion', description: '那裡的熱情，會點燃你內在的活力。讓你的心像藝術一樣，充滿創造力。', culturalMood: '生命感、溫度、慢活、藝術感' },
+            'ES': { state: '享受', stateEn: 'Enjoyment', description: '那裡的節奏，提醒你享受當下的時刻。讓接下來的時間，成為你重新感受生活的機會。', culturalMood: '節奏、享受、當下' },
+            'FI': { state: '平靜', stateEn: 'Calm', description: '北歐的靜謐，會帶你回到心裡的安穩區域。讓接下來的呼吸，像雪落一樣輕。', culturalMood: '靜謐、白、呼吸、溫柔' },
+            'US': { state: '行動力', stateEn: 'Action', description: '那裡的節奏，會成為你的啟動訊號。在這幾分鐘裡，把注意力放在你想前進的方向。', culturalMood: '節奏、決斷、醒來的力量、行動' },
+            'CA': { state: '開闊', stateEn: 'Openness', description: '那裡的寬廣，提醒你打開內心的空間。讓接下來的時間，成為你重新擴展視野的機會。', culturalMood: '寬廣、潔淨、森林的呼吸、開闊' },
+            'BR': { state: '熱情', stateEn: 'Passion', description: '那裡的活力，會點燃你內在的熱情。讓你的心像節奏一樣，充滿生命力。', culturalMood: '節奏、熱情、生命力' },
+            'MX': { state: '慶祝', stateEn: 'Celebration', description: '那裡的色彩，提醒你慶祝當下的時刻。讓接下來的時間，成為你重新感受喜悅的機會。', culturalMood: '色彩、慶祝、喜悅' },
+            'AU': { state: '自由', stateEn: 'Freedom', description: '那裡的開闊，會帶你回到內心的自由。讓你的心像天空一樣，無邊無際。', culturalMood: '開闊、自由、無邊際' },
+            'NZ': { state: '純淨', stateEn: 'Purity', description: '那裡的純淨，提醒你回到內心的本質。讓接下來的時間，成為你重新連結自己的機會。', culturalMood: '純淨、本質、自然' }
+        };
+        
+        // 將 COUNTRY_MENTAL_STATE 暴露到 window 對象，供其他函數使用
+        window.COUNTRY_MENTAL_STATE = COUNTRY_MENTAL_STATE;
+        
         let maxReachedPhase = Phase.POST_ARRIVAL; // 記錄已到達的最高 phase，確保不可逆
         let selectedTimer = null;
         let selectedAngle = null;
@@ -1570,7 +1601,7 @@
         let sleepTimer = null;
 
         // 時間選項（分鐘）- 符合 90 分鐘睡眠週期
-        const timerOptions = [90, 180, 270, 360, 450, 540];
+        const timerOptions = [8, 180, 270, 360, 450, 540];
         
         // 氣候帶選項（基於緯度範圍，方向作為輔助條件）
         const climateZoneOptions = [
@@ -8276,6 +8307,8 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 const city = destination.city_zh || destination.city || '';
                 const country = destination.country_zh || destination.country || '';
                 const timezone = destination.timezone || 'UTC';
+                const latitude = destination.latitude || null;
+                const longitude = destination.longitude || null;
                 
                 // 計算當地時間
                 const now = new Date();
@@ -8284,52 +8317,167 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 const minutes = localTime.getMinutes();
                 const timeString = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                 
-                // 根據時間判斷天氣和特色
+                // 🔧 改進：嘗試獲取真實天氣數據（如果沒有則使用 AI 生成）
                 let weather = '';
-                let feature = '';
+                let realWeatherData = null;
                 
-                if (hour >= 5 && hour < 9) {
-                    weather = '清晨，空氣清新';
-                    feature = '適合晨間散步';
-                } else if (hour >= 9 && hour < 12) {
-                    weather = '早晨，陽光和煦';
-                    feature = '適合戶外活動';
-                } else if (hour >= 12 && hour < 15) {
-                    weather = '午間，天氣晴朗';
-                    feature = '適合探索城市';
-                } else if (hour >= 15 && hour < 18) {
-                    weather = '午後，溫暖舒適';
-                    feature = '適合觀光遊覽';
-                } else if (hour >= 18 && hour < 21) {
-                    weather = '傍晚，微風徐徐';
-                    feature = '適合欣賞夜景';
-                } else {
-                    weather = '夜晚，寧靜祥和';
-                    feature = '適合放鬆休息';
+                // 如果有經緯度，嘗試獲取真實天氣
+                if (latitude && longitude) {
+                    try {
+                        console.log('🌤️ 嘗試獲取真實天氣數據...');
+                        const weatherResponse = await fetch(`https://morgan-orcin.vercel.app/api/get-weather?lat=${latitude}&lon=${longitude}`);
+                        if (weatherResponse.ok) {
+                            realWeatherData = await weatherResponse.json();
+                            console.log('✅ 獲取真實天氣成功:', realWeatherData);
+                        }
+                    } catch (error) {
+                        console.warn('⚠️ 獲取真實天氣失敗，將使用 AI 生成:', error);
+                    }
                 }
                 
-                // 🔧 改進：優先使用從 API 獲取的活動建議（如果有的話）
+                // 🔧 改進：使用 AI 生成更有創意和即時性的天氣描述和活動建議
+                let feature = '';
                 let activitySuggestion = null;
+                
+                // 優先使用從 API 獲取的活動建議（如果有的話）
                 if (window._preGeneratedActivitySuggestion) {
                     activitySuggestion = window._preGeneratedActivitySuggestion;
                     delete window._preGeneratedActivitySuggestion;
                     console.log('✅ 使用 API 生成的活動建議:', activitySuggestion);
-                } else {
-                    // 如果沒有 API 生成的建議，使用預設建議
-                    const activitySuggestions = [
-                        '參與當地民族慶典，感受傳統文化',
-                        '品嚐道地特色美食，探索味蕾新體驗',
-                        '體驗當地文化活動，深入了解風土人情',
-                        '參觀歷史古蹟，感受時光流轉',
-                        '探索當地市集，發現獨特工藝品',
-                        '參與傳統節慶，融入當地生活',
-                        '品嚐街頭小吃，體驗在地風味',
-                        '參觀博物館，了解文化歷史',
-                        '漫步老城區，感受歷史氛圍',
-                        '體驗當地藝術，欣賞文化創作'
-                    ];
-                    activitySuggestion = activitySuggestions[Math.floor(Math.random() * activitySuggestions.length)];
-                    console.log('⚠️ 使用預設活動建議:', activitySuggestion);
+                }
+                
+                // 使用 AI 生成即時、有創意的天氣描述和活動建議
+                try {
+                    // 🔧 結構化 Prompt 設計（參考論文範例）
+                    // 輸入變數 (Inputs)
+                    const countryCode = destination.country_iso_code || '';
+                    const timeContext = hour >= 5 && hour < 9 ? '清晨' : hour >= 9 && hour < 12 ? '早晨' : hour >= 12 && hour < 15 ? '午間' : hour >= 15 && hour < 18 ? '午後' : hour >= 18 && hour < 21 ? '傍晚' : '夜晚';
+                    
+                    // Prompt 轉換邏輯 (Design Logic)
+                    // 1. 目的地 → 抓取當地文化語氣
+                    let culturalTone = '親切自然';
+                    let culturalMood = '';
+                    if (countryCode && window.COUNTRY_MENTAL_STATE && window.COUNTRY_MENTAL_STATE[countryCode]) {
+                        const countryInfo = window.COUNTRY_MENTAL_STATE[countryCode];
+                        culturalTone = countryInfo.culturalMood || culturalTone;
+                        culturalMood = countryInfo.culturalMood || '';
+                    }
+                    
+                    // 2. 天氣 → 轉換為敘事背景
+                    let weatherNarrative = '';
+                    if (realWeatherData) {
+                        const condition = realWeatherData.condition || '';
+                        const temp = realWeatherData.temperature || '';
+                        if (condition.toLowerCase().includes('rain') || condition.toLowerCase().includes('雨')) {
+                            weatherNarrative = '雖然${city}目前${condition}，但我們已平安降落，雨後的清新空氣正等待著您';
+                        } else if (condition.toLowerCase().includes('fog') || condition.toLowerCase().includes('霧')) {
+                            weatherNarrative = '${city}的${condition}為這座城市增添了一層神秘氛圍，我們已安全抵達';
+                        } else if (condition.toLowerCase().includes('clear') || condition.toLowerCase().includes('晴')) {
+                            weatherNarrative = '${city}此刻${condition}，${temp}度的舒適溫度，正是探索的好時機';
+                        } else {
+                            weatherNarrative = '${city}此刻${condition}，氣溫${temp}度，${realWeatherData.description || ""}';
+                        }
+                    } else {
+                        weatherNarrative = `此刻${timeContext}，${city}的空氣中瀰漫著${timeContext === '清晨' ? '清新的晨光' : timeContext === '傍晚' ? '溫暖的夕陽' : timeContext === '夜晚' ? '寧靜的夜色' : '舒適的氛圍'}`;
+                    }
+                    
+                    // 3. 時間 → 調整音調與問候語
+                    let timeGreeting = '';
+                    let toneAdjustment = '';
+                    if (hour >= 5 && hour < 9) {
+                        timeGreeting = '在${city}微亮的清晨';
+                        toneAdjustment = '溫柔、低沈、輕聲細語';
+                    } else if (hour >= 9 && hour < 12) {
+                        timeGreeting = '${city}的早晨';
+                        toneAdjustment = '明亮、親切、充滿活力';
+                    } else if (hour >= 12 && hour < 15) {
+                        timeGreeting = '${city}的午間時分';
+                        toneAdjustment = '清晰、專業、充滿能量';
+                    } else if (hour >= 15 && hour < 18) {
+                        timeGreeting = '${city}溫暖的午後';
+                        toneAdjustment = '舒緩、親切、放鬆';
+                    } else if (hour >= 18 && hour < 21) {
+                        timeGreeting = '${city}的傍晚時分';
+                        toneAdjustment = '溫暖、柔和、浪漫';
+                    } else {
+                        timeGreeting = '${city}寧靜的夜晚';
+                        toneAdjustment = '低沈、溫柔、安靜';
+                    }
+                    
+                    const aiPrompt = `你是一位專業的機艙服務員，正在向剛降落的旅客介紹 ${city}，${country}。
+
+【輸入變數 (Inputs)】
+- 目的地：${city}，${country}${countryCode ? ` (${countryCode})` : ''}
+- 當地時間：${timeString}（${timeContext}，${hour}點${minutes}分）
+${realWeatherData ? `- 真實天氣：${realWeatherData.condition || ''}，溫度 ${realWeatherData.temperature || ''}°C` : `- 時間段：${timeContext}`}
+${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
+
+【Prompt 轉換邏輯 (Design Logic)】
+1. 目的地文化語氣：${culturalTone}（${culturalMood || '當地特色語氣'}）
+2. 天氣敘事背景：${weatherNarrative.replace(/\$\{city\}/g, city).replace(/\$\{condition\}/g, realWeatherData?.condition || '').replace(/\$\{temp\}/g, realWeatherData?.temperature || '')}
+3. 時間音調調整：${toneAdjustment}（${timeGreeting.replace(/\$\{city\}/g, city)}）
+
+【生成要求】
+請生成兩項內容，要體現上述轉換邏輯：
+1. 天氣描述（15字以內）：結合天氣敘事背景，要有情境感和即時性
+2. 活動建議（12字以內）：結合時間音調和文化語氣，要具體可執行
+
+請以 JSON 格式返回：
+{
+  "weather": "天氣描述（15字以內，要體現敘事背景）",
+  "feature": "活動建議（12字以內，要體現文化特色和時間感）"
+}`;
+
+                    const aiResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: aiPrompt,
+                            maxTokens: 150,
+                            temperature: 0.8
+                        })
+                    });
+                    
+                    if (aiResponse.ok) {
+                        const aiData = await aiResponse.json();
+                        if (aiData.text) {
+                            try {
+                                const parsed = JSON.parse(aiData.text);
+                                weather = parsed.weather || weather;
+                                feature = parsed.feature || feature;
+                                console.log('✅ AI 生成的天氣和活動建議:', { weather, feature });
+                            } catch (parseError) {
+                                console.warn('⚠️ AI 返回格式錯誤，使用備用邏輯:', parseError);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('⚠️ AI 生成失敗，使用備用邏輯:', error);
+                }
+                
+                // 備用邏輯：如果 AI 生成失敗，使用原有邏輯
+                if (!weather) {
+                    if (realWeatherData) {
+                        weather = `${realWeatherData.condition || ''}，${realWeatherData.temperature ? `氣溫${realWeatherData.temperature}度` : ''}，${realWeatherData.description || ''}`;
+                    } else {
+                        if (hour >= 5 && hour < 9) {
+                            weather = '清晨，空氣清新';
+                        } else if (hour >= 9 && hour < 12) {
+                            weather = '早晨，陽光和煦';
+                        } else if (hour >= 12 && hour < 15) {
+                            weather = '午間，天氣晴朗';
+                        } else if (hour >= 15 && hour < 18) {
+                            weather = '午後，溫暖舒適';
+                        } else if (hour >= 18 && hour < 21) {
+                            weather = '傍晚，微風徐徐';
+                        } else {
+                            weather = '夜晚，寧靜祥和';
+                        }
+                    }
+                }
+                
+                if (!feature) {
+                    feature = activitySuggestion || '歡迎探索這座城市';
                 }
                 
                 return {
@@ -8337,8 +8485,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     country: country,
                     time: timeString,
                     weather: weather,
-                    feature: activitySuggestion,
-                    fullInfo: `${city}，${country} | 當地時間 ${timeString} | ${weather} | ${activitySuggestion}`
+                    feature: feature,
+                    realWeatherData: realWeatherData, // 保存真實天氣數據供圖片生成使用
+                    fullInfo: `${city}，${country} | 當地時間 ${timeString} | ${weather} | ${feature}`
                 };
             } catch (error) {
                 console.warn('⚠️ 生成目的地資訊失敗:', error);
@@ -11397,7 +11546,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                 }
             }
             
-            // 🔧 改進：如果是正常降落（非蟲洞），調用 API 生成降落廣播和活動建議
+            // 🔧 改進：如果是正常降落（非蟲洞），根據降落狀況設計不同的 Prompt 轉換邏輯
             if (!isWormhole && destination) {
                 try {
                     const cityName = destination.city_zh || destination.city || '';
@@ -11427,6 +11576,112 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         timeContext: timeContext
                     };
                     
+                    // 🔧 結構化 Prompt 設計：根據降落狀況設計不同的轉換邏輯
+                    let landingSituation = '';
+                    let situationNarrative = '';
+                    let toneAdjustment = '';
+                    let culturalContext = '';
+                    
+                    // 獲取文化特色
+                    if (countryCode && window.COUNTRY_MENTAL_STATE && window.COUNTRY_MENTAL_STATE[countryCode]) {
+                        const countryInfo = window.COUNTRY_MENTAL_STATE[countryCode];
+                        culturalContext = countryInfo.culturalMood || '親切自然';
+                    } else {
+                        culturalContext = '親切自然';
+                    }
+                    
+                    // 根據 timeDiffMinutes 判斷降落狀況並設計轉換邏輯（加入幽默元素）
+                    if (timeDiffMinutes < -15) {
+                        // 提早超過 15 分鐘 = 緊急迫降
+                        landingSituation = '緊急迫降';
+                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
+                        const emergencyNarratives = [
+                            '由於緊急情況需要提前降落，機長已決定進行緊急降落程序。這是一個需要保持冷靜的時刻，但我們已經安全著陸。',
+                            `哈哈，告訴您一個有趣的小插曲！我們剛才發現${cityName}的機場工作人員還在準備開門，所以我們決定提前降落，給他們一個驚喜！雖然這不是原計劃，但我們已經安全著陸，而且您還多了一些時間欣賞這座城市。`,
+                            `各位旅客，有個特別的消息要告訴您！我們的機長剛才發現了一個"時空加速器"（開玩笑的），所以我們比預期提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。雖然這很意外，但請放心，我們已經安全著陸，而且這可能是一段特別的旅程！`
+                        ];
+                        situationNarrative = emergencyNarratives[Math.floor(Math.random() * emergencyNarratives.length)];
+                        toneAdjustment = '專業、沉穩、安撫，帶有緊急情況下的專業處理感，但同時要傳達安全感和控制感，可以加入輕微的幽默緩解緊張';
+                        console.log('🚨 [Prompt 設計] 緊急迫降狀況（提早超過 15 分鐘）');
+                    } else if (timeDiffMinutes < -5) {
+                        // 提早 5-15 分鐘 = 提早抵達
+                        landingSituation = '提早抵達';
+                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
+                        const earlyNarratives = [
+                            `由於航路優化，我們比預期時間提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。這是一個意外的驚喜，讓您有更多時間探索這座城市。`,
+                            `哈哈，好消息！我們的機長剛才發現了一條"捷徑"（其實是風向特別好），所以我們比預期提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。這是一個意外的驚喜，讓您有更多時間探索這座城市！`,
+                            `各位旅客，告訴您一個有趣的小秘密！我們剛才遇到了一陣特別順的氣流，就像搭上了順風車一樣，所以我們比預期提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。這是一個意外的驚喜，讓您有更多時間探索這座城市！`,
+                            `好消息！我們的機長剛才發現${cityName}的機場提前開門了（開玩笑的），所以我們決定提前降落。雖然這不是原計劃，但我們已經安全抵達，而且您還多了一些時間欣賞這座城市！`
+                        ];
+                        situationNarrative = earlyNarratives[Math.floor(Math.random() * earlyNarratives.length)];
+                        toneAdjustment = '輕鬆、愉快、驚喜，帶有"意外收穫"的正面情緒，語氣可以稍微活潑一些，可以加入幽默元素';
+                        console.log('⏰ [Prompt 設計] 提早抵達狀況（提早 ' + Math.abs(timeDiffMinutes) + ' 分鐘）');
+                    } else if (timeDiffMinutes <= 5 && timeDiffMinutes >= -5) {
+                        // 準時（±5 分鐘內）
+                        landingSituation = '準時降落';
+                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
+                        const onTimeNarratives = [
+                            '我們已經準時抵達目的地。這是一次完美的飛行，一切都按照計劃進行。',
+                            `完美！我們就像瑞士手錶一樣精準，準時抵達了${cityName}。這次飛行完美得像教科書一樣，一切都按照計劃進行。`,
+                            `各位旅客，告訴您一個好消息！我們的機長剛才完美地計算了時間，就像數學家一樣精準，所以我們準時抵達了目的地。這是一次完美的飛行，一切都按照計劃進行！`,
+                            `哈哈，我們剛才完美地"踩點"抵達了${cityName}！就像約會時準時到達一樣完美。這次飛行完美得像教科書一樣，一切都按照計劃進行。`
+                        ];
+                        situationNarrative = onTimeNarratives[Math.floor(Math.random() * onTimeNarratives.length)];
+                        toneAdjustment = '專業、滿意、慶祝，帶有"完美執行"的成就感，語氣可以稍微自豪一些，可以加入輕微的幽默';
+                        console.log('✅ [Prompt 設計] 準時降落狀況（差異 ' + timeDiffMinutes + ' 分鐘）');
+                    } else if (timeDiffMinutes <= 15) {
+                        // 晚 5-15 分鐘 = 風大盤旋
+                        landingSituation = '延遲降落（風大盤旋）';
+                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
+                        const delayNarratives = [
+                            `由於上空風勢較大，我們在上方盤旋了約 ${timeDiffMinutes} 分鐘。雖然讓您多等了一會兒，但我們已經安全調整好航線，現在準備降落。`,
+                            `哈哈，告訴您一個有趣的情況！我們剛才在上空"兜風"了約 ${timeDiffMinutes} 分鐘（其實是風勢較大需要盤旋）。雖然讓您多等了一會兒，但我們已經安全調整好航線，現在準備降落。而且，您還多了一些時間從空中欣賞${cityName}的風景！`,
+                            `各位旅客，有個小插曲要告訴您！我們剛才在上空遇到了一陣"調皮的風"，所以我們在上方盤旋了約 ${timeDiffMinutes} 分鐘。雖然讓您多等了一會兒，但我們已經安全調整好航線，現在準備降落。而且，您還多了一些時間從空中欣賞這座城市的風景！`,
+                            `告訴您一個有趣的小秘密！我們剛才在上空"繞了一圈"（其實是風勢較大需要盤旋），所以讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，我們已經安全調整好航線，現在準備降落。而且，您還多了一些時間從空中欣賞${cityName}的風景！`
+                        ];
+                        situationNarrative = delayNarratives[Math.floor(Math.random() * delayNarratives.length)];
+                        toneAdjustment = '歉意、專業、安撫，帶有"雖然延遲但已處理好"的專業感，語氣要誠懇但不過度道歉，可以加入輕微的幽默緩解緊張';
+                        console.log('💨 [Prompt 設計] 延遲降落狀況（風大盤旋，晚 ' + timeDiffMinutes + ' 分鐘）');
+                    } else {
+                        // 晚超過 15 分鐘 = 導航問題
+                        landingSituation = '延遲降落（導航問題）';
+                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
+                        const navigationNarratives = [
+                            `由於導航系統的小小誤差，我們剛才飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。`,
+                            `哈哈，告訴您一個有趣的小插曲！我們的機長剛才可能有點"迷路"了（開玩笑的），所以我們飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。而且，您還多了一些時間從空中欣賞不同的風景！`,
+                            `各位旅客，有個特別的消息要告訴您！我們剛才發現${cityName}的機場工作人員可能還在"準備開門"（開玩笑的），所以我們決定先繞一圈，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。`,
+                            `告訴您一個有趣的小秘密！我們的機長剛才可能熬夜了（開玩笑的），不小心開錯路了，所以我們飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。而且，您還多了一些時間從空中欣賞不同的風景！`,
+                            `哈哈，有個小插曲要告訴您！我們剛才的導航系統可能"打瞌睡"了（開玩笑的），所以我們飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。而且，您還多了一些時間從空中欣賞不同的風景！`
+                        ];
+                        situationNarrative = navigationNarratives[Math.floor(Math.random() * navigationNarratives.length)];
+                        toneAdjustment = '歉意、專業、幽默（輕微），帶有"小插曲但已解決"的輕鬆感，語氣要誠懇但可以用一點幽默緩解緊張，要讓乘客感覺這是一個有趣的小插曲而不是嚴重的問題';
+                        console.log('🌀 [Prompt 設計] 延遲降落狀況（導航問題，晚 ' + timeDiffMinutes + ' 分鐘）');
+                    }
+                    
+                    // 🔧 顯示 Prompt 設計資訊（用於調試和展示）
+                    const promptInfo = {
+                        '【輸入變數 (Inputs)】': {
+                            '目的地': `${cityName}，${countryName}${countryCode ? ` (${countryCode})` : ''}`,
+                            '降落狀況': landingSituation,
+                            '當地時間': `${timeString}（${timeContext}）`,
+                            '文化特色': culturalContext,
+                            '時間差異': `${timeDiffMinutes > 0 ? '晚' : '提早'} ${Math.abs(timeDiffMinutes)} 分鐘`
+                        },
+                        '【Prompt 轉換邏輯 (Design Logic)】': {
+                            '1. 降落狀況 → 敘事背景': situationNarrative,
+                            '2. 文化特色 → 當地文化語氣': culturalContext,
+                            '3. 時間情境 → 音調調整': toneAdjustment
+                        }
+                    };
+                    
+                    console.log('📋 [Prompt 設計] 當前降落狀況的 Prompt 結構：');
+                    console.log(JSON.stringify(promptInfo, null, 2));
+                    console.log('📋 [Prompt 設計] 完整 Prompt 將在 API 中生成，包含以下轉換邏輯：');
+                    console.log(`   降落狀況：${landingSituation}`);
+                    console.log(`   敘事背景：${situationNarrative}`);
+                    console.log(`   音調調整：${toneAdjustment}`);
+                    console.log(`   文化特色：${culturalContext}`);
+                    
                     const apiResponse = await fetch('https://morgan-orcin.vercel.app/api/generateSleepFlightAnnouncement', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -11441,7 +11696,13 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                             punctuality: punctuality,
                             localTimeInfo: localTimeInfo,
                             taskType: 'REST',
-                            uiLanguage: 'zh-TW'
+                            uiLanguage: 'zh-TW',
+                            // 🔧 新增：傳遞 Prompt 轉換邏輯參數
+                            landingSituation: landingSituation,
+                            situationNarrative: situationNarrative,
+                            toneAdjustment: toneAdjustment,
+                            culturalContext: culturalContext,
+                            timeDiffMinutes: timeDiffMinutes
                         })
                     });
                     
@@ -11449,7 +11710,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                         const apiData = await apiResponse.json();
                         if (apiData.announcement) {
                             announcement = apiData.announcement;
-                            console.log('✅ 使用 API 生成的降落廣播');
+                            console.log('✅ 使用 API 生成的降落廣播（已應用 Prompt 轉換邏輯）');
                         }
                         if (apiData.activitySuggestion) {
                             // 儲存活動建議到全局變數，供 generateDestinationInfo 使用
@@ -11494,7 +11755,7 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
         }
 
         // 生成降落圖片（800x800，參考 taipei.png 風格，會根據目的地時區決定是白天或夜晚）
-        async function generateLandingImage(city, country, timezone, wakeUpTime) {
+        async function generateLandingImage(city, country, timezone, wakeUpTime, realWeatherData = null) {
             try {
                 // 🔧 改進：載入 taipei.png 作為參考圖片（以圖生圖）
                 let referenceImageBase64 = null;
@@ -11548,6 +11809,48 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     skyFeature = '星空';
                 }
                 
+                // 🔧 改進：結合真實天氣數據生成更精確的 prompt
+                let weatherDescription = '';
+                let skyCondition = '';
+                
+                if (realWeatherData) {
+                    // 使用真實天氣數據
+                    const condition = realWeatherData.condition || '';
+                    const temp = realWeatherData.temperature || '';
+                    const desc = realWeatherData.description || '';
+                    
+                    // 根據真實天氣條件調整描述
+                    if (condition.toLowerCase().includes('rain') || condition.toLowerCase().includes('雨')) {
+                        weatherDescription = 'light rain, overcast sky, soft diffused light';
+                        skyCondition = 'cloudy with gentle rain';
+                    } else if (condition.toLowerCase().includes('cloud') || condition.toLowerCase().includes('雲')) {
+                        weatherDescription = 'partly cloudy, soft clouds, filtered sunlight';
+                        skyCondition = 'partly cloudy sky';
+                    } else if (condition.toLowerCase().includes('clear') || condition.toLowerCase().includes('晴')) {
+                        weatherDescription = 'clear sky, bright sunlight, crisp visibility';
+                        skyCondition = 'clear blue sky';
+                    } else if (condition.toLowerCase().includes('fog') || condition.toLowerCase().includes('霧')) {
+                        weatherDescription = 'light fog, atmospheric haze, soft light';
+                        skyCondition = 'misty atmospheric conditions';
+                    } else {
+                        weatherDescription = weatherState + ', ' + skyFeature;
+                        skyCondition = skyFeature;
+                    }
+                    
+                    // 根據時間調整光線
+                    if (hour >= 5 && hour < 9) {
+                        weatherDescription += ', morning golden hour light';
+                    } else if (hour >= 18 && hour < 21) {
+                        weatherDescription += ', evening warm sunset glow';
+                    } else if (hour >= 21 || hour < 5) {
+                        weatherDescription += ', night city lights, dark sky with stars';
+                    }
+                } else {
+                    // 使用時間推測
+                    weatherDescription = weatherState + ', ' + skyFeature;
+                    skyCondition = skyFeature;
+                }
+                
                 // 🔧 改進：第一人稱機翼視角（完全沒有窗戶框，純粹的機翼和城市風景）
                 // 如果有參考圖片，在 prompt 中強調要參考其風格
                 // ⚠️ CRITICAL: 在 prompt 開頭就明確說明不要窗框，避免 AI 誤解
@@ -11561,8 +11864,9 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     'wing occupies foreground bottom portion, creating immersive first-person depth from inside cabin. ' +
                     'VIEWPOINT: First-person perspective from inside airplane cabin, looking directly outward, image fills entire frame from edge to edge with no visible borders or frames. ' +
                     'COMPOSITION: The entire image must be edge-to-edge, full-frame, with absolutely no visible borders, frames, or window structures. The view should appear as if the camera lens is directly at the cabin wall, with no window frame visible. Image must fill 100% of the frame from edge to edge. ' +
-                    'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' + timeSegment + ' (' + weatherState + '), ' + skyFeature + ', ' +
-                    'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing. ' +
+                    'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' + timeSegment + ' (' + weatherDescription + '), ' + skyCondition + ', ' +
+                    'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing, ' +
+                    (realWeatherData ? `realistic weather conditions matching: ${realWeatherData.condition || ''}, temperature ${realWeatherData.temperature || ''}°C, ${realWeatherData.description || ''}. ` : '') +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
                     'FINAL REQUIREMENT: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective with image filling entire frame from edge to edge, no visible window frame elements whatsoever.';
                 
@@ -11854,11 +12158,22 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
             if (finalDestination && !window._phase7ImageAPromise) {
                 console.log('🖼️ [Phase 7] 開始生成圖片A（背景進行，只生成一次）...');
                 window._phase7ImageAPromise = (async () => {
+                    // 🔧 改進：先獲取天氣信息，然後傳入圖片生成
+                    let weatherInfo = null;
+                    try {
+                        const tempDestinationInfo = await generateDestinationInfo(finalDestination);
+                        weatherInfo = tempDestinationInfo.realWeatherData || null;
+                        console.log('✅ [Phase 7] 已獲取天氣信息供圖片生成使用:', weatherInfo);
+                    } catch (error) {
+                        console.warn('⚠️ [Phase 7] 獲取天氣信息失敗，將使用時間推測:', error);
+                    }
+                    
                     const url = await generateLandingImage(
                         finalDestination.city,
                         finalDestination.country,
                         finalDestination.timezone || 'UTC',
-                        new Date().toISOString()
+                        new Date().toISOString(),
+                        weatherInfo // 傳入真實天氣數據
                     );
                     if (url) {
                         window._manualLandingImageUrl = url;
@@ -11961,7 +12276,120 @@ ${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好�
                     if (destinationInfo && finalDestination) {
                         const cityName = finalDestination.city_zh || finalDestination.city || '';
                         const countryName = finalDestination.country_zh || finalDestination.country || '';
-                        const welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
+                        
+                        // 🔧 改進：使用 AI 生成更有創意和即時性的歡迎訊息
+                        let welcomeMessage = '';
+                        try {
+                            // 🔧 結構化 Prompt 設計（參考論文範例）
+                            // 輸入變數 (Inputs)
+                            const countryCode = finalDestination.country_iso_code || '';
+                            const hour = parseInt(destinationInfo.time.split(':')[0]) || 12;
+                            
+                            // Prompt 轉換邏輯 (Design Logic)
+                            // 1. 目的地 → 抓取當地文化語氣
+                            let culturalTone = '親切自然';
+                            let culturalGreeting = '';
+                            if (countryCode && window.COUNTRY_MENTAL_STATE && window.COUNTRY_MENTAL_STATE[countryCode]) {
+                                const countryInfo = window.COUNTRY_MENTAL_STATE[countryCode];
+                                culturalTone = countryInfo.culturalMood || culturalTone;
+                                // 根據國家特色調整問候語風格
+                                if (countryCode === 'GB') {
+                                    culturalGreeting = 'Good day everyone，紳士淑女們';
+                                } else if (countryCode === 'JP') {
+                                    culturalGreeting = 'おはようございます，各位旅客';
+                                } else if (countryCode === 'FR') {
+                                    culturalGreeting = 'Bonjour，親愛的旅客';
+                                } else if (countryCode === 'DE') {
+                                    culturalGreeting = 'Guten Tag，各位旅客';
+                                } else {
+                                    culturalGreeting = '親愛的旅客';
+                                }
+                            } else {
+                                culturalGreeting = '親愛的旅客';
+                            }
+                            
+                            // 2. 天氣 → 轉換為敘事背景
+                            let weatherNarrative = '';
+                            if (destinationInfo.weather.includes('雨') || destinationInfo.weather.includes('rain')) {
+                                weatherNarrative = '雖然${cityName}目前${destinationInfo.weather}，但我們已平安降落，雨後的清新空氣正等待著您';
+                            } else if (destinationInfo.weather.includes('霧') || destinationInfo.weather.includes('fog')) {
+                                weatherNarrative = '${cityName}的${destinationInfo.weather}為這座城市增添了一層神秘氛圍，我們已安全抵達';
+                            } else {
+                                weatherNarrative = `此刻${destinationInfo.time}，${destinationInfo.weather}`;
+                            }
+                            
+                            // 3. 時間 → 調整音調與問候語
+                            let timeContext = '';
+                            let toneDescription = '';
+                            if (hour >= 5 && hour < 9) {
+                                timeContext = `在${cityName}微亮的清晨`;
+                                toneDescription = '溫柔、低沈的語調';
+                            } else if (hour >= 9 && hour < 12) {
+                                timeContext = `${cityName}的早晨`;
+                                toneDescription = '明亮、親切的語調';
+                            } else if (hour >= 12 && hour < 15) {
+                                timeContext = `${cityName}的午間時分`;
+                                toneDescription = '清晰、專業的語調';
+                            } else if (hour >= 15 && hour < 18) {
+                                timeContext = `${cityName}溫暖的午後`;
+                                toneDescription = '舒緩、親切的語調';
+                            } else if (hour >= 18 && hour < 21) {
+                                timeContext = `${cityName}的傍晚時分`;
+                                toneDescription = '溫暖、柔和的語調';
+                            } else {
+                                timeContext = `${cityName}寧靜的夜晚`;
+                                toneDescription = '低沈、溫柔的語調';
+                            }
+                            
+                            const aiPrompt = `你是一位親切的機艙服務員，正在向剛降落的旅客介紹 ${cityName}，${countryName}。
+
+【輸入變數 (Inputs)】
+- 目的地：${cityName}，${countryName}${countryCode ? ` (${countryCode})` : ''}
+- 當地時間：${destinationInfo.time}
+- 天氣狀況：${destinationInfo.weather}
+- 活動建議：${destinationInfo.feature}
+
+【Prompt 轉換邏輯 (Design Logic)】
+1. 目的地文化語氣：${culturalTone}（使用${culturalGreeting}的問候方式）
+2. 天氣敘事背景：${weatherNarrative.replace(/\$\{cityName\}/g, cityName).replace(/\$\{destinationInfo\.weather\}/g, destinationInfo.weather)}
+3. 時間音調調整：${toneDescription}（${timeContext}）
+
+【生成要求】
+請生成一句簡短（30字以內）的歡迎訊息，要：
+- 開頭用"歡迎來到${cityName}，${countryName}！"
+- 體現${culturalTone}的文化語氣
+- 融入${weatherNarrative.replace(/\$\{cityName\}/g, cityName).replace(/\$\{destinationInfo\.weather\}/g, destinationInfo.weather)}的敘事背景
+- 使用${toneDescription}，符合${timeContext}的氛圍
+- 自然地融入活動建議：${destinationInfo.feature}
+- 要有落地感，讓人想立即體驗
+
+請直接返回歡迎訊息，不要加引號或其他格式。`;
+
+                            const aiResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-text', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    prompt: aiPrompt,
+                                    maxTokens: 100,
+                                    temperature: 0.8
+                                })
+                            });
+                            
+                            if (aiResponse.ok) {
+                                const aiData = await aiResponse.json();
+                                if (aiData.text) {
+                                    welcomeMessage = aiData.text.trim().replace(/^["']|["']$/g, ''); // 移除可能的引號
+                                    console.log('✅ AI 生成的歡迎訊息:', welcomeMessage);
+                                }
+                            }
+                        } catch (error) {
+                            console.warn('⚠️ AI 生成歡迎訊息失敗，使用備用格式:', error);
+                        }
+                        
+                        // 備用格式：如果 AI 生成失敗
+                        if (!welcomeMessage) {
+                            welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
+                        }
                         
                         // 預先生成語音B（不播放）
                         await generateTtsAudio(
