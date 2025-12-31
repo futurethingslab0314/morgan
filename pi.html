@@ -8533,12 +8533,27 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
 【生成要求】
 請生成兩項內容，要體現上述轉換邏輯：
 1. 天氣描述（15字以內）：結合天氣敘事背景，要有情境感和即時性
-2. 活動建議（12字以內）：結合時間音調和文化語氣，要具體可執行
+2. 活動建議（12字以內）：結合時間音調和文化語氣，要具體可執行、有吸引力、讓人想立即行動
+
+【活動建議要求（極重要 - 必須非常具體）】
+- 必須包含城市名稱：例如「在${city}品嚐...」、「漫步${city}的...」
+- 必須提到具體美食/地標/活動：不要用「當地特色」、「景點」這種泛泛而談的詞
+- 要有行動感：使用動詞，如「品嚐」、「漫步」、「欣賞」、「體驗」、「在...吃」
+- 結合城市真實特色：根據${city}和${country}的實際特色，提到具體的美食、地標、河岸、海灘、市集等
+- 符合時間段：清晨建議具體早餐/咖啡；午間建議具體美食/市集；傍晚建議具體地點看夕陽；夜晚建議具體夜遊地點
+- 要有吸引力：讓人感受到這座城市的獨特魅力和真實感
+
+範例（根據不同城市）：
+- ❌ 不好：「歡迎探索這座城市」、「參觀景點」、「體驗當地特色」
+- ✅ 好（義大利威尼斯）：「品嚐義大利馬卡龍」、「漫步在威尼斯河岸」、「在聖馬可廣場喝咖啡」
+- ✅ 好（澳洲黃金海岸）：「在黃金海岸吃fish and chip」、「漫步衝浪者天堂海灘」、「欣賞布里斯班河夕陽」
+- ✅ 好（日本東京）：「品嚐築地市場壽司」、「漫步淺草寺參道」、「在澀谷體驗夜生活」
+- ✅ 好（法國巴黎）：「在塞納河畔品嚐可頌」、「漫步香榭麗舍大道」、「欣賞艾菲爾鐵塔夜景」
 
 請以 JSON 格式返回：
 {
   "weather": "天氣描述（15字以內，要體現敘事背景）",
-  "feature": "活動建議（12字以內，要體現文化特色和時間感）"
+  "feature": "活動建議（12字以內，要具體、有行動感、結合當地特色）"
 }`;
 
                     const aiResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-text', {
@@ -8546,8 +8561,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             prompt: aiPrompt,
-                            maxTokens: 150,
-                            temperature: 0.8
+                            maxTokens: 200,  // 🔧 增加 token 限制，確保生成完整內容
+                            temperature: 0.9  // 🔧 提高溫度，增加創意和吸引力
                         })
                     });
                     
@@ -8590,7 +8605,96 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 }
                 
                 if (!feature) {
-                    feature = activitySuggestion || '歡迎探索這座城市';
+                    // 🔧 改進：如果沒有活動建議，根據時間、城市和國家生成更具體的備用建議
+                    if (activitySuggestion) {
+                        feature = activitySuggestion;
+                    } else {
+                        // 根據國家和時間段生成具體的活動建議（結合城市名稱）
+                        let specificActivity = '';
+                        const countryLower = country.toLowerCase();
+                        const countryZh = destination.country_zh || '';
+                        
+                        // 根據國家特色生成具體活動
+                        if (countryCode === 'IT' || countryLower.includes('italy') || countryZh.includes('義大利')) {
+                            // 義大利
+                            if (hour >= 5 && hour < 9) {
+                                specificActivity = `在${city}品嚐義式濃縮咖啡`;
+                            } else if (hour >= 9 && hour < 12) {
+                                specificActivity = `漫步${city}的古老街道`;
+                            } else if (hour >= 12 && hour < 15) {
+                                specificActivity = `在${city}品嚐義大利麵`;
+                            } else if (hour >= 15 && hour < 18) {
+                                specificActivity = `欣賞${city}的歷史建築`;
+                            } else if (hour >= 18 && hour < 21) {
+                                specificActivity = `在${city}品嚐義式冰淇淋`;
+                            } else {
+                                specificActivity = `體驗${city}的夜間廣場`;
+                            }
+                        } else if (countryCode === 'AU' || countryLower.includes('australia') || countryZh.includes('澳洲')) {
+                            // 澳洲
+                            if (hour >= 5 && hour < 9) {
+                                specificActivity = `在${city}品嚐澳式早餐`;
+                            } else if (hour >= 9 && hour < 12) {
+                                specificActivity = `漫步${city}的海灘`;
+                            } else if (hour >= 12 && hour < 15) {
+                                specificActivity = `在${city}吃fish and chip`;
+                            } else if (hour >= 15 && hour < 18) {
+                                specificActivity = `欣賞${city}的夕陽`;
+                            } else if (hour >= 18 && hour < 21) {
+                                specificActivity = `在${city}體驗海邊晚餐`;
+                            } else {
+                                specificActivity = `探索${city}的夜間市集`;
+                            }
+                        } else if (countryCode === 'JP' || countryLower.includes('japan') || countryZh.includes('日本')) {
+                            // 日本
+                            if (hour >= 5 && hour < 9) {
+                                specificActivity = `在${city}品嚐日式早餐`;
+                            } else if (hour >= 9 && hour < 12) {
+                                specificActivity = `漫步${city}的傳統街道`;
+                            } else if (hour >= 12 && hour < 15) {
+                                specificActivity = `在${city}品嚐拉麵`;
+                            } else if (hour >= 15 && hour < 18) {
+                                specificActivity = `欣賞${city}的寺廟`;
+                            } else if (hour >= 18 && hour < 21) {
+                                specificActivity = `在${city}體驗居酒屋`;
+                            } else {
+                                specificActivity = `探索${city}的夜間街區`;
+                            }
+                        } else if (countryCode === 'FR' || countryLower.includes('france') || countryZh.includes('法國')) {
+                            // 法國
+                            if (hour >= 5 && hour < 9) {
+                                specificActivity = `在${city}品嚐可頌麵包`;
+                            } else if (hour >= 9 && hour < 12) {
+                                specificActivity = `漫步${city}的河畔`;
+                            } else if (hour >= 12 && hour < 15) {
+                                specificActivity = `在${city}品嚐法式料理`;
+                            } else if (hour >= 15 && hour < 18) {
+                                specificActivity = `欣賞${city}的歷史建築`;
+                            } else if (hour >= 18 && hour < 21) {
+                                specificActivity = `在${city}品嚐紅酒`;
+                            } else {
+                                specificActivity = `體驗${city}的夜間氛圍`;
+                            }
+                        } else {
+                            // 其他國家：根據時間段生成通用但具體的活動
+                            if (hour >= 5 && hour < 9) {
+                                specificActivity = `在${city}品嚐當地早餐`;
+                            } else if (hour >= 9 && hour < 12) {
+                                specificActivity = `漫步${city}的市中心`;
+                            } else if (hour >= 12 && hour < 15) {
+                                specificActivity = `在${city}品嚐當地美食`;
+                            } else if (hour >= 15 && hour < 18) {
+                                specificActivity = `欣賞${city}的風景`;
+                            } else if (hour >= 18 && hour < 21) {
+                                specificActivity = `在${city}體驗當地晚餐`;
+                            } else {
+                                specificActivity = `探索${city}的夜間生活`;
+                            }
+                        }
+                        
+                        feature = specificActivity;
+                        console.log('✅ 使用國家特色備用活動建議:', feature);
+                    }
                 }
                 
                 return {
@@ -8604,13 +8708,14 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 };
             } catch (error) {
                 console.warn('⚠️ 生成目的地資訊失敗:', error);
+                const cityName = destination.city_zh || destination.city || '當地';
                 return {
-                    city: destination.city_zh || destination.city || '',
+                    city: cityName,
                     country: destination.country_zh || destination.country || '',
                     time: '--:--',
                     weather: '天氣資訊無法取得',
-                    feature: '歡迎探索',
-                    fullInfo: `${destination.city_zh || destination.city || ''}，${destination.country_zh || destination.country || ''}`
+                    feature: `在${cityName}體驗特色活動`,  // 🔧 改進：更具體的備用活動建議
+                    fullInfo: `${cityName}，${destination.country_zh || destination.country || ''}`
                 };
             }
         }
@@ -12319,6 +12424,10 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             
             // 🔧 改進：在計算好降落地點後，立即預先生成語音A（不播放，只生成）
             console.log('🎤 [Phase 7] 降落地點已計算完成，立即預先生成語音A（不播放）...');
+            
+            // 🔧 改進：在等待 TTS 生成時顯示「降落程序準備中」UI
+            setBoardingStatus(true, '降落程序準備中...');
+            
             let voiceAAudioId = null;
             if (landingData && landingData.announcement) {
                 try {
@@ -12335,6 +12444,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     console.warn('⚠️ [Phase 7] 預先生成語音A時發生錯誤:', error);
                 }
             }
+            
+            // 🔧 改進：TTS 生成完成後，隱藏「降落程序準備中」UI
+            setBoardingStatus(false);
             
             // 開始生成圖片A（背景進行，只生成一次）
             if (finalDestination && !window._phase7ImageAPromise) {
