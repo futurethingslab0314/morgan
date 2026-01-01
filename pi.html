@@ -217,8 +217,8 @@
 
 
         .flight-progress-meta {
-            display: flex;
-            justify-content: space-between;
+            display: flex !important;
+            justify-content: space-between !important;
             align-items: center;
             font-size: 11px;
             color: #bbb;
@@ -233,15 +233,19 @@
             white-space: nowrap;
             flex-shrink: 0;
             text-align: left;
-            flex: 0 0 auto;
+            flex: 0 0 auto !important;
+            order: 1;
+            margin-right: auto;
         }
         
         #flightProgressEndLabel {
             white-space: nowrap;
             flex-shrink: 0;
             text-align: right;
-            flex: 0 0 auto;
-            margin-left: auto;
+            flex: 0 0 auto !important;
+            margin-left: auto !important;
+            margin-right: 0 !important;
+            order: 2;
         }
 
         /* 下一步按鈕 */
