@@ -219,25 +219,28 @@
         .flight-progress-meta {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
             font-size: 11px;
             color: #bbb;
             margin-top: 4px;
             padding: 0;
             width: 100%;
             position: relative;
+            gap: 0;
         }
         
         #flightProgressStartLabel {
             white-space: nowrap;
             flex-shrink: 0;
             text-align: left;
+            flex: 0 0 auto;
         }
         
         #flightProgressEndLabel {
             white-space: nowrap;
             flex-shrink: 0;
             text-align: right;
+            flex: 0 0 auto;
             margin-left: auto;
         }
 
@@ -3996,7 +3999,7 @@
                         // 🔧 改進：如果 TTS 音檔還沒準備好，顯示「準備中...」UI 並等待
                         if (!preparedAudioId) {
                             console.log('⏳ [Phase 3→4] TTS 音檔尚未準備好，顯示「準備中...」UI 並等待生成...');
-                            setBoardingStatus(true, '正在準備語音，請稍候...');
+                            setBoardingStatus(true, '機組人員就位中，請稍候...');
                             
                             // 等待 TTS 生成完成（最多等待 10 秒）
                             const waitForTts = async () => {
@@ -4341,7 +4344,9 @@
                     // 左邊顯示目前位置（國家名稱），右邊顯示預設目的地（保留 HTML 結構）
                     try {
                         const countryEl = document.getElementById('currentCountry');
-                        const countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
+                        let countryText = countryEl ? countryEl.textContent.trim() : '目前位置';
+                        // 🔧 改進：統一格式，將逗號替換為空格（「城市 國家」而不是「城市, 國家」）
+                        countryText = countryText.replace(/,/g, ' ').trim();
                         
                         // 更新起點文字（移除國旗）
                         startLabel.textContent = countryText || '目前位置';
@@ -4356,7 +4361,7 @@
                         let destinationName = '';
                         
                         if (city && country) {
-                            destinationName = `${city}, ${country}`;
+                            destinationName = `${city} ${country}`;
                         } else if (city) {
                             destinationName = city;
                         } else if (country) {
@@ -9872,6 +9877,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     break;
                 case Phase.DESCENT:
                     // Phase 6: 降落前 5 分鐘
+                    // 🔧 確保 currentPhase 已設置（在調用 handleDescent 之前）
+                    currentPhase = Phase.DESCENT;
+                    console.log('✅ [switchToPhase] Phase 6: currentPhase 已設置為 DESCENT');
                     handleDescent();
                     break;
                 case Phase.LANDING:
@@ -10745,8 +10753,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         if (countryEl) {
                             const countryText = countryEl.textContent.trim();
                             if (countryText) {
-                                // 嘗試解析格式（可能是 "城市, 國家" 或只有國家）
-                                originText = countryText;
+                                // 🔧 改進：統一格式，將逗號替換為空格（「城市 國家」而不是「城市, 國家」）
+                                originText = countryText.replace(/,/g, ' ').trim();
                             }
                         }
                         
@@ -10767,7 +10775,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         let destinationName = '';
                         
                         if (city && country) {
-                            destinationName = `${city}, ${country}`;
+                            destinationName = `${city} ${country}`;
                         } else if (city) {
                             destinationName = city;
                         } else if (country) {
@@ -11086,8 +11094,15 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 console.log('✅ [handleDescent] 已清理之前的 Phase 6 音樂淡入 interval');
             }
             
+            // 🔧 確保 currentPhase 已正確設置（防止時序問題）
+            if (currentPhase !== Phase.DESCENT && currentPhase !== 6) {
+                currentPhase = Phase.DESCENT;
+                console.log('🔧 [handleDescent] 修正 currentPhase 為 DESCENT');
+            }
+            
             // 顯示「按下按鈕準備進行降落程序」UI在info-bar中
             setBoardingStatus(true, '按下按鈕準備進行降落程序...');
+            console.log('✅ [handleDescent] 已調用 setBoardingStatus(true, "按下按鈕準備進行降落程序...")');
             console.log('   descentAnnouncementPlayed:', descentAnnouncementPlayed);
             console.log('   currentPhase:', currentPhase);
             
@@ -11952,66 +11967,153 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     skyFeature = '星空';
                 }
                 
-                // 🔧 改進：結合真實天氣數據生成更精確的 prompt
+                // 🔧 改進：使用 OpenAI 根據時間和天氣生成精確的視覺描述
                 let weatherDescription = '';
                 let skyCondition = '';
+                let lightingDescription = '';
+                let timeOfDayVisual = '';
                 
-                if (realWeatherData) {
-                    // 使用真實天氣數據
-                    const condition = realWeatherData.condition || '';
-                    const temp = realWeatherData.temperature || '';
-                    const desc = realWeatherData.description || '';
-                    
-                    // 根據真實天氣條件調整描述
-                    if (condition.toLowerCase().includes('rain') || condition.toLowerCase().includes('雨')) {
-                        weatherDescription = 'light rain, overcast sky, soft diffused light';
-                        skyCondition = 'cloudy with gentle rain';
-                    } else if (condition.toLowerCase().includes('cloud') || condition.toLowerCase().includes('雲')) {
-                        weatherDescription = 'partly cloudy, soft clouds, filtered sunlight';
-                        skyCondition = 'partly cloudy sky';
-                    } else if (condition.toLowerCase().includes('clear') || condition.toLowerCase().includes('晴')) {
-                        weatherDescription = 'clear sky, bright sunlight, crisp visibility';
-                        skyCondition = 'clear blue sky';
-                    } else if (condition.toLowerCase().includes('fog') || condition.toLowerCase().includes('霧')) {
-                        weatherDescription = 'light fog, atmospheric haze, soft light';
-                        skyCondition = 'misty atmospheric conditions';
+                // 使用 OpenAI API 生成更精確的視覺描述
+                try {
+                    // 構建 prompt 讓 AI 生成視覺描述
+                    let visualPrompt = `根據以下信息，生成一張飛機降落時從機艙內向外看的圖片視覺描述：
+
+地點：${city}, ${country}
+當地時間：${hour}點（${timeSegment}）
+${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 ${realWeatherData.temperature || ''}°C，${realWeatherData.description || ''}` : `時間推測：${timeSegment}，${weatherState}`}
+
+請生成以下 JSON 格式的視覺描述：
+{
+  "timeOfDayVisual": "時間視覺描述（例如：夜晚、黃昏、白天、清晨等，必須與${hour}點對應）",
+  "lightingDescription": "光線描述（例如：夜晚城市燈光、夕陽金輝、明亮陽光、晨光等，必須與時間和天氣對應）",
+  "weatherDescription": "天氣視覺描述（例如：下雨、多雲、晴朗、霧等，必須與真實天氣或時間推測對應）",
+  "skyCondition": "天空狀況（例如：星空、晚霞、藍天白雲、陰雲密佈等，必須與時間和天氣對應）",
+  "atmosphere": "整體氛圍（例如：寧靜夜晚、溫暖黃昏、清新早晨等）"
+}
+
+重要要求：
+1. 如果是夜晚（21點-5點），必須是夜晚視覺：深色天空、城市燈光、星空
+2. 如果是下雨，必須有雨滴、陰雲、濕潤感
+3. 如果是傍晚（18-21點），必須是黃昏視覺：夕陽、晚霞、溫暖光線
+4. 時間和天氣必須完全對應，不能矛盾
+
+只返回 JSON，不要其他文字。`;
+
+                    // 使用 /api/generate-text endpoint 生成視覺描述
+                    const aiResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: visualPrompt,
+                            maxTokens: 200,
+                            temperature: 0.7
+                        })
+                    });
+
+                    if (aiResponse.ok) {
+                        const aiData = await aiResponse.json();
+                        if (aiData.text) {
+                            try {
+                                const visualData = JSON.parse(aiData.text);
+                                timeOfDayVisual = visualData.timeOfDayVisual || timeSegment;
+                                lightingDescription = visualData.lightingDescription || '';
+                                weatherDescription = visualData.weatherDescription || weatherState;
+                                skyCondition = visualData.skyCondition || skyFeature;
+                                console.log('✅ [generateLandingImage] AI 生成的視覺描述:', visualData);
+                            } catch (parseError) {
+                                console.warn('⚠️ [generateLandingImage] AI 返回格式錯誤，使用備用邏輯:', parseError);
+                                // 使用備用邏輯
+                                weatherDescription = weatherState + ', ' + skyFeature;
+                                skyCondition = skyFeature;
+                            }
+                        }
                     } else {
+                        throw new Error('API request failed');
+                    }
+                } catch (error) {
+                    console.warn('⚠️ [generateLandingImage] 使用 AI 生成視覺描述失敗，使用備用邏輯:', error);
+                    
+                    // 備用邏輯：根據真實天氣數據或時間推測
+                    if (realWeatherData) {
+                        const condition = realWeatherData.condition || '';
+                        const temp = realWeatherData.temperature || '';
+                        
+                        if (condition.toLowerCase().includes('rain') || condition.toLowerCase().includes('雨')) {
+                            weatherDescription = 'light rain, overcast sky, soft diffused light';
+                            skyCondition = 'cloudy with gentle rain';
+                        } else if (condition.toLowerCase().includes('cloud') || condition.toLowerCase().includes('雲')) {
+                            weatherDescription = 'partly cloudy, soft clouds, filtered sunlight';
+                            skyCondition = 'partly cloudy sky';
+                        } else if (condition.toLowerCase().includes('clear') || condition.toLowerCase().includes('晴')) {
+                            weatherDescription = 'clear sky, bright sunlight, crisp visibility';
+                            skyCondition = 'clear blue sky';
+                        } else if (condition.toLowerCase().includes('fog') || condition.toLowerCase().includes('霧')) {
+                            weatherDescription = 'light fog, atmospheric haze, soft light';
+                            skyCondition = 'misty atmospheric conditions';
+                        } else {
+                            weatherDescription = weatherState + ', ' + skyFeature;
+                            skyCondition = skyFeature;
+                        }
+                        
+                        // 根據時間調整光線
+                        if (hour >= 21 || hour < 5) {
+                            lightingDescription = 'night city lights, dark sky with stars, illuminated urban landscape';
+                            timeOfDayVisual = 'night';
+                        } else if (hour >= 18 && hour < 21) {
+                            lightingDescription = 'evening warm sunset glow, golden hour light';
+                            timeOfDayVisual = 'evening';
+                        } else if (hour >= 5 && hour < 9) {
+                            lightingDescription = 'morning golden hour light, soft dawn illumination';
+                            timeOfDayVisual = 'morning';
+                        } else {
+                            lightingDescription = 'bright daylight, clear visibility';
+                            timeOfDayVisual = 'day';
+                        }
+                    } else {
+                        // 使用時間推測
                         weatherDescription = weatherState + ', ' + skyFeature;
                         skyCondition = skyFeature;
+                        
+                        if (hour >= 21 || hour < 5) {
+                            lightingDescription = 'night city lights, dark sky with stars';
+                            timeOfDayVisual = 'night';
+                        } else if (hour >= 18 && hour < 21) {
+                            lightingDescription = 'evening warm sunset glow';
+                            timeOfDayVisual = 'evening';
+                        } else if (hour >= 5 && hour < 9) {
+                            lightingDescription = 'morning golden hour light';
+                            timeOfDayVisual = 'morning';
+                        } else {
+                            lightingDescription = 'bright daylight';
+                            timeOfDayVisual = 'day';
+                        }
                     }
-                    
-                    // 根據時間調整光線
-                    if (hour >= 5 && hour < 9) {
-                        weatherDescription += ', morning golden hour light';
-                    } else if (hour >= 18 && hour < 21) {
-                        weatherDescription += ', evening warm sunset glow';
-                    } else if (hour >= 21 || hour < 5) {
-                        weatherDescription += ', night city lights, dark sky with stars';
-                    }
-                } else {
-                    // 使用時間推測
-                    weatherDescription = weatherState + ', ' + skyFeature;
-                    skyCondition = skyFeature;
                 }
                 
                 // 🔧 改進：第一人稱機翼視角（完全沒有窗戶框，純粹的機翼和城市風景）
-                // 如果有參考圖片，在 prompt 中強調要參考其風格
-                // ⚠️ CRITICAL: 在 prompt 開頭就明確說明不要窗框，避免 AI 誤解
-                let prompt = 'CRITICAL: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries whatsoever. ' +
+                // ⚠️ CRITICAL: 在 prompt 開頭就明確說明不要窗框，不要噴射孔，使用一般民航機
+                let prompt = 'CRITICAL REQUIREMENTS: ' +
+                    '1. Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries whatsoever. ' +
+                    '2. Standard commercial airliner wing (like Boeing 737 or Airbus A320), NO visible engine nacelles, NO jet engine intakes, NO engine details underneath the wing. Just a clean, simple commercial airliner wing. ' +
+                    '3. Time and weather must match exactly: ' + (timeOfDayVisual || timeSegment) + ' time with ' + weatherDescription + ', ' + skyCondition + '. ' +
+                    (hour >= 21 || hour < 5 ? 'MUST be night scene: dark sky, city lights illuminated, stars visible, no daylight. ' : '') +
+                    (realWeatherData && (realWeatherData.condition?.toLowerCase().includes('rain') || realWeatherData.condition?.toLowerCase().includes('雨')) ? 'MUST show rain: raindrops visible, overcast sky, wet surfaces, atmospheric rain. ' : '') +
                     'Square 1024x1024 full-frame edge-to-edge composition, first-person view from inside airplane cabin looking directly outward, ' +
-                    'WING: Large bright blue airplane wing extending diagonally from lower left to middle right, ' +
-                    'Boeing 787 Dreamliner style, seen from passenger seat perspective inside cabin, ' +
-                    'slightly upturned wingtip (sharklet) visible on left side, ' +
-                    'two engine nacelles underneath in darker blue, ' +
-                    'subtle panel lines in lighter blue on wing surface, ' +
+                    'WING: Large commercial airliner wing (Boeing 737 or Airbus A320 style) extending diagonally from lower left to middle right, ' +
+                    'clean white or light gray wing surface, simple wing design, NO engine nacelles visible, NO jet engines, NO engine intakes, NO engine details, ' +
+                    'seen from passenger seat perspective inside cabin, ' +
+                    'slightly upturned wingtip visible on left side, ' +
+                    'subtle panel lines on wing surface, ' +
                     'wing occupies foreground bottom portion, creating immersive first-person depth from inside cabin. ' +
                     'VIEWPOINT: First-person perspective from inside airplane cabin, looking directly outward, image fills entire frame from edge to edge with no visible borders or frames. ' +
                     'COMPOSITION: The entire image must be edge-to-edge, full-frame, with absolutely no visible borders, frames, or window structures. The view should appear as if the camera lens is directly at the cabin wall, with no window frame visible. Image must fill 100% of the frame from edge to edge. ' +
-                    'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' + timeSegment + ' (' + weatherDescription + '), ' + skyCondition + ', ' +
+                    'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' +
+                    (timeOfDayVisual || timeSegment) + ' time (' + (lightingDescription || 'appropriate lighting for ' + timeSegment) + '), ' +
+                    weatherDescription + ', ' + skyCondition + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing, ' +
                     (realWeatherData ? `realistic weather conditions matching: ${realWeatherData.condition || ''}, temperature ${realWeatherData.temperature || ''}°C, ${realWeatherData.description || ''}. ` : '') +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
-                    'FINAL REQUIREMENT: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective with image filling entire frame from edge to edge, no visible window frame elements whatsoever.';
+                    'FINAL REQUIREMENT: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries, NO engine nacelles, NO jet engines, NO engine intakes, standard commercial airliner wing only, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective with image filling entire frame from edge to edge, no visible window frame elements whatsoever.';
                 
                 // 如果有參考圖片，在 prompt 開頭加入風格參考說明
                 if (referenceImageBase64) {
