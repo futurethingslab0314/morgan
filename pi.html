@@ -229,16 +229,12 @@
         }
         
         #flightProgressStartLabel {
-            display: flex;
-            align-items: center;
             white-space: nowrap;
             flex-shrink: 0;
             text-align: left;
         }
         
         #flightProgressEndLabel {
-            display: flex;
-            align-items: center;
             white-space: nowrap;
             flex-shrink: 0;
             text-align: right;
@@ -8411,7 +8407,7 @@
                 let weather = '';
                 let realWeatherData = null;
                 
-                // 如果有經緯度，嘗試獲取真實天氣
+                // 如果有經緯度，嘗試獲取真實天氣（可選功能，如果 API 不存在會使用備用邏輯）
                 if (latitude && longitude) {
                     try {
                         console.log('🌤️ 嘗試獲取真實天氣數據...');
@@ -8419,9 +8415,13 @@
                         if (weatherResponse.ok) {
                             realWeatherData = await weatherResponse.json();
                             console.log('✅ 獲取真實天氣成功:', realWeatherData);
+                        } else if (weatherResponse.status === 404) {
+                            // API endpoint 不存在，使用備用邏輯（不顯示錯誤）
+                            console.log('ℹ️ 天氣 API 尚未實現，將使用時間推測的天氣描述');
                         }
                     } catch (error) {
-                        console.warn('⚠️ 獲取真實天氣失敗，將使用 AI 生成:', error);
+                        // 網路錯誤或其他錯誤，使用備用邏輯（不顯示錯誤，因為這是可選功能）
+                        console.log('ℹ️ 無法獲取真實天氣，將使用時間推測的天氣描述');
                     }
                 }
                 
@@ -8550,17 +8550,24 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                                 const parsed = JSON.parse(aiData.text);
                                 weather = parsed.weather || weather;
                                 feature = parsed.feature || feature;
-                                console.log('✅ AI 生成的天氣和活動建議:', { weather, feature });
+                                console.log('✅ 使用 API 生成的活動建議:', feature);
                             } catch (parseError) {
                                 console.warn('⚠️ AI 返回格式錯誤，使用備用邏輯:', parseError);
                             }
                         }
+                    } else if (aiResponse.status === 404) {
+                        // API endpoint 不存在，使用備用邏輯（不顯示錯誤）
+                        console.log('ℹ️ 文本生成 API 尚未實現，將使用備用邏輯生成活動建議');
                     }
                 } catch (error) {
-                    console.warn('⚠️ AI 生成失敗，使用備用邏輯:', error);
+                    // 網路錯誤或其他錯誤，使用備用邏輯（不顯示錯誤，因為這是可選功能）
+                    console.log('ℹ️ 無法使用 AI 生成，將使用備用邏輯生成活動建議');
                 }
                 
                 // 備用邏輯：如果 AI 生成失敗，使用原有邏輯
+                // 🔧 修復：確保 countryCode 在備用邏輯中也可用
+                const countryCode = destination.country_iso_code || '';
+                
                 if (!weather) {
                     if (realWeatherData) {
                         weather = `${realWeatherData.condition || ''}，${realWeatherData.temperature ? `氣溫${realWeatherData.temperature}度` : ''}，${realWeatherData.description || ''}`;
@@ -12582,9 +12589,13 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                                     welcomeMessage = aiData.text.trim().replace(/^["']|["']$/g, ''); // 移除可能的引號
                                     console.log('✅ AI 生成的歡迎訊息:', welcomeMessage);
                                 }
+                            } else if (aiResponse.status === 404) {
+                                // API endpoint 不存在，使用備用邏輯（不顯示錯誤）
+                                console.log('ℹ️ 文本生成 API 尚未實現，將使用備用格式生成歡迎訊息');
                             }
                         } catch (error) {
-                            console.warn('⚠️ AI 生成歡迎訊息失敗，使用備用格式:', error);
+                            // 網路錯誤或其他錯誤，使用備用邏輯（不顯示錯誤，因為這是可選功能）
+                            console.log('ℹ️ 無法使用 AI 生成歡迎訊息，將使用備用格式');
                         }
                         
                         // 備用格式：如果 AI 生成失敗

@@ -146,6 +146,8 @@ Structure:
 ${greetingHint}`
                 : `你是一位經驗豐富的男性機長，Focus Airlines 的專業機長。生成「準備降落預告廣播」（80-100字，降落前5分鐘）。
 
+【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+
 語氣 = 50% 專業航空 + 25% 溫暖導引 + 25% 內在敘事。
 
 結構：
@@ -176,6 +178,8 @@ Structure:
 
 ${greetingHint}`
                 : `你是 Focus Airlines 的專業機長。生成登機廣播（約 200-230 字）。
+
+【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
 
 語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
 禁止提到：海灘、美食、景點、購物、觀光活動。
@@ -267,10 +271,12 @@ ${greetingHint}`
 - 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」（要有強烈的歸屬感和完成感）
 
 【重要提醒】
+- 必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文
 - 必須完整表達，不要中途截斷
 - 語氣要有力度和感染力，不要平淡
 - 每個句子都要有情感色彩，讓乘客感受到真實的情緒
 - 確保內容完整，不會因為 token 限制而被截斷
+- 結尾必須完整，不能在中途停止
 
 ${greetingHint}`;
 
@@ -290,6 +296,9 @@ Tone = 40% aviation + 30% gentle guidance + 30% inner narrative.
 6. Closing: "Thank you for choosing Focus Airlines. We wish you a pleasant journey in 【${city}】."
 ${greetingHint}`
                         : `生成「完美準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
+
+【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+
 語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
 1. 開場：「各位乘客，我是機長。本次 Focus Airlines 航班 ${flightNumber} 已順利準時降落於【${city}】。」
 2. 時間和天氣：${landingTimeInfo} 描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
@@ -307,7 +316,11 @@ ${greetingHint}`,
 4. Inner state: ${innerStatePrompt}
 5. Closing: Make passengers feel they gained inner harvest even with early landing.
 ${greetingHint}`
-                        : `生成「提早降落」廣播（60-80字，保持簡潔）。語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
+                        : `生成「提早降落」廣播（60-80字，保持簡潔）。
+
+【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+
+語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 提早宣告：「我們提早到達了【${city}】。」
 3. 天氣：描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
@@ -327,6 +340,9 @@ Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 7. Closing: Make passengers feel they arrived at themselves and destination despite delay.
 ${greetingHint}`
                         : `生成「誤點降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
+
+【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 歉意宣告：「抱歉，本次航班延誤。」
@@ -348,6 +364,9 @@ Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 6. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
 ${greetingHint}`
                         : `生成「準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
+
+【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 降落宣告：「本次航班順利準時降落於【${city}】。」
@@ -393,10 +412,10 @@ ${prompt}`;
         }
 
         const response = await openai.chat.completions.create({
-            model: "gpt-4-turbo", // 🔧 使用 GPT-4 Turbo（GPT-4o 已移除，使用穩定可用的 GPT-4 Turbo）
+            model: "gpt-4-turbo", // 🔧 使用 GPT-4 Turbo（穩定可用的模型）
             messages: [{ role: "user", content: prompt }],
             temperature: 0.9,  // 🔧 提高溫度以增加創意和情感表達
-            max_tokens: 300  // 🔧 增加 token 限制，確保內容完整且不會被截斷（60-80字約需 150-200 tokens，預留緩衝）
+            max_tokens: 500  // 🔧 大幅增加 token 限制，確保內容完整且不會被截斷（60-80字約需 200-300 tokens，預留充足緩衝）
         });
 
         const announcement = response.choices[0].message.content.trim();
