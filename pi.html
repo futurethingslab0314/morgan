@@ -461,7 +461,7 @@
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
-            margin-top: -10px !important; /* 🔧 往上移動 15px（從 5px 改為 -10px，總共往上移動 15px） */
+            margin-top: -25px !important; /* 🔧 往上移動更多（從 -10px 改為 -25px，再往上移動 15px） */
             margin-bottom: 0 !important;
             padding: 0 !important;
         }
@@ -1202,7 +1202,7 @@
         /* Phase 0, 1, 2 內容位置調整 - 因為標題被隱藏，需要往下移動 */
         #stateCountry {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 70px !important; /* 🔧 往下移動 40px */
+            padding-top: 100px !important; /* 🔧 往下移動更多（從 70px 改為 100px，再往下移動 30px） */
         }
         
         #stateCountry .country-display {
@@ -1248,7 +1248,7 @@
         }
         
         #stateAngle > div[style*="font-size: 14px"] {
-            margin-top: 9px !important; /* 🔧 往上移動 15px（從 24px 減少到 9px） */
+            margin-top: -6px !important; /* 🔧 往上移動更多（從 9px 改為 -6px，再往上移動 15px） */
         }
         
         /* Phase 3, 4, 5 內容位置調整 - 往下移動 30px */
@@ -1339,7 +1339,19 @@
         }
         
         body.night-mode .window-content {
-            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 50%, #0a0a0a 100%) !important; /* 深色漸層 */
+            /* 🔧 改進：使用 background-color 而不是 background，避免覆蓋 background-image */
+            background-color: #1a1a1a !important; /* 深色背景 */
+            /* 如果有 background-image（通過 inline style 設置），它會顯示在 background-color 之上 */
+            /* 注意：不要設置 background 簡寫屬性，因為它會覆蓋 background-image */
+            /* 只設置 background-color，讓 background-image 可以正常顯示 */
+        }
+        
+        /* 🔧 改進：確保 Phase 7 的圖片在夜間模式下可見 */
+        /* 當 window-content 有 inline style 的 background-image 時，確保背景漸層不會覆蓋它 */
+        body.night-mode .window-content[style*="background-image"] {
+            /* 只設置 background-color，不設置 background 簡寫屬性，讓 inline style 的 background-image 可以顯示 */
+            background-color: #1a1a1a !important; /* 深色背景作為 fallback */
+            /* inline style 的 background-image 優先級更高，會顯示在 background-color 之上 */
         }
         
         body.night-mode .info-bar {
@@ -1400,10 +1412,24 @@
             background: rgba(0, 0, 0, 0.98) !important; /* 更深的黑色背景 */
         }
         
+        /* 🔧 改進：進度條在夜間模式下使用完全黑底 */
+        body.night-mode .flight-progress-bar-bg {
+            background: #000000 !important; /* 完全黑色背景 */
+        }
+        
+        /* 🔧 改進：圖片和視頻在夜間模式下保持正常亮度 */
+        body.night-mode .initial-image,
+        body.night-mode .window-content,
+        body.night-mode .video-container,
+        body.night-mode .video-container video,
+        body.night-mode .midnight-service-image {
+            filter: brightness(1.43) !important; /* 反向補償：1 / 0.7 ≈ 1.43，抵消 body 的 brightness(0.7) */
+        }
+        
         /* 平滑過渡動畫 */
         body.night-mode,
         body.night-mode * {
-            transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease !important;
+            transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease, filter 0.5s ease !important;
         }
     </style>
     <!-- 嵌入城市數據，避免 file:// 協議下的 fetch 限制 -->
@@ -1501,7 +1527,7 @@
             </div>
             <!-- 顯示旋鈕位置對應的時間說明 -->
             <div id="timerKnobInfo" style="font-size: 14px; color: #ccc; margin-top: 2px; text-align: center; pointer-events: none;">
-                旋鈕位置 0 代表 1.5 小時
+                睡眠週期90分鐘為單位
             </div>
         </div>
 
@@ -1767,7 +1793,7 @@
         <div class="state-label">💭 你對這次睡眠體驗的感覺如何？</div>
         <div class="options-container" id="feedbackOptions">
             <!-- 橘色標題 -->
-            <div class="feedback-title" style="font-size: 18px; color: #ff6b35; font-weight: 600; margin-bottom: 31px; margin-top: 15px; text-align: center; width: 100%; align-self: center;">
+            <div class="feedback-title" style="font-size: 18px; color: #ff6b35; font-weight: 600; margin-bottom: 31px; margin-top: 30px; text-align: center; width: 100%; align-self: center;">
                 歡迎為這次的飛行體驗評價
             </div>
             <!-- 單一星星條，包含 5 顆星星，根據旋鈕位置（0-4）顯示對應數量的亮星星（1-5 顆） -->
@@ -2260,14 +2286,8 @@
             // 更新旋鈕位置對應說明
             const timerKnobInfo = document.getElementById('timerKnobInfo');
             if (timerKnobInfo) {
-                if (position === 5) {
-                    // 位置5：以90分鐘為單位顯示
-                    const cycles = selectedTimer / 90;
-                    timerKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${cycles} 個睡眠週期`;
-                } else {
-                    const hours = selectedTimer / 60;
-                    timerKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${hours} 小時`;
-                }
+                // 統一顯示：睡眠週期90分鐘為單位
+                timerKnobInfo.textContent = '睡眠週期90分鐘為單位';
             }
 
             console.log('✅ 選擇時間:', selectedTimer, '分鐘 (位置', position, '，亮', position + 1, '格)');
