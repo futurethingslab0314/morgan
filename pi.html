@@ -461,7 +461,7 @@
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
-            margin-top: 5px !important; /* 🔧 往上移動一點點（從 10px 改為 5px） */
+            margin-top: -10px !important; /* 🔧 往上移動 15px（從 5px 改為 -10px，總共往上移動 15px） */
             margin-bottom: 0 !important;
             padding: 0 !important;
         }
@@ -1007,8 +1007,8 @@
 
         /* 氣候帶選項專用樣式 */
         .climate-option {
-            min-width: 80px;
-            max-width: 90px;
+            min-width: 95px; /* 🔧 從 80px 增加到 90px */
+            max-width: 105px; /* 🔧 從 90px 增加到 100px */
             flex: 0 1 auto; /* 🔧 改為不自動擴展，保持固定寬度 */
             padding: 12px 8px; /* 🔧 減少 padding，讓格子更窄 */
         }
@@ -1207,6 +1207,10 @@
         
         #stateCountry .country-display {
             margin-top: 0 !important; /* 移除額外的 margin */
+            flex-direction: row !important; /* 🔧 改為左右排列 */
+            align-items: center !important; /* 🔧 上下置中 */
+            justify-content: center !important; /* 🔧 水平置中 */
+            gap: 16px !important; /* 🔧 增加間距 */
         }
         
         #stateCountry > div[style*="font-size: 14px"] {
@@ -1244,7 +1248,7 @@
         }
         
         #stateAngle > div[style*="font-size: 14px"] {
-            margin-top: 24px !important; /* 🔧 增加間距，讓「選擇後點擊按鈕繼續」更往下 */
+            margin-top: 9px !important; /* 🔧 往上移動 15px（從 24px 減少到 9px） */
         }
         
         /* Phase 3, 4, 5 內容位置調整 - 往下移動 30px */
@@ -1299,13 +1303,107 @@
         }
 
         .country-flag {
-            font-size: 56px;
+            font-size: 64px; /* 🔧 從 56px 增加到 64px */
         }
 
         .country-name {
-            font-size: 24px;
+            font-size: 28px; /* 🔧 從 24px 增加到 28px */
             font-weight: 600;
             color: #ff6b35;
+        }
+        
+        /* ============================================================================
+         * 夜間模式（根據時間自動切換暗色模式、降低亮度、使用暖色調）
+         * ============================================================================ */
+        
+        /* 夜間模式基礎樣式 */
+        body.night-mode {
+            background: #0a0a0a !important; /* 深色背景，降低整體亮度 */
+            filter: brightness(0.7) !important; /* 降低整體亮度 30% */
+        }
+        
+        body.night-mode .window-container {
+            background: transparent !important;
+        }
+        
+        body.night-mode .window-area {
+            background: #1a1a1a !important; /* 深色背景 */
+        }
+        
+        body.night-mode .window-frame {
+            background: #1a1a1a !important; /* 深色背景 */
+            border-color: #ff8c5a !important; /* 暖橙色邊框（比原本的 #ff6b35 更暖） */
+            box-shadow: 
+                0 4px 20px rgba(255, 140, 90, 0.15), /* 暖橙色陰影 */
+                inset 0 0 30px rgba(255, 140, 90, 0.05);
+        }
+        
+        body.night-mode .window-content {
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 50%, #0a0a0a 100%) !important; /* 深色漸層 */
+        }
+        
+        body.night-mode .info-bar {
+            background: #1a1a1a !important; /* 深色背景 */
+            color: #e0e0e0 !important; /* 淺色文字 */
+            border-top: 1px solid rgba(255, 140, 90, 0.3) !important; /* 暖橙色細邊框 */
+        }
+        
+        body.night-mode .info-state {
+            color: #e0e0e0 !important; /* 淺色文字 */
+        }
+        
+        body.night-mode .state-label {
+            color: #ff8c5a !important; /* 暖橙色標題 */
+        }
+        
+        body.night-mode .country-name,
+        body.night-mode .landing-country-name {
+            color: #ff8c5a !important; /* 暖橙色文字 */
+        }
+        
+        body.night-mode .country-display,
+        body.night-mode .landing-country-bar {
+            color: #e0e0e0 !important; /* 淺色文字 */
+        }
+        
+        body.night-mode .landing-country-desc,
+        body.night-mode div[style*="font-size: 14px"],
+        body.night-mode div[style*="color: #999"] {
+            color: #b0b0b0 !important; /* 較淺的灰色文字 */
+        }
+        
+        body.night-mode .angle-option,
+        body.night-mode .timer-option,
+        body.night-mode .feedback-star-fill {
+            background: rgba(255, 255, 255, 0.05) !important; /* 半透明深色背景 */
+            border-color: rgba(255, 140, 90, 0.4) !important; /* 暖橙色邊框 */
+            color: #e0e0e0 !important; /* 淺色文字 */
+        }
+        
+        body.night-mode .angle-option.active,
+        body.night-mode .timer-option.active,
+        body.night-mode .feedback-star-segment.active .feedback-star-fill {
+            background: #ff8c5a !important; /* 暖橙色背景 */
+            border-color: #ff8c5a !important;
+            color: #1a1a1a !important; /* 深色文字（在暖橙色背景上） */
+        }
+        
+        body.night-mode .feedback-title {
+            color: #ff8c5a !important; /* 暖橙色標題 */
+        }
+        
+        body.night-mode .landing-country-bar {
+            background: rgba(26, 26, 26, 0.98) !important; /* 深色背景 */
+        }
+        
+        body.night-mode .midnight-service-overlay {
+            background: rgba(0, 0, 0, 0.98) !important; /* 更深的黑色背景 */
+        }
+        
+        /* 平滑過渡動畫 */
+        body.night-mode,
+        body.night-mode * {
+            transition: background-color 0.5s ease, color 0.5s ease, border-color 0.5s ease !important;
         }
     </style>
     <!-- 嵌入城市數據，避免 file:// 協議下的 fetch 限制 -->
@@ -1669,7 +1767,7 @@
         <div class="state-label">💭 你對這次睡眠體驗的感覺如何？</div>
         <div class="options-container" id="feedbackOptions">
             <!-- 橘色標題 -->
-            <div class="feedback-title" style="font-size: 18px; color: #ff6b35; font-weight: 600; margin-bottom: 16px; text-align: center; width: 100%; align-self: center;">
+            <div class="feedback-title" style="font-size: 18px; color: #ff6b35; font-weight: 600; margin-bottom: 31px; margin-top: 15px; text-align: center; width: 100%; align-self: center;">
                 歡迎為這次的飛行體驗評價
             </div>
             <!-- 單一星星條，包含 5 顆星星，根據旋鈕位置（0-4）顯示對應數量的亮星星（1-5 顆） -->
@@ -2400,7 +2498,88 @@
         }
 
         // 下一步按鈕點擊事件
+        // ============================================================================
+        // 夜間模式自動切換（只在特定時間點切換：21:00 和 06:00）
+        // ============================================================================
+        function checkNightMode() {
+            const hour = new Date().getHours();
+            // 晚上 21:00 到早上 06:00 啟用夜間模式
+            const isNight = hour >= 21 || hour < 6;
+            
+            if (isNight) {
+                document.body.classList.add('night-mode');
+                console.log('🌙 夜間模式已啟用（時間:', hour + ':00）');
+            } else {
+                document.body.classList.remove('night-mode');
+                console.log('☀️ 日間模式已啟用（時間:', hour + ':00）');
+            }
+        }
+        
+        function scheduleNightModeSwitch() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentSecond = now.getSeconds();
+            
+            // 計算到下一個切換時間點的毫秒數
+            let nextSwitchTime = null;
+            let targetHour = null;
+            
+            if (currentHour < 6) {
+                // 當前是凌晨（0-5點），下一個切換點是 06:00
+                targetHour = 6;
+            } else if (currentHour < 21) {
+                // 當前是白天（6-20點），下一個切換點是 21:00
+                targetHour = 21;
+            } else {
+                // 當前是晚上（21-23點），下一個切換點是明天的 06:00
+                targetHour = 6;
+                // 設置為明天的日期
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(6, 0, 0, 0);
+                nextSwitchTime = tomorrow.getTime() - now.getTime();
+            }
+            
+            // 如果還沒計算出 nextSwitchTime，計算今天的目標時間
+            if (nextSwitchTime === null) {
+                const targetTime = new Date(now);
+                targetTime.setHours(targetHour, 0, 0, 0);
+                nextSwitchTime = targetTime.getTime() - now.getTime();
+            }
+            
+            // 如果已經過了今天的切換時間，設置為明天的
+            if (nextSwitchTime <= 0) {
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(targetHour, 0, 0, 0);
+                nextSwitchTime = tomorrow.getTime() - now.getTime();
+            }
+            
+            console.log(`⏰ 將在 ${targetHour}:00 切換夜間模式（${Math.floor(nextSwitchTime / 1000 / 60)} 分鐘後）`);
+            
+            // 設置定時器，在到達切換時間點時執行
+            setTimeout(() => {
+                checkNightMode();
+                // 切換後，重新計算下一個切換時間點
+                scheduleNightModeSwitch();
+            }, nextSwitchTime);
+        }
+        
+        // 頁面載入時立即檢查一次（決定初始狀態）
+        if (document.readyState === 'loading') {
+            checkNightMode();
+        } else {
+            checkNightMode();
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
+            // 再次檢查（確保 DOM 已載入）
+            checkNightMode();
+            
+            // 設置定時器，在特定時間點切換
+            scheduleNightModeSwitch();
+            
             // 🔧 改進：立即清空位置顯示，避免顯示「台灣」
             const currentCountryEl = document.getElementById('currentCountry');
             const stateCountry = document.getElementById('stateCountry');
@@ -11964,6 +12143,17 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         timeContext: timeContext
                     };
                     
+                    // 🔧 改進：先獲取真實天氣數據，確保語音和 UI 顯示一致
+                    let realWeatherData = null;
+                    try {
+                        console.log('🌤️ [generateLandingContent] 獲取真實天氣數據...');
+                        const tempDestinationInfo = await generateDestinationInfo(destination);
+                        realWeatherData = tempDestinationInfo.realWeatherData || null;
+                        console.log('✅ [generateLandingContent] 已獲取真實天氣數據:', realWeatherData);
+                    } catch (error) {
+                        console.warn('⚠️ [generateLandingContent] 獲取天氣數據失敗，將使用時間推測:', error);
+                    }
+                    
                     // 🔧 結構化 Prompt 設計：根據降落狀況設計不同的轉換邏輯
                     let landingSituation = '';
                     let situationNarrative = '';
@@ -12090,7 +12280,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             situationNarrative: situationNarrative,
                             toneAdjustment: toneAdjustment,
                             culturalContext: culturalContext,
-                            timeDiffMinutes: timeDiffMinutes
+                            timeDiffMinutes: timeDiffMinutes,
+                            // 🔧 改進：傳遞真實天氣數據，確保語音和 UI 顯示一致
+                            realWeatherData: realWeatherData
                         })
                     });
                     

@@ -93,7 +93,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { announcementType, city, country, countryCode, currentLocation, flightTime, timerDuration, punctuality, localTimeInfo, taskType, uiLanguage, landingSituation, situationNarrative, toneAdjustment, culturalContext, timeDiffMinutes } = req.body;
+        const { announcementType, city, country, countryCode, currentLocation, flightTime, timerDuration, punctuality, localTimeInfo, taskType, uiLanguage, landingSituation, situationNarrative, toneAdjustment, culturalContext, timeDiffMinutes, realWeatherData } = req.body;
 
         if (!announcementType || !city || !country) {
             res.status(400).json({ error: '缺少必要參數' });
@@ -214,6 +214,21 @@ ${greetingHint}`;
                 'GAME': { zh: '天氣與遊戲後的狀態轉換結合', en: 'Connect weather with post-game state transition' },
                 'CREATIVE': { zh: '天氣與創作完成後的沉澱結合', en: 'Connect weather with post-creative settling' }
             }[task] || { zh: '天氣與任務完成後狀態結合', en: 'Connect weather with completed task state' };
+            
+            // 🔧 改進：構建天氣描述（優先使用真實天氣數據）
+            let weatherDescription = '';
+            if (realWeatherData && realWeatherData.condition && realWeatherData.temperature) {
+                const temp = realWeatherData.temperature;
+                const condition = realWeatherData.condition;
+                const description = realWeatherData.description || '';
+                weatherDescription = isEnglish
+                    ? `Current weather at ${city}: ${condition}, temperature ${temp}°C${description ? `, ${description}` : ''}.`
+                    : `目前【${city}】的天氣：${condition}，氣溫${temp}度${description ? `，${description}` : ''}。`;
+            } else {
+                weatherDescription = isEnglish
+                    ? `Describe weather at ${city} (${season}), integrate with task. ${landingWeatherGuidance.en}. Vivid.`
+                    : `描述【${city}】天氣（${seasonZh}），與任務融合。${landingWeatherGuidance.zh}。生動且具體。`;
+            }
 
             const innerStatePrompt = `內在狀態：目的地【${city}, ${country}】象徵「${mentalState.state}」。${mentalState.description}
 文化情緒特色：「${mentalState.culturalMood}」（情緒質感，非景點美食）
@@ -240,7 +255,7 @@ ${taskGuidanceText ? `任務完成後指引：${taskGuidanceText}` : ''}
 - Tone: ${toneAdjustment}
 - Start with local greeting: "${greeting || 'Hello'}" (translate)
 - Incorporate the landing situation narrative naturally
-- Describe weather at ${city}, integrate with task. ${landingWeatherGuidance.en}. Vivid.
+- Weather: ${weatherDescription || `Describe weather at ${city}, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 - Cultural mood: "${culturalContext || mentalState.culturalMood}"
 - Inner state: "${mentalState.stateEn}" — ${mentalState.description}
 - Task completion: ${taskGuidanceText}
@@ -264,7 +279,7 @@ ${greetingHint}`
 - 語氣：${toneAdjustment}（必須強烈且明確地表達情感，不要平淡）
 - 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯（語氣要生動有活力）
 - 自然地融入降落狀況的敘事背景（要讓乘客感受到情境的真實感和臨場感）
-- 描述【${city}】天氣，與任務融合。${landingWeatherGuidance.zh}。生動且具體，讓乘客能感受到天氣的質感。
+- 天氣：${weatherDescription || `描述【${city}】天氣，與任務融合。${landingWeatherGuidance.zh}。生動且具體，讓乘客能感受到天氣的質感。`}
 - 文化氛圍：「${culturalContext || mentalState.culturalMood}」（要讓乘客感受到當地的文化氣息）
 - 內在狀態：「${mentalState.state}」— ${mentalState.description}（要讓乘客感受到內在的轉變）
 - 任務完成：${taskGuidanceText}（語氣要肯定且溫暖）
@@ -289,7 +304,7 @@ ${greetingHint}`;
                         ? `Generate a "perfect on-time landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
 Tone = 40% aviation + 30% gentle guidance + 30% inner narrative.
 1. Start: "Ladies and gentlemen, this is your captain. Focus Airlines flight ${flightNumber} has landed on time at 【${city}】."
-2. Time & weather: ${landingTimeInfo} Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.
+2. Time & weather: ${landingTimeInfo} ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 3. Cultural mood: "${mentalState.culturalMood}"
 4. Inner state: "${mentalState.stateEn}" — ${mentalState.description}
 5. Task completion: ${taskGuidanceText}
@@ -301,7 +316,7 @@ ${greetingHint}`
 
 語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
 1. 開場：「各位乘客，我是機長。本次 Focus Airlines 航班 ${flightNumber} 已順利準時降落於【${city}】。」
-2. 時間和天氣：${landingTimeInfo} 描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
+2. 時間和天氣：${landingTimeInfo} ${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 3. 文化氛圍：「${mentalState.culturalMood}」
 4. 內在狀態：「${mentalState.state}」— ${mentalState.description}
 5. 任務完成：${taskGuidanceText}
@@ -312,7 +327,7 @@ ${greetingHint}`,
                         ? `Generate an "early landing" announcement (60-80 words, keep it concise). Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 1. Greeting: "${greeting || 'Hello'}" (translate)
 2. Early arrival: "We have arrived early at 【${city}】."
-3. Weather: Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.
+3. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 4. Inner state: ${innerStatePrompt}
 5. Closing: Make passengers feel they gained inner harvest even with early landing.
 ${greetingHint}`
@@ -323,7 +338,7 @@ ${greetingHint}`
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 提早宣告：「我們提早到達了【${city}】。」
-3. 天氣：描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
+3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 4. 內在狀態：${innerStatePrompt}
 5. 結尾：讓乘客感覺即使提早降落，也獲得了內在收穫。
 ${greetingHint}`,
@@ -334,7 +349,7 @@ Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 1. Greeting: "${greeting || 'Hello'}" (translate)
 2. Apology: "Sorry, this flight has been delayed."
 3. Destination: ${punctuality.divertedCity && punctuality.divertedCity !== city ? `"Originally scheduled to land at 【${punctuality.originalDestination}】, we have diverted to 【${punctuality.divertedCity}】."` : `"This flight is delayed but still landing at 【${city}】."`}
-4. Weather: Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.
+4. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 5. Encouragement: Warm, positive
 6. Inner state: ${innerStatePrompt}
 7. Closing: Make passengers feel they arrived at themselves and destination despite delay.
@@ -347,7 +362,7 @@ ${greetingHint}`
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 歉意宣告：「抱歉，本次航班延誤。」
 3. 目的地：${punctuality.divertedCity && punctuality.divertedCity !== city ? `「原定降落於【${punctuality.originalDestination}】，但因時間超過，我們轉降至【${punctuality.divertedCity}】。」` : `「本次航班延誤，但仍降落在【${city}】。」`}
-4. 天氣：描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
+4. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 5. 鼓勵：溫暖、積極
 6. 內在狀態：${innerStatePrompt}
 7. 結尾：讓乘客感覺即使延誤，也抵達了自己和目的地。
@@ -358,7 +373,7 @@ ${greetingHint}`,
 Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 1. Greeting: "${greeting || 'Hello'}" (translate)
 2. Landing: "This flight has landed on time at 【${city}】."
-3. Weather: Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.
+3. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 4. Inner state: ${innerStatePrompt}
 5. Thanks: Thank passengers for completing the journey
 6. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
@@ -370,7 +385,7 @@ ${greetingHint}`
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
 2. 降落宣告：「本次航班順利準時降落於【${city}】。」
-3. 天氣：描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
+3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 4. 內在狀態：${innerStatePrompt}
 5. 感謝：感謝乘客完成這段旅程
 6. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
@@ -384,7 +399,7 @@ ${greetingHint}`
 1. Welcome to destination
 2. Destination: ${city} (${country})
 3. ${landingTimeInfo || 'Time info'}
-4. Weather: Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.
+4. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 5. Inner state: ${innerStatePrompt}
 6. ${timerDuration ? 'Congratulations on completing the flight task' : 'Remind passengers to confirm landing'}
 7. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
@@ -393,7 +408,7 @@ ${greetingHint}`
 1. 歡迎到達目的地
 2. 目的地：${city} (${country})
 3. ${landingTimeInfo || '時間資訊'}
-4. 天氣：描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。
+4. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 5. 內在狀態：${innerStatePrompt}
 6. ${timerDuration ? '恭喜完成飛行任務' : '提醒乘客確認降落'}
 7. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
