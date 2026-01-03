@@ -431,8 +431,9 @@
         
         /* 情緒量表專用樣式 - 確保符合 bar 尺寸 */
         #stateFlightFeedback {
-            padding: 12px 20px 16px 20px; /* 減少上下 padding，確保內容能完整顯示 */
-            justify-content: center; /* 🔧 改為 center，讓內容上下置中 */
+            padding: 0 !important; /* 🔧 移除 padding，讓內容完全置中 */
+            justify-content: center !important; /* 🔧 確保在 280px 範圍內上下置中 */
+            align-items: center !important; /* 🔧 水平置中 */
         }
         
         #stateFlightFeedback .state-label {
@@ -711,6 +712,9 @@
         #stateMidnightService {
             background: linear-gradient(135deg, #111111, #333333);
             color: #ffffff;
+            justify-content: center !important; /* 🔧 確保在 280px 範圍內上下置中 */
+            align-items: center !important; /* 🔧 水平置中 */
+            padding: 0 !important; /* 🔧 移除 padding，讓內容完全置中 */
         }
 
         #stateMidnightService .state-label {
@@ -719,6 +723,16 @@
 
         #stateMidnightService .loading-dots span {
             background: #ffffff;
+        }
+        
+        /* 🔧 確保深夜飛機餐服務的內容容器正確置中 */
+        #stateMidnightService > div:not(.state-label) {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            height: 100% !important;
+            margin: 0 !important;
         }
 
         /* 狀態標籤（上方） */
@@ -729,6 +743,7 @@
             margin-bottom: 20px;
             text-align: center;
             flex-shrink: 0;
+            display: none !important; /* 🔧 隱藏所有橘色標題 */
         }
 
         /* 登機／等待機長廣播狀態提示 */
@@ -1071,17 +1086,24 @@
             }
         }
 
+        /* 降落後國家資訊狀態 - 確保在 280px 範圍內置中 */
+        #stateLandingCountryInfo {
+            justify-content: center !important; /* 🔧 確保在 280px 範圍內上下置中 */
+            align-items: center !important; /* 🔧 水平置中 */
+            padding: 0 !important; /* 🔧 移除 padding，讓內容完全置中 */
+        }
+        
         /* 降落後國家資訊 bar 樣式（整合版，乾淨俐落） */
         /* 降落後國家資訊 bar 樣式（長條形，符合長方形排版） */
         .landing-country-bar {
             display: flex;
-            align-items: flex-end; /* 🔧 改為 flex-end，內容向下對齊 */
+            align-items: center; /* 🔧 改為 center，讓內容在 280px 範圍內上下置中 */
             justify-content: center; /* 置中對齊主要內容 */
             gap: 24px;
-            padding: 20px 32px; /* 🔧 改進：移除左邊 padding，不再顯示舊地點 */
-            padding-bottom: 20px; /* 🔧 確保底部有 padding */
+            padding: 0 32px; /* 🔧 只保留左右 padding，移除上下 padding */
             background: rgba(255, 255, 255, 0.98);
             width: 100%;
+            height: 100%; /* 🔧 確保填滿父容器高度 */
             box-sizing: border-box;
             position: relative; /* 用於定位所在位置 */
         }
@@ -1090,7 +1112,8 @@
         .landing-current-location {
             position: absolute;
             left: 32px;
-            bottom: 20px; /* 🔧 改為 bottom，向下對齊 */
+            top: 50%; /* 🔧 改為垂直置中 */
+            transform: translateY(-50%); /* 🔧 使用 transform 精確置中 */
             font-size: 14px;
             color: #666;
             display: flex;
@@ -1323,7 +1346,7 @@
         <!-- 計算目的地動畫 -->
         <div class="info-state" id="stateCalculating" style="display: none;">
             <div class="state-label">✈️ 計算目的地...</div>
-            <div class="calculating-content" style="margin-top: 30px; text-align: center;">
+            <div class="calculating-content" style="margin-top: 0; text-align: center;">
                 <div class="calculating-spinner">
                     <div class="spinner-circle"></div>
                     <div class="spinner-circle"></div>
@@ -1341,7 +1364,7 @@
         <!-- 機長廣播狀態（與前面 phase 的 UI 樣式一致） -->
         <div class="info-state" id="stateCaptainAnnouncement" style="display: none;">
             <div class="state-label">📢 機長廣播中</div>
-            <div class="announcement-content" style="margin-top: 60px; text-align: center;">
+            <div class="announcement-content" style="margin-top: 0; text-align: center;">
                 <div class="calculating-spinner">
                     <div class="spinner-circle"></div>
                     <div class="spinner-circle"></div>
@@ -1533,7 +1556,7 @@
     <!-- 深夜機上餐狀態（飛機餐模式） -->
     <div class="info-state" id="stateMidnightService" style="display: none;">
         <div class="state-label">🍽️ 深夜機上餐準備中</div>
-        <div style="margin-top: 18px; text-align: center; font-size: 14px;">
+        <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 0; text-align: center; font-size: 14px;">
             <div class="loading-dots" style="justify-content: center;">
                 <span></span><span></span><span></span>
             </div>
