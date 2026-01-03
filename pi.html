@@ -721,9 +721,14 @@
             padding-left: 0 !important;
             padding-right: 0 !important;
             padding-bottom: 0 !important;
-            display: flex !important; /* 🔧 確保顯示 */
+            /* 🔧 移除 display: flex !important，改用 .active class 控制顯示 */
             z-index: 10 !important; /* 🔧 確保在最上層 */
             position: relative !important;
+        }
+        
+        /* 🔧 只在 .active 時顯示 */
+        #stateMidnightService.active {
+            display: flex !important;
         }
 
         #stateMidnightService .state-label {
@@ -1233,7 +1238,7 @@
         }
         
         #stateDestination > div[style*="font-size: 14px"] {
-            margin-top: 20px !important; /* 保持提示文字間距 */
+            margin-top: 40px !important; /* 保持提示文字間距 */
         }
         
         #stateReady_to_fly {
@@ -4662,6 +4667,22 @@
             document.querySelectorAll('.info-state').forEach(state => {
                 const stateId = state.id;
                 const isPhase0 = (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0);
+                const isPhase5 = (currentPhase === Phase.CRUISE || currentPhase === 5);
+                
+                // 🔧 明確處理 stateMidnightService：只在 Phase 5 且服務進行中時顯示
+                if (stateId === 'stateMidnightService') {
+                    if (isPhase5 && midnightServiceActive) {
+                        // Phase 5 且服務進行中：保留顯示
+                        state.style.display = 'flex';
+                        state.classList.add('active');
+                    } else {
+                        // 其他情況：強制隱藏
+                        state.style.display = 'none';
+                        state.classList.remove('active');
+                    }
+                    return;
+                }
+                
                 const shouldKeepVisible = 
                     stateId === 'flightProgressWrapper' || 
                     stateId === 'stateFlightFeedback' || 
@@ -11309,6 +11330,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 }
                 if (loadingBar) {
                     loadingBar.style.display = 'none';
+                    loadingBar.classList.remove('active'); // 🔧 確保移除 active class
                 }
             }
             
