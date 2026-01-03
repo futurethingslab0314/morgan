@@ -70,12 +70,12 @@ export default async function handler(req, res) {
             // 沒有參考圖片，使用 DALL-E 3 正常生成
             console.log('🎨 使用標準生成模式（DALL-E 3）');
             response = await openai.images.generate({
-                model: 'dall-e-3',
-                prompt: prompt,
-                size: size,
-                quality: 'standard',
-                n: 1
-            });
+            model: 'dall-e-3',
+            prompt: prompt,
+            size: size,
+            quality: 'standard',
+            n: 1
+        });
         }
 
         const temporaryImageUrl = response.data[0].url;
