@@ -431,8 +431,9 @@
         
         /* 情緒量表專用樣式 - 確保符合 bar 尺寸 */
         #stateFlightFeedback {
-            padding: 0 !important; /* 🔧 移除 padding，讓內容完全置中 */
-            justify-content: center !important; /* 🔧 確保在 280px 範圍內上下置中 */
+            padding: 0 !important; /* 🔧 移除 padding */
+            padding-top: 100px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
+            justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
         }
         
@@ -709,13 +710,16 @@
             }
         }
 
-        /* 飛機餐（深夜機上服務）狀態 bar 樣式 */
+        /* 飛機餐（深夜機上服務）狀態 bar 樣式 - 與 phase 3, 4, 5 一樣的位置 */
         #stateMidnightService {
             background: linear-gradient(135deg, #111111, #333333);
             color: #ffffff;
-            justify-content: center !important; /* 🔧 確保在 280px 範圍內上下置中 */
+            justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
-            padding: 0 !important; /* 🔧 移除 padding，讓內容完全置中 */
+            padding-top: 60px !important; /* 🔧 與 phase 3, 4 一樣的位置（60px） */
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            padding-bottom: 0 !important;
         }
 
         #stateMidnightService .state-label {
@@ -726,13 +730,12 @@
             background: #ffffff;
         }
         
-        /* 🔧 確保深夜飛機餐服務的內容容器正確置中 */
+        /* 🔧 調整深夜飛機餐服務的內容容器 */
         #stateMidnightService > div:not(.state-label) {
             display: flex !important;
             flex-direction: column !important;
-            justify-content: center !important;
+            justify-content: flex-start !important; /* 🔧 改為 flex-start */
             align-items: center !important;
-            height: 100% !important;
             margin: 0 !important;
         }
 
@@ -1087,11 +1090,12 @@
             }
         }
 
-        /* 降落後國家資訊狀態 - 確保在 280px 範圍內置中 */
+        /* 降落後國家資訊狀態 - 與 phase 3, 4, 5 一樣的位置 */
         #stateLandingCountryInfo {
-            justify-content: center !important; /* 🔧 確保在 280px 範圍內上下置中 */
+            justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
-            padding: 0 !important; /* 🔧 移除 padding，讓內容完全置中 */
+            padding: 0 !important; /* 🔧 移除 padding */
+            padding-top: 100px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
         }
         
         /* 降落後國家資訊 bar 樣式（整合版，乾淨俐落） */
@@ -1187,7 +1191,7 @@
         
         #stateTimer {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 80px !important; /* 🔧 往下移動 30px */
+            padding-top: 100px !important; /* 🔧 往下移動 30px */
         }
         
         #stateTimer .timer-progress-container {
@@ -1195,12 +1199,12 @@
         }
         
         #stateTimer > div[style*="font-size: 14px"] {
-            margin-top: 16px !important; /* 🔧 調整提示文字間距 */
+            margin-top: 8px !important; /* 🔧 調整提示文字間距 */
         }
         
         #stateAngle {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 60px !important; /* 🔧 往下移動 20px */
+            padding-top: 100px !important; /* 🔧 往下移動 20px */
         }
         
         #stateAngle .options-container {
@@ -1208,13 +1212,13 @@
         }
         
         #stateAngle > div[style*="font-size: 14px"] {
-            margin-top: 16px !important; /* 🔧 調整提示文字間距 */
+            margin-top: 5px !important; /* 🔧 調整提示文字間距 */
         }
         
         /* Phase 3, 4, 5 內容位置調整 - 往下移動 30px */
         #stateDestination {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 30px !important; /* 🔧 往下移動 30px */
+            padding-top: 60px !important; /* 🔧 往下移動 30px */
         }
         
         #stateDestination .country-display {
@@ -1227,7 +1231,7 @@
         
         #stateReady_to_fly {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 30px !important; /* 🔧 往下移動 30px */
+            padding-top: 60px !important; /* 🔧 往下移動 30px */
         }
         
         #stateReady_to_fly .country-display {
@@ -1236,7 +1240,7 @@
         
         #stateCaptainAnnouncement {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 30px !important; /* 🔧 往下移動 30px */
+            padding-top: 110px !important; /* 🔧 與 phase 3, 4 一樣的位置（60px） */
         }
         
         #stateCaptainAnnouncement .announcement-content {
