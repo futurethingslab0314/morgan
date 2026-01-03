@@ -60,20 +60,20 @@
         /* 窗戶區域 - 上方，固定 800px 高 */
         .window-area {
             width: 800px;
-            height: 800px;
+            height: 850px; /* 🔧 高度改為 850px */
             background: #f8f9fa;
             position: relative;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* 🔧 改為向上置中（從 center 改為 flex-start） */
             flex-shrink: 0;
             overflow: hidden;
         }
 
-        /* 窗戶框 - 800x800 方形，完全填滿窗戶區域 */
+        /* 窗戶框 - 850x800 矩形，完全填滿窗戶區域 */
         .window-frame {
             width: 800px;
-            height: 800px;
+            height: 850px; /* 🔧 高度改為 850px */
             background: #ffffff;
             border: 4px solid #ff6b35;
             border-radius: 12px;
@@ -92,7 +92,7 @@
             position: relative;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start; /* 🔧 改為向上置中（從 center 改為 flex-start） */
             color: #333;
             font-size: 24px;
             overflow: hidden;
@@ -101,7 +101,7 @@
         /* 初始圖片背景 */
         .initial-image {
             width: 800px;
-            height: 800px;
+            height: 850px; /* 🔧 高度改為 850px */
             position: absolute;
             top: 0;
             left: 0;
@@ -123,10 +123,10 @@
             filter: blur(8px) brightness(1.2); /* 模糊和亮度增加，製造景深效果 */
         }
 
-        /* 影片容器 - 滿版 800x800 */
+        /* 影片容器 - 滿版 800x850 */
         .video-container {
             width: 800px;
-            height: 800px;
+            height: 850px; /* 🔧 高度改為 850px */
             position: absolute;
             top: 0;
             left: 0;
@@ -573,7 +573,7 @@
         .midnight-service-content {
             position: relative;
             width: 800px;
-            height: 800px;
+            height: 850px; /* 🔧 高度改為 850px */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -583,7 +583,7 @@
         
         .midnight-service-image {
             width: 800px !important;
-            height: 800px !important;
+            height: 850px !important; /* 🔧 高度改為 850px */
             background-size: cover !important;
             background-position: center !important;
             background-repeat: no-repeat !important;
