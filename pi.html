@@ -180,12 +180,12 @@
             display: none; /* 預設隱藏，進入起飛/巡航階段時打開 */
             position: relative;
             z-index: 1; /* 確保在 info-bar-message 下方 */
-            background: rgba(255, 255, 255, 0.95); /* 輕微背景，避免與消息重疊時看不清 */
+            background: transparent !important; /* 🔧 移除白底框，使用透明背景 */
         }
 
         .flight-progress-label {
             font-size: 13px;
-            color: #ccc;
+            color: #999; /* 🔧 改成灰色 */
             text-align: center;
             letter-spacing: 1px;
             margin-bottom: 4px;
@@ -228,7 +228,7 @@
             justify-content: space-between !important;
             align-items: center;
             font-size: 11px;
-            color: #bbb;
+            color: #999; /* 🔧 改成灰色 */
             margin-top: 4px;
             padding: 0;
             width: 100%;
@@ -1414,7 +1414,7 @@
         
         /* 🔧 改進：進度條在夜間模式下使用完全黑底 */
         body.night-mode .flight-progress-bar-bg {
-            background: #000000 !important; /* 完全黑色背景 */
+            background: linear-gradient(90deg, rgba(86,204,242,0.25), rgba(47,128,237,0.15)) !important; /* 保持淺藍色背景 */
         }
         
         /* 🔧 改進：圖片和視頻在夜間模式下保持正常亮度 */
@@ -4431,10 +4431,10 @@
                         } else {
                             // TTS 已準備好，立即開始起飛
                             console.log('✅ [Phase 3→4] TTS 音檔已準備好，立即開始起飛序列');
-                            // 立即顯示「機長廣播中...」的動態 UI
-                            console.log('📢 [Phase 3→4] 顯示機長廣播中 UI...');
-                            setBoardingStatus(true, '機長廣播中...');
-                            startTakeoffSequence();
+                        // 立即顯示「機長廣播中...」的動態 UI
+                        console.log('📢 [Phase 3→4] 顯示機長廣播中 UI...');
+                        setBoardingStatus(true, '機長廣播中...');
+                        startTakeoffSequence();
                         }
                     } else {
                         console.log('⚠️ 起飛準備未完成，嘗試重新準備...');
@@ -4534,71 +4534,71 @@
             
             // 在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成
             const captainPlayPromise = (async () => {
-                try {
-                    // 使用 new Audio() 和 Promise 確保完全播放完成
-                    const captainAudio = new Audio('sounds/captain.mp3');
-                    captainAudio.volume = 1.0;
-                    captainAudio.preload = 'auto';
+            try {
+                // 使用 new Audio() 和 Promise 確保完全播放完成
+                const captainAudio = new Audio('sounds/captain.mp3');
+                captainAudio.volume = 1.0;
+                captainAudio.preload = 'auto';
+                
+                // 等待音頻載入完成
+                await new Promise((resolve) => {
+                    if (captainAudio.readyState >= 2) {
+                        resolve();
+                    } else {
+                        captainAudio.addEventListener('canplaythrough', () => resolve(), { once: true });
+                        captainAudio.addEventListener('error', () => resolve(), { once: true });
+                        captainAudio.load();
+                    }
+                });
+                
+                // 播放 captain.mp3，使用 setTimeout 精確控制 6 秒
+                await new Promise((resolve) => {
+                    const timeout = setTimeout(() => {
+                        captainAudio.pause();
+                        captainAudio.currentTime = 0;
+                        console.log('✅ captain.mp3 已播放 6 秒並停止');
+                        resolve();
+                    }, 6000);
                     
-                    // 等待音頻載入完成
-                    await new Promise((resolve) => {
-                        if (captainAudio.readyState >= 2) {
-                            resolve();
+                    captainAudio.onended = () => {
+                        clearTimeout(timeout);
+                        console.log('✅ captain.mp3 自然播放完成（但只播放 6 秒）');
+                        resolve();
+                    };
+                    
+                    captainAudio.onerror = (e) => {
+                        clearTimeout(timeout);
+                        // 檢查是否是預期的停止操作（6秒後手動停止可能觸發 error 事件）
+                        // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
+                        if (captainAudio.currentTime > 0) {
+                            console.log('ℹ️ captain.mp3 播放過程中觸發 error 事件（可能是預期的停止操作）');
                         } else {
-                            captainAudio.addEventListener('canplaythrough', () => resolve(), { once: true });
-                            captainAudio.addEventListener('error', () => resolve(), { once: true });
-                            captainAudio.load();
+                            console.warn('⚠️ captain.mp3 播放錯誤（載入失敗）:', e);
                         }
+                        resolve(); // 即使錯誤也繼續
+                    };
+                    
+                    captainAudio.play().then(() => {
+                        console.log('▶️ captain.mp3 開始播放');
+                    }).catch(err => {
+                        clearTimeout(timeout);
+                        console.warn('⚠️ captain.mp3 播放失敗:', err);
+                        resolve(); // 即使失敗也繼續
                     });
-                    
-                    // 播放 captain.mp3，使用 setTimeout 精確控制 6 秒
-                    await new Promise((resolve) => {
-                        const timeout = setTimeout(() => {
-                            captainAudio.pause();
-                            captainAudio.currentTime = 0;
-                            console.log('✅ captain.mp3 已播放 6 秒並停止');
-                            resolve();
-                        }, 6000);
-                        
-                        captainAudio.onended = () => {
-                            clearTimeout(timeout);
-                            console.log('✅ captain.mp3 自然播放完成（但只播放 6 秒）');
-                            resolve();
-                        };
-                        
-                        captainAudio.onerror = (e) => {
-                            clearTimeout(timeout);
-                            // 檢查是否是預期的停止操作（6秒後手動停止可能觸發 error 事件）
-                            // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
-                            if (captainAudio.currentTime > 0) {
-                                console.log('ℹ️ captain.mp3 播放過程中觸發 error 事件（可能是預期的停止操作）');
-                            } else {
-                                console.warn('⚠️ captain.mp3 播放錯誤（載入失敗）:', e);
-                            }
-                            resolve(); // 即使錯誤也繼續
-                        };
-                        
-                        captainAudio.play().then(() => {
-                            console.log('▶️ captain.mp3 開始播放');
-                        }).catch(err => {
-                            clearTimeout(timeout);
-                            console.warn('⚠️ captain.mp3 播放失敗:', err);
-                            resolve(); // 即使失敗也繼續
-                        });
-                    });
-                    
-                    // 確保音頻完全停止
-                    captainAudio.pause();
-                    captainAudio.currentTime = 0;
-                    captainAudio.src = ''; // 清空音源，確保完全釋放
-                    
-                    // 完全停止後等待 0ms（立即繼續，不等待）
-                    // 注意：雖然是 0ms，但這會讓瀏覽器有機會完成音頻停止操作
-                    await new Promise(resolve => setTimeout(resolve, 0));
-                    console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
-                } catch (error) {
-                    console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
-                }
+                });
+                
+                // 確保音頻完全停止
+                captainAudio.pause();
+                captainAudio.currentTime = 0;
+                captainAudio.src = ''; // 清空音源，確保完全釋放
+                
+                // 完全停止後等待 0ms（立即繼續，不等待）
+                // 注意：雖然是 0ms，但這會讓瀏覽器有機會完成音頻停止操作
+                await new Promise(resolve => setTimeout(resolve, 0));
+                console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
+            } catch (error) {
+                console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
+            }
             })();
             
             // 🔧 改進：在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成（最多等待到 captain.mp3 播放完成）
@@ -11783,7 +11783,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         }
                         
                         console.log('🔊 [Phase 6] 10 秒後自動播放準備降落的喚醒語音...');
-                        const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
+                const wakeUpAnnouncement = generateDescentWakeUpAnnouncement();
                         
                         // 預先生成 TTS 音頻
                         let phase6VoiceAudioId = null;
@@ -11953,11 +11953,11 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 
                 // 隱藏「按下按鈕準備進行降落程序」UI
                 setBoardingStatus(false);
-                
-                // 標記手動觸發，讓 handleLanding() 知道這是手動觸發的
-                manualLandingTriggered = true;
-                
-                // 直接切換到 Phase 7，讓 handleLanding() 執行降落程序
+            
+            // 標記手動觸發，讓 handleLanding() 知道這是手動觸發的
+            manualLandingTriggered = true;
+            
+            // 直接切換到 Phase 7，讓 handleLanding() 執行降落程序
                 console.log('🛬 [Phase 6] 切換到 Phase 7...');
                 switchToPhase(Phase.LANDING);
                 return;
@@ -12443,9 +12443,9 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
 
                     // 使用 /api/generate-text endpoint 生成視覺描述
                     const aiResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-text', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
                             prompt: visualPrompt,
                             maxTokens: 200,
                             temperature: 0.7
@@ -12567,8 +12567,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 }
                 
                 const requestBody = {
-                    prompt: prompt,
-                    size: '1024x1024'
+                        prompt: prompt,
+                        size: '1024x1024'
                 };
                 
                 // 如果有參考圖片，加入 referenceImage 參數
@@ -12725,7 +12725,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     if (wormholeChance < 1/7) {
                         console.log('🌀 [蟲洞效應] 觸發機率：' + (wormholeChance * 100).toFixed(2) + '%，觸發蟲洞效應！');
                         try {
-                            const climateZone = destinationData?.climateZone || null;
+                const climateZone = destinationData?.climateZone || null;
                             const wormholeDestination = await destinationCalculator.findDestinationWithWormhole(
                                 selectedDirection,
                                 climateZone
@@ -12744,15 +12744,15 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     // 如果原本目的地不存在，才重新計算
                     try {
                         const climateZone = destinationData?.climateZone || null;
-                        finalDestination = await destinationCalculator.findDestination(
-                            actualDuration,
-                            selectedDirection,
-                            punctuality,
-                            climateZone
-                        );
-                        if (climateZone && finalDestination) {
-                            finalDestination.climateZone = climateZone;
-                        }
+                finalDestination = await destinationCalculator.findDestination(
+                    actualDuration,
+                    selectedDirection,
+                    punctuality,
+                        climateZone
+                    );
+                if (climateZone && finalDestination) {
+                    finalDestination.climateZone = climateZone;
+                }
                     } catch (error) {
                         console.error('❌ 計算最終目的地失敗:', error);
                         finalDestination = destinationData; // 回退到原本的目的地
@@ -12813,7 +12813,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     // 最後回退到原本的目的地
                     finalDestination = destinationData;
                 }
-            }
+                }
             }
             
             // 確保 finalDestination 不為 null
