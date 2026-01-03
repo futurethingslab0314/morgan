@@ -426,16 +426,18 @@
             height: 100%;
             justify-content: center; /* 🔧 改為 center，讓內容在 280px 範圍內上下置中 */
             flex-direction: column;
-            padding: 20px;
+            padding: 70px;
             box-sizing: border-box;
         }
         
         /* 情緒量表專用樣式 - 確保符合 bar 尺寸 */
         #stateFlightFeedback {
             padding: 0 !important; /* 🔧 移除 padding */
-            padding-top: 160px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
+            padding-top: 200px !important; /* 🔧 往下移動（從 160px 增加到 180px，讓內容更往下） */
+            padding-bottom: 20px !important; /* 🔧 確保底部有空間，讓小字可見 */
             justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
+            overflow: visible !important; /* 🔧 確保內容不會被裁切 */
         }
         
         #stateFlightFeedback .state-label {
@@ -449,6 +451,17 @@
             align-items: center; /* 垂直居中 */
             justify-content: center; /* 水平居中 */
             min-height: 0; /* 允許縮小 */
+            margin-bottom: 8px !important; /* 🔧 確保星星和小字之間有間距 */
+        }
+        
+        /* 🔧 確保中文小字可見 */
+        #stateFlightFeedback > div:last-child {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            margin-top: 10px !important;
+            margin-bottom: 0 !important;
+            padding: 0 !important;
         }
         
         /* 星星條容器 - 類似選睡眠時長的樣式 */
@@ -1107,7 +1120,7 @@
             justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
             padding: 0 !important; /* 🔧 移除 padding */
-            padding-top: 160px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
+            padding-top: 60px !important; /* 🔧 與 phase 3, 4, 5 一樣的位置（60px） */
         }
         
         /* 降落後國家資訊 bar 樣式（整合版，乾淨俐落） */
@@ -1439,7 +1452,7 @@
         <!-- 計算目的地動畫 -->
         <div class="info-state" id="stateCalculating" style="display: none;">
             <div class="state-label">✈️ 計算目的地...</div>
-            <div class="calculating-content" style="margin-top: 0; text-align: center;">
+            <div class="calculating-content" style="margin-top: 40; text-align: center;">
                 <div class="calculating-spinner">
                     <div class="spinner-circle"></div>
                     <div class="spinner-circle"></div>
@@ -4648,15 +4661,16 @@
             }
             
             // 額外確保所有 .info-state 元素都被隱藏（除了 flightProgressWrapper、stateFlightFeedback、stateCountry 和 stateLandingCountryInfo）
-            // 🔧 改進：在 Phase 0 (POST_ARRIVAL) 時，保留 stateLandingCountryInfo 顯示（降落後國家資訊）
-            // 但在 Phase 5/6/7 時，必須隱藏 stateLandingCountryInfo
+            // 🔧 改進：在 Phase 0 (POST_ARRIVAL) 和 Phase 7 (LANDING) 時，保留 stateLandingCountryInfo 顯示（降落後國家資訊）
+            // 但在 Phase 5/6 時，必須隱藏 stateLandingCountryInfo
             const countryInfoState = document.getElementById('stateLandingCountryInfo');
             if (countryInfoState) {
                 const isPhase0 = (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0);
-                if (isPhase0) {
-                    // Phase 0: 保持顯示（如果已經被 showLandingCountryInfo 顯示）
+                const isPhase7 = (currentPhase === Phase.LANDING || currentPhase === 7);
+                if (isPhase0 || isPhase7) {
+                    // Phase 0 或 Phase 7: 保持顯示（如果已經被 showLandingCountryInfo 顯示）
                     // 不強制隱藏，讓 showLandingCountryInfo 控制顯示狀態
-                    console.log('✅ [hideAllStateUI] Phase 0，保留 stateLandingCountryInfo 顯示');
+                    console.log(`✅ [hideAllStateUI] Phase ${isPhase0 ? 0 : 7}，保留 stateLandingCountryInfo 顯示`);
                 } else {
                     // 其他 Phase: 隱藏
                 countryInfoState.style.display = 'none';
@@ -4683,14 +4697,15 @@
                     return;
                 }
                 
+                const isPhase7 = (currentPhase === Phase.LANDING || currentPhase === 7);
                 const shouldKeepVisible = 
                     stateId === 'flightProgressWrapper' || 
                     stateId === 'stateFlightFeedback' || 
                     (stateId === 'stateCountry' && isPhase0) ||
-                    (stateId === 'stateLandingCountryInfo' && isPhase0); // 🔧 在 Phase 0 時保留顯示
+                    (stateId === 'stateLandingCountryInfo' && (isPhase0 || isPhase7)); // 🔧 在 Phase 0 或 Phase 7 時保留顯示
                 
-                // 🔧 改進：在 Phase 0 時不隱藏 stateLandingCountryInfo
-                if (stateId === 'stateLandingCountryInfo' && !isPhase0) {
+                // 🔧 改進：在 Phase 0 或 Phase 7 時不隱藏 stateLandingCountryInfo
+                if (stateId === 'stateLandingCountryInfo' && !isPhase0 && !isPhase7) {
                     state.style.display = 'none';
                     state.classList.remove('active');
                     return;
@@ -12293,9 +12308,11 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     'FINAL REQUIREMENT: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries, NO engine nacelles, NO jet engines, NO engine intakes, standard commercial airliner wing only, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective with image filling entire frame from edge to edge, no visible window frame elements whatsoever.';
                 
                 // 如果有參考圖片，在 prompt 開頭加入風格參考說明
+                // 🔧 重要：即使使用參考圖片，也必須移除窗戶邊框
                 if (referenceImageBase64) {
                     prompt = 'Generate an image with the EXACT same visual style, composition, color palette, lighting, perspective, and artistic treatment as the reference image. ' +
                         'Maintain identical: camera angle, wing position and appearance, sky color and atmosphere, overall mood and tone, image quality and rendering style. ' +
+                        'CRITICAL: Even if the reference image contains window frames or borders, you MUST remove them completely. Generate a full-frame edge-to-edge image with NO window frames, NO borders, NO window structure visible. ' +
                         prompt;
                 }
                 
