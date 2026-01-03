@@ -309,6 +309,7 @@
             overflow: hidden;
             flex-shrink: 0;
             margin: 0; /* 🔧 確保沒有 margin */
+            z-index: 100 !important; /* 🔧 確保 info-bar 在覆蓋層上方 */
         }
         
         /* 機長廣播中/準備降落消息顯示 - 保留用於其他用途，但主要使用 stateCaptainAnnouncement */
@@ -432,7 +433,7 @@
         /* 情緒量表專用樣式 - 確保符合 bar 尺寸 */
         #stateFlightFeedback {
             padding: 0 !important; /* 🔧 移除 padding */
-            padding-top: 100px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
+            padding-top: 160px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
             justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
         }
@@ -560,7 +561,7 @@
             width: 100% !important;
             height: 100% !important;
             background: rgba(0, 0, 0, 0.95) !important; /* 極暗背景 */
-            z-index: 999999 !important; /* 確保在最上層，高於所有其他元素 */
+            z-index: 50 !important; /* 🔧 降低 z-index，確保 info-bar (z-index: 100) 在上方 */
             display: flex !important;
             align-items: flex-start !important; /* 從頂部開始對齊 */
             justify-content: center !important;
@@ -712,22 +713,26 @@
 
         /* 飛機餐（深夜機上服務）狀態 bar 樣式 - 與 phase 3, 4, 5 一樣的位置 */
         #stateMidnightService {
-            background: linear-gradient(135deg, #111111, #333333);
-            color: #ffffff;
+            background: linear-gradient(135deg, #111111, #333333) !important;
+            color: #ffffff !important;
             justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
             padding-top: 60px !important; /* 🔧 與 phase 3, 4 一樣的位置（60px） */
             padding-left: 0 !important;
             padding-right: 0 !important;
             padding-bottom: 0 !important;
+            display: flex !important; /* 🔧 確保顯示 */
+            z-index: 10 !important; /* 🔧 確保在最上層 */
+            position: relative !important;
         }
 
         #stateMidnightService .state-label {
             color: #ffffff;
+            display: none !important; /* 🔧 隱藏標題 */
         }
 
         #stateMidnightService .loading-dots span {
-            background: #ffffff;
+            background: #ffffff !important;
         }
         
         /* 🔧 調整深夜飛機餐服務的內容容器 */
@@ -737,6 +742,8 @@
             justify-content: flex-start !important; /* 🔧 改為 flex-start */
             align-items: center !important;
             margin: 0 !important;
+            width: 100% !important;
+            height: auto !important;
         }
 
         /* 狀態標籤（上方） */
@@ -1095,7 +1102,7 @@
             justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
             align-items: center !important; /* 🔧 水平置中 */
             padding: 0 !important; /* 🔧 移除 padding */
-            padding-top: 100px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
+            padding-top: 160px !important; /* 🔧 往下移動 60px，與 phase 3, 4 一樣的位置 */
         }
         
         /* 降落後國家資訊 bar 樣式（整合版，乾淨俐落） */
@@ -1204,7 +1211,7 @@
         
         #stateAngle {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 100px !important; /* 🔧 往下移動 20px */
+            padding-top: 88px !important; /* 🔧 往下移動 20px */
         }
         
         #stateAngle .options-container {
@@ -1218,7 +1225,7 @@
         /* Phase 3, 4, 5 內容位置調整 - 往下移動 30px */
         #stateDestination {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 60px !important; /* 🔧 往下移動 30px */
+            padding-top: 80px !important; /* 🔧 往下移動 30px */
         }
         
         #stateDestination .country-display {
@@ -1231,7 +1238,7 @@
         
         #stateReady_to_fly {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 60px !important; /* 🔧 往下移動 30px */
+            padding-top: 80px !important; /* 🔧 往下移動 30px */
         }
         
         #stateReady_to_fly .country-display {
@@ -1360,7 +1367,7 @@
                 選擇後點擊按鈕繼續
             </div>
             <!-- 顯示旋鈕位置對應的時間說明 -->
-            <div id="timerKnobInfo" style="font-size: 14px; color: #ccc; margin-top: 6px; text-align: center; pointer-events: none;">
+            <div id="timerKnobInfo" style="font-size: 14px; color: #ccc; margin-top: 2px; text-align: center; pointer-events: none;">
                 旋鈕位置 0 代表 1.5 小時
             </div>
         </div>
@@ -2116,8 +2123,14 @@
             // 更新旋鈕位置對應說明
             const timerKnobInfo = document.getElementById('timerKnobInfo');
             if (timerKnobInfo) {
-                const hours = selectedTimer / 60;
-                timerKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${hours} 小時`;
+                if (position === 5) {
+                    // 位置5：以90分鐘為單位顯示
+                    const cycles = selectedTimer / 90;
+                    timerKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${cycles} 個睡眠週期`;
+                } else {
+                    const hours = selectedTimer / 60;
+                    timerKnobInfo.textContent = `旋鈕位置 ${position} 代表 ${hours} 小時`;
+                }
             }
 
             console.log('✅ 選擇時間:', selectedTimer, '分鐘 (位置', position, '，亮', position + 1, '格)');
