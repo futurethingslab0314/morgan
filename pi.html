@@ -631,8 +631,9 @@
             background: rgba(0, 0, 0, 0.8);
             z-index: 20001;
             display: flex;
-            align-items: center;
+            align-items: flex-start; /* 🔧 改為 flex-start，從頂部開始 */
             justify-content: center;
+            padding-top: calc(50vh - 70px); /* 🔧 往上移動 70px（從 50vh 減去 70px） */
             opacity: 0;
             transition: opacity 0.5s ease;
         }
@@ -1166,6 +1167,82 @@
             white-space: nowrap;
         }
 
+        /* Phase 0, 1, 2 內容位置調整 - 因為標題被隱藏，需要往下移動 */
+        #stateCountry {
+            justify-content: flex-start !important; /* 從頂部開始 */
+            padding-top: 70px !important; /* 🔧 往下移動 40px */
+        }
+        
+        #stateCountry .country-display {
+            margin-top: 0 !important; /* 移除額外的 margin */
+        }
+        
+        #stateCountry > div[style*="font-size: 14px"] {
+            margin-top: 25px !important; /* 🔧 調整提示文字間距 */
+        }
+        
+        #stateCountry .button-hints {
+            margin-top: 24px !important; /* 🔧 調整按鈕提示間距 */
+        }
+        
+        #stateTimer {
+            justify-content: flex-start !important; /* 從頂部開始 */
+            padding-top: 30px !important; /* 🔧 往下移動 30px */
+        }
+        
+        #stateTimer .timer-progress-container {
+            margin-top: 0 !important; /* 移除原本的 margin-top: 30px */
+        }
+        
+        #stateTimer > div[style*="font-size: 14px"] {
+            margin-top: 16px !important; /* 🔧 調整提示文字間距 */
+        }
+        
+        #stateAngle {
+            justify-content: flex-start !important; /* 從頂部開始 */
+            padding-top: 60px !important; /* 🔧 往下移動 20px */
+        }
+        
+        #stateAngle .options-container {
+            margin-top: 0 !important; /* 移除額外的 margin */
+        }
+        
+        #stateAngle > div[style*="font-size: 14px"] {
+            margin-top: 16px !important; /* 🔧 調整提示文字間距 */
+        }
+        
+        /* Phase 3, 4, 5 內容位置調整 - 往下移動 30px */
+        #stateDestination {
+            justify-content: flex-start !important; /* 從頂部開始 */
+            padding-top: 30px !important; /* 🔧 往下移動 30px */
+        }
+        
+        #stateDestination .country-display {
+            margin-top: 0 !important; /* 移除原本的 margin-top: 20px */
+        }
+        
+        #stateDestination > div[style*="font-size: 14px"] {
+            margin-top: 20px !important; /* 保持提示文字間距 */
+        }
+        
+        #stateReady_to_fly {
+            justify-content: flex-start !important; /* 從頂部開始 */
+            padding-top: 30px !important; /* 🔧 往下移動 30px */
+        }
+        
+        #stateReady_to_fly .country-display {
+            margin-top: 0 !important; /* 移除原本的 margin-top: 20px */
+        }
+        
+        #stateCaptainAnnouncement {
+            justify-content: flex-start !important; /* 從頂部開始 */
+            padding-top: 30px !important; /* 🔧 往下移動 30px */
+        }
+        
+        #stateCaptainAnnouncement .announcement-content {
+            margin-top: 0 !important; /* 確保沒有額外的 margin-top */
+        }
+
         /* 可點擊狀態的視覺反饋 */
         #stateCountry:hover {
             background: rgba(255, 107, 53, 0.05);
@@ -1226,7 +1303,7 @@
                 <span class="country-flag">🏳️</span>
                 <span class="country-name" id="currentCountry"></span>
             </div>
-            <div style="font-size: 14px; color: #999; margin-top: 20px; text-align: center;">
+            <div style="font-size: 14px; color: #999; margin-top: 16px; text-align: center;">
                 點擊開始選擇
             </div>
             <!-- 按鈕操作提示 -->
@@ -1247,7 +1324,7 @@
         <div class="info-state" id="stateTimer" style="cursor: pointer;">
             <div class="state-label">⏱️ 選擇睡眠時長</div>
             <!-- 累積進度條樣式的時長選擇 -->
-            <div class="timer-progress-container" style="margin-top: 30px; padding: 0 20px;">
+            <div class="timer-progress-container" style="margin-top: 0; padding: 0 20px;">
                 <div class="timer-progress-bar" id="timerProgressBar">
                     <div class="timer-progress-segment" data-position="0" data-minutes="90">
                         <div class="timer-segment-fill"></div>
@@ -1275,7 +1352,7 @@
                     </div>
                 </div>
             </div>
-            <div style="font-size: 14px; color: #999; margin-top: 20px; text-align: center; pointer-events: none;">
+            <div style="font-size: 14px; color: #999; margin-top: 16px; text-align: center; pointer-events: none;">
                 選擇後點擊按鈕繼續
             </div>
             <!-- 顯示旋鈕位置對應的時間說明 -->
@@ -1319,7 +1396,7 @@
                 
                 </div>
             </div>
-            <div style="font-size: 14px; color: #999; margin-top: 10px; text-align: center; pointer-events: none;">
+            <div style="font-size: 14px; color: #999; margin-top: 16px; text-align: center; pointer-events: none;">
                 選擇後點擊按鈕繼續
         </div>
     </div>
