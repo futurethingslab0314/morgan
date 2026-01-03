@@ -21,8 +21,8 @@
 
         html, body {
             width: 100%;
-            min-height: 100vh; /* 🔧 改為 min-height，允許內容超出 */
-            overflow: visible !important; /* 🔧 改為 visible，確保縮放時底部資訊不會被裁剪 */
+            height: 100vh;
+            overflow: hidden; /* 🔧 恢復 hidden，防止捲動 */
             background: #f5f5f5;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
             display: flex;
@@ -44,7 +44,7 @@
         /* 視窗容器：保持 800x1080，視窗與頂部對齊，bar 與底部對齊 */
         .window-container {
             width: 800px;
-            min-height: 100vh; /* 🔧 改為 min-height，確保至少佔滿視窗高度，但允許內容超出 */
+            height: 100vh; /* 🔧 恢復固定高度 */
             display: flex;
             flex-direction: column;
             justify-content: flex-start; /* 🔧 改為 flex-start，讓 window-area 貼齊頂部 */
@@ -55,7 +55,7 @@
             box-shadow: none !important; /* 🔧 移除陰影，避免遮住底部內容 */
             padding: 0;
             margin: 0; /* 父容器 body 已經使用 justify-content: center 居中 */
-            overflow: visible !important; /* 🔧 確保內容不會被裁剪，特別是縮放時 */
+            overflow: hidden; /* 🔧 恢復 hidden，防止捲動 */
         }
 
 
@@ -449,8 +449,9 @@
         #stateFlightFeedback .options-container {
             flex: 1;
             padding: 8px 4px; /* 減少 padding */
-            align-items: center; /* 垂直居中 */
-            justify-content: center; /* 水平居中 */
+            align-items: center; /* 水平置中 */
+            justify-content: center; /* 垂直置中 */
+            flex-direction: column; /* 🔧 改為垂直排列，讓標題和星星上下置中 */
             min-height: 0; /* 允許縮小 */
             margin-bottom: 8px !important; /* 🔧 確保星星和小字之間有間距 */
         }
@@ -474,6 +475,7 @@
             width: 100%;
             max-width: 600px;
             margin-top: 8px !important; /* 🔧 讓星星往下移動 */
+            align-self: center; /* 🔧 確保星星容器在垂直方向上置中 */
         }
         
         /* 單個星星選項 - 類似 timer-segment-fill */
@@ -1280,7 +1282,7 @@
         /* 降落程序準備中... 和計算目的地... 也使用相同的樣式 */
         #stateCalculating {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 170px !important; /* 🔧 與機長廣播中一致的位置 */
+            padding-top: 120px !important; /* 🔧 往上移動（從 170px 減少到 120px） */
         }
         
         #stateCalculating .calculating-content {
@@ -1644,6 +1646,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- 降落後國家資訊顯示（填寫完情緒量表後顯示） -->
+        <div class="info-state" id="stateLandingCountryInfo" style="display: none;">
+            <div class="landing-country-bar">
+                <!-- 🔧 改進：所在位置顯示在左邊 -->
+                <div class="landing-current-location" id="landingCurrentLocation" style="display: none;">
+                    <span>📍</span>
+                    <span id="landingCurrentLocationText">所在位置</span>
+                </div>
+                <div class="landing-country-flag" id="landingCountryFlag">🏳️</div>
+                <div class="landing-country-text">
+                    <div class="landing-country-name" id="landingCountryName">國家名稱</div>
+                    <div class="landing-country-desc" id="landingCountryDesc">國家描述</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 飛行回饋選單（入境登記）- 下方 bar，1～5 分量表 -->
@@ -1651,7 +1669,7 @@
         <div class="state-label">💭 你對這次睡眠體驗的感覺如何？</div>
         <div class="options-container" id="feedbackOptions">
             <!-- 橘色標題 -->
-            <div class="feedback-title" style="font-size: 18px; color: #ff6b35; font-weight: 600; margin-bottom: 16px; text-align: center; width: 100%;">
+            <div class="feedback-title" style="font-size: 18px; color: #ff6b35; font-weight: 600; margin-bottom: 16px; text-align: center; width: 100%; align-self: center;">
                 歡迎為這次的飛行體驗評價
             </div>
             <!-- 單一星星條，包含 5 顆星星，根據旋鈕位置（0-4）顯示對應數量的亮星星（1-5 顆） -->
@@ -1687,22 +1705,6 @@
             </div>
             <div style="margin-top: 8px; opacity: 1 !important; color: #ffffff !important; font-weight: 500;">
                 貴賓您好，空服員正在為你準備機上點心，請稍候片刻…
-            </div>
-        </div>
-    </div>
-
-    <!-- 降落後國家資訊顯示（填寫完情緒量表後顯示） -->
-    <div class="info-state" id="stateLandingCountryInfo" style="display: none;">
-        <div class="landing-country-bar">
-            <!-- 🔧 改進：所在位置顯示在左邊 -->
-            <div class="landing-current-location" id="landingCurrentLocation" style="display: none;">
-                <span>📍</span>
-                <span id="landingCurrentLocationText">所在位置</span>
-            </div>
-            <div class="landing-country-flag" id="landingCountryFlag">🏳️</div>
-            <div class="landing-country-text">
-                <div class="landing-country-name" id="landingCountryName">國家名稱</div>
-                <div class="landing-country-desc" id="landingCountryDesc">國家描述</div>
             </div>
         </div>
     </div>
@@ -8740,20 +8742,22 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
 1. 天氣描述（15字以內）：結合天氣敘事背景，要有情境感和即時性
 2. 活動建議（12字以內）：結合時間音調和文化語氣，要具體可執行、有吸引力、讓人想立即行動
 
-【活動建議要求（極重要 - 必須非常具體）】
-- 必須包含城市名稱：例如「在${city}品嚐...」、「漫步${city}的...」
-- 必須提到具體美食/地標/活動：不要用「當地特色」、「景點」這種泛泛而談的詞
-- 要有行動感：使用動詞，如「品嚐」、「漫步」、「欣賞」、「體驗」、「在...吃」
-- 結合城市真實特色：根據${city}和${country}的實際特色，提到具體的美食、地標、河岸、海灘、市集等
-- 符合時間段：清晨建議具體早餐/咖啡；午間建議具體美食/市集；傍晚建議具體地點看夕陽；夜晚建議具體夜遊地點
+【活動建議要求（極重要 - 必須非常具體且多樣化）】
+- 必須包含城市名稱：例如「在${city}...」、「漫步${city}的...」
+- 必須提到具體地標/活動/體驗：不要用「當地特色」、「景點」這種泛泛而談的詞
+- 要有行動感：使用動詞，如「漫步」、「欣賞」、「體驗」、「探索」、「參觀」、「聆聽」、「感受」
+- 結合城市真實特色：根據${city}和${country}的實際特色，提到具體的地標、建築、自然景觀、文化場所、藝術空間、歷史遺跡、公園、海灘、山脈、博物館、音樂廳、劇院、圖書館、書店、咖啡館、市集、市場、河岸、港口、廣場、街道等
+- 符合時間段：清晨建議公園/海邊/咖啡館；午間建議博物館/地標/文化場所；傍晚建議河岸/海灘/廣場看夕陽；夜晚建議夜間景觀/音樂場所/藝術空間
 - 要有吸引力：讓人感受到這座城市的獨特魅力和真實感
+- ⚠️ 避免重複：不要每次都生成「品嚐美食」或「逛市集」，要輪換使用不同類型的活動（建築、自然、文化、藝術、歷史、音樂、運動、休閒等）
 
-範例（根據不同城市）：
-- ❌ 不好：「歡迎探索這座城市」、「參觀景點」、「體驗當地特色」
-- ✅ 好（義大利威尼斯）：「品嚐義大利馬卡龍」、「漫步在威尼斯河岸」、「在聖馬可廣場喝咖啡」
-- ✅ 好（澳洲黃金海岸）：「在黃金海岸吃fish and chip」、「漫步衝浪者天堂海灘」、「欣賞布里斯班河夕陽」
-- ✅ 好（日本東京）：「品嚐築地市場壽司」、「漫步淺草寺參道」、「在澀谷體驗夜生活」
-- ✅ 好（法國巴黎）：「在塞納河畔品嚐可頌」、「漫步香榭麗舍大道」、「欣賞艾菲爾鐵塔夜景」
+範例（根據不同城市和活動類型）：
+- ❌ 不好：「歡迎探索這座城市」、「參觀景點」、「體驗當地特色」、「品嚐當地美食」、「逛市集」
+- ✅ 好（義大利威尼斯）：「漫步在威尼斯運河畔」、「欣賞聖馬可廣場的建築」、「體驗貢多拉船遊河」、「參觀威尼斯雙年展場館」
+- ✅ 好（澳洲黃金海岸）：「漫步衝浪者天堂海灘」、「欣賞布里斯班河夕陽」、「探索庫蘭加塔國家公園」、「參觀黃金海岸藝術中心」
+- ✅ 好（日本東京）：「漫步淺草寺參道」、「欣賞東京鐵塔夜景」、「體驗澀谷十字路口」、「參觀上野公園櫻花」
+- ✅ 好（法國巴黎）：「漫步塞納河畔」、「欣賞艾菲爾鐵塔夜景」、「參觀羅浮宮」、「體驗蒙馬特藝術區」
+- ✅ 好（其他類型）：「探索城市歷史街區」、「欣賞當地建築風格」、「參觀博物館展覽」、「體驗當地音樂文化」、「漫步公園綠地」、「欣賞自然景觀」、「參觀藝術畫廊」、「體驗當地節慶活動」
 
 請以 JSON 格式返回：
 {
@@ -8888,20 +8892,35 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                                 specificActivity = `體驗${city}的夜間氛圍`;
                             }
                         } else {
-                            // 其他國家：根據時間段生成通用但具體的活動
-                            if (hour >= 5 && hour < 9) {
-                                specificActivity = `在${city}品嚐當地早餐`;
-                            } else if (hour >= 9 && hour < 12) {
-                                specificActivity = `漫步${city}的市中心`;
-                            } else if (hour >= 12 && hour < 15) {
-                                specificActivity = `在${city}品嚐當地美食`;
-                            } else if (hour >= 15 && hour < 18) {
-                                specificActivity = `欣賞${city}的風景`;
-                            } else if (hour >= 18 && hour < 21) {
-                                specificActivity = `在${city}體驗當地晚餐`;
-                            } else {
-                                specificActivity = `探索${city}的夜間生活`;
-                            }
+                            // 其他國家：根據時間段生成多樣化的活動（避免重複美食和市集）
+                            // 使用隨機選擇，增加多樣性
+                            const activities = [
+                                // 清晨活動（5-9點）
+                                [`在${city}的公園晨跑`, `欣賞${city}的日出`, `漫步${city}的海邊`, `參觀${city}的早市`, `在${city}的咖啡館享受晨光`],
+                                // 早晨活動（9-12點）
+                                [`漫步${city}的歷史街區`, `參觀${city}的博物館`, `欣賞${city}的建築風格`, `探索${city}的文化中心`, `在${city}的圖書館閱讀`],
+                                // 午間活動（12-15點）
+                                [`參觀${city}的地標建築`, `欣賞${city}的藝術畫廊`, `探索${city}的歷史遺跡`, `漫步${city}的河岸`, `體驗${city}的音樂文化`],
+                                // 午後活動（15-18點）
+                                [`欣賞${city}的風景`, `參觀${city}的公園`, `漫步${city}的廣場`, `探索${city}的自然景觀`, `體驗${city}的休閒活動`],
+                                // 傍晚活動（18-21點）
+                                [`欣賞${city}的夕陽`, `漫步${city}的河畔`, `參觀${city}的夜景`, `體驗${city}的夜間氛圍`, `探索${city}的藝術區`],
+                                // 夜晚活動（21點後）
+                                [`欣賞${city}的夜景`, `探索${city}的夜間景觀`, `體驗${city}的音樂場所`, `參觀${city}的夜間活動`, `漫步${city}的夜間街區`]
+                            ];
+                            
+                            let activityIndex = 0;
+                            if (hour >= 5 && hour < 9) activityIndex = 0;
+                            else if (hour >= 9 && hour < 12) activityIndex = 1;
+                            else if (hour >= 12 && hour < 15) activityIndex = 2;
+                            else if (hour >= 15 && hour < 18) activityIndex = 3;
+                            else if (hour >= 18 && hour < 21) activityIndex = 4;
+                            else activityIndex = 5;
+                            
+                            // 使用城市名稱的 hash 來選擇活動，確保同一城市每次選擇一致但不同城市有變化
+                            const cityHash = city.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                            const selectedActivity = activities[activityIndex][cityHash % activities[activityIndex].length];
+                            specificActivity = selectedActivity;
                         }
                         
                         feature = specificActivity;
