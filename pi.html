@@ -167,7 +167,10 @@
 
         /* 睡眠旅程進度條（只在飛行階段顯示，不顯示具體時間） */
         .flight-progress-wrapper {
-            width: 100%;
+            width: 85%; /* 🔧 縮短 15%（從 100% 改為 85%） */
+            max-width: 85%; /* 🔧 確保最大寬度也是 85% */
+            margin: 0 auto; /* 🔧 置中 */
+            margin-top: 4px; /* 🔧 整體往下移動 4px */
             padding: 6px 24px 10px;
             box-sizing: border-box;
             display: none; /* 預設隱藏，進入起飛/巡航階段時打開 */
@@ -3158,6 +3161,45 @@
                         audio.volume = endVolume;
                         audio.pause();
                         audio.currentTime = 0;
+                        resolve();
+                    }
+                }, 16); // 約 60fps
+            });
+        }
+        
+        // 🔧 新增：音量漸變函數（從當前音量淡入/淡出到目標音量）
+        function fadeVolume(audio, targetVolume, duration = 1000) {
+            return new Promise((resolve) => {
+                if (!audio) {
+                    console.warn('⚠️ fadeVolume: audio 對象不存在');
+                    resolve();
+                    return;
+                }
+                const startVolume = audio.volume || 0;
+                const endVolume = targetVolume;
+                const startTime = Date.now();
+                
+                // 清除之前的淡入淡出 interval（如果有的話）
+                if (window._volumeFadeInterval) {
+                    clearInterval(window._volumeFadeInterval);
+                    window._volumeFadeInterval = null;
+                }
+                
+                window._volumeFadeInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    
+                    // 使用緩動函數（ease-in-out）
+                    const easedProgress = progress < 0.5 
+                        ? 2 * progress * progress 
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                    
+                    audio.volume = startVolume + (endVolume - startVolume) * easedProgress;
+                    
+                    if (progress >= 1) {
+                        clearInterval(window._volumeFadeInterval);
+                        window._volumeFadeInterval = null;
+                        audio.volume = endVolume;
                         resolve();
                     }
                 }, 16); // 約 60fps
@@ -11361,10 +11403,15 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             console.warn('⚠️ [Phase 6] TTS 音頻預先生成失敗:', err);
                         }
                         
-                        // 降低音樂音量（讓語音更突出）
+                        // 降低音樂音量（讓語音更突出）- 使用漸變
                         if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                            console.log('🔉 [Phase 6] 降低音樂音量，讓語音更突出');
-                            descentWakeupMusic.volume = 0.15;
+                            console.log('🔉 [Phase 6] 漸變降低音樂音量（0.15 → 0.15，保持），讓語音更突出');
+                            // 如果當前音量不是 0.15，則漸變到 0.15
+                            if (Math.abs(descentWakeupMusic.volume - 0.15) > 0.01) {
+                                fadeVolume(descentWakeupMusic, 0.15, 1000).catch(err => {
+                                    console.warn('⚠️ [Phase 6] 漸變降低音樂音量失敗:', err);
+                                });
+                            }
                         }
                         
                         // 播放語音
@@ -11388,9 +11435,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             console.warn('⚠️ [Phase 6] 播放喚醒語音失敗:', err);
                         }
                         
-                        // 語音播放完成後，慢慢將音樂音量調大（從 0.15 到 0.6）
+                        // 語音播放完成後，慢慢將音樂音量調大（從 0.15 到 0.6）- 使用統一的 fadeVolume 函數
                         if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                            console.log('✅ 機長語音播放完成，開始慢慢調大音樂音量（0.15 → 0.6）');
+                            console.log('✅ 機長語音播放完成，開始漸變調大音樂音量（0.15 → 0.6）');
                             
                             // 🔧 改進：清理之前的音量調整 interval（如果有的話）
                             if (window._phase6VolumeFadeInterval) {
@@ -11398,35 +11445,12 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                                 window._phase6VolumeFadeInterval = null;
                             }
                             
-                            const targetVolume = 0.6;
-                            const startVolume = 0.15;
-                            const duration = 3000; // 3 秒
-                            const startTime = Date.now();
-                            
-                            window._phase6VolumeFadeInterval = setInterval(() => {
-                                if (!descentWakeupMusic || descentWakeupMusic.paused) {
-                                    clearInterval(window._phase6VolumeFadeInterval);
-                                    window._phase6VolumeFadeInterval = null;
-                                    return;
-                                }
-                                
-                                const elapsed = Date.now() - startTime;
-                                const progress = Math.min(elapsed / duration, 1);
-                                
-                                // 使用緩動函數（ease-in-out）
-                                const easedProgress = progress < 0.5 
-                                    ? 2 * progress * progress 
-                                    : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-                                
-                                const currentVolume = startVolume + (targetVolume - startVolume) * easedProgress;
-                                descentWakeupMusic.volume = currentVolume;
-                                
-                                if (progress >= 1) {
-                                    clearInterval(window._phase6VolumeFadeInterval);
-                                    window._phase6VolumeFadeInterval = null;
-                                    console.log('✅ 音樂音量已調回正常（0.6）');
-                                }
-                            }, 50); // 每 50ms 更新一次音量
+                            // 使用統一的 fadeVolume 函數
+                            fadeVolume(descentWakeupMusic, 0.6, 3000).then(() => {
+                                console.log('✅ 音樂音量已漸變調回正常（0.6）');
+                            }).catch(err => {
+                                console.warn('⚠️ 漸變調大音樂音量失敗:', err);
+                            });
                         }
                     }, 10000); // 10 秒後自動播放
                 }
@@ -11503,19 +11527,24 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 console.log('✅ [triggerManualLanding] 已清理 Phase 6 音量調整 interval');
             }
             
-            // 如果在播放喚醒音樂期間按下，將音樂音量調小，繼續播放
+            // 如果在播放喚醒音樂期間按下，將音樂音量調小，繼續播放 - 使用漸變
             if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                console.log('🔉 調低喚醒音樂音量，凸顯機長語音');
-                descentWakeupMusic.volume = 0.15; // 調小音量，讓語音更突出
+                const currentVolume = descentWakeupMusic.volume;
+                console.log(`🔉 漸變調低喚醒音樂音量（${currentVolume.toFixed(2)} → 0.15），凸顯機長語音`);
+                fadeVolume(descentWakeupMusic, 0.15, 1000).catch(err => {
+                    console.warn('⚠️ 漸變降低音樂音量失敗:', err);
+                });
                 // 移除 onended 事件，讓音樂繼續播放直到結束
                 descentWakeupMusic.onended = null;
             }
             
             // 🔧 改進：提早降落時，Phase 5 不播放音樂，所以這裡不需要處理 _earlyLandingWakeupMusic
-            // 但如果還有提前降落的音樂在播放（舊版本可能還有），也調小音量
+            // 但如果還有提前降落的音樂在播放（舊版本可能還有），也調小音量 - 使用漸變
             if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
-                console.log('🔉 調低提前降落 wakeup 音樂音量（舊版本殘留），凸顯機長語音');
-                window._earlyLandingWakeupMusic.volume = 0.15; // 調小音量，讓語音更突出
+                console.log('🔉 漸變調低提前降落 wakeup 音樂音量（舊版本殘留，0.6 → 0.15），凸顯機長語音');
+                fadeVolume(window._earlyLandingWakeupMusic, 0.15, 1000).catch(err => {
+                    console.warn('⚠️ 漸變降低音樂音量失敗:', err);
+                });
             }
             
             // 🔧 改進：準時/延後降落時，在 Phase 6 按按鈕後：
@@ -12512,13 +12541,14 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             console.log('4️⃣ [Phase 7] 播放 captain.mp3 和語音A（降落廣播）...');
             setBoardingStatus(true, '機長廣播中...');
             
-            // 降低音樂音量（讓語音更突出）
+            // 降低音樂音量（讓語音更突出）- 使用漸變
             if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                console.log('🔉 [Phase 7] 降低音樂音量，讓語音更突出');
+                const currentVolume = window._phase7WakeupMusic.volume;
+                console.log(`🔉 [Phase 7] 漸變降低音樂音量（${currentVolume.toFixed(2)} → 0.15），讓語音更突出`);
                 try {
-                    window._phase7WakeupMusic.volume = 0.15;
+                    await fadeVolume(window._phase7WakeupMusic, 0.15, 1000); // 1 秒漸變
                 } catch (err) {
-                    console.warn('⚠️ [Phase 7] 設置音樂音量失敗:', err);
+                    console.warn('⚠️ [Phase 7] 漸變降低音樂音量失敗:', err);
                 }
             } else {
                 console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法降低音量');
@@ -12553,15 +12583,16 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     console.log('✅ 語音A播放完成');
                 }
                 
-                // 語音A播放完成後，恢復音樂音量
+                // 語音A播放完成後，恢復音樂音量 - 使用漸變
                 if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    console.log('🔉 [Phase 7] 語音A播放完成，恢復音樂音量');
+                    const currentVolume = window._phase7WakeupMusic.volume;
+                    console.log(`🔉 [Phase 7] 語音A播放完成，漸變恢復音樂音量（${currentVolume.toFixed(2)} → 0.6）`);
                     try {
-                        fadeInAudio(window._phase7WakeupMusic, 2000, 0.6).catch(err => {
-                            console.warn('⚠️ 恢復音樂音量失敗:', err);
+                        fadeVolume(window._phase7WakeupMusic, 0.6, 2000).catch(err => {
+                            console.warn('⚠️ 漸變恢復音樂音量失敗:', err);
                         });
                     } catch (err) {
-                        console.warn('⚠️ [Phase 7] 恢復音樂音量時發生錯誤:', err);
+                        console.warn('⚠️ [Phase 7] 漸變恢復音樂音量時發生錯誤:', err);
                     }
                 } else {
                     console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法恢復音量');
