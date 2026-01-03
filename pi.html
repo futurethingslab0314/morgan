@@ -154,7 +154,7 @@
         .takeoff-video {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* 保持比例，不超出容器 */
+            object-fit: fill; /* 🔧 改為 fill，拉伸填滿 850x800 容器（可能會變形） */
             position: absolute;
             top: 0;
             left: 0;
@@ -423,7 +423,7 @@
             align-items: center;
             width: 100%;
             height: 100%;
-            justify-content: center; /* 🔧 改為 center，讓內容上下置中 */
+            justify-content: flex-start; /* 🔧 改為 center，讓內容上下置中 */
             flex-direction: column;
             padding: 20px;
             box-sizing: border-box;
@@ -5407,7 +5407,7 @@
             landingVideo.loop = false;
             landingVideo.style.width = '100%';
             landingVideo.style.height = '100%';
-            landingVideo.style.objectFit = 'contain';
+            landingVideo.style.objectFit = 'fill'; /* 🔧 改為 fill，拉伸填滿 850x800 容器（可能會變形） */
             landingVideo.style.position = 'absolute';
             landingVideo.style.top = '0';
             landingVideo.style.left = '0';
@@ -10137,7 +10137,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 video1.playsInline = true;
                 video1.style.width = '100%';
                 video1.style.height = '100%';
-                video1.style.objectFit = 'contain';
+                video1.style.objectFit = 'fill'; /* 🔧 改為 fill，拉伸填滿 850x800 容器（可能會變形） */
                 video1.style.position = 'absolute';
                 video1.style.top = '0';
                 video1.style.left = '0';
@@ -10163,7 +10163,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 video2.loop = true;
                 video2.style.width = '100%';
                 video2.style.height = '100%';
-                video2.style.objectFit = 'contain';
+                video2.style.objectFit = 'fill'; /* 🔧 改為 fill，拉伸填滿 850x800 容器（可能會變形） */
                 video2.style.position = 'absolute';
                 video2.style.top = '0';
                 video2.style.left = '0';
