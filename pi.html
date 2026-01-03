@@ -21,8 +21,8 @@
 
         html, body {
             width: 100%;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh; /* 🔧 改為 min-height，允許內容超出 */
+            overflow: visible !important; /* 🔧 改為 visible，確保縮放時底部資訊不會被裁剪 */
             background: #f5f5f5;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
             display: flex;
@@ -44,17 +44,18 @@
         /* 視窗容器：保持 800x1080，視窗與頂部對齊，bar 與底部對齊 */
         .window-container {
             width: 800px;
-            height: 100vh; /* 🔧 改為 100vh，讓容器佔滿視窗高度 */
+            min-height: 100vh; /* 🔧 改為 min-height，確保至少佔滿視窗高度，但允許內容超出 */
             display: flex;
             flex-direction: column;
             justify-content: flex-start; /* 🔧 改為 flex-start，讓 window-area 貼齊頂部 */
             align-items: center; /* 🔧 水平置中 */
             position: relative;
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            background: transparent !important; /* 🔧 改為透明，避免遮住底部資訊 */
+            border-radius: 0 !important; /* 🔧 移除圓角，避免遮住底部內容 */
+            box-shadow: none !important; /* 🔧 移除陰影，避免遮住底部內容 */
             padding: 0;
             margin: 0; /* 父容器 body 已經使用 justify-content: center 居中 */
+            overflow: visible !important; /* 🔧 確保內容不會被裁剪，特別是縮放時 */
         }
 
 
@@ -298,7 +299,7 @@
             width: 800px;
             height: 280px; /* 固定高度 */
             background: #ffffff;
-            border-top: 3px solid #ff6b35;
+            border-top: none !important; /* 🔧 移除橘色邊框 */
             display: flex;
             align-items: center; /* 🔧 改為 center，讓 .info-state 在 280px 範圍內置中 */
             padding: 0;
@@ -459,7 +460,7 @@
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
-            margin-top: 10px !important;
+            margin-top: 5px !important; /* 🔧 往上移動一點點（從 10px 改為 5px） */
             margin-bottom: 0 !important;
             padding: 0 !important;
         }
@@ -472,6 +473,7 @@
             justify-content: center;
             width: 100%;
             max-width: 600px;
+            margin-top: 8px !important; /* 🔧 讓星星往下移動 */
         }
         
         /* 單個星星選項 - 類似 timer-segment-fill */
@@ -1003,10 +1005,10 @@
 
         /* 氣候帶選項專用樣式 */
         .climate-option {
-            min-width: 110px;
-            max-width: 120px;
-            flex: 1;
-            padding: 18px 12px;
+            min-width: 80px;
+            max-width: 90px;
+            flex: 0 1 auto; /* 🔧 改為不自動擴展，保持固定寬度 */
+            padding: 12px 8px; /* 🔧 減少 padding，讓格子更窄 */
         }
 
         .climate-icon {
@@ -1235,7 +1237,8 @@
         #stateAngle .options-container {
             margin-top: 0 !important; /* 移除額外的 margin */
             overflow: visible !important; /* 🔧 確保不需要捲動 */
-            flex-wrap: wrap !important; /* 🔧 允許換行，確保所有按鈕可見 */
+            flex-wrap: nowrap !important; /* 🔧 改為不換行，讓所有選項在同一行 */
+            gap: 8px !important; /* 🔧 減少間距，讓格子更緊湊 */
         }
         
         #stateAngle > div[style*="font-size: 14px"] {
@@ -1267,7 +1270,7 @@
         
         #stateCaptainAnnouncement {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 170px !important; /* 🔧 往下移動（從 140px 增加到 170px） */
+            padding-top: 140px !important; /* 🔧 往下移動（從 140px 增加到 170px） */
         }
         
         #stateCaptainAnnouncement .announcement-content {
@@ -1647,6 +1650,10 @@
     <div class="info-state" id="stateFlightFeedback" style="display: none;">
         <div class="state-label">💭 你對這次睡眠體驗的感覺如何？</div>
         <div class="options-container" id="feedbackOptions">
+            <!-- 橘色標題 -->
+            <div class="feedback-title" style="font-size: 18px; color: #ff6b35; font-weight: 600; margin-bottom: 16px; text-align: center; width: 100%;">
+                歡迎為這次的飛行體驗評價
+            </div>
             <!-- 單一星星條，包含 5 顆星星，根據旋鈕位置（0-4）顯示對應數量的亮星星（1-5 顆） -->
             <div class="feedback-stars-container">
                 <div class="feedback-star-segment" data-position="0">
