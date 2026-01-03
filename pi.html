@@ -839,8 +839,7 @@
             align-items: flex-start;
             flex-wrap: nowrap;
             padding: 10px 12px;
-            overflow-y: auto;
-            overflow-x: auto;
+            overflow: visible !important; /* 🔧 改為 visible，確保內容完全可見，不需要捲動 */
             width: 100%;
             box-sizing: border-box;
         }
@@ -1115,12 +1114,12 @@
             }
         }
 
-        /* 降落後國家資訊狀態 - 與 phase 3, 4, 5 一樣的位置 */
+        /* 降落後國家資訊狀態 - Phase 0 專用位置 */
         #stateLandingCountryInfo {
-            justify-content: flex-start !important; /* 🔧 改為 flex-start，從頂部開始 */
+            justify-content: center !important; /* 🔧 改為 center，讓內容在 280px 範圍內垂直置中 */
             align-items: center !important; /* 🔧 水平置中 */
             padding: 0 !important; /* 🔧 移除 padding */
-            padding-top: 60px !important; /* 🔧 與 phase 3, 4, 5 一樣的位置（60px） */
+            padding-top: 50px !important; /* 🔧 在置中基礎上再往下移動 50px */
         }
         
         /* 降落後國家資訊 bar 樣式（整合版，乾淨俐落） */
@@ -1229,15 +1228,18 @@
         
         #stateAngle {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 88px !important; /* 🔧 往下移動 20px */
+            padding-top: 88px !important; /* 🔧 減少 padding-top，讓內容更靠上，避免需要捲動 */
+            padding-bottom: 20px !important; /* 🔧 確保底部有空間 */
         }
         
         #stateAngle .options-container {
             margin-top: 0 !important; /* 移除額外的 margin */
+            overflow: visible !important; /* 🔧 確保不需要捲動 */
+            flex-wrap: wrap !important; /* 🔧 允許換行，確保所有按鈕可見 */
         }
         
         #stateAngle > div[style*="font-size: 14px"] {
-            margin-top: 5px !important; /* 🔧 調整提示文字間距 */
+            margin-top: 24px !important; /* 🔧 增加間距，讓「選擇後點擊按鈕繼續」更往下 */
         }
         
         /* Phase 3, 4, 5 內容位置調整 - 往下移動 30px */
@@ -1256,7 +1258,7 @@
         
         #stateReady_to_fly {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 80px !important; /* 🔧 往下移動 30px */
+            padding-top: 100px !important; /* 🔧 往下移動 30px */
         }
         
         #stateReady_to_fly .country-display {
@@ -1265,10 +1267,20 @@
         
         #stateCaptainAnnouncement {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 110px !important; /* 🔧 與 phase 3, 4 一樣的位置（60px） */
+            padding-top: 170px !important; /* 🔧 往下移動（從 140px 增加到 170px） */
         }
         
         #stateCaptainAnnouncement .announcement-content {
+            margin-top: 0 !important; /* 確保沒有額外的 margin-top */
+        }
+        
+        /* 降落程序準備中... 和計算目的地... 也使用相同的樣式 */
+        #stateCalculating {
+            justify-content: flex-start !important; /* 從頂部開始 */
+            padding-top: 170px !important; /* 🔧 與機長廣播中一致的位置 */
+        }
+        
+        #stateCalculating .calculating-content {
             margin-top: 0 !important; /* 確保沒有額外的 margin-top */
         }
 
