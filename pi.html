@@ -47,7 +47,7 @@
             height: 100vh; /* 🔧 改為 100vh，讓容器佔滿視窗高度 */
             display: flex;
             flex-direction: column;
-            justify-content: space-between; /* 🔧 改為 space-between，讓 window-area 貼齊頂部，info-bar 貼齊底部 */
+            justify-content: flex-start; /* 🔧 改為 flex-start，讓 window-area 貼齊頂部 */
             align-items: center; /* 🔧 水平置中 */
             position: relative;
             background: #ffffff;
@@ -69,6 +69,8 @@
             align-items: flex-start; /* 🔧 改為向上置中（從 center 改為 flex-start） */
             flex-shrink: 0;
             overflow: hidden;
+            margin: 0; /* 🔧 確保沒有 margin */
+            padding: 0; /* 🔧 確保沒有 padding */
         }
 
         /* 窗戶框 - 850x800 矩形，完全填滿窗戶區域 */
@@ -301,10 +303,12 @@
             align-items: center;
             padding: 0;
             color: #333;
-            position: relative;
+            position: absolute; /* 🔧 改為 absolute，固定在底部 */
+            bottom: 0; /* 🔧 固定在容器底部 */
+            left: 0; /* 🔧 左對齊 */
             overflow: hidden;
             flex-shrink: 0;
-            /* 🔧 移除 margin-top: auto，因為 window-container 使用 justify-content: space-between 會自動推到底部 */
+            margin: 0; /* 🔧 確保沒有 margin */
         }
         
         /* 機長廣播中/準備降落消息顯示 - 保留用於其他用途，但主要使用 stateCaptainAnnouncement */
