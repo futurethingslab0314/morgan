@@ -9841,11 +9841,12 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     }
                     
                     // 生成降落內容（TTS）
+                    // 🔧 改進：無論是否為蟲洞，都傳入 finalDestination，確保語音和 UI 使用相同的目的地
                     const landingDataResult = await generateLandingContent(
                         timeDiff,
                         timeDiffPercent,
                         actualDuration,
-                        isWormhole ? finalDestination : null
+                        finalDestination // 始終傳入已計算好的目的地，確保一致性
                     );
                     
                     // 保存到全局變數，供 handleLanding 使用
@@ -11981,11 +11982,16 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             let destination = null;
             let isWormhole = false;
             
-            // 🔧 改進：如果傳入了預先計算的目的地（可能是蟲洞目的地），優先使用
-            if (preCalculatedDestination && preCalculatedDestination.wormhole) {
+            // 🔧 改進：如果傳入了預先計算的目的地（無論是否為蟲洞），優先使用，確保與 handleLanding 中的 finalDestination 一致
+            if (preCalculatedDestination) {
                 destination = preCalculatedDestination;
-                isWormhole = true;
-                console.log('🌀 [generateLandingContent] 使用預先計算的蟲洞目的地:', destination.city_zh || destination.city);
+                // 檢查是否為蟲洞目的地
+                if (destination.wormhole === true) {
+                    isWormhole = true;
+                    console.log('🌀 [generateLandingContent] 使用預先計算的蟲洞目的地:', destination.city_zh || destination.city);
+                } else {
+                    console.log('✅ [generateLandingContent] 使用預先計算的目的地（非蟲洞）:', destination.city_zh || destination.city);
+                }
             } else {
             // 根據實際時間重新計算最終目的地
             try {
@@ -12657,6 +12663,21 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             
             console.log('🛬 [Phase 7] 降落流程開始執行');
             
+            // 🔧 改進：立即顯示 stateLandingCountryInfo（即使內容還在生成中），避免下方 bar 空白
+            const landingCountryInfoState = document.getElementById('stateLandingCountryInfo');
+            if (landingCountryInfoState) {
+                landingCountryInfoState.style.display = 'flex';
+                landingCountryInfoState.classList.add('active');
+                // 先顯示載入狀態（如果目的地資訊還沒準備好）
+                const flagEl = document.getElementById('landingCountryFlag');
+                const nameEl = document.getElementById('landingCountryName');
+                const descEl = document.getElementById('landingCountryDesc');
+                if (flagEl) flagEl.textContent = '🏳️';
+                if (nameEl) nameEl.textContent = 'Sleep Airline 感謝您的搭乘...';
+                if (descEl) descEl.textContent = '';
+                console.log('✅ [handleLanding] 已立即顯示 stateLandingCountryInfo（載入狀態）');
+            }
+            
             // ============================================================================
             // 步驟 1: 進入 Phase 7，先播放 wakeup 音樂（必須立即播放，不阻塞）
             // ============================================================================
@@ -12860,11 +12881,12 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 if (isWormhole && finalDestination) {
                     window._wormholeDestination = finalDestination;
                 }
+                // 🔧 改進：無論是否為蟲洞，都傳入 finalDestination，確保語音和 UI 使用相同的目的地
                 landingData = await generateLandingContent(
                     timeDiff,
                     timeDiffPercent,
                     actualDuration,
-                    isWormhole ? finalDestination : null
+                    finalDestination // 始終傳入已計算好的目的地，確保一致性
                 );
             }
             
