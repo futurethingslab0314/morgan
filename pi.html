@@ -174,7 +174,7 @@
             width: 88%; /* 🔧 縮短 15%（從 100% 改為 85%） */
             max-width: 88%; /* 🔧 確保最大寬度也是 85% */
             margin: 0 auto; /* 🔧 置中 */
-            margin-top: 8px; /* 🔧 整體往下移動 4px */
+            margin-top: 20px; /* 🔧 整體往下移動更多（從 8px 改為 20px） */
             padding: 6px 24px 10px;
             box-sizing: border-box;
             display: none; /* 預設隱藏，進入起飛/巡航階段時打開 */
@@ -205,7 +205,7 @@
             width: 0%;
             height: 100%;
             border-radius: 999px;
-            background: linear-gradient(90deg, #56ccf2, #2f80ed);
+            background: #56ccf2 !important; /* 🔧 改為純色，移除漸層 */
             box-shadow: 0 0 8px rgba(86,204,242,0.6);
             transition: width 0.5s ease-out;
         }
@@ -1225,7 +1225,7 @@
         
         #stateTimer {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 100px !important; /* 🔧 往下移動 30px */
+            padding-top: 130px !important; /* 🔧 往下移動更多（從 100px 改為 130px，再往下移動 30px） */
         }
         
         #stateTimer .timer-progress-container {
@@ -1238,7 +1238,7 @@
         
         #stateAngle {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 88px !important; /* 🔧 減少 padding-top，讓內容更靠上，避免需要捲動 */
+            padding-top: 118px !important; /* 🔧 往下移動更多（從 88px 改為 118px，再往下移動 30px） */
             padding-bottom: 20px !important; /* 🔧 確保底部有空間 */
         }
         
