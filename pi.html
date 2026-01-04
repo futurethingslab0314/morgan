@@ -1318,8 +1318,7 @@
         
         /* 夜間模式基礎樣式 */
         body.night-mode {
-            background: #0a0a0a !important; /* 深色背景，降低整體亮度 */
-            filter: brightness(0.7) !important; /* 降低整體亮度 30% */
+            background: #0a0a0a !important; /* 深色背景 */
         }
         
         body.night-mode .window-container {
@@ -1417,13 +1416,17 @@
             background: linear-gradient(90deg, rgba(86,204,242,0.25), rgba(47,128,237,0.15)) !important; /* 保持淺藍色背景 */
         }
         
-        /* 🔧 改進：圖片和視頻在夜間模式下保持正常亮度 */
-        body.night-mode .initial-image,
-        body.night-mode .window-content,
-        body.night-mode .video-container,
-        body.night-mode .video-container video,
-        body.night-mode .midnight-service-image {
-            filter: brightness(1.43) !important; /* 反向補償：1 / 0.7 ≈ 1.43，抵消 body 的 brightness(0.7) */
+        /* 🔧 改進：夜間模式 - 在最上層添加半透明黑色遮罩 */
+        body.night-mode .window-content::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4); /* 半透明黑色遮罩 */
+            z-index: 999; /* 確保在最上層 */
+            pointer-events: none; /* 不阻擋點擊事件 */
         }
         
         /* 平滑過渡動畫 */
