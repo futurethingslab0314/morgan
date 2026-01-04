@@ -38,7 +38,7 @@
             flex-direction: row;
             align-items: flex-start;
             gap: 20px;
-            padding: 20px;
+            padding: 0 20px 20px 20px; /* 🔧 移除頂部 padding，讓視窗貼齊頂部 */
         }
 
         /* 視窗容器：保持 800x1080，視窗與頂部對齊，bar 與底部對齊 */
@@ -529,12 +529,12 @@
             bottom: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
+            background: transparent !important; /* 🔧 改為透明背景 */
             border-radius: 8px;
             padding: 10px 15px;
             font-size: 11px;
-            color: #666;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            color: #ccc !important; /* 🔧 改為淺灰色 */
+            box-shadow: none !important; /* 🔧 移除陰影 */
             z-index: 10;
             display: flex;
             gap: 15px;
@@ -693,6 +693,7 @@
         .button-hint-item .hint-text {
             font-size: 11px;
             line-height: 1.3;
+            color: #ccc !important; /* 🔧 改為淺灰色 */
         }
         
         /* 載入動畫點點 */
@@ -1425,7 +1426,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.4); /* 半透明黑色遮罩 */
+            background: rgba(0, 0, 0, 0.6); /* 半透明黑色遮罩 */
             z-index: 999; /* 確保在最上層 */
             pointer-events: none; /* 不阻擋點擊事件 */
         }
