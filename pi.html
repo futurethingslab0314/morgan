@@ -174,7 +174,7 @@
             width: 88%; /* 🔧 縮短 15%（從 100% 改為 85%） */
             max-width: 88%; /* 🔧 確保最大寬度也是 85% */
             margin: 0 auto; /* 🔧 置中 */
-            margin-top: 20px; /* 🔧 整體往下移動更多（從 8px 改為 20px） */
+            margin-top: 40px; /* 🔧 整體往下移動更多（從 8px 改為 20px） */
             padding: 6px 24px 10px;
             box-sizing: border-box;
             display: none; /* 預設隱藏，進入起飛/巡航階段時打開 */
@@ -470,12 +470,11 @@
         #stateFlightFeedback .feedback-stars-container {
             display: flex;
             gap: 12px;
-            margin-top: -15px !important; /* 🔧 往上移動星星（減少與標題的間距） */
+            margin-top: -23px !important; /* 🔧 往上移動星星更多（從 -15px 改為 -20px） */
             align-items: center;
             justify-content: center;
             width: 100%;
             max-width: 600px;
-            margin-top: 8px !important; /* 🔧 讓星星往下移動 */
             align-self: center; /* 🔧 確保星星容器在垂直方向上置中 */
         }
         
@@ -1204,7 +1203,7 @@
         /* Phase 0, 1, 2 內容位置調整 - 因為標題被隱藏，需要往下移動 */
         #stateCountry {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 100px !important; /* 🔧 往下移動更多（從 70px 改為 100px，再往下移動 30px） */
+            padding-top: 110px !important; /* 🔧 往下移動更多（從 70px 改為 100px，再往下移動 30px） */
         }
         
         #stateCountry .country-display {
@@ -1238,7 +1237,7 @@
         
         #stateAngle {
             justify-content: flex-start !important; /* 從頂部開始 */
-            padding-top: 118px !important; /* 🔧 往下移動更多（從 88px 改為 118px，再往下移動 30px） */
+            padding-top: 90px !important; /* 🔧 往下移動更多（從 88px 改為 118px，再往下移動 30px） */
             padding-bottom: 20px !important; /* 🔧 確保底部有空間 */
         }
         
@@ -1909,7 +1908,7 @@
         let sleepTimer = null;
 
         // 時間選項（分鐘）- 符合 90 分鐘睡眠週期
-        const timerOptions = [8, 180, 270, 360, 450, 540];
+        const timerOptions = [90, 180, 270, 450, 450, 540];
         
         // 氣候帶選項（基於緯度範圍，方向作為輔助條件）
         const climateZoneOptions = [
