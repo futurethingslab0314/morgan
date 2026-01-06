@@ -254,6 +254,16 @@
             margin-right: 0 !important;
             order: 2;
         }
+        
+        /* 🔧 新增：進度條中間下方顯示距離 */
+        .flight-progress-distance {
+            text-align: center;
+            font-size: 12px;
+            color: #ccc;
+            margin-top: 6px;
+            width: 100%;
+            font-weight: 500;
+        }
 
         /* 下一步按鈕 */
         .next-button {
@@ -1592,6 +1602,10 @@
                 <span id="flightProgressEndLabel">
                     載入中...
                 </span>
+            </div>
+            <!-- 🔧 新增：顯示已飛行距離/總距離 -->
+            <div class="flight-progress-distance" id="flightProgressDistance">
+                0 / 0 公里
             </div>
         </div>
 
@@ -4542,7 +4556,7 @@
             try {
                 // 使用 new Audio() 和 Promise 確保完全播放完成
                 const captainAudio = new Audio('sounds/captain.mp3');
-                captainAudio.volume = 1.0;
+                captainAudio.volume = 0.7; /* 🔧 Phase 4 音量降低到 0.7 倍，晚上不會太大聲 */
                 captainAudio.preload = 'auto';
                 
                 // 等待音頻載入完成
@@ -4641,7 +4655,7 @@
             if (preparedAudioId) {
                 console.log('2️⃣ 播放預先生成的 TTS 音檔:', preparedAudioId);
                 try {
-                    await playCachedTts(preparedAudioId);
+                    await playCachedTts(preparedAudioId, 0.7); /* 🔧 Phase 4 音量降低到 0.7 倍，晚上不會太大聲 */
                     console.log('✅ TTS 音檔播放完成');
                 } catch (error) {
                     console.warn('⚠️ TTS 音檔播放時發生錯誤:', error);
@@ -4652,7 +4666,7 @@
                             isTakeoff: true,
                             rate: 0.65,
                             pitch: 0.85,
-                            volume: 1.0,
+                            volume: 0.7, /* 🔧 Phase 4 音量降低到 0.7 倍，晚上不會太大聲 */
                             gender: preparedAnnouncementGender
                         });
                     }
@@ -4665,7 +4679,7 @@
                         isTakeoff: true,
                         rate: 0.65,  // 🔧 更慢的語速，更溫柔
                         pitch: 0.85,  // 稍低音調（更柔和）
-                        volume: 1.0,  // 起飛語音拉到最大音量
+                        volume: 0.7,  /* 🔧 Phase 4 音量降低到 0.7 倍，晚上不會太大聲 */
                         gender: preparedAnnouncementGender  // 🔧 傳遞性別
                     });
                     console.log('✅ TTS 語音播放完成（' + preparedAnnouncementGender + ' 聲）');
@@ -4793,6 +4807,20 @@
                         clearInterval(window._flightProgressInterval);
                     }
                     
+                    // 🔧 新增：計算總距離（起點到終點）
+                    let totalDistance = 0;
+                    const distanceEl = document.getElementById('flightProgressDistance');
+                    if (destinationData) {
+                        const originLat = destinationCalculator.originLat || 25.05306;
+                        const originLon = destinationCalculator.originLon || 121.52639;
+                        const destLat = destinationData.latitude || destinationData.lat;
+                        const destLon = destinationData.longitude || destinationData.lon;
+                        if (destLat && destLon) {
+                            totalDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
+                            console.log('✅ [進度條] 計算總距離:', totalDistance.toFixed(0), '公里');
+                        }
+                    }
+                    
                     // 每 1 秒更新一次進度，根據實際經過的時間計算比例
                     window._flightProgressInterval = setInterval(() => {
                         if (!sleepStartTime || !selectedTimer) return;
@@ -4808,6 +4836,16 @@
                         // 讓光暈跟著前端推進，稍微超前一點點看起來更有動感
                         const glowPos = Math.min(100, Math.max(0, progress * 100 + 2));
                         glow.style.left = glowPos + '%';
+                        
+                        // 🔧 新增：計算並更新已飛行距離
+                        if (distanceEl && totalDistance > 0) {
+                            const currentDistance = progress * totalDistance;
+                            const currentDistanceRounded = Math.round(currentDistance);
+                            const totalDistanceRounded = Math.round(totalDistance);
+                            distanceEl.textContent = `${currentDistanceRounded} / ${totalDistanceRounded} 公里`;
+                        } else if (distanceEl) {
+                            distanceEl.textContent = '0 / 0 公里';
+                        }
                     }, 1000);
                 }
             } catch (e) {
@@ -7242,6 +7280,8 @@
             // 獲取當前時間信息
             const now = new Date();
             const hour = now.getHours();
+            const minute = now.getMinutes();
+            const currentTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
             let timeDescription = '';
             let weatherDescription = '';
             
@@ -7278,6 +7318,26 @@
                 durationDescription = `${minutes}分鐘`;
             }
             
+            // 🔧 新增：獲取當前位置和計算距離
+            const originCityName = '台北'; // 預設出發地（可以從 destinationCalculator 或其他地方獲取）
+            const originLat = destinationCalculator.originLat || 25.05306;
+            const originLon = destinationCalculator.originLon || 121.52639;
+            const destLat = city.latitude || city.lat;
+            const destLon = city.longitude || city.lon;
+            let flightDistance = 0;
+            let distanceDescription = '';
+            
+            if (destLat && destLon) {
+                flightDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
+                // 格式化距離：如果超過1000公里，顯示為「約X千公里」，否則顯示「約X公里」
+                if (flightDistance >= 1000) {
+                    const thousands = Math.round(flightDistance / 100) / 10; // 保留一位小數
+                    distanceDescription = `約${thousands}千公里`;
+                } else {
+                    distanceDescription = `約${Math.round(flightDistance)}公里`;
+                }
+            }
+            
             // 獲取城市中文名稱（用於廣播中告知乘客目的地）
             const cityName = city.city_zh || city.city || '目的地';
             const countryName = city.country_zh || city.country || '目的地國家';
@@ -7295,11 +7355,12 @@
             // 3. 語氣溫和、正常，像一般機長廣播
             // 4. 性別標註：模板 1、3、5 為男聲；模板 2、4 為女聲
             // 5. 精簡到 80-120 字，加快 TTS 生成速度
+            // 🔧 新增：包含當前位置、時間、距離資訊
             const announcementTemplates = [
                 // 模板 1：男聲 - 專業機長風格（精簡版，約 90 字）
                 `各位旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長為您廣播。
 
-我們預計在${timeDescription}起飛，飛行時間約${durationDescription}。目的地是${countryName}的${cityName}，一個「${climateName}」的地方。
+現在時間是${currentTime}，我們正從${originCityName}出發，預計在${timeDescription}起飛，飛行時間約${durationDescription}，飛行距離${distanceDescription}。目的地是${countryName}的${cityName}，一個「${climateName}」的地方。
 
 請將手機調整為飛航模式，調暗螢幕。如果方便的話，也可以拉下窗簾。
 
@@ -7310,7 +7371,7 @@
                 // 模板 2：女聲 - 溫柔風格（精簡版，約 85 字）
                 `晚安，各位旅客，歡迎搭乘 Sleep Airline。這裡是機長。
 
-今晚我們將進行一段約${durationDescription}的飛行，前往${countryName}的${cityName}，一個「${climateName}」的地方。
+現在時間是${currentTime}，我們正從${originCityName}出發，今晚我們將進行一段約${durationDescription}的飛行，飛行距離${distanceDescription}，前往${countryName}的${cityName}，一個「${climateName}」的地方。
 
 請將手機調成飛航模式，調暗螢幕。如果需要的話，也可以把窗簾拉下。
 
@@ -7321,7 +7382,7 @@
                 // 模板 3：男聲 - 簡潔風格（精簡版，約 88 字）
                 `各位旅客晚安，歡迎搭乘 Sleep Airline，我是本次航班的機長。
 
-我們即將從${timeDescription}起飛，預計飛行時間約${durationDescription}。目的地是${countryName}的${cityName}，一個「${climateName}」的區域。
+現在時間是${currentTime}，我們正從${originCityName}出發，即將從${timeDescription}起飛，預計飛行時間約${durationDescription}，飛行距離${distanceDescription}。目的地是${countryName}的${cityName}，一個「${climateName}」的區域。
 
 請將手機調整為飛航模式，調暗螢幕。如果想要更好休息，可以把窗簾拉下。
 
@@ -7332,7 +7393,7 @@
                 // 模板 4：女聲 - 親切風格（精簡版，約 82 字）
                 `親愛的旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長。
 
-今晚我們將在${timeDescription}起飛，飛行時間約${durationDescription}。我們即將飛往${countryName}的${cityName}，一個「${climateName}」的地方。
+現在時間是${currentTime}，我們正從${originCityName}出發，今晚我們將在${timeDescription}起飛，飛行時間約${durationDescription}，飛行距離${distanceDescription}。我們即將飛往${countryName}的${cityName}，一個「${climateName}」的地方。
 
 請將手機調成飛航模式，關閉不必要的通知。如果需要的話，也可以把窗簾拉下。
 
@@ -7343,7 +7404,7 @@
                 // 模板 5：男聲 - 專業公告風格（精簡版，約 95 字）
                 `各位旅客，您好，歡迎搭乘 Sleep Airline，這裡是本次航班的機長。
 
-我們將從${timeDescription}起飛，預計飛行時間約${durationDescription}。目的地是${countryName}的${cityName}，一個擁有「${climateName}」氣候的地方。
+現在時間是${currentTime}，我們正從${originCityName}出發，將從${timeDescription}起飛，預計飛行時間約${durationDescription}，飛行距離${distanceDescription}。目的地是${countryName}的${cityName}，一個擁有「${climateName}」氣候的地方。
 
 請確認安全帶已經繫好，手機與平板已切換到飛航模式。如果您希望更好休息，也可以現在就把窗簾拉下。
 
@@ -7819,18 +7880,19 @@
         }
 
         // 播放已預先生成的 TTS 音檔（使用 /tts/play_cached）
-        async function playCachedTts(audioId) {
+        async function playCachedTts(audioId, volume = 1.0) {
             if (!audioId) return;
             
             const TTS_BASE = 'http://127.0.0.1:5005';
             try {
-                console.log('🎵 呼叫 /tts/play_cached 播放預先生成的音檔:', audioId);
+                console.log('🎵 呼叫 /tts/play_cached 播放預先生成的音檔:', audioId, '音量:', volume);
                 const response = await fetch(TTS_BASE + '/tts/play_cached', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         audio_id: audioId,
-                        wait_for_completion: true  // 🔧 要求後端等待播放完成
+                        wait_for_completion: true,  // 🔧 要求後端等待播放完成
+                        volume: volume  // 🔧 傳遞音量參數（0.0-1.0）
                     }),
                     timeout: 60000  // 🔧 增加超時時間到 60 秒，確保長語音能完整播放
                 });
@@ -11722,14 +11784,14 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         console.log(`▶️ 開始播放喚醒音樂（淡入到 0.15）: ${musicPath}`);
                         await descentWakeupMusic.play();
                         
-                        // 音樂慢慢淡入到 0.15（2秒淡入）
+                        // 音樂慢慢淡入到 0.15（淡入時間延長）
                         // 🔧 改進：清理之前的淡入 interval（如果有的話）
                         if (window._phase6MusicFadeInInterval) {
                             clearInterval(window._phase6MusicFadeInInterval);
                             window._phase6MusicFadeInInterval = null;
                         }
                         
-                        const fadeInDuration = 2000; // 2秒淡入
+                        const fadeInDuration = 3500; /* 🔧 淡入時間從 2秒 延長到 3.5秒，讓音樂更柔和 */
                         const fadeInStartTime = Date.now();
                         window._phase6MusicFadeInInterval = setInterval(() => {
                             if (!descentWakeupMusic || descentWakeupMusic.paused) {
@@ -12103,42 +12165,122 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 // 正常情況（沒有蟲洞）
                 if (timeDiffMinutes < -15) {
                     // 提早超過 15 分鐘 = 迫降
+                    // 🔧 新增：計算飛行距離
+                    const originLat = destinationCalculator.originLat || 25.05306;
+                    const originLon = destinationCalculator.originLon || 121.52639;
+                    const destLat = destination.latitude || destination.lat;
+                    const destLon = destination.longitude || destination.lon;
+                    let flightDistance = 0;
+                    let distanceDescription = '';
+                    if (destLat && destLon) {
+                        flightDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
+                        if (flightDistance >= 1000) {
+                            const thousands = Math.round(flightDistance / 100) / 10;
+                            distanceDescription = `，我們已經飛行了約${thousands}千公里`;
+                        } else {
+                            distanceDescription = `，我們已經飛行了約${Math.round(flightDistance)}公里`;
+                        }
+                    }
                     if (destination && destination.city_zh) {
-                        announcement = `各位旅客，由於緊急情況，我們需要提前降落。機長已決定進行緊急降落程序，請您保持冷靜。我們即將降落在一個臨時機場。雖然這不是原計劃的目的地，但請放心，我們會確保您的安全。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
+                        announcement = `各位旅客，由於緊急情況，我們需要提前降落${distanceDescription}。機長已決定進行緊急降落程序，請您保持冷靜。我們即將降落在一個臨時機場。雖然這不是原計劃的目的地，但請放心，我們會確保您的安全。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
                     } else {
-                    announcement = `各位旅客，由於緊急情況，我們需要提前降落。機長已決定進行緊急降落程序，請您保持冷靜。我們即將降落在一個臨時機場。雖然這不是原計劃的目的地，但請放心，我們會確保您的安全。`;
+                    announcement = `各位旅客，由於緊急情況，我們需要提前降落${distanceDescription}。機長已決定進行緊急降落程序，請您保持冷靜。我們即將降落在一個臨時機場。雖然這不是原計劃的目的地，但請放心，我們會確保您的安全。`;
                     }
                     console.log('🚨 迫降情況（提早超過 15 分鐘）');
                 } else if (timeDiffMinutes < -5) {
                     // 提早 5-15 分鐘 = 機長趕時間
+                    // 🔧 新增：計算飛行距離
+                    const originLat = destinationCalculator.originLat || 25.05306;
+                    const originLon = destinationCalculator.originLon || 121.52639;
+                    const destLat = destination.latitude || destination.lat;
+                    const destLon = destination.longitude || destination.lon;
+                    let flightDistance = 0;
+                    let distanceDescription = '';
+                    if (destLat && destLon) {
+                        flightDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
+                        if (flightDistance >= 1000) {
+                            const thousands = Math.round(flightDistance / 100) / 10;
+                            distanceDescription = `，我們已經飛行了約${thousands}千公里`;
+                        } else {
+                            distanceDescription = `，我們已經飛行了約${Math.round(flightDistance)}公里`;
+                        }
+                    }
                     if (destination && destination.city_zh) {
-                        announcement = `各位旅客，由於航路優化，我們比預期時間提早抵達。機長決定提前開始降落程序。請您慢慢醒來，我們即將降落在目的地。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
+                        announcement = `各位旅客，由於航路優化，我們比預期時間提早抵達${distanceDescription}。機長決定提前開始降落程序。請您慢慢醒來，我們即將降落在目的地。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
                     } else {
-                    announcement = `各位旅客，由於航路優化，我們比預期時間提早抵達。機長決定提前開始降落程序。請您慢慢醒來，我們即將降落在目的地。`;
+                    announcement = `各位旅客，由於航路優化，我們比預期時間提早抵達${distanceDescription}。機長決定提前開始降落程序。請您慢慢醒來，我們即將降落在目的地。`;
                     }
                     console.log('⏰ 提早降落（機長趕時間，提早 ' + Math.abs(timeDiffMinutes) + ' 分鐘）');
                 } else if (timeDiffMinutes <= 5 && timeDiffMinutes >= -5) {
                     // 準時（±5 分鐘內）
+                    // 🔧 新增：計算飛行距離
+                    const originLat = destinationCalculator.originLat || 25.05306;
+                    const originLon = destinationCalculator.originLon || 121.52639;
+                    const destLat = destination.latitude || destination.lat;
+                    const destLon = destination.longitude || destination.lon;
+                    let flightDistance = 0;
+                    let distanceDescription = '';
+                    if (destLat && destLon) {
+                        flightDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
+                        if (flightDistance >= 1000) {
+                            const thousands = Math.round(flightDistance / 100) / 10;
+                            distanceDescription = `，我們已經飛行了約${thousands}千公里`;
+                        } else {
+                            distanceDescription = `，我們已經飛行了約${Math.round(flightDistance)}公里`;
+                        }
+                    }
                     if (destination && destination.city_zh) {
-                        announcement = `各位旅客，我們即將開始降落程序。請您慢慢醒來，輕輕活動一下身體。我們正在接近目的地，很快您就會看到窗外的風景。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
+                        announcement = `各位旅客，我們即將開始降落程序${distanceDescription}。請您慢慢醒來，輕輕活動一下身體。我們正在接近目的地，很快您就會看到窗外的風景。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
                     } else {
-                    announcement = `各位旅客，我們即將開始降落程序。請您慢慢醒來，輕輕活動一下身體。我們正在接近目的地，很快您就會看到窗外的風景。`;
+                    announcement = `各位旅客，我們即將開始降落程序${distanceDescription}。請您慢慢醒來，輕輕活動一下身體。我們正在接近目的地，很快您就會看到窗外的風景。`;
                     }
                     console.log('✅ 準時降落（差異 ' + timeDiffMinutes + ' 分鐘）');
                 } else if (timeDiffMinutes <= 15) {
                     // 晚 5-15 分鐘 = 風大盤旋
+                    // 🔧 新增：計算飛行距離
+                    const originLat = destinationCalculator.originLat || 25.05306;
+                    const originLon = destinationCalculator.originLon || 121.52639;
+                    const destLat = destination.latitude || destination.lat;
+                    const destLon = destination.longitude || destination.lon;
+                    let flightDistance = 0;
+                    let distanceDescription = '';
+                    if (destLat && destLon) {
+                        flightDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
+                        if (flightDistance >= 1000) {
+                            const thousands = Math.round(flightDistance / 100) / 10;
+                            distanceDescription = `，我們已經飛行了約${thousands}千公里`;
+                        } else {
+                            distanceDescription = `，我們已經飛行了約${Math.round(flightDistance)}公里`;
+                        }
+                    }
                     if (destination && destination.city_zh) {
-                        announcement = `各位旅客，由於上空風勢較大，我們在上方盤旋了一會兒，現在已經調整好航線。請您慢慢醒來，我們即將開始降落程序。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
+                        announcement = `各位旅客，由於上空風勢較大，我們在上方盤旋了一會兒${distanceDescription}，現在已經調整好航線。請您慢慢醒來，我們即將開始降落程序。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
                     } else {
-                    announcement = `各位旅客，由於上空風勢較大，我們在上方盤旋了一會兒，現在已經調整好航線。請您慢慢醒來，我們即將開始降落程序。`;
+                    announcement = `各位旅客，由於上空風勢較大，我們在上方盤旋了一會兒${distanceDescription}，現在已經調整好航線。請您慢慢醒來，我們即將開始降落程序。`;
                     }
                     console.log('💨 晚降落（風大盤旋，晚 ' + timeDiffMinutes + ' 分鐘）');
                 } else {
                     // 晚超過 15 分鐘 = 飛錯機場
+                    // 🔧 新增：計算飛行距離
+                    const originLat = destinationCalculator.originLat || 25.05306;
+                    const originLon = destinationCalculator.originLon || 121.52639;
+                    const destLat = destination.latitude || destination.lat;
+                    const destLon = destination.longitude || destination.lon;
+                    let flightDistance = 0;
+                    let distanceDescription = '';
+                    if (destLat && destLon) {
+                        flightDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
+                        if (flightDistance >= 1000) {
+                            const thousands = Math.round(flightDistance / 100) / 10;
+                            distanceDescription = `，我們已經飛行了約${thousands}千公里`;
+                        } else {
+                            distanceDescription = `，我們已經飛行了約${Math.round(flightDistance)}公里`;
+                        }
+                    }
                     if (destination && destination.city_zh) {
-                        announcement = `各位旅客，抱歉讓您久等了。由於導航系統的小小誤差，我們剛才飛到了另一個機場附近。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。請您慢慢醒來，我們即將降落。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
+                        announcement = `各位旅客，抱歉讓您久等了${distanceDescription}。由於導航系統的小小誤差，我們剛才飛到了另一個機場附近。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。請您慢慢醒來，我們即將降落。歡迎來到${destination.city_zh}，${destination.country_zh || destination.country}！`;
                     } else {
-                    announcement = `各位旅客，抱歉讓您久等了。由於導航系統的小小誤差，我們剛才飛到了另一個機場附近。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。請您慢慢醒來，我們即將降落。`;
+                    announcement = `各位旅客，抱歉讓您久等了${distanceDescription}。由於導航系統的小小誤差，我們剛才飛到了另一個機場附近。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。請您慢慢醒來，我們即將降落。`;
                     }
                     console.log('🌀 晚降落（飛錯機場，晚 ' + timeDiffMinutes + ' 分鐘）');
                 }
