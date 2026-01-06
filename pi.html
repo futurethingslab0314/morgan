@@ -4353,11 +4353,24 @@
                         if (!preparedAnnouncement) {
                             console.log('🎤 生成起飛 TTS 語音文字與音檔（按鈕確認後，時機1未生成）...');
                         const climateZone = destinationData.climateZone || null;
+                        // 🔧 新增：獲取實際起點位置
+                        let originLocation = null;
+                        try {
+                            originLocation = await loadLastLandingLocation();
+                            if (originLocation) {
+                                destinationCalculator.setOrigin(originLocation.latitude, originLocation.longitude);
+                                console.log('✅ [Phase 3] 使用實際起點位置:', originLocation.city_zh || originLocation.city);
+                            }
+                        } catch (error) {
+                            console.warn('⚠️ [Phase 3] 獲取起點位置失敗，使用預設值:', error);
+                        }
+                        
                         const announcementResult = generateTakeoffAnnouncement(
                             destinationData,
                             destinationData.country,
                             selectedTimer,
-                            climateZone
+                            climateZone,
+                            originLocation // 🔧 新增：傳遞起點位置信息
                         );
                         
                         if (announcementResult && announcementResult.text) {
@@ -4480,11 +4493,25 @@
             
             if (destinationData) {
                 const climateZone = destinationData.climateZone || null;
+                // 🔧 新增：獲取實際起點位置
+                let originLocation = null;
+                try {
+                    originLocation = await loadLastLandingLocation();
+                    if (originLocation) {
+                        // 更新 destinationCalculator 的起點座標
+                        destinationCalculator.setOrigin(originLocation.latitude, originLocation.longitude);
+                        console.log('✅ [prepareForTakeoff] 使用實際起點位置:', originLocation.city_zh || originLocation.city, originLocation.country_zh || originLocation.country);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ [prepareForTakeoff] 獲取起點位置失敗，使用預設值:', error);
+                }
+                
                 const announcementResult = generateTakeoffAnnouncement(
                     destinationData,
                     destinationData.country,
                     selectedTimer,
-                    climateZone
+                    climateZone,
+                    originLocation // 🔧 新增：傳遞起點位置信息
                 );
                 
                 if (announcementResult && announcementResult.text) {
@@ -7276,14 +7303,56 @@
         // ============================================================================
         // 起飛語音生成（不使用 OpenAI，即時生成）
         // ============================================================================
-        function generateTakeoffAnnouncement(city, country, durationMinutes, climateZoneOption = null) {
-            // 獲取當前時間信息
-            const now = new Date();
-            const hour = now.getHours();
-            const minute = now.getMinutes();
-            const currentTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        function generateTakeoffAnnouncement(city, country, durationMinutes, climateZoneOption = null, originLocation = null) {
+            // 🔧 改進：獲取實際起點位置（從 Firebase 或預設值）
+            let originCityName = '台北';
+            let originLat = 25.05306;
+            let originLon = 121.52639;
+            let originTimezone = 'Asia/Taipei';
+            
+            if (originLocation) {
+                // 使用從 Firebase 獲取的實際起點位置
+                originCityName = originLocation.city_zh || originLocation.city || '台北';
+                originLat = originLocation.latitude || 25.05306;
+                originLon = originLocation.longitude || 121.52639;
+                // 獲取起點位置的時區（如果有的話）
+                if (originLocation.timezone) {
+                    originTimezone = originLocation.timezone;
+                } else if (originLocation.country_iso_code) {
+                    // 根據國家代碼推斷時區（簡化版）
+                    originTimezone = destinationCalculator.getTimezoneByCountry(originLocation.country || '');
+                }
+                console.log('✅ [起飛語音] 使用實際起點位置:', originCityName, `(${originLat.toFixed(3)}, ${originLon.toFixed(3)})`, '時區:', originTimezone);
+            } else {
+                // 使用 destinationCalculator 的起點座標（可能已經被更新）
+                originLat = destinationCalculator.originLat || 25.05306;
+                originLon = destinationCalculator.originLon || 121.52639;
+                console.log('⚠️ [起飛語音] 未提供起點位置，使用 destinationCalculator 的座標:', `(${originLat.toFixed(3)}, ${originLon.toFixed(3)})`);
+            }
+            
+            // 🔧 改進：獲取起點位置的當地時間
+            let currentTime = '';
+            let hour = 0;
+            let minute = 0;
             let timeDescription = '';
             let weatherDescription = '';
+            
+            try {
+                const now = new Date();
+                // 使用起點位置的時區獲取當地時間
+                const localTime = new Date(now.toLocaleString('en-US', { timeZone: originTimezone }));
+                hour = localTime.getHours();
+                minute = localTime.getMinutes();
+                currentTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                console.log('✅ [起飛語音] 起點位置當地時間:', currentTime, '時區:', originTimezone);
+            } catch (error) {
+                // 如果時區轉換失敗，使用本地時間
+                console.warn('⚠️ [起飛語音] 時區轉換失敗，使用本地時間:', error);
+                const now = new Date();
+                hour = now.getHours();
+                minute = now.getMinutes();
+                currentTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+            }
             
             // 根據時間判斷時段和天氣
             if (hour >= 5 && hour < 9) {
@@ -7318,10 +7387,7 @@
                 durationDescription = `${minutes}分鐘`;
             }
             
-            // 🔧 新增：獲取當前位置和計算距離
-            const originCityName = '台北'; // 預設出發地（可以從 destinationCalculator 或其他地方獲取）
-            const originLat = destinationCalculator.originLat || 25.05306;
-            const originLon = destinationCalculator.originLon || 121.52639;
+            // 🔧 改進：計算實際距離（使用實際起點和終點座標）
             const destLat = city.latitude || city.lat;
             const destLon = city.longitude || city.lon;
             let flightDistance = 0;
@@ -7336,6 +7402,7 @@
                 } else {
                     distanceDescription = `約${Math.round(flightDistance)}公里`;
                 }
+                console.log('✅ [起飛語音] 計算飛行距離:', distanceDescription, `(${originCityName} → ${city.city_zh || city.city})`);
             }
             
             // 獲取城市中文名稱（用於廣播中告知乘客目的地）
@@ -10477,11 +10544,24 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 console.log('🎤 開始生成起飛語音...');
                 // 獲取氣候帶選項（如果有的話）
                 const climateZone = destinationData.climateZone || null;
+                // 🔧 新增：獲取實際起點位置
+                let originLocation = null;
+                try {
+                    originLocation = await loadLastLandingLocation();
+                    if (originLocation) {
+                        destinationCalculator.setOrigin(originLocation.latitude, originLocation.longitude);
+                        console.log('✅ [測試] 使用實際起點位置:', originLocation.city_zh || originLocation.city);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ [測試] 獲取起點位置失敗，使用預設值:', error);
+                }
+                
                 const announcementResult = generateTakeoffAnnouncement(
                     destinationData,
                     destinationData.country,
                     selectedTimer,
-                    climateZone  // 傳遞氣候帶選項以選擇對應的語音模板
+                    climateZone,  // 傳遞氣候帶選項以選擇對應的語音模板
+                    originLocation // 🔧 新增：傳遞起點位置信息
                 );
                 
                 if (announcementResult && announcementResult.text) {
