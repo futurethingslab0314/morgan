@@ -4845,6 +4845,12 @@
                         if (destLat && destLon) {
                             totalDistance = destinationCalculator.calculateDistance(originLat, originLon, destLat, destLon);
                             console.log('✅ [進度條] 計算總距離:', totalDistance.toFixed(0), '公里');
+                            console.log('   📍 起點座標:', `(${originLat.toFixed(3)}, ${originLon.toFixed(3)})`);
+                            console.log('   📍 終點座標:', `(${destLat.toFixed(3)}, ${destLon.toFixed(3)})`);
+                            console.log('   📍 起點城市:', destinationData.city_zh || destinationData.city || '未知');
+                            console.log('   📍 終點城市:', destinationData.city_zh || destinationData.city || '未知');
+                        } else {
+                            console.warn('⚠️ [進度條] 目的地座標缺失:', { destLat, destLon, destinationData });
                         }
                     }
                     
@@ -6223,6 +6229,12 @@
             
             // 計算距離（Haversine 公式）
             calculateDistance(lat1, lon1, lat2, lon2) {
+                // 🔧 改進：驗證輸入座標
+                if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+                    console.warn('⚠️ [calculateDistance] 座標無效:', { lat1, lon1, lat2, lon2 });
+                    return 0;
+                }
+                
                 const R = 6371; // 地球半徑（公里）
                 const dLat = (lat2 - lat1) * Math.PI / 180;
                 const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -6230,7 +6242,14 @@
                           Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                           Math.sin(dLon / 2) * Math.sin(dLon / 2);
                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
+                const distance = R * c;
+                
+                // 🔧 改進：添加調試信息（僅在開發時顯示）
+                if (distance > 1000) {
+                    console.log(`📏 [calculateDistance] 距離計算: (${lat1.toFixed(3)}, ${lon1.toFixed(3)}) → (${lat2.toFixed(3)}, ${lon2.toFixed(3)}) = ${distance.toFixed(0)} 公里`);
+                }
+                
+                return distance;
             }
             
             // 檢查方位是否在指定區段內
