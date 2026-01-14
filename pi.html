@@ -3842,6 +3842,20 @@
                 }
             }
             
+            // 🔧 新增：詳細的按鈕點擊日誌
+            console.log('🔘 ========== 按鈕點擊事件 ==========');
+            console.log('   時間戳:', new Date(currentTime).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }));
+            console.log('   當前階段 (Phase):', currentPhase, `(${currentPhase === Phase.POST_ARRIVAL ? 'POST_ARRIVAL' : currentPhase === Phase.TIME_SELECTION ? 'TIME_SELECTION' : currentPhase === Phase.DIRECTION_SELECTION ? 'DIRECTION_SELECTION' : currentPhase === Phase.DESTINATION_SHOW ? 'DESTINATION_SHOW' : currentPhase === Phase.TAKEOFF_PREP ? 'TAKEOFF_PREP' : currentPhase === Phase.CRUISE ? 'CRUISE' : currentPhase === Phase.DESCENT ? 'DESCENT' : currentPhase === Phase.LANDING ? 'LANDING' : 'UNKNOWN'})`);
+            console.log('   當前狀態 (State):', currentState);
+            console.log('   上次按鈕時間:', lastButtonPressTime ? new Date(lastButtonPressTime).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }) : '無');
+            console.log('   時間間隔:', lastButtonPressTime > 0 ? (currentTime - lastButtonPressTime) + 'ms' : '首次按下');
+            console.log('   按鍵序列長度:', buttonPressSequence.length);
+            console.log('   按鍵序列:', buttonPressSequence.map(t => new Date(t).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })));
+            console.log('   已選擇時間:', selectedTimer, '分鐘');
+            console.log('   已選擇氣候帶:', selectedDirection !== null ? selectedDirection : '未選擇');
+            console.log('   目的地資料:', destinationData ? (destinationData.city_zh || destinationData.city) : '無');
+            console.log('=====================================');
+            
             // 記錄按鈕按下時間
             buttonPressSequence.push(currentTime);
             
@@ -3849,6 +3863,8 @@
             buttonPressSequence = buttonPressSequence.filter(
                 time => currentTime - time < TRIPLE_CLICK_THRESHOLD
             );
+            
+            console.log('   過濾後的按鍵序列長度:', buttonPressSequence.length);
             
             // 🔧 移除三擊檢測（不再顯示歷史紀錄功能）
             // 檢查是否為三擊（但只在非 Phase 0/1/2 時處理）
@@ -3882,11 +3898,12 @@
             // 🔧 修改：Phase 0, 1, 2 時，雙擊可以返回上一步
             // 在首頁（State.COUNTRY）或 Phase 0/1/2，雙擊可以返回上一步
             // 🔧 改進：在 phase0-3 時，如果檢測到可能的雙擊，立即處理雙擊（比單擊更早），避免單擊先執行
+            // 🔧 重要：在 Phase 2（氣候選擇）時，需要確保 buttonPressSequence 至少有 2 次按下才視為雙擊
             if (currentState === State.COUNTRY || 
                 currentPhase === Phase.POST_ARRIVAL || currentPhase === Phase.TIME_SELECTION || currentPhase === Phase.DIRECTION_SELECTION ||
                 currentPhase === 0 || currentPhase === 1 || currentPhase === 2) {
-                // 如果在雙擊時間閾值內，立即處理雙擊（不等待第三次按下）
-                if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
+                // 如果在雙擊時間閾值內，且 buttonPressSequence 至少有 2 次按下，才視為雙擊
+                if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0 && buttonPressSequence.length >= 2) {
                     // 取消之前的單擊處理（確保雙擊比單擊更早執行）
                     if (buttonPressTimeout) {
                         clearTimeout(buttonPressTimeout);
@@ -3895,7 +3912,7 @@
                     
                     // 🔧 改進：在 phase0-3 時，立即處理雙擊，不等待第三次按下
                     // 這樣可以確保雙擊比單擊更早執行，避免單擊先執行
-                    console.log('🔘 [Phase 0/1/2] 檢測到可能的雙擊，立即處理（比單擊更早）');
+                    console.log('🔘 [Phase 0/1/2] 檢測到雙擊（buttonPressSequence.length >= 2），立即處理（比單擊更早）');
                     handleButtonDoubleClick();
                     buttonPressSequence = [];
                     lastButtonPressTime = 0;
@@ -3976,6 +3993,7 @@
             const sequenceSnapshot = [...buttonPressSequence];
             
             buttonPressTimeout = setTimeout(() => {
+                console.log('⏰ [按鈕處理] 單擊等待時間到，檢查按鍵序列');
                 // 檢查是否真的只有一次按下（沒有第二次/第三次）
                 // 使用快照而不是當前的 buttonPressSequence，避免被後續按鍵影響
                 const now = Date.now();
@@ -3983,28 +4001,28 @@
                     time => now - time < waitTime + 100  // 使用 waitTime + 100 作為緩衝，確保不會因為時間差而誤判
                 );
                 
-                console.log('🔍 檢查按鍵序列:', {
-                    sequenceSnapshot,
-                    remainingPresses,
-                    length: remainingPresses.length,
-                    waitTime,
-                    now
-                });
+                console.log('🔍 [按鈕處理] 檢查按鍵序列:');
+                console.log('   原始序列:', sequenceSnapshot.map(t => new Date(t).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })));
+                console.log('   剩餘序列:', remainingPresses.map(t => new Date(t).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })));
+                console.log('   剩餘序列長度:', remainingPresses.length);
+                console.log('   等待時間:', waitTime, 'ms');
+                console.log('   當前時間:', new Date(now).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 }));
                 
                 if (remainingPresses.length === 1) {
-                    console.log('⏰ 單擊延遲時間到，執行 handleButtonSingleClick');
+                    console.log('✅ [按鈕處理] 確認單擊，執行 handleButtonSingleClick');
                     console.log('   當前階段:', currentPhase);
                     console.log('   當前狀態:', currentState);
                     handleButtonSingleClick();
                 } else if (remainingPresses.length === 0) {
-                    console.log('⚠️ 按鍵序列為空，可能是時間過長，不處理單擊');
+                    console.log('⚠️ [按鈕處理] 按鍵序列為空，可能是時間過長，不處理單擊');
                 } else {
-                    console.log('🔘 按鍵序列已變化（長度:', remainingPresses.length, '），不處理單擊');
+                    console.log('🔘 [按鈕處理] 按鍵序列已變化（長度:', remainingPresses.length, '），不處理單擊');
                     console.log('   這可能是因為在等待期間有新的按鍵事件');
                 }
                 
                 buttonPressSequence = []; // 清除記錄
                 buttonPressTimeout = null;
+                console.log('✅ [按鈕處理] 單擊處理完成，已清除按鍵序列和 timeout');
             }, waitTime);
         }
         
