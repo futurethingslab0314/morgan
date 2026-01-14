@@ -149,6 +149,10 @@ class SleepAirlineMobile {
             // 計算台灣時間的起飛時間（睡覺時間）
             const sleepTime = this.calculateSleepTime(record);
 
+            // 計算預計與實際到達時間（台灣時間）
+            const plannedArrivalTime = this.calculateExpectedArrivalTime(record);
+            const actualArrivalTime = this.calculateArrivalTime(record);
+
             // 生成國家資訊（簡化版）
             const countryInfo = this.generateCountryInfo(record);
 
@@ -202,6 +206,18 @@ class SleepAirlineMobile {
                         <span class="info-label">飛行時長</span>
                         <span class="info-value">${this.formatDuration(record.sleepDuration)}</span>
                     </div>
+                    ${plannedArrivalTime ? `
+                    <div class="info-item">
+                        <span class="info-label">預計到達</span>
+                        <span class="info-value">${plannedArrivalTime}</span>
+                    </div>
+                    ` : ''}
+                    ${actualArrivalTime ? `
+                    <div class="info-item">
+                        <span class="info-label">實際到達</span>
+                        <span class="info-value">${actualArrivalTime}</span>
+                    </div>
+                    ` : ''}
                     ${sleepTime ? `
                     <div class="info-item">
                         <span class="info-label">起飛時間</span>
@@ -738,6 +754,10 @@ class SleepAirlineMobile {
         // 嘗試多種可能的圖片欄位名稱
         const imageUrl = record.imageUrl || record.destinationImage || record.image_url || '';
 
+        // 計算預計與實際到達時間（台灣時間）
+        const plannedArrivalTime = this.calculateExpectedArrivalTime(record);
+        const actualArrivalTime = this.calculateArrivalTime(record);
+
         // 獲取國旗（異步）
         const flag = await this.getCountryFlag(record);
 
@@ -797,6 +817,20 @@ class SleepAirlineMobile {
                 <div class="modal-detail">
                     <div class="modal-detail-label">預期時長</div>
                     <div class="modal-detail-value">${this.formatDuration(record.plannedMinutes)}</div>
+                </div>
+                ` : ''}
+
+                ${plannedArrivalTime ? `
+                <div class="modal-detail">
+                    <div class="modal-detail-label">預計到達（台灣時間）</div>
+                    <div class="modal-detail-value">${plannedArrivalTime}</div>
+                </div>
+                ` : ''}
+
+                ${actualArrivalTime ? `
+                <div class="modal-detail">
+                    <div class="modal-detail-label">實際到達（台灣時間）</div>
+                    <div class="modal-detail-value">${actualArrivalTime}</div>
                 </div>
                 ` : ''}
                 
@@ -1168,7 +1202,7 @@ class SleepAirlineMobile {
         return this.getCountryFlagSync(record);
     }
 
-    // 計算台灣時間的降落時間
+    // 計算台灣時間的降落時間（實際到達）
     calculateArrivalTime(record) {
         try {
             const wakeTime = record.wakeTime || record.recordedDateString;
@@ -1188,6 +1222,57 @@ class SleepAirlineMobile {
             return taiwanTime;
         } catch (e) {
             console.error('計算降落時間失敗:', e);
+            return null;
+        }
+    }
+
+    // 計算台灣時間的預計到達時間
+    calculateExpectedArrivalTime(record) {
+        try {
+            // 優先使用後端保存的 expectedArrivalTime
+            if (record.expectedArrivalTime) {
+                const expected = new Date(record.expectedArrivalTime);
+                if (!isNaN(expected.getTime())) {
+                    return expected.toLocaleString('zh-TW', {
+                        timeZone: 'Asia/Taipei',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+            }
+
+            // 其次使用 takeoffTime + plannedMinutes
+            if (record.takeoffTime && record.plannedMinutes) {
+                const takeoff = new Date(record.takeoffTime);
+                if (!isNaN(takeoff.getTime())) {
+                    const expected = new Date(takeoff.getTime() + record.plannedMinutes * 60 * 1000);
+                    return expected.toLocaleString('zh-TW', {
+                        timeZone: 'Asia/Taipei',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+            }
+
+            // 最後使用 實際降落時間 - timeDiffMinutes 來反推預計到達時間
+            if (record.wakeTime && typeof record.timeDiffMinutes === 'number') {
+                const wake = new Date(record.wakeTime);
+                if (!isNaN(wake.getTime())) {
+                    const expected = new Date(wake.getTime() - record.timeDiffMinutes * 60 * 1000);
+                    return expected.toLocaleString('zh-TW', {
+                        timeZone: 'Asia/Taipei',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+            }
+
+            return null;
+        } catch (e) {
+            console.error('計算預計到達時間失敗:', e);
             return null;
         }
     }

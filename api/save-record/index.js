@@ -69,19 +69,36 @@ export default async function handler(req, res) {
             timeDiffMinutes,
             punctuality,
             direction,
+            directionPosition,  // 🔧 新增：支持 directionPosition 字段（與 direction 相同）
             climateZoneName,
             isWormhole,
             destinationImage, // 降落圖片 URL（前端使用 destinationImage，API 需要映射到 imageUrl）
             announcementText,
             flightFeedback,
-            wakeTime
+            wakeTime,
+            // 🔧 新增：起飛和更新相關字段
+            takeoffTime,
+            expectedArrivalTime,
+            flightStatus,  // 'in_flight' 或 'completed'
+            phase,  // 當前階段
+            updateExisting,  // 是否更新現有記錄
+            flightId  // 要更新的記錄 ID
         } = req.body;
 
+        // 🔧 改進：如果是更新現有記錄，不需要驗證 city 和 country（可能還沒有）
         // 驗證必要欄位
-        if (!userDisplayName || !city || !country) {
+        if (!userDisplayName) {
             return res.status(400).json({
                 success: false,
-                error: '缺少必要欄位：userDisplayName, city, country'
+                error: '缺少必要欄位：userDisplayName'
+            });
+        }
+        
+        // 如果是更新現有記錄，不需要驗證 city 和 country
+        if (!updateExisting && (!city || !country)) {
+            return res.status(400).json({
+                success: false,
+                error: '缺少必要欄位：city, country（新建記錄時需要）'
             });
         }
 
@@ -170,12 +187,17 @@ export default async function handler(req, res) {
             sleepDuration: sleepDuration !== undefined ? sleepDuration : null,
             timeDiffMinutes: timeDiffMinutes !== undefined ? timeDiffMinutes : null,
             punctuality: punctuality !== undefined ? punctuality : null,
-            direction: direction !== undefined ? direction : null,
+            direction: (direction !== undefined ? direction : (directionPosition !== undefined ? directionPosition : null)),  // 🔧 支持 directionPosition
             climateZoneName: climateZoneName !== undefined ? climateZoneName : null,
             isWormhole: isWormhole !== undefined ? isWormhole : false,
             announcementText: announcementText !== undefined ? announcementText : null,
             flightFeedback: flightFeedback !== undefined ? flightFeedback : null,
-            wakeTime: wakeTime !== undefined ? wakeTime : null
+            wakeTime: wakeTime !== undefined ? wakeTime : null,
+            // 🔧 新增：起飛和更新相關字段
+            takeoffTime: takeoffTime !== undefined ? takeoffTime : null,
+            expectedArrivalTime: expectedArrivalTime !== undefined ? expectedArrivalTime : null,
+            flightStatus: flightStatus !== undefined ? flightStatus : null,  // 'in_flight' 或 'completed'
+            phase: phase !== undefined ? phase : null  // 當前階段
         };
 
         // 準備全域記錄資料
@@ -280,28 +302,51 @@ export default async function handler(req, res) {
                 .doc('sleepAirline')
                 .collection('flight'); // flight 是 collection，直接包含 flight2025-12-25 等 documents
 
-            // 生成 document ID：flight + 日期（例如：flight2025-12-23）
-            // 如果同一天有多筆記錄，加上時間戳來區分（例如：flight2025-12-23_143052）
-            let flightDocId = `flight${recordedDateString}`;
+            // 🔧 改進：支持更新現有記錄（如果 updateExisting 為 true 且有 flightId）
+            let flightDocId = null;
+            let isUpdating = false;
+            
+            if (updateExisting && flightId) {
+                // 更新現有記錄
+                flightDocId = flightId;
+                isUpdating = true;
+                console.log('🔄 [API] 更新現有飛行記錄，flightId:', flightDocId);
+                
+                // 檢查記錄是否存在
+                const existingDoc = await flightCollectionRef.doc(flightDocId).get();
+                if (!existingDoc.exists) {
+                    console.warn('⚠️ [API] 要更新的記錄不存在，將創建新記錄');
+                    isUpdating = false;
+                    flightDocId = null;
+                }
+            }
+            
+            // 如果沒有指定要更新的記錄，創建新記錄
+            if (!flightDocId) {
+                // 生成 document ID：flight + 日期（例如：flight2025-12-23）
+                // 如果同一天有多筆記錄，加上時間戳來區分（例如：flight2025-12-23_143052）
+                flightDocId = `flight${recordedDateString}`;
 
-            // 檢查是否已存在相同日期的 document
-            const existingDoc = await flightCollectionRef.doc(flightDocId).get();
-            if (existingDoc.exists) {
-                // 如果已存在，加上時間戳（時分秒）來區分，確保唯一性
-                const now = new Date();
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                const timeStr = `${hours}${minutes}${seconds}`;
-                flightDocId = `flight${recordedDateString}_${timeStr}`;
+                // 檢查是否已存在相同日期的 document
+                const existingDoc = await flightCollectionRef.doc(flightDocId).get();
+                if (existingDoc.exists) {
+                    // 如果已存在，加上時間戳（時分秒）來區分，確保唯一性
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    const timeStr = `${hours}${minutes}${seconds}`;
+                    flightDocId = `flight${recordedDateString}_${timeStr}`;
+                }
+                console.log('📝 [API] 創建新的飛行記錄，flightId:', flightDocId);
             }
 
-            // 使用 doc() 創建指定 ID 的 document
+            // 使用 doc() 創建或更新指定 ID 的 document
             const flightDocRef = flightCollectionRef.doc(flightDocId);
             await flightDocRef.set({
                 ...baseRecordData,
                 ...artifactsData,
-            }, { merge: false }); // 使用 set() 而不是 add()，merge: false 表示完全覆蓋（如果已存在）
+            }, { merge: isUpdating }); // 如果是更新，使用 merge: true；如果是新建，使用 merge: false
 
             const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/flight/${flightDocId}`;
             console.log('✅ 個人檔案記錄已儲存到 artifacts（document ID: ' + flightDocId + '）:', userProfilePath);
@@ -327,6 +372,8 @@ export default async function handler(req, res) {
 
             return res.status(200).json({
                 success: true,
+                flightId: flightDocId,  // 🔧 新增：返回 flightId，用於後續更新
+                isUpdating: isUpdating,  // 🔧 新增：標記是否為更新操作
                 message: '記錄已成功儲存',
                 artifactsIds: {
                     userProfileId: flightDocId, // flight+日期格式的 document ID

@@ -102,6 +102,7 @@ export default async function handler(req, res) {
 
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         const greeting = LOCAL_GREETINGS[(countryCode || '').toUpperCase()] || '';
+        // 🔧 改進：不再使用預先定義的問候語，改為讓 OpenAI 直接生成當地語言的問候語
         const isEnglish = uiLanguage === 'en';
         const mentalState = COUNTRY_MENTAL_STATE[(countryCode || '').toUpperCase()] || COUNTRY_MENTAL_STATE['DEFAULT'];
         const task = (taskType || 'REST').toUpperCase();
@@ -175,6 +176,7 @@ Structure:
 7. Inner state: "${mentalState.stateEn}" — ${mentalState.description}
 8. Task guidance: ${taskGuidanceText} (include: first-minute action, focus rule, recovery line if distracted)
 9. Closing: "Thank you for choosing Focus Airlines. We wish you a pleasant journey."
+10. Final: MUST end with a warm greeting in the local language of ${country} (${countryCode || ''}). The greeting should express a simple welcome message like "Welcome aboard Sleep Airline, have a wonderful journey" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere. Keep it brief (1-2 sentences).
 
 ${greetingHint}`
                 : `你是 Focus Airlines 的專業機長。生成登機廣播（約 200-230 字）。
@@ -194,6 +196,7 @@ ${greetingHint}`
 7. 內在狀態：「${mentalState.state}」— ${mentalState.description}
 8. 任務引導：${taskGuidanceText}（包含：第一分鐘微行動、專注規則、分心回神語）
 9. 結尾：「感謝您選擇 Focus Airlines，祝您旅途愉快。」
+10. 最後：必須以【${country}】的當地語言結尾，表達簡單的歡迎問候，例如「歡迎搭乘 Sleep Airline，祝您旅途愉快」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。保持簡潔（1-2句話）。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
 
 ${greetingHint}`;
 
@@ -214,7 +217,7 @@ ${greetingHint}`;
                 'GAME': { zh: '天氣與遊戲後的狀態轉換結合', en: 'Connect weather with post-game state transition' },
                 'CREATIVE': { zh: '天氣與創作完成後的沉澱結合', en: 'Connect weather with post-creative settling' }
             }[task] || { zh: '天氣與任務完成後狀態結合', en: 'Connect weather with completed task state' };
-            
+
             // 🔧 改進：構建天氣描述（優先使用真實天氣數據）
             let weatherDescription = '';
             if (realWeatherData && realWeatherData.condition && realWeatherData.temperature) {
@@ -260,6 +263,7 @@ ${taskGuidanceText ? `任務完成後指引：${taskGuidanceText}` : ''}
 - Inner state: "${mentalState.stateEn}" — ${mentalState.description}
 - Task completion: ${taskGuidanceText}
 - Closing: Make passengers feel they "arrived at themselves" and "arrived at ${city}'s emotional atmosphere"
+- Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 
 ${greetingHint}`
                     : `根據以下結構化 Prompt 設計生成降落廣播（60-80字，保持簡潔有趣且情感豐富）。
@@ -284,6 +288,7 @@ ${greetingHint}`
 - 內在狀態：「${mentalState.state}」— ${mentalState.description}（要讓乘客感受到內在的轉變）
 - 任務完成：${taskGuidanceText}（語氣要肯定且溫暖）
 - 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」（要有強烈的歸屬感和完成感）
+- 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
 
 【重要提醒】
 - 必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文
@@ -308,7 +313,8 @@ Tone = 40% aviation + 30% gentle guidance + 30% inner narrative.
 3. Cultural mood: "${mentalState.culturalMood}"
 4. Inner state: "${mentalState.stateEn}" — ${mentalState.description}
 5. Task completion: ${taskGuidanceText}
-6. Closing: "Thank you for choosing Focus Airlines. We wish you a pleasant journey in 【${city}】."
+6. Closing: Make passengers feel they "arrived at themselves" and "arrived at ${city}'s emotional atmosphere"
+7. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
                         : `生成「完美準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
 
@@ -320,7 +326,8 @@ ${greetingHint}`
 3. 文化氛圍：「${mentalState.culturalMood}」
 4. 內在狀態：「${mentalState.state}」— ${mentalState.description}
 5. 任務完成：${taskGuidanceText}
-6. 結尾：「感謝您選擇 Focus Airlines，祝您在【${city}】的旅程愉快。」
+6. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+7. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
 ${greetingHint}`,
 
                     'EARLY': isEnglish
@@ -330,6 +337,7 @@ ${greetingHint}`,
 3. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 4. Inner state: ${innerStatePrompt}
 5. Closing: Make passengers feel they gained inner harvest even with early landing.
+6. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
                         : `生成「提早降落」廣播（60-80字，保持簡潔）。
 
@@ -341,6 +349,7 @@ ${greetingHint}`
 3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 4. 內在狀態：${innerStatePrompt}
 5. 結尾：讓乘客感覺即使提早降落，也獲得了內在收穫。
+6. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
 ${greetingHint}`,
 
                     'LATE': isEnglish
@@ -353,6 +362,7 @@ Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 5. Encouragement: Warm, positive
 6. Inner state: ${innerStatePrompt}
 7. Closing: Make passengers feel they arrived at themselves and destination despite delay.
+8. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
                         : `生成「誤點降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
 
@@ -366,6 +376,7 @@ ${greetingHint}`
 5. 鼓勵：溫暖、積極
 6. 內在狀態：${innerStatePrompt}
 7. 結尾：讓乘客感覺即使延誤，也抵達了自己和目的地。
+8. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
 ${greetingHint}`,
 
                     'ON_TIME': isEnglish
@@ -377,6 +388,7 @@ Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
 4. Inner state: ${innerStatePrompt}
 5. Thanks: Thank passengers for completing the journey
 6. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
+7. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
                         : `生成「準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
 
@@ -389,6 +401,7 @@ ${greetingHint}`
 4. 內在狀態：${innerStatePrompt}
 5. 感謝：感謝乘客完成這段旅程
 6. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+7. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
 ${greetingHint}`
                 };
 
@@ -403,6 +416,7 @@ ${greetingHint}`
 5. Inner state: ${innerStatePrompt}
 6. ${timerDuration ? 'Congratulations on completing the flight task' : 'Remind passengers to confirm landing'}
 7. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
+8. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
                     : `生成降落廣播（60-80字，保持簡潔）。語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
 1. 歡迎到達目的地
@@ -412,6 +426,7 @@ ${greetingHint}`
 5. 內在狀態：${innerStatePrompt}
 6. ${timerDuration ? '恭喜完成飛行任務' : '提醒乘客確認降落'}
 7. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+8. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
 ${greetingHint}`;
             }
 

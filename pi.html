@@ -1330,7 +1330,7 @@
         
         /* 夜間模式基礎樣式 */
         body.night-mode {
-            background: #0a0a0a !important; /* 深色背景 */
+            background: #050505 !important; /* 🔧 更暗的背景（從 #0a0a0a 改為 #050505） */
         }
         
         body.night-mode .window-container {
@@ -1338,11 +1338,11 @@
         }
         
         body.night-mode .window-area {
-            background: #1a1a1a !important; /* 深色背景 */
+            background: #0d0d0d !important; /* 🔧 更暗的背景（從 #1a1a1a 改為 #0d0d0d） */
         }
         
         body.night-mode .window-frame {
-            background: #1a1a1a !important; /* 深色背景 */
+            background: #0d0d0d !important; /* 🔧 更暗的背景（從 #1a1a1a 改為 #0d0d0d） */
             border-color: #ff8c5a !important; /* 暖橙色邊框（比原本的 #ff6b35 更暖） */
             box-shadow: 
                 0 4px 20px rgba(255, 140, 90, 0.15), /* 暖橙色陰影 */
@@ -1351,7 +1351,7 @@
         
         body.night-mode .window-content {
             /* 🔧 改進：使用 background-color 而不是 background，避免覆蓋 background-image */
-            background-color: #1a1a1a !important; /* 深色背景 */
+            background-color: #0d0d0d !important; /* 🔧 更暗的背景（從 #1a1a1a 改為 #0d0d0d） */
             /* 如果有 background-image（通過 inline style 設置），它會顯示在 background-color 之上 */
             /* 注意：不要設置 background 簡寫屬性，因為它會覆蓋 background-image */
             /* 只設置 background-color，讓 background-image 可以正常顯示 */
@@ -1361,12 +1361,12 @@
         /* 當 window-content 有 inline style 的 background-image 時，確保背景漸層不會覆蓋它 */
         body.night-mode .window-content[style*="background-image"] {
             /* 只設置 background-color，不設置 background 簡寫屬性，讓 inline style 的 background-image 可以顯示 */
-            background-color: #1a1a1a !important; /* 深色背景作為 fallback */
+            background-color: #0d0d0d !important; /* 🔧 更暗的背景（從 #1a1a1a 改為 #0d0d0d） */
             /* inline style 的 background-image 優先級更高，會顯示在 background-color 之上 */
         }
         
         body.night-mode .info-bar {
-            background: #1a1a1a !important; /* 深色背景 */
+            background: #0d0d0d !important; /* 🔧 更暗的背景（從 #1a1a1a 改為 #0d0d0d） */
             color: #e0e0e0 !important; /* 淺色文字 */
             border-top: 1px solid rgba(255, 140, 90, 0.3) !important; /* 暖橙色細邊框 */
         }
@@ -1408,7 +1408,7 @@
         body.night-mode .feedback-star-segment.active .feedback-star-fill {
             background: #ff8c5a !important; /* 暖橙色背景 */
             border-color: #ff8c5a !important;
-            color: #1a1a1a !important; /* 深色文字（在暖橙色背景上） */
+            color: #0d0d0d !important; /* 🔧 更暗的文字顏色（從 #1a1a1a 改為 #0d0d0d） */
         }
         
         body.night-mode .feedback-title {
@@ -1416,7 +1416,7 @@
         }
         
         body.night-mode .landing-country-bar {
-            background: rgba(26, 26, 26, 0.98) !important; /* 深色背景 */
+            background: rgba(13, 13, 13, 0.98) !important; /* 🔧 更暗的背景（從 rgba(26,26,26) 改為 rgba(13,13,13)） */
         }
         
         body.night-mode .midnight-service-overlay {
@@ -1436,7 +1436,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.65); /* 半透明黑色遮罩 */
+            background: rgba(0, 0, 0, 0.8); /* 🔧 更暗的遮罩（從 0.65 增加到 0.8） */
             z-index: 999; /* 確保在最上層 */
             pointer-events: none; /* 不阻擋點擊事件 */
         }
@@ -2541,16 +2541,20 @@
         // 夜間模式自動切換（只在特定時間點切換：21:00 和 06:00）
         // ============================================================================
         function checkNightMode() {
-            const hour = new Date().getHours();
+            const now = new Date();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
             // 晚上 21:00 到早上 09:00 啟用夜間模式
             const isNight = hour >= 21 || hour < 9;
             
+            console.log(`🔍 [checkNightMode] 當前時間: ${hour}:${String(minute).padStart(2, '0')}, isNight: ${isNight}`);
+            
             if (isNight) {
                 document.body.classList.add('night-mode');
-                console.log('🌙 夜間模式已啟用（時間:', hour + ':00）');
+                console.log('🌙 夜間模式已啟用（時間:', hour + ':' + String(minute).padStart(2, '0') + ')');
             } else {
                 document.body.classList.remove('night-mode');
-                console.log('☀️ 日間模式已啟用（時間:', hour + ':00）');
+                console.log('☀️ 日間模式已啟用（時間:', hour + ':' + String(minute).padStart(2, '0') + ')');
             }
         }
         
@@ -2631,6 +2635,9 @@
             if (countryFlagEl) {
                 countryFlagEl.textContent = '🏳️';
             }
+            
+            // 🔧 新增：檢查並恢復未完成的飛行狀態
+            restoreFlightState();
             
             const nextButton = document.getElementById('nextButton');
             if (nextButton) {
@@ -3874,53 +3881,24 @@
             
             // 🔧 修改：Phase 0, 1, 2 時，雙擊可以返回上一步
             // 在首頁（State.COUNTRY）或 Phase 0/1/2，雙擊可以返回上一步
+            // 🔧 改進：在 phase0-3 時，如果檢測到可能的雙擊，立即處理雙擊（比單擊更早），避免單擊先執行
             if (currentState === State.COUNTRY || 
                 currentPhase === Phase.POST_ARRIVAL || currentPhase === Phase.TIME_SELECTION || currentPhase === Phase.DIRECTION_SELECTION ||
                 currentPhase === 0 || currentPhase === 1 || currentPhase === 2) {
-                // 如果在雙擊時間閾值內，可能是雙擊，等待看是否有第三次按下
+                // 如果在雙擊時間閾值內，立即處理雙擊（不等待第三次按下）
                 if (timeSinceLastPress < DOUBLE_CLICK_THRESHOLD && timeSinceLastPress > 0) {
-                    // 取消之前的單擊處理
+                    // 取消之前的單擊處理（確保雙擊比單擊更早執行）
                     if (buttonPressTimeout) {
                         clearTimeout(buttonPressTimeout);
                         buttonPressTimeout = null;
                     }
                     
-                    // 計算從第一次按下到現在經過的時間
-                    const firstPressTime = buttonPressSequence[0];
-                    const elapsedSinceFirst = currentTime - firstPressTime;
-                    const remainingTime = TRIPLE_CLICK_THRESHOLD - elapsedSinceFirst;
-                    
-                    // 等待剩餘時間，看是否有第三次按下
-                    // 如果沒有第三次按下，處理雙擊（返回上一步）
-                    if (remainingTime > 0) {
-                        buttonPressTimeout = setTimeout(() => {
-                            // 檢查是否真的只有兩次按下（沒有第三次）
-                            const now = Date.now();
-                            const remainingPresses = buttonPressSequence.filter(
-                                time => now - time < TRIPLE_CLICK_THRESHOLD
-                            );
-                            
-                            if (remainingPresses.length === 2) {
-                                console.log('🔘 [Phase 0/1/2] 檢測到雙擊，處理返回上一步');
-                                handleButtonDoubleClick();
-                            } else if (remainingPresses.length === 3) {
-                                // 如果剛好有三次，但已經過了處理時間，可能是時序問題
-                                console.log('🔘 檢測到三次按下，但已過處理時間，忽略');
-                            } else {
-                                console.log('🔘 按鍵序列已變化，不處理');
-                            }
-                            
-                            buttonPressSequence = []; // 清除記錄
-                            lastButtonPressTime = 0;
-                            buttonPressTimeout = null;
-                        }, remainingTime);
-                    } else {
-                        // 如果已經超過 TRIPLE_CLICK_THRESHOLD，直接處理雙擊
-                        console.log('🔘 [Phase 0/1/2] 超過三擊時間閾值，直接處理雙擊');
-                        handleButtonDoubleClick();
-                        buttonPressSequence = [];
-                        lastButtonPressTime = 0;
-                    }
+                    // 🔧 改進：在 phase0-3 時，立即處理雙擊，不等待第三次按下
+                    // 這樣可以確保雙擊比單擊更早執行，避免單擊先執行
+                    console.log('🔘 [Phase 0/1/2] 檢測到可能的雙擊，立即處理（比單擊更早）');
+                    handleButtonDoubleClick();
+                    buttonPressSequence = [];
+                    lastButtonPressTime = 0;
                     
                     return;
                 }
@@ -4583,7 +4561,7 @@
             try {
                 // 使用 new Audio() 和 Promise 確保完全播放完成
                 const captainAudio = new Audio('sounds/captain.mp3');
-                captainAudio.volume = 0.7; /* 🔧 Phase 4 音量降低到 0.7 倍，晚上不會太大聲 */
+                captainAudio.volume = 0.5; /* 🔧 Phase 4→5 音量降低到 0.5 倍，晚上不會太大聲 */
                 captainAudio.preload = 'auto';
                 
                 // 等待音頻載入完成
@@ -4762,6 +4740,69 @@
             console.log('4️⃣ 立即顯示進度條並設置開始時間...');
             sleepStartTime = Date.now(); // 立即設置開始時間
             const durationMs = selectedTimer * 60 * 1000;
+            
+            // 🔧 新增：在起飛時保存階段 0-4 的資料到 Firebase（第一階段記錄）
+            if (destinationData && selectedTimer && selectedDirection !== null) {
+                console.log('📤 [起飛] 保存階段 0-4 的資料到 Firebase...');
+                const takeoffData = {
+                    // 時間相關
+                    plannedMinutes: selectedTimer,              // 預期飛行時間
+                    takeoffTime: new Date().toISOString(),     // 起飛時間
+                    expectedArrivalTime: new Date(Date.now() + durationMs).toISOString(), // 預計到達時間
+                    
+                    // 氣候相關
+                    directionPosition: selectedDirection,       // 氣候帶位置（0-4）
+                    climateZoneName: climateZoneOptions[selectedDirection]?.name || null, // 氣候帶名稱
+                    
+                    // 目的地相關
+                    destinationCity: destinationData.city,
+                    destinationCountry: destinationData.country,
+                    destinationCityZh: destinationData.city_zh,
+                    destinationCountryZh: destinationData.country_zh,
+                    countryCode: destinationData.country_iso_code,
+                    destinationLatitude: destinationData.latitude,
+                    destinationLongitude: destinationData.longitude,
+                    timezone: destinationData.timezone,
+                    
+                    // 狀態標記
+                    flightStatus: 'in_flight',  // 標記為飛行中
+                    phase: 5,  // 當前階段（剛進入 Phase 5）
+                    
+                    // 用戶資訊
+                    userDisplayName: 'Pi User',
+                    dataIdentifier: 'takeoff_' + Date.now(),
+                    groupName: 'Pi',
+                    deviceType: 'raspberry_pi_sleep_flight',
+                    
+                    // 🔧 新增：為了符合 API 驗證，需要提供 city 和 country（使用目的地資訊）
+                    city: destinationData.city,
+                    country: destinationData.country,
+                    city_zh: destinationData.city_zh,
+                    country_zh: destinationData.country_zh
+                };
+                
+                // 保存起飛資料（不等待完成，背景執行）
+                saveTakeoffRecord(takeoffData).then(success => {
+                    if (success) {
+                        console.log('✅ [起飛] 階段 0-4 的資料已保存到 Firebase');
+                        // 保存 flightId 到 localStorage，用於後續更新
+                        if (success.flightId) {
+                            localStorage.setItem('currentFlightId', success.flightId);
+                            console.log('💾 [起飛] 已保存 flightId 到 localStorage:', success.flightId);
+                        }
+                    } else {
+                        console.warn('⚠️ [起飛] 保存階段 0-4 的資料失敗，但繼續執行');
+                    }
+                }).catch(error => {
+                    console.error('❌ [起飛] 保存階段 0-4 的資料時發生錯誤:', error);
+                });
+            } else {
+                console.warn('⚠️ [起飛] 缺少必要資料，無法保存階段 0-4 的資料:', {
+                    destinationData: !!destinationData,
+                    selectedTimer: selectedTimer,
+                    selectedDirection: selectedDirection
+                });
+            }
             
             // 隱藏 stateCountry（所在國家）- 只在非 Phase 0 時隱藏
             const stateCountry = document.getElementById('stateCountry');
@@ -5021,9 +5062,10 @@
         }
         
         // 播放音頻文件（確保正確等待指定時長）
-        function playAudioFile(url, maxDuration = null) {
+        function playAudioFile(url, maxDuration = null, volume = 1.0) {
             return new Promise((resolve) => {
                 const audio = new Audio(url);
+                audio.volume = volume; // 🔧 設置音量（0.0-1.0）
                 let timeoutId = null;
                 let resolved = false;
                 
@@ -8596,8 +8638,188 @@
             }
         }
         
+        // 🔧 新增：保存起飛資料（階段 0-4 的資料）
+        async function saveTakeoffRecord(takeoffData) {
+            try {
+                const recordData = {
+                    ...takeoffData,
+                    timestamp: new Date().toISOString()
+                };
+                
+                console.log('📤 [起飛] 準備發送起飛記錄到 Firebase API...');
+                console.log('   記錄數據:', JSON.stringify(recordData, null, 2));
+                
+                const response = await fetch('https://morgan-orcin.vercel.app/api/save-record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(recordData)
+                });
+                
+                console.log('📥 [起飛] API 響應狀態:', response.status, response.statusText);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('✅ [起飛] 起飛記錄已儲存到 Firebase');
+                    console.log('   API 響應:', result);
+                    
+                    // 返回 flightId（如果有的話）
+                    const flightId = result.flightId || result.artifactsIds?.userProfileId || null;
+                    if (flightId) {
+                        console.log('💾 [起飛] 獲取到 flightId:', flightId);
+                    }
+                    return { success: true, flightId: flightId };
+                } else {
+                    const errorText = await response.text();
+                    console.error('❌ [起飛] 儲存失敗:', response.status, errorText);
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        console.error('   錯誤詳情:', errorData);
+                    } catch (e) {
+                        console.error('   錯誤文本:', errorText);
+                    }
+                    return { success: false };
+                }
+            } catch (error) {
+                console.error('❌ [起飛] 儲存失敗:', error);
+                return { success: false };
+            }
+        }
+        
+        // 🔧 新增：恢復未完成的飛行狀態（從 Firebase 載入）
+        async function restoreFlightState() {
+            try {
+                console.log('🔄 [恢復狀態] 檢查是否有未完成的飛行...');
+                
+                // 從 localStorage 獲取 flightId（如果有的話）
+                const savedFlightId = localStorage.getItem('currentFlightId');
+                
+                // 從 Firebase 獲取最新的飛行記錄
+                const response = await fetch('https://morgan-orcin.vercel.app/api/get-flight-history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userDisplayName: 'Pi User',
+                        limit: 10  // 獲取最近 10 筆記錄，尋找未完成的飛行
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.warn('⚠️ [恢復狀態] 獲取飛行記錄失敗:', response.status);
+                    return;
+                }
+                
+                const data = await response.json();
+                const records = data.records || [];
+                
+                // 尋找未完成的飛行（flightStatus === 'in_flight'）
+                const inFlightRecord = records.find(r => r.flightStatus === 'in_flight');
+                
+                if (!inFlightRecord) {
+                    console.log('✅ [恢復狀態] 沒有未完成的飛行');
+                    // 清除可能存在的舊 flightId
+                    if (savedFlightId) {
+                        localStorage.removeItem('currentFlightId');
+                        console.log('🗑️ [恢復狀態] 已清除舊的 flightId');
+                    }
+                    return;
+                }
+                
+                console.log('🔄 [恢復狀態] 找到未完成的飛行記錄:', inFlightRecord);
+                
+                // 恢復階段 0-4 的資料
+                if (inFlightRecord.plannedMinutes) {
+                    selectedTimer = inFlightRecord.plannedMinutes;
+                    console.log('✅ [恢復狀態] 已恢復飛行時間:', selectedTimer, '分鐘');
+                }
+                
+                // 恢復氣候帶位置（支持 direction 或 directionPosition）
+                const directionValue = inFlightRecord.direction !== null && inFlightRecord.direction !== undefined 
+                    ? inFlightRecord.direction 
+                    : (inFlightRecord.directionPosition !== null && inFlightRecord.directionPosition !== undefined 
+                        ? inFlightRecord.directionPosition 
+                        : null);
+                if (directionValue !== null) {
+                    selectedDirection = directionValue;
+                    console.log('✅ [恢復狀態] 已恢復氣候帶位置:', selectedDirection);
+                }
+                
+                // 恢復目的地資料（支持多種字段名稱）
+                const destCity = inFlightRecord.city || inFlightRecord.destinationCity;
+                const destCountry = inFlightRecord.country || inFlightRecord.destinationCountry;
+                if (destCity && destCountry) {
+                    destinationData = {
+                        city: destCity,
+                        country: destCountry,
+                        city_zh: inFlightRecord.city_zh || inFlightRecord.destinationCityZh || destCity,
+                        country_zh: inFlightRecord.country_zh || inFlightRecord.destinationCountryZh || destCountry,
+                        country_iso_code: inFlightRecord.country_iso_code || inFlightRecord.countryCode || '',
+                        latitude: inFlightRecord.latitude || inFlightRecord.destinationLatitude || null,
+                        longitude: inFlightRecord.longitude || inFlightRecord.destinationLongitude || null,
+                        timezone: inFlightRecord.timezone || 'UTC'
+                    };
+                    console.log('✅ [恢復狀態] 已恢復目的地:', destinationData.city_zh || destinationData.city);
+                }
+                
+                // 恢復起飛時間和預計到達時間
+                if (inFlightRecord.takeoffTime && inFlightRecord.expectedArrivalTime) {
+                    const takeoffTime = new Date(inFlightRecord.takeoffTime).getTime();
+                    const expectedArrivalTime = new Date(inFlightRecord.expectedArrivalTime).getTime();
+                    const now = Date.now();
+                    
+                    // 計算剩餘時間
+                    const remainingTime = expectedArrivalTime - now;
+                    
+                    console.log('🕐 [恢復狀態] 起飛時間:', new Date(takeoffTime).toLocaleString('zh-TW'));
+                    console.log('🕐 [恢復狀態] 預計到達時間:', new Date(expectedArrivalTime).toLocaleString('zh-TW'));
+                    console.log('🕐 [恢復狀態] 當前時間:', new Date(now).toLocaleString('zh-TW'));
+                    console.log('🕐 [恢復狀態] 剩餘時間:', Math.round(remainingTime / 1000 / 60), '分鐘');
+                    
+                    // 如果已經超過預計到達時間，應該進入降落階段
+                    if (remainingTime <= 0) {
+                        console.log('✅ [恢復狀態] 已超過預計到達時間，應該進入降落階段');
+                        // 設置 sleepStartTime 為起飛時間，這樣計算會正確
+                        sleepStartTime = takeoffTime;
+                        // 切換到 Phase 5（巡航階段），等待用戶觸發降落
+                        currentPhase = Phase.CRUISE;
+                        maxReachedPhase = Phase.CRUISE;
+                        console.log('✅ [恢復狀態] 已恢復到 Phase 5（巡航階段）');
+                    } else {
+                        // 還在飛行中，恢復到 Phase 5 並繼續計時
+                        sleepStartTime = takeoffTime;
+                        currentPhase = Phase.CRUISE;
+                        maxReachedPhase = Phase.CRUISE;
+                        console.log('✅ [恢復狀態] 已恢復到 Phase 5（巡航階段），剩餘時間:', Math.round(remainingTime / 1000 / 60), '分鐘');
+                        
+                        // 恢復進度條顯示
+                        const flightProgressWrapper = document.getElementById('flightProgressWrapper');
+                        if (flightProgressWrapper && selectedTimer) {
+                            flightProgressWrapper.style.display = 'block';
+                            flightProgressWrapper.style.visibility = 'visible';
+                            flightProgressWrapper.style.opacity = '1';
+                            console.log('✅ [恢復狀態] 已恢復進度條顯示');
+                        }
+                    }
+                    
+                    // 保存 flightId 到 localStorage（如果記錄有 id）
+                    if (inFlightRecord.id) {
+                        localStorage.setItem('currentFlightId', inFlightRecord.id);
+                        console.log('💾 [恢復狀態] 已保存 flightId 到 localStorage:', inFlightRecord.id);
+                    }
+                } else {
+                    console.warn('⚠️ [恢復狀態] 缺少起飛時間或預計到達時間，無法恢復飛行狀態');
+                }
+                
+            } catch (error) {
+                console.error('❌ [恢復狀態] 恢復飛行狀態時發生錯誤:', error);
+            }
+        }
+        
         async function saveSleepRecord(sleepData) {
             try {
+                // 🔧 改進：檢查是否有未完成的飛行記錄（從 localStorage 獲取 flightId）
+                const currentFlightId = localStorage.getItem('currentFlightId');
+                const isUpdating = currentFlightId && sleepData.updateExisting !== false;
+                
                 // 獲取氣候帶名稱
                 const climateZoneName = sleepData.climateZoneName || 
                     (sleepData.directionPosition !== null && climateZoneOptions[sleepData.directionPosition] ? 
@@ -8605,7 +8827,7 @@
                 
                 const recordData = {
                     userDisplayName: 'Pi User',
-                    dataIdentifier: 'sleep_' + Date.now(),
+                    dataIdentifier: isUpdating ? currentFlightId : ('sleep_' + Date.now()),
                     groupName: 'Pi',
                     city: sleepData.destinationCity,
                     country: sleepData.destinationCountry,
@@ -8617,6 +8839,11 @@
                     timezone: sleepData.timezone,
                     localTime: new Date(sleepData.wakeTime).toISOString(),
                     deviceType: 'raspberry_pi_sleep_flight',
+                    
+                    // 🔧 新增：標記為更新現有記錄
+                    updateExisting: isUpdating,
+                    flightId: isUpdating ? currentFlightId : null,
+                    flightStatus: 'completed',  // 標記為已完成
                     
                     // 時間相關
                     plannedMinutes: sleepData.plannedMinutes || null,  // 預期時間
@@ -8641,11 +8868,16 @@
                     // 飛行回饋（實驗數據）
                     flightFeedback: sleepData.flightFeedback || null, // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
                     
-                    wakeTime: sleepData.wakeTime,
-                    timestamp: new Date().toISOString()
+                wakeTime: sleepData.wakeTime,
+                timestamp: new Date().toISOString()
                 };
                 
                 console.log('📤 準備發送睡眠記錄到 Firebase API...');
+                if (isUpdating) {
+                    console.log('🔄 [降落] 更新現有飛行記錄，flightId:', currentFlightId);
+                } else {
+                    console.log('📝 [降落] 創建新的飛行記錄');
+                }
                 console.log('   記錄數據:', JSON.stringify(recordData, null, 2));
                 
                 const response = await fetch('https://morgan-orcin.vercel.app/api/save-record', {
@@ -8663,6 +8895,13 @@
                     if (result.artifactsIds) {
                         console.log('   📁 儲存路徑:', result.artifactsIds.userProfileId ? '已保存' : '未保存');
                     }
+                    
+                    // 🔧 新增：降落完成後清除 localStorage 中的 flightId
+                    if (currentFlightId) {
+                        localStorage.removeItem('currentFlightId');
+                        console.log('🗑️ [降落] 已清除 localStorage 中的 flightId');
+                    }
+                    
                     return true;
                 } else {
                     const errorText = await response.text();
@@ -13233,9 +13472,9 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法降低音量');
             }
             
-            // 播放 captain.mp3
+            // 播放 captain.mp3（音量降低到 0.5，讓聲音更小）
             try {
-                await playAudioFile('sounds/captain.mp3', 6);
+                await playAudioFile('sounds/captain.mp3', 6, 0.5); /* 🔧 Phase 4→5 音量降低到 0.5 倍，晚上不會太大聲 */
                 console.log('✅ captain.mp3 播放完成');
             } catch (error) {
                 console.warn('⚠️ captain.mp3 播放失敗:', error);
@@ -13823,8 +14062,14 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             if (currentPhase === Phase.DIRECTION_SELECTION || currentPhase === 2) {
                 // Phase 2 (DIRECTION_SELECTION) → Phase 1 (TIME_SELECTION)
                 console.log('🔘 [Phase 2] 雙擊：返回 Phase 1 (時間選擇)');
-                // 清除氣候帶選擇
+                // 🔧 清除當次設定的內容（氣候帶選擇）
                 selectedDirection = null;
+                selectedAngle = null;
+                currentPosition = 0;
+                // 清除 UI 高亮
+                document.querySelectorAll('.angle-option').forEach((option) => {
+                    option.classList.remove('active');
+                });
                 switchToPhase(Phase.TIME_SELECTION);
                 switchState(State.TIMER);
                 return;
@@ -13833,8 +14078,16 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             if (currentPhase === Phase.TIME_SELECTION || currentPhase === 1) {
                 // Phase 1 (TIME_SELECTION) → Phase 0 (POST_ARRIVAL)
                 console.log('🔘 [Phase 1] 雙擊：返回 Phase 0 (首頁)');
-                // 清除時間選擇
+                // 🔧 清除當次設定的內容（時間選擇）
                 selectedTimer = null;
+                currentPosition = 0;
+                // 清除 UI 高亮
+                document.querySelectorAll('.timer-progress-segment').forEach((segment) => {
+                    segment.classList.remove('active');
+                });
+                document.querySelectorAll('.timer-option').forEach((option) => {
+                    option.classList.remove('active');
+                });
                 switchToPhase(Phase.POST_ARRIVAL);
                 switchState(State.COUNTRY);
                 return;

@@ -175,7 +175,12 @@ export default async function handler(req, res) {
                 announcementText: data.announcementText || '',
                 timezone: data.timezone || 'UTC',
                 country_iso_code: data.country_iso_code || data.countryCode || '',
-                flightFeedback: data.flightFeedback || null  // 飛行回饋數據
+                flightFeedback: data.flightFeedback || null,  // 飛行回饋數據
+                // 🔧 新增：起飛和狀態相關字段
+                takeoffTime: data.takeoffTime || null,
+                expectedArrivalTime: data.expectedArrivalTime || null,
+                flightStatus: data.flightStatus || null,  // 'in_flight' 或 'completed'
+                phase: data.phase || null  // 當前階段
             });
         });
 
