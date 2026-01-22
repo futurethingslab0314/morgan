@@ -238,6 +238,9 @@ ${greetingHint}`;
 ${taskGuidanceText ? `任務完成後指引：${taskGuidanceText}` : ''}
 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」`;
 
+            // 🔧 改進：降落時應該說「歡迎來到」而不是「歡迎登機」，所以不使用 LOCAL_GREETINGS
+            // 降落時的開頭應該是「歡迎來到目的地」或類似的表達，而不是起飛時的問候語
+
             // 🔧 結構化 Prompt 設計：如果有傳入降落狀況的轉換邏輯，優先使用
             if (landingSituation && situationNarrative && toneAdjustment) {
                 const structuredPrompt = isEnglish
@@ -256,7 +259,7 @@ ${taskGuidanceText ? `任務完成後指引：${taskGuidanceText}` : ''}
 
 【Generation Requirements】
 - Tone: ${toneAdjustment}
-- Start with local greeting: "${greeting || 'Hello'}" (translate)
+- Start with: "Welcome to ${city}" or similar welcoming arrival message (NOT "Welcome aboard" - that's for boarding, not landing)
 - Incorporate the landing situation narrative naturally
 - Weather: ${weatherDescription || `Describe weather at ${city}, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 - Cultural mood: "${culturalContext || mentalState.culturalMood}"
@@ -281,7 +284,7 @@ ${greetingHint}`
 
 【生成要求】
 - 語氣：${toneAdjustment}（必須強烈且明確地表達情感，不要平淡）
-- 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯（語氣要生動有活力）
+- 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
 - 自然地融入降落狀況的敘事背景（要讓乘客感受到情境的真實感和臨場感）
 - 天氣：${weatherDescription || `描述【${city}】天氣，與任務融合。${landingWeatherGuidance.zh}。生動且具體，讓乘客能感受到天氣的質感。`}
 - 文化氛圍：「${culturalContext || mentalState.culturalMood}」（要讓乘客感受到當地的文化氣息）
@@ -332,7 +335,7 @@ ${greetingHint}`,
 
                     'EARLY': isEnglish
                         ? `Generate an "early landing" announcement (60-80 words, keep it concise). Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
-1. Greeting: "${greeting || 'Hello'}" (translate)
+1. Start with: "Welcome to ${city}" or similar welcoming arrival message (NOT "Welcome aboard" - that's for boarding, not landing)
 2. Early arrival: "We have arrived early at 【${city}】."
 3. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 4. Inner state: ${innerStatePrompt}
@@ -344,7 +347,7 @@ ${greetingHint}`
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
 
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
-1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
+1. 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
 2. 提早宣告：「我們提早到達了【${city}】。」
 3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 4. 內在狀態：${innerStatePrompt}
@@ -355,7 +358,7 @@ ${greetingHint}`,
                     'LATE': isEnglish
                         ? `Generate a "delayed landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
 Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
-1. Greeting: "${greeting || 'Hello'}" (translate)
+1. Start with: "Welcome to ${city}" or similar welcoming arrival message (NOT "Welcome aboard" - that's for boarding, not landing)
 2. Apology: "Sorry, this flight has been delayed."
 3. Destination: ${punctuality.divertedCity && punctuality.divertedCity !== city ? `"Originally scheduled to land at 【${punctuality.originalDestination}】, we have diverted to 【${punctuality.divertedCity}】."` : `"This flight is delayed but still landing at 【${city}】."`}
 4. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
@@ -369,7 +372,7 @@ ${greetingHint}`
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
 
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
-1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
+1. 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
 2. 歉意宣告：「抱歉，本次航班延誤。」
 3. 目的地：${punctuality.divertedCity && punctuality.divertedCity !== city ? `「原定降落於【${punctuality.originalDestination}】，但因時間超過，我們轉降至【${punctuality.divertedCity}】。」` : `「本次航班延誤，但仍降落在【${city}】。」`}
 4. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
@@ -382,7 +385,7 @@ ${greetingHint}`,
                     'ON_TIME': isEnglish
                         ? `Generate an "on-time landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
 Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
-1. Greeting: "${greeting || 'Hello'}" (translate)
+1. Start with: "Welcome to ${city}" or similar welcoming arrival message (NOT "Welcome aboard" - that's for boarding, not landing)
 2. Landing: "This flight has landed on time at 【${city}】."
 3. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 4. Inner state: ${innerStatePrompt}
@@ -395,7 +398,7 @@ ${greetingHint}`
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
 
 語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
-1. 開頭：當地語言問候「${greeting || 'Hello'}」並翻譯
+1. 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
 2. 降落宣告：「本次航班順利準時降落於【${city}】。」
 3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 4. 內在狀態：${innerStatePrompt}

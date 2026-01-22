@@ -10740,6 +10740,42 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     currentState = 'ready_to_fly'; // 或設置為其他合適的狀態
                     console.log('🔄 [Phase 7] 設置 currentState:', currentState);
                     
+                    // 🔧 改進：確保影片容器和 takeoff2.mp4 在 Phase 7 開始時顯示（避免黑屏）
+                    try {
+                        const videoContainer = document.getElementById('videoContainer');
+                        const takeoffVideo2 = document.getElementById('takeoffVideo2');
+                        
+                        // 確保影片容器顯示
+                        if (videoContainer) {
+                            videoContainer.style.display = 'flex';
+                            videoContainer.style.visibility = 'visible';
+                            videoContainer.style.opacity = '1';
+                            videoContainer.style.zIndex = '10';
+                            console.log('✅ [Phase 7 switchToPhase] 確保影片容器顯示（避免黑屏）');
+                        }
+                        
+                        // 確保 takeoff2.mp4 顯示（保持播放直到 landing.mp4 準備好）
+                        if (takeoffVideo2) {
+                            // 如果影片被暫停了，設置到最後一幀（不自動播放，保持暫停但顯示）
+                            if (takeoffVideo2.paused) {
+                                if (takeoffVideo2.duration && !isNaN(takeoffVideo2.duration)) {
+                                    if (takeoffVideo2.currentTime < takeoffVideo2.duration - 0.5) {
+                                        takeoffVideo2.currentTime = Math.max(0, takeoffVideo2.duration - 0.1);
+                                    }
+                                }
+                                console.log('✅ [Phase 7 switchToPhase] takeoff2.mp4 已設置到最後一幀（保持暫停）');
+                            }
+                            
+                            // 確保影片元素可見
+                            takeoffVideo2.style.opacity = '1';
+                            takeoffVideo2.style.visibility = 'visible';
+                            takeoffVideo2.style.display = 'block';
+                            console.log('✅ [Phase 7 switchToPhase] takeoff2.mp4 已確保可見（避免黑屏）');
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ [Phase 7 switchToPhase] 確保影片顯示時發生錯誤:', e);
+                    }
+                    
                     // 🔧 立即隱藏所有不該在 Phase 7 顯示的 UI
                     // 隱藏 stateCountry（所在國家）
                     const stateCountry = document.getElementById('stateCountry');
@@ -11476,23 +11512,50 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
         }
 
         function handleCruise() {
-            // 優化：在 Phase 5 完全暫停 takeoff2.mp4，優先保證按鈕響應精確性
+            // 🔧 改進：確保影片容器在 Phase 5 時顯示，並保持影片的最後一幀顯示
+            const videoContainer = document.getElementById('videoContainer');
+            if (videoContainer) {
+                videoContainer.style.display = 'flex';
+                videoContainer.style.visibility = 'visible';
+                videoContainer.style.opacity = '1';
+                videoContainer.style.zIndex = '10';
+                console.log('✅ [Phase 5] 確保影片容器顯示');
+            }
+            
+            // 優化：在 Phase 5 暫停 takeoff2.mp4，但保持當前幀顯示（不重置到開頭）
             try {
                 // 嘗試兩種可能的 ID
                 const video2 = document.getElementById('takeoff2') || document.getElementById('takeoffVideo2');
                 if (video2) {
-                    video2.pause();
-                    video2.currentTime = 0; // 重置到開頭
-                    console.log('✅ [Phase 5] takeoff2.mp4 已暫停，優先保證按鈕響應');
+                    // 如果影片正在播放，暫停它（保持當前幀顯示，不重置到開頭）
+                    if (!video2.paused) {
+                        video2.pause();
+                        console.log('✅ [Phase 5] takeoff2.mp4 已暫停（保持當前幀顯示）');
+                    } else {
+                        // 如果影片已經暫停，確保顯示最後一幀（如果已經播放過）
+                        if (video2.duration && !isNaN(video2.duration) && video2.currentTime < video2.duration - 0.5) {
+                            // 如果不在最後一幀附近，設置到最後一幀
+                            video2.currentTime = Math.max(0, video2.duration - 0.1);
+                            console.log('✅ [Phase 5] takeoff2.mp4 已設置到最後一幀');
+                        }
+                    }
+                    
+                    // 確保影片元素可見
+                    video2.style.opacity = '1';
+                    video2.style.visibility = 'visible';
+                    video2.style.display = 'block';
+                    console.log('✅ [Phase 5] takeoff2.mp4 已確保可見');
                     
                     // 清除所有影片相關的檢查 interval
                     if (window._takeoff2VisibilityCheck) {
                         clearInterval(window._takeoff2VisibilityCheck);
                         window._takeoff2VisibilityCheck = null;
                     }
+                } else {
+                    console.warn('⚠️ [Phase 5] 找不到 takeoff2.mp4 影片元素');
                 }
             } catch (error) {
-                console.warn('⚠️ [Phase 5] 暫停 takeoff2.mp4 時發生錯誤:', error);
+                console.warn('⚠️ [Phase 5] 處理 takeoff2.mp4 時發生錯誤:', error);
             }
             // Phase 4: 開始睡眠計時
             // 🔧 改進：確保進度條顯示（即使已經顯示，也要確保它可見）
@@ -11530,13 +11593,41 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     // 確保所有狀態 UI 都被隱藏（防止被重新顯示）
                     hideAllStateUI();
                     
-                    // 方案一：即使早期返回，也確保暫停影片（提高按鈕檢測穩定性）
+                    // 🔧 改進：即使早期返回，也確保影片容器和影片元素顯示
                     try {
+                        const videoContainer = document.getElementById('videoContainer');
                         const takeoffVideo2 = document.getElementById('takeoffVideo2');
-                        if (takeoffVideo2 && !takeoffVideo2.paused) {
-                            takeoffVideo2.pause();
-                            console.log('✅ [Phase 5] 已暫停 takeoff2.mp4（早期返回路徑）');
+                        
+                        // 確保影片容器顯示
+                        if (videoContainer) {
+                            videoContainer.style.display = 'flex';
+                            videoContainer.style.visibility = 'visible';
+                            videoContainer.style.opacity = '1';
+                            videoContainer.style.zIndex = '10';
+                            console.log('✅ [Phase 5] 早期返回：確保影片容器顯示');
                         }
+                        
+                        if (takeoffVideo2) {
+                            // 如果影片正在播放，暫停它（保持當前幀顯示）
+                            if (!takeoffVideo2.paused) {
+                                takeoffVideo2.pause();
+                                console.log('✅ [Phase 5] 已暫停 takeoff2.mp4（早期返回路徑，保持當前幀）');
+                            }
+                            
+                            // 確保影片元素可見
+                            takeoffVideo2.style.opacity = '1';
+                            takeoffVideo2.style.visibility = 'visible';
+                            takeoffVideo2.style.display = 'block';
+                            
+                            // 如果影片已經暫停，確保顯示最後一幀（如果已經播放過）
+                            if (takeoffVideo2.paused && takeoffVideo2.duration && !isNaN(takeoffVideo2.duration)) {
+                                if (takeoffVideo2.currentTime < takeoffVideo2.duration - 0.5) {
+                                    takeoffVideo2.currentTime = Math.max(0, takeoffVideo2.duration - 0.1);
+                                    console.log('✅ [Phase 5] takeoff2.mp4 已設置到最後一幀（早期返回）');
+                                }
+                            }
+                        }
+                        
                         if (window._takeoff2VisibilityCheck) {
                             clearInterval(window._takeoff2VisibilityCheck);
                             window._takeoff2VisibilityCheck = null;
@@ -11569,14 +11660,39 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 console.log('✅ [Phase 5] 已清除之前的降落圖片');
             }
             
-            // 方案一：暫停 takeoff2.mp4 播放，只顯示最後一幀（減少資源佔用，提高按鈕檢測穩定性）
+            // 🔧 改進：確保影片容器和影片元素在 Phase 5 時顯示，並保持影片的最後一幀顯示
             try {
+                const videoContainer = document.getElementById('videoContainer');
                 const takeoffVideo2 = document.getElementById('takeoffVideo2');
+                
+                // 確保影片容器顯示
+                if (videoContainer) {
+                    videoContainer.style.display = 'flex';
+                    videoContainer.style.visibility = 'visible';
+                    videoContainer.style.opacity = '1';
+                    videoContainer.style.zIndex = '10';
+                    console.log('✅ [Phase 5] 確保影片容器顯示');
+                }
+                
                 if (takeoffVideo2) {
-                    // 如果影片正在播放，暫停它（保持當前幀顯示）
+                    // 如果影片正在播放，暫停它（保持當前幀顯示，不重置到開頭）
                     if (!takeoffVideo2.paused) {
                         takeoffVideo2.pause();
-                        console.log('✅ [Phase 5] 已暫停 takeoff2.mp4，提高按鈕檢測穩定性');
+                        console.log('✅ [Phase 5] 已暫停 takeoff2.mp4（保持當前幀顯示）');
+                    }
+                    
+                    // 確保影片元素可見
+                    takeoffVideo2.style.opacity = '1';
+                    takeoffVideo2.style.visibility = 'visible';
+                    takeoffVideo2.style.display = 'block';
+                    
+                    // 如果影片已經暫停，確保顯示最後一幀（如果已經播放過）
+                    if (takeoffVideo2.paused && takeoffVideo2.duration && !isNaN(takeoffVideo2.duration)) {
+                        // 如果不在最後一幀附近，設置到最後一幀
+                        if (takeoffVideo2.currentTime < takeoffVideo2.duration - 0.5) {
+                            takeoffVideo2.currentTime = Math.max(0, takeoffVideo2.duration - 0.1);
+                            console.log('✅ [Phase 5] takeoff2.mp4 已設置到最後一幀');
+                        }
                     }
                     
                     // 停止可見性檢查（不再需要，因為影片已暫停）
@@ -11585,9 +11701,13 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         window._takeoff2VisibilityCheck = null;
                         console.log('✅ [Phase 5] 已停止 takeoff2.mp4 可見性檢查');
                     }
+                    
+                    console.log('✅ [Phase 5] takeoff2.mp4 已確保可見和正確顯示');
+                } else {
+                    console.warn('⚠️ [Phase 5] 找不到 takeoffVideo2 元素');
                 }
             } catch (e) {
-                console.warn('⚠️ [Phase 5] 暫停影片時發生小問題，可忽略:', e);
+                console.warn('⚠️ [Phase 5] 確保影片顯示時發生小問題:', e);
             }
             
             sleepStartTime = Date.now();
@@ -13162,20 +13282,57 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             
             console.log('🛬 [Phase 7] 降落流程開始執行');
             
-            // 🔧 改進：立即顯示 stateLandingCountryInfo（即使內容還在生成中），避免下方 bar 空白
+            // 🔧 改進：確保影片容器和 takeoff2.mp4 在 Phase 7 開始時顯示（避免黑屏）
+            try {
+                const videoContainer = document.getElementById('videoContainer');
+                const takeoffVideo2 = document.getElementById('takeoffVideo2');
+                
+                // 確保影片容器顯示
+                if (videoContainer) {
+                    videoContainer.style.display = 'flex';
+                    videoContainer.style.visibility = 'visible';
+                    videoContainer.style.opacity = '1';
+                    videoContainer.style.zIndex = '10';
+                    console.log('✅ [Phase 7] 確保影片容器顯示（避免黑屏）');
+                }
+                
+                // 確保 takeoff2.mp4 顯示（保持播放直到 landing.mp4 準備好）
+                if (takeoffVideo2) {
+                    // 如果影片被暫停了，恢復播放（保持當前幀或最後一幀）
+                    if (takeoffVideo2.paused) {
+                        // 如果不在最後一幀，設置到最後一幀
+                        if (takeoffVideo2.duration && !isNaN(takeoffVideo2.duration)) {
+                            if (takeoffVideo2.currentTime < takeoffVideo2.duration - 0.5) {
+                                takeoffVideo2.currentTime = Math.max(0, takeoffVideo2.duration - 0.1);
+                            }
+                        }
+                        // 不自動播放，保持暫停但顯示最後一幀
+                        console.log('✅ [Phase 7] takeoff2.mp4 已設置到最後一幀（保持暫停）');
+                    }
+                    
+                    // 確保影片元素可見
+                    takeoffVideo2.style.opacity = '1';
+                    takeoffVideo2.style.visibility = 'visible';
+                    takeoffVideo2.style.display = 'block';
+                    console.log('✅ [Phase 7] takeoff2.mp4 已確保可見（避免黑屏）');
+                } else {
+                    console.warn('⚠️ [Phase 7] 找不到 takeoffVideo2 元素');
+                }
+            } catch (e) {
+                console.warn('⚠️ [Phase 7] 確保影片顯示時發生錯誤:', e);
+            }
+            
+            // 🔧 改進：在 Phase 7 開始時，隱藏 stateLandingCountryInfo，改為顯示等待語音生成的 UI
             const landingCountryInfoState = document.getElementById('stateLandingCountryInfo');
             if (landingCountryInfoState) {
-                landingCountryInfoState.style.display = 'flex';
-                landingCountryInfoState.classList.add('active');
-                // 先顯示載入狀態（如果目的地資訊還沒準備好）
-                const flagEl = document.getElementById('landingCountryFlag');
-                const nameEl = document.getElementById('landingCountryName');
-                const descEl = document.getElementById('landingCountryDesc');
-                if (flagEl) flagEl.textContent = '🏳️';
-                // if (nameEl) nameEl.textContent = 'Sleep Airline 感謝您的搭乘...';
-                if (descEl) descEl.textContent = '';
-                console.log('✅ [handleLanding] 已立即顯示 stateLandingCountryInfo（載入狀態）');
+                landingCountryInfoState.style.display = 'none';
+                landingCountryInfoState.classList.remove('active');
+                console.log('✅ [handleLanding] 已隱藏 stateLandingCountryInfo，等待語音生成完成後再顯示');
             }
+            
+            // 🔧 改進：立即顯示等待語音生成的 UI（橘色三個點點），而不是國家名稱 UI
+            setBoardingStatus(true, '降落程序準備中...');
+            console.log('✅ [handleLanding] 已顯示等待語音生成的 UI（橘色三個點點）');
             
             // ============================================================================
             // 步驟 1: 進入 Phase 7，先播放 wakeup 音樂（必須立即播放，不阻塞）
@@ -13401,8 +13558,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             // 🔧 改進：在計算好降落地點後，立即預先生成語音A（不播放，只生成）
             console.log('🎤 [Phase 7] 降落地點已計算完成，立即預先生成語音A（不播放）...');
             
-            // 🔧 改進：在等待 TTS 生成時顯示「降落程序準備中」UI
-            setBoardingStatus(true, '降落程序準備中...');
+            // 🔧 改進：boarding status 已在 Phase 7 開始時顯示「降落程序準備中...」，這裡保持顯示（不重複設置）
+            // 等待語音A生成時，繼續顯示「降落程序準備中...」
             
             let voiceAAudioId = null;
             if (landingData && landingData.announcement) {
@@ -13421,8 +13578,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 }
             }
             
-            // 🔧 改進：TTS 生成完成後，隱藏「降落程序準備中」UI
-            setBoardingStatus(false);
+            // 🔧 改進：TTS 生成完成後，不隱藏 boarding status，因為接下來會播放 captain.mp3 和語音A
+            // 稍後會更新為「機長廣播中...」，所以這裡不隱藏
             
             // 開始生成圖片A（背景進行，只生成一次）
             // 🔧 改進：統一檢查所有可能的圖片 Promise，避免重複生成
