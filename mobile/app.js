@@ -1113,6 +1113,23 @@ class SleepAirlineMobile {
 
     // 獲取國家國旗emoji（同步版本，用於地圖）
     getCountryFlagSync(record) {
+        // 🔧 改進：優先使用國家代碼生成國旗 emoji
+        if (record.country_iso_code && record.country_iso_code.length === 2) {
+            try {
+                const codePoints = record.country_iso_code
+                    .toUpperCase()
+                    .split('')
+                    .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                if (codePoints.length === 2) {
+                    const flagEmoji = String.fromCodePoint(...codePoints);
+                    console.log('✅ [getCountryFlagSync] 使用國家代碼生成國旗:', flagEmoji, '國家:', record.country_zh || record.country);
+                    return flagEmoji;
+                }
+            } catch (e) {
+                console.warn('⚠️ [getCountryFlagSync] 使用國家代碼生成國旗失敗:', e);
+            }
+        }
+
         // 根據國家名稱返回預設國旗
         const country = (record.country_zh || record.country || '').toLowerCase();
         const flagMap = {
@@ -1176,7 +1193,45 @@ class SleepAirlineMobile {
             '紐西蘭': '🇳🇿', 'new zealand': '🇳🇿'
         };
 
-        return flagMap[country] || flagMap[record.country_zh] || flagMap[record.country] || '🏳️';
+        // 嘗試多種匹配方式
+        let flag = flagMap[country] || flagMap[record.country_zh] || flagMap[record.country];
+        
+        // 如果還是找不到，嘗試不轉小寫的匹配
+        if (!flag && record.country_zh) {
+            flag = flagMap[record.country_zh];
+        }
+        if (!flag && record.country) {
+            flag = flagMap[record.country];
+        }
+        
+        // 如果還是找不到，嘗試使用國家代碼生成國旗（如果有的話）
+        if (!flag && record.country_iso_code && record.country_iso_code.length === 2) {
+            try {
+                const codePoints = record.country_iso_code
+                    .toUpperCase()
+                    .split('')
+                    .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                if (codePoints.length === 2) {
+                    flag = String.fromCodePoint(...codePoints);
+                    console.log('✅ [getCountryFlagSync] 使用國家代碼生成國旗:', flag, '國家:', record.country_zh || record.country);
+                }
+            } catch (e) {
+                console.warn('⚠️ [getCountryFlagSync] 使用國家代碼生成國旗失敗:', e);
+            }
+        }
+        
+        if (flag) {
+            return flag;
+        }
+        
+        // 如果都找不到，記錄警告並返回白色旗子
+        console.warn('⚠️ [getCountryFlagSync] 無法找到國旗，返回白色旗子。記錄:', {
+            city: record.city_zh || record.city,
+            country: record.country_zh || record.country,
+            country_iso_code: record.country_iso_code,
+            country_lowercase: country
+        });
+        return '🏳️';
     }
 
     // 獲取國家國旗emoji（異步版本，用於詳情頁）
@@ -1198,8 +1253,51 @@ class SleepAirlineMobile {
             console.warn('無法載入 sleepcity.json:', e);
         }
 
-        // 如果沒有找到，使用同步版本
-        return this.getCountryFlagSync(record);
+        // 🔧 改進：如果 sleepcity.json 找不到，嘗試使用國家代碼生成國旗 emoji
+        if (record.country_iso_code && record.country_iso_code.length === 2) {
+            try {
+                const codePoints = record.country_iso_code
+                    .toUpperCase()
+                    .split('')
+                    .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                if (codePoints.length === 2) {
+                    const flagEmoji = String.fromCodePoint(...codePoints);
+                    console.log('✅ [getCountryFlag] 使用國家代碼生成國旗:', flagEmoji, '國家:', record.country_zh || record.country);
+                    return flagEmoji;
+                }
+            } catch (e) {
+                console.warn('⚠️ [getCountryFlag] 使用國家代碼生成國旗失敗:', e);
+            }
+        }
+
+        // 如果國家代碼也無法使用，使用同步版本
+        const syncFlag = this.getCountryFlagSync(record);
+        if (syncFlag !== '🏳️') {
+            return syncFlag;
+        }
+
+        // 最後嘗試：如果同步版本也返回白色旗子，再次嘗試使用國家代碼（如果有的話）
+        if (record.country_iso_code && record.country_iso_code.length === 2) {
+            try {
+                const codePoints = record.country_iso_code
+                    .toUpperCase()
+                    .split('')
+                    .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
+                if (codePoints.length === 2) {
+                    return String.fromCodePoint(...codePoints);
+                }
+            } catch (e) {
+                // 忽略錯誤
+            }
+        }
+
+        // 如果都失敗，返回白色旗子
+        console.warn('⚠️ [getCountryFlag] 無法獲取國旗，返回預設白色旗子。記錄:', {
+            city: record.city_zh || record.city,
+            country: record.country_zh || record.country,
+            country_iso_code: record.country_iso_code
+        });
+        return '🏳️';
     }
 
     // 計算台灣時間的降落時間（實際到達）

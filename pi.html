@@ -10370,17 +10370,34 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 }
             }
             
-            // 隨機選擇一首新的 wakeup 音樂
-            const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
-            const randomMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
+            // 🔧 改進：根據選擇的氣候帶決定播放哪首 wakeup 音樂
+            // 如果選擇「熱帶夢境」，播放 wakeup4.mp3；否則從其他 wakeup 音樂中隨機選擇
+            let selectedMusic = null;
+            
+            // 檢查是否選擇了「熱帶夢境」
+            const isTropicalDreams = selectedDirection === 0 || 
+                (selectedDirection !== null && 
+                 climateZoneOptions[selectedDirection] && 
+                 climateZoneOptions[selectedDirection].name === '熱帶夢境');
+            
+            if (isTropicalDreams) {
+                // 選擇「熱帶夢境」，播放 wakeup4.mp3
+                selectedMusic = 'wakeup4.mp3';
+                console.log('🌴 [Phase 7] 檢測到「熱帶夢境」，將播放 wakeup4.mp3');
+            } else {
+                // 其他氣候帶，從其他 wakeup 音樂中隨機選擇
+                const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
+                selectedMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
+                console.log('🎵 [Phase 7] 其他氣候帶，隨機選擇:', selectedMusic);
+            }
             
             // 嘗試多個路徑
             const possiblePaths = [
-                randomMusic,
-                './' + randomMusic,
-                'sounds/' + randomMusic,
-                './sounds/' + randomMusic,
-                '/sounds/' + randomMusic
+                selectedMusic,
+                './' + selectedMusic,
+                'sounds/' + selectedMusic,
+                './sounds/' + selectedMusic,
+                '/sounds/' + selectedMusic
             ];
             
             let musicUrl = null;
@@ -11042,12 +11059,38 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             
             console.log('✅ 所有影片元素都找到了');
             
-            // 隱藏原本的內容
+            // 🔧 改進：在第二次起飛時，清除所有可能遮擋影片的元素
             const originalContent = windowContent.querySelector('div[style*="text-align: center"]');
             const initialImage = document.getElementById('initialImage');
             
+            // 清除 window-content 的背景圖片（可能是降落時留下的）
+            if (windowContent) {
+                if (windowContent.style.backgroundImage && windowContent.style.backgroundImage !== 'none') {
+                    windowContent.style.backgroundImage = 'none';
+                    windowContent.style.backgroundColor = 'transparent';
+                    console.log('✅ [第二次起飛] 已清除 window-content 的背景圖片');
+                }
+            }
+            
+            // 確保 initialImage 隱藏（第二次起飛時可能還顯示著）
+            if (initialImage) {
+                initialImage.style.display = 'none';
+                initialImage.style.opacity = '0';
+                initialImage.classList.remove('fade-out'); // 清除淡出類，避免狀態混亂
+                console.log('✅ [第二次起飛] 已隱藏 initialImage');
+            }
+            
             if (originalContent) {
                 originalContent.style.display = 'none';
+            }
+            
+            // 🔧 改進：確保影片容器在開始時就顯示（避免黑屏）
+            if (videoContainer) {
+                videoContainer.style.display = 'flex';
+                videoContainer.style.visibility = 'visible';
+                videoContainer.style.opacity = '0'; // 初始透明，等待淡入
+                videoContainer.style.zIndex = '10';
+                console.log('✅ [第二次起飛] 已確保影片容器顯示（初始透明，等待淡入）');
             }
             
             // 提前載入影片第一幀，避免黑屏
