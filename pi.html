@@ -5775,11 +5775,55 @@
                         if (flagEl) flagEl.textContent = flagEmoji;
                         if (nameEl) nameEl.textContent = `${destInfo.city || destinationData.city_zh || destinationData.city}，${destInfo.country || destinationData.country_zh || destinationData.country}`;
                         if (descEl) {
+                            // 🔧 改進：如果有保存的當地問候語，優先顯示在頂部（優先使用 window._phase7WelcomeMessage，如果沒有則使用 Firebase 中的）
+                            const greetingText = window._phase7WelcomeMessage || destInfo.greeting || '';
+                            // 🔧 改進：Phase 0 不顯示天氣，只顯示時間（即時更新）和活動建議
+                            const timezone = destinationData.timezone || 'UTC';
+                            const now = new Date();
+                            let initialTime = '--:--';
+                            try {
+                                const localTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+                                const hour = localTime.getHours();
+                                const minutes = localTime.getMinutes();
+                                const seconds = localTime.getSeconds();
+                                initialTime = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                            } catch (error) {
+                                console.warn('⚠️ 計算初始時間失敗:', error);
+                            }
+                            
                             descEl.innerHTML = `
-                                <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${destInfo.time || '--:--'}</div>
-                                <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">☀️ ${destInfo.weather || ''}</div>
+                                ${greetingText ? `<div style="font-size: 15px; color: #333; font-weight: 500; margin-bottom: 8px; line-height: 1.4;">💬 ${greetingText}</div>` : ''}
+                                <div id="landingTimeDisplay" style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${initialTime}</div>
                                 <div style="font-size: 14px; color: #ff6b35; font-weight: 500; display: flex; align-items: center; gap: 6px;">✨ ${destInfo.feature || ''}</div>
                             `;
+                            
+                            // 🔧 改進：啟動即時時間更新（每秒更新一次）
+                            if (window._landingTimeInterval) {
+                                clearInterval(window._landingTimeInterval);
+                            }
+                            window._landingTimeInterval = setInterval(() => {
+                                const timeDisplayEl = document.getElementById('landingTimeDisplay');
+                                if (timeDisplayEl) {
+                                    try {
+                                        const now = new Date();
+                                        const localTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+                                        const hour = localTime.getHours();
+                                        const minutes = localTime.getMinutes();
+                                        const seconds = localTime.getSeconds();
+                                        const timeString = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                                        timeDisplayEl.innerHTML = `<span style="display: flex; align-items: center; gap: 6px;">🕐 ${timeString}</span>`;
+                                    } catch (error) {
+                                        console.warn('⚠️ 更新時間失敗:', error);
+                                    }
+                                } else {
+                                    // 如果元素不存在，清除 interval
+                                    if (window._landingTimeInterval) {
+                                        clearInterval(window._landingTimeInterval);
+                                        window._landingTimeInterval = null;
+                                    }
+                                }
+                            }, 1000);
+                            console.log('✅ [Phase 0] 已啟動即時時間更新，時區:', timezone);
                         }
                         
                         // 顯示所在位置（左邊）
@@ -9652,11 +9696,44 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     if (flagEl) flagEl.textContent = flagEmoji;
                     if (nameEl) nameEl.textContent = `${destinationInfo.city}，${destinationInfo.country}`;
                     if (descEl) {
+                        // 🔧 改進：如果有當地問候語，優先顯示在頂部
+                        const greetingText = window._phase7WelcomeMessage || destinationInfo.greeting || '';
+                        // 🔧 改進：Phase 7 顯示降落時的天氣（不即時更新），時間即時更新，保留活動建議
                         descEl.innerHTML = `
-                            <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${destinationInfo.time}</div>
-                            <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">☀️ ${destinationInfo.weather}</div>
-                            <div style="font-size: 14px; color: #ff6b35; font-weight: 500; display: flex; align-items: center; gap: 6px;">✨ ${destinationInfo.feature}</div>
+                            ${greetingText ? `<div style="font-size: 15px; color: #333; font-weight: 500; margin-bottom: 8px; line-height: 1.4;">💬 ${greetingText}</div>` : ''}
+                            <div id="landingTimeDisplay" style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${destinationInfo.time}</div>
+                            <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">☀️ ${destinationInfo.weather || ''}</div>
+                            <div style="font-size: 14px; color: #ff6b35; font-weight: 500; display: flex; align-items: center; gap: 6px;">✨ ${destinationInfo.feature || ''}</div>
                         `;
+                        
+                        // 🔧 改進：啟動即時時間更新（每秒更新一次）
+                        const timezone = destination.timezone || 'UTC';
+                        if (window._landingTimeInterval) {
+                            clearInterval(window._landingTimeInterval);
+                        }
+                        window._landingTimeInterval = setInterval(() => {
+                            const timeDisplayEl = document.getElementById('landingTimeDisplay');
+                            if (timeDisplayEl) {
+                                try {
+                                    const now = new Date();
+                                    const localTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+                                    const hour = localTime.getHours();
+                                    const minutes = localTime.getMinutes();
+                                    const seconds = localTime.getSeconds();
+                                    const timeString = `${hour.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                                    timeDisplayEl.innerHTML = `<span style="display: flex; align-items: center; gap: 6px;">🕐 ${timeString}</span>`;
+                                } catch (error) {
+                                    console.warn('⚠️ 更新時間失敗:', error);
+                                }
+                            } else {
+                                // 如果元素不存在，清除 interval
+                                if (window._landingTimeInterval) {
+                                    clearInterval(window._landingTimeInterval);
+                                    window._landingTimeInterval = null;
+                                }
+                            }
+                        }, 1000);
+                        console.log('✅ 已啟動即時時間更新，時區:', timezone);
                     }
                     
                     // 🔧 改進：隱藏所在位置（左邊），不再顯示舊地點
@@ -10603,6 +10680,15 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             currentPhase = phase;
             console.log('🔄 切換到 Phase ' + phase + '（最高已到達: ' + maxReachedPhase + '）');
             
+            // 🔧 改進：如果切換到非 Phase 0/7 的階段，清除時間更新的 interval
+            if (phase !== Phase.POST_ARRIVAL && phase !== 0 && phase !== Phase.LANDING && phase !== 7) {
+                if (window._landingTimeInterval) {
+                    clearInterval(window._landingTimeInterval);
+                    window._landingTimeInterval = null;
+                    console.log('✅ 已清除時間更新 interval（切換到 Phase ' + phase + '）');
+                }
+            }
+            
             // 控制 stateCountry（所在國家）和 stateLandingCountryInfo（降落後國家資訊）的顯示
             const stateCountry = document.getElementById('stateCountry');
             const stateLandingCountryInfo = document.getElementById('stateLandingCountryInfo');
@@ -11058,6 +11144,31 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             }
             
             console.log('✅ 所有影片元素都找到了');
+            
+            // 🔧 改進：在開始播放前，確保影片狀態正確（特別是第二次起飛時）
+            // 確保 video1 可見且在上層，video2 隱藏
+            if (video1) {
+                video1.style.opacity = '1';
+                video1.style.zIndex = '10';
+                video1.style.display = 'block';
+                video1.style.visibility = 'visible';
+                console.log('✅ [playTakeoffVideos] 已確保 video1 可見且在上層');
+            }
+            
+            if (video2) {
+                video2.style.opacity = '0';
+                video2.style.zIndex = '9';
+                video2.style.display = 'block'; // 保持 display，但 opacity 為 0
+                video2.style.visibility = 'visible';
+                // 暫停 video2（如果正在播放）
+                if (!video2.paused) {
+                    video2.pause();
+                    console.log('✅ [playTakeoffVideos] 已暫停 video2');
+                }
+                // 重置 video2 到開頭
+                video2.currentTime = 0;
+                console.log('✅ [playTakeoffVideos] 已確保 video2 隱藏（opacity: 0）且重置到開頭');
+            }
             
             // 🔧 改進：在第二次起飛時，清除所有可能遮擋影片的元素
             const originalContent = windowContent.querySelector('div[style*="text-align: center"]');
@@ -13996,9 +14107,16 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     console.log('✅ 語音B播放完成');
                 }
                 
-                // 清理全局變量
+                // 🔧 改進：保留 window._phase7WelcomeMessage 供 Phase 0 使用，不立即刪除
+                // 將問候語保存到 destinationInfo 中，以便在 Phase 0 時可以恢復
+                if (window._phase7WelcomeMessage && destinationInfo) {
+                    destinationInfo.greeting = window._phase7WelcomeMessage;
+                    console.log('✅ [Phase 7] 已將問候語保存到 destinationInfo:', window._phase7WelcomeMessage);
+                }
+                
+                // 清理語音相關的全局變量
                 delete window._phase7VoiceBAudioId;
-                delete window._phase7WelcomeMessage;
+                // 不刪除 window._phase7WelcomeMessage，保留供 Phase 0 使用
             }
             
             // ============================================================================
@@ -14047,8 +14165,11 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 imageUrl: finalImageUrl,                     // 降落圖片 URL（優先使用手動觸發的）
                 announcementText: announcementText,          // 降落語音文字
                     
-                    // 🔧 改進：保存 Phase 7 最後顯示的目的地資訊（時間、天氣、活動建議）
-                    destinationInfo: destinationInfo || null,    // 目的地資訊（time, weather, feature）
+                    // 🔧 改進：保存 Phase 7 最後顯示的目的地資訊（時間、天氣、活動建議、問候語）
+                    destinationInfo: destinationInfo ? {
+                        ...destinationInfo,
+                        greeting: window._phase7WelcomeMessage || destinationInfo.greeting || ''  // 保存當地問候語
+                    } : null,    // 目的地資訊（time, weather, feature, greeting）
                 
                 // 飛行回饋（實驗數據）
                 flightFeedback: feedbackData,                // 用戶選擇的回饋（ENERGETIC / CONTINUE / TURBULENCE）
