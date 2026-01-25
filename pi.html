@@ -1174,6 +1174,7 @@
             line-height: 1;
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
             flex-shrink: 0;
+            display: block !important; /* 🔧 確保國旗始終顯示 */
         }
 
         .landing-country-text {
@@ -1183,6 +1184,8 @@
             align-items: center; /* 置中對齊 */
             text-align: center; /* 文字置中 */
             flex-shrink: 0; /* 不縮小，保持內容寬度 */
+            max-width: calc(100% - 100px); /* 🔧 確保文字區域不超出容器（為國旗留出空間） */
+            box-sizing: border-box;
         }
 
         .landing-country-name {
@@ -1201,6 +1204,8 @@
             gap: 16px;
             align-items: center;
             justify-content: center; /* 🔧 改進：置中對齊 */
+            max-width: 100%; /* 🔧 確保不超出容器 */
+            box-sizing: border-box;
         }
         
         .landing-country-desc > div {
@@ -1208,6 +1213,9 @@
             align-items: center;
             gap: 6px;
             white-space: nowrap;
+            max-width: 100%; /* 🔧 確保單個項目不超出容器 */
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* Phase 0, 1, 2 內容位置調整 - 因為標題被隱藏，需要往下移動 */
@@ -5772,12 +5780,17 @@
                         const currentLocationTextEl = document.getElementById('landingCurrentLocationText');
                         
                         const destInfo = latestRecord.destinationInfo;
-                        if (flagEl) flagEl.textContent = flagEmoji;
-                        if (nameEl) nameEl.textContent = `${destInfo.city || destinationData.city_zh || destinationData.city}，${destInfo.country || destinationData.country_zh || destinationData.country}`;
+                        // 🔧 改進：確保國旗和名稱正確顯示，保持原本的排版結構
+                        if (flagEl) {
+                            flagEl.textContent = flagEmoji;
+                            flagEl.style.display = 'block'; // 確保國旗顯示
+                        }
+                        if (nameEl) {
+                            nameEl.textContent = `${destInfo.city || destinationData.city_zh || destinationData.city}，${destInfo.country || destinationData.country_zh || destinationData.country}`;
+                            nameEl.style.display = 'block'; // 確保名稱顯示
+                        }
                         if (descEl) {
-                            // 🔧 改進：如果有保存的當地問候語，優先顯示在頂部（優先使用 window._phase7WelcomeMessage，如果沒有則使用 Firebase 中的）
-                            const greetingText = window._phase7WelcomeMessage || destInfo.greeting || '';
-                            // 🔧 改進：Phase 0 不顯示天氣，只顯示時間（即時更新）和活動建議
+                            // 🔧 改進：Phase 0 不顯示天氣，只顯示時間（即時更新）和活動建議（移除問候語，因為太長）
                             const timezone = destinationData.timezone || 'UTC';
                             const now = new Date();
                             let initialTime = '--:--';
@@ -5791,8 +5804,8 @@
                                 console.warn('⚠️ 計算初始時間失敗:', error);
                             }
                             
+                            // 保持原本的結構，使用原本的樣式類
                             descEl.innerHTML = `
-                                ${greetingText ? `<div style="font-size: 15px; color: #333; font-weight: 500; margin-bottom: 8px; line-height: 1.4;">💬 ${greetingText}</div>` : ''}
                                 <div id="landingTimeDisplay" style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${initialTime}</div>
                                 <div style="font-size: 14px; color: #ff6b35; font-weight: 500; display: flex; align-items: center; gap: 6px;">✨ ${destInfo.feature || ''}</div>
                             `;
@@ -9693,14 +9706,19 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     const currentLocationEl = document.getElementById('landingCurrentLocation');
                     const currentLocationTextEl = document.getElementById('landingCurrentLocationText');
                     
-                    if (flagEl) flagEl.textContent = flagEmoji;
-                    if (nameEl) nameEl.textContent = `${destinationInfo.city}，${destinationInfo.country}`;
+                    // 🔧 改進：確保國旗和名稱正確顯示，保持原本的排版結構
+                    if (flagEl) {
+                        flagEl.textContent = flagEmoji;
+                        flagEl.style.display = 'block'; // 確保國旗顯示
+                    }
+                    if (nameEl) {
+                        nameEl.textContent = `${destinationInfo.city}，${destinationInfo.country}`;
+                        nameEl.style.display = 'block'; // 確保名稱顯示
+                    }
                     if (descEl) {
-                        // 🔧 改進：如果有當地問候語，優先顯示在頂部
-                        const greetingText = window._phase7WelcomeMessage || destinationInfo.greeting || '';
-                        // 🔧 改進：Phase 7 顯示降落時的天氣（不即時更新），時間即時更新，保留活動建議
+                        // 🔧 改進：Phase 7 顯示降落時的天氣（不即時更新），時間即時更新，保留活動建議（移除問候語，因為太長）
+                        // 保持原本的結構，使用原本的樣式類
                         descEl.innerHTML = `
-                            ${greetingText ? `<div style="font-size: 15px; color: #333; font-weight: 500; margin-bottom: 8px; line-height: 1.4;">💬 ${greetingText}</div>` : ''}
                             <div id="landingTimeDisplay" style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${destinationInfo.time}</div>
                             <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">☀️ ${destinationInfo.weather || ''}</div>
                             <div style="font-size: 14px; color: #ff6b35; font-weight: 500; display: flex; align-items: center; gap: 6px;">✨ ${destinationInfo.feature || ''}</div>
