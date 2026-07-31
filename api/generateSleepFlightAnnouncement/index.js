@@ -41,6 +41,21 @@ const COUNTRY_MENTAL_STATE = {
     'DEFAULT': { state: '平靜', stateEn: 'Calm', description: '這趟旅程，會帶你回到內心的平靜。讓接下來的時間，成為你重新對齊自己的機會。', culturalMood: '平靜、安穩' }
 };
 
+// 降落／甦醒廣播：正向語氣約束（避免負面字詞）
+const POSITIVE_TONE_RULES_ZH = `【正向語氣硬性規則】
+- 全程正向、鼓勵、帶一點甦醒活力；像溫暖的男聲機長在引導乘客醒來
+- 禁止使用或暗示：糟糕、可惜、爛、奇怪、抱歉、延誤很嚴重、失敗、遺憾、倒霉、麻煩
+- 若航程比預計長一點：改說「多給了一段安靜休息」「這趟旅程為你多充了一點電」
+- 若提早抵達：改說「我們比預計更早抵達，多出來的時間可以好好享受此刻」
+- 不要道歉、不要遺憾；改用歡迎、感謝、祝福、活力、清新`;
+
+const POSITIVE_TONE_RULES_EN = `【POSITIVE TONE HARD RULES】
+- Keep the tone positive, encouraging, gently energetic for waking up
+- NEVER use or imply: sorry, unfortunate, bad, weird, delayed badly, failure, regret
+- If longer than planned: say the journey gave extra quiet rest / extra recharge
+- If early: celebrate the bonus time
+- No apologies; use welcome, gratitude, blessing, freshness`;
+
 const TASK_GUIDANCE = {
     boarding: {
         'READING': { zh: '這次飛行任務是「讀書」。請在廣播中強調：認真、專注、準備進入深度學習狀態。', en: 'The flight task is "Reading". Emphasize: seriousness, focus, preparing for deep learning.' },
@@ -145,17 +160,18 @@ Structure:
 4. Closing: "Please prepare for landing. Thank you."
 
 ${greetingHint}`
-                : `你是一位經驗豐富的男性機長，Focus Airlines 的專業機長。生成「準備降落預告廣播」（80-100字，降落前5分鐘）。
+                : `你是一位經驗豐富的男性機長，Sleep Airline 的專業機長。生成「準備降落預告廣播」（80-100字，降落前5分鐘）。
 
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+${POSITIVE_TONE_RULES_ZH}
 
-語氣 = 50% 專業航空 + 25% 溫暖導引 + 25% 內在敘事。
+語氣 = 50% 專業航空 + 25% 溫暖導引 + 25% 甦醒活力（略比起飛時活潑）。
 
 結構：
 1. 開場：「各位乘客，我是機長。我們將在約5分鐘後降落在【${city}】。」
 2. 天氣：描述【${city}】目前天氣（${seasonZh}），與任務融合。${weatherTaskGuidance}。生動有趣，避免重複詞彙。
-3. 任務提醒：${taskGuidanceText}
-4. 結尾：「請準備降落，謝謝。」
+3. 任務提醒：${taskGuidanceText}（用正向、鼓勵的說法）
+4. 結尾：「請準備降落，帶著好心情迎接抵達，謝謝。」
 
 ${greetingHint}`;
 
@@ -269,7 +285,7 @@ ${taskGuidanceText ? `任務完成後指引：${taskGuidanceText}` : ''}
 - Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 
 ${greetingHint}`
-                    : `根據以下結構化 Prompt 設計生成降落廣播（60-80字，保持簡潔有趣且情感豐富）。
+                    : `根據以下結構化 Prompt 設計生成降落廣播（60-80字，保持簡潔有趣且情感豐富）。你是 Sleep Airline 的男性機長。
 
 【輸入變數 (Inputs)】
 - 目的地：${city}，${country}${countryCode ? ` (${countryCode})` : ''}
@@ -282,23 +298,23 @@ ${greetingHint}`
 2. 文化特色 → 當地文化語氣：${culturalContext || mentalState.culturalMood}
 3. 時間情境 → 音調調整：${toneAdjustment}
 
+${POSITIVE_TONE_RULES_ZH}
+
 【生成要求】
-- 語氣：${toneAdjustment}（必須強烈且明確地表達情感，不要平淡）
+- 語氣：${toneAdjustment}（正向、甦醒、略帶活力，不要平淡，也不要負面）
 - 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
-- 自然地融入降落狀況的敘事背景（要讓乘客感受到情境的真實感和臨場感）
+- 自然地融入降落狀況的敘事背景（真實感、臨場感，但保持正向）
 - 天氣：${weatherDescription || `描述【${city}】天氣，與任務融合。${landingWeatherGuidance.zh}。生動且具體，讓乘客能感受到天氣的質感。`}
-- 文化氛圍：「${culturalContext || mentalState.culturalMood}」（要讓乘客感受到當地的文化氣息）
-- 內在狀態：「${mentalState.state}」— ${mentalState.description}（要讓乘客感受到內在的轉變）
+- 文化氛圍：「${culturalContext || mentalState.culturalMood}」
+- 內在狀態：「${mentalState.state}」— ${mentalState.description}
 - 任務完成：${taskGuidanceText}（語氣要肯定且溫暖）
-- 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」（要有強烈的歸屬感和完成感）
-- 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
+- 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
+- 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。
 
 【重要提醒】
 - 必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文
 - 必須完整表達，不要中途截斷
-- 語氣要有力度和感染力，不要平淡
-- 每個句子都要有情感色彩，讓乘客感受到真實的情緒
-- 確保內容完整，不會因為 token 限制而被截斷
+- 禁止負面字詞與道歉式說法
 - 結尾必須完整，不能在中途停止
 
 ${greetingHint}`;
@@ -320,17 +336,19 @@ Tone = 40% aviation + 30% gentle guidance + 30% inner narrative.
 7. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
                         : `生成「完美準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
+你是 Sleep Airline 男性機長。
 
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+${POSITIVE_TONE_RULES_ZH}
 
-語氣 = 40% 專業航空 + 30% 溫柔導引 + 30% 內在敘事。
-1. 開場：「各位乘客，我是機長。本次 Focus Airlines 航班 ${flightNumber} 已順利準時降落於【${city}】。」
+語氣 = 40% 專業航空 + 30% 甦醒導引 + 30% 正向祝福（略活潑）。
+1. 開場：「各位乘客，我是機長。本次 Sleep Airline 航班 ${flightNumber} 已順利準時降落於【${city}】。」
 2. 時間和天氣：${landingTimeInfo} ${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 3. 文化氛圍：「${mentalState.culturalMood}」
 4. 內在狀態：「${mentalState.state}」— ${mentalState.description}
 5. 任務完成：${taskGuidanceText}
 6. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
-7. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
+7. 最後：以【${country}】當地語言結尾，感謝搭乘 Sleep Airline，祝美好的一天
 ${greetingHint}`,
 
                     'EARLY': isEnglish
@@ -342,69 +360,75 @@ ${greetingHint}`,
 5. Closing: Make passengers feel they gained inner harvest even with early landing.
 6. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
-                        : `生成「提早降落」廣播（60-80字，保持簡潔）。
+                        : `生成「提早降落」廣播（60-80字，保持簡潔）。你是 Sleep Airline 男性機長。
 
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+${POSITIVE_TONE_RULES_ZH}
 
-語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
-1. 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
-2. 提早宣告：「我們提早到達了【${city}】。」
+語氣：30% 機長廣播 + 40% 甦醒導引 + 30% 正向祝福（略活潑）。
+1. 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」）
+2. 提早宣告：「我們比預計更早抵達【${city}】，多出來的時間可以好好享受此刻。」
 3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 4. 內在狀態：${innerStatePrompt}
-5. 結尾：讓乘客感覺即使提早降落，也獲得了內在收穫。
-6. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
+5. 結尾：讓乘客感覺提早抵達是一份小禮物與內在收穫。
+6. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」。
 ${greetingHint}`,
 
                     'LATE': isEnglish
-                        ? `Generate a "delayed landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
-Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
-1. Start with: "Welcome to ${city}" or similar welcoming arrival message (NOT "Welcome aboard" - that's for boarding, not landing)
-2. Apology: "Sorry, this flight has been delayed."
-3. Destination: ${punctuality.divertedCity && punctuality.divertedCity !== city ? `"Originally scheduled to land at 【${punctuality.originalDestination}】, we have diverted to 【${punctuality.divertedCity}】."` : `"This flight is delayed but still landing at 【${city}】."`}
+                        ? `Generate a "longer journey landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
+${POSITIVE_TONE_RULES_EN}
+Tone: warm male captain, positive wake-up energy. NO apologies.
+1. Start with: "Welcome to ${city}"
+2. Reframe duration positively: the journey gave extra quiet rest / extra recharge time.
+3. Destination: ${punctuality.divertedCity && punctuality.divertedCity !== city ? `"We have arrived at 【${punctuality.divertedCity}】 for this special extension of your rest."` : `"We have arrived safely at 【${city}】 after a fuller rest journey."`}
 4. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
-5. Encouragement: Warm, positive
+5. Encouragement: Warm, positive, lightly energetic
 6. Inner state: ${innerStatePrompt}
-7. Closing: Make passengers feel they arrived at themselves and destination despite delay.
-8. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
+7. Closing: Passengers feel restored and welcome
+8. Final: warm closing in the local language of ${country}
 ${greetingHint}`
-                        : `生成「誤點降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
+                        : `生成「多休息一會兒後抵達」廣播（60-80字，保持簡潔）。${approachAvoidance}
+你是 Sleep Airline 男性機長。
 
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+${POSITIVE_TONE_RULES_ZH}
 
-語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
-1. 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
-2. 歉意宣告：「抱歉，本次航班延誤。」
-3. 目的地：${punctuality.divertedCity && punctuality.divertedCity !== city ? `「原定降落於【${punctuality.originalDestination}】，但因時間超過，我們轉降至【${punctuality.divertedCity}】。」` : `「本次航班延誤，但仍降落在【${city}】。」`}
-4. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
-5. 鼓勵：溫暖、積極
-6. 內在狀態：${innerStatePrompt}
-7. 結尾：讓乘客感覺即使延誤，也抵達了自己和目的地。
-8. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
+語氣：正向甦醒、略帶活力；不要道歉、不要說延誤很糟糕。
+1. 開頭：必須說「歡迎來到【${city}】」或類似到達歡迎語（不要說歡迎登機）
+2. 航程說明：改寫成「這趟旅程多給了一段安靜休息／為你多充了一點電」，${punctuality.divertedCity && punctuality.divertedCity !== city ? `並溫暖說明我們抵達的是【${punctuality.divertedCity}】這份特別的延伸休息。` : `並溫暖說明我們已順利抵達【${city}】。`}
+3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
+4. 鼓勵：溫暖、積極、清新
+5. 內在狀態：${innerStatePrompt}
+6. 結尾：讓乘客感覺被好好照顧、帶著活力醒來
+7. 最後：以【${country}】當地語言結尾，感謝搭乘 Sleep Airline，祝美好的一天
 ${greetingHint}`,
 
                     'ON_TIME': isEnglish
                         ? `Generate an "on-time landing" announcement (60-80 words, keep it concise). ${approachAvoidance}
-Tone: 20% captain + 40% gentle guidance + 40% inner narrative.
-1. Start with: "Welcome to ${city}" or similar welcoming arrival message (NOT "Welcome aboard" - that's for boarding, not landing)
+${POSITIVE_TONE_RULES_EN}
+Tone: warm male captain, positive wake-up energy.
+1. Start with: "Welcome to ${city}"
 2. Landing: "This flight has landed on time at 【${city}】."
 3. Weather: ${weatherDescription || `Describe weather, integrate with task. ${landingWeatherGuidance.en}. Vivid.`}
 4. Inner state: ${innerStatePrompt}
 5. Thanks: Thank passengers for completing the journey
-6. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
-7. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
+6. Closing: Passengers feel they arrived at themselves and ${city}
+7. Final: warm closing in the local language of ${country}
 ${greetingHint}`
                         : `生成「準時降落」廣播（60-80字，保持簡潔）。${approachAvoidance}
+你是 Sleep Airline 男性機長。
 
 【重要】必須使用繁體中文（Traditional Chinese），絕對不要使用簡體中文。
+${POSITIVE_TONE_RULES_ZH}
 
-語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
-1. 開頭：必須說「歡迎來到【${city}】」或類似的到達歡迎語（絕對不要說「歡迎登機」或「歡迎搭乘」，那是起飛時說的）
+語氣：正向、甦醒、略活潑。
+1. 開頭：必須說「歡迎來到【${city}】」或類似到達歡迎語（不要說歡迎登機）
 2. 降落宣告：「本次航班順利準時降落於【${city}】。」
 3. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 4. 內在狀態：${innerStatePrompt}
 5. 感謝：感謝乘客完成這段旅程
 6. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
-7. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
+7. 最後：以【${country}】當地語言結尾，感謝搭乘 Sleep Airline，祝美好的一天
 ${greetingHint}`
                 };
 
@@ -421,15 +445,17 @@ ${greetingHint}`
 7. Closing: Make passengers feel they "arrived at themselves" and "arrived at 【${city}】's emotional atmosphere"
 8. Final: MUST end with a warm closing greeting in the local language of ${country} (${countryCode || ''}). The greeting should express "Thank you for choosing Sleep Airline, have a wonderful day" in the local language. Generate it naturally and authentically in the local language, tone should be warm and sincere.
 ${greetingHint}`
-                    : `生成降落廣播（60-80字，保持簡潔）。語氣：20% 機長 + 40% 溫柔導引 + 40% 內在敘事。
+                    : `生成降落廣播（60-80字，保持簡潔）。你是 Sleep Airline 男性機長。
+${POSITIVE_TONE_RULES_ZH}
+語氣：正向甦醒、略帶活力。
 1. 歡迎到達目的地
 2. 目的地：${city} (${country})
 3. ${landingTimeInfo || '時間資訊'}
 4. 天氣：${weatherDescription || `描述天氣，與任務融合。${landingWeatherGuidance.zh}。生動。`}
 5. 內在狀態：${innerStatePrompt}
-6. ${timerDuration ? '恭喜完成飛行任務' : '提醒乘客確認降落'}
+6. ${timerDuration ? '恭喜完成飛行任務' : '溫暖提醒乘客準備迎接抵達'}
 7. 結尾：讓乘客感覺「抵達了自己」同時也「抵達了【${city}】的情緒氛圍」
-8. 最後：必須以【${country}】的當地語言結尾，表達「感謝您搭乘 Sleep Airline，祝您有美好的一天」的意思。請用當地語言自然且真實地生成這段問候語，語氣要溫暖真誠。不要使用預先翻譯好的文字，要根據當地語言習慣自然生成。
+8. 最後：以【${country}】當地語言結尾，感謝搭乘 Sleep Airline，祝美好的一天
 ${greetingHint}`;
             }
 

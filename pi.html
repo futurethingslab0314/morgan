@@ -1941,7 +1941,7 @@
                 icon: '🌴',
                 position: 0,
                 latitudeRange: [-23.5, 23.5],  // 熱帶：赤道附近 ±23.5°
-                voiceTemplate: 1,  // 模板 2：更溫柔的引導風格
+                voiceTemplate: 1,  // 文案模板 2（聲線固定男聲助眠）
                 climateType: 'tropical',
                 description: '溫暖的熱帶風情'
             },
@@ -1951,7 +1951,7 @@
                 icon: '🍃',
                 position: 1,
                 latitudeRange: [[23.5, 50], [-50, -23.5]],  // 溫帶：23.5°~50° 或 -50°~-23.5°
-                voiceTemplate: 3,  // 模板 4：詩意而溫柔的風格
+                voiceTemplate: 3,  // 文案模板 4（聲線固定男聲助眠）
                 climateType: 'temperate',
                 description: '舒適的溫帶氣候'
             },
@@ -1961,7 +1961,7 @@
                 icon: '❄️',
                 position: 2,
                 latitudeRange: [[66.5, 90], [-90, -66.5]],  // 極地：66.5°~90° 或 -90°~-66.5°
-                voiceTemplate: 2,  // 模板 3：簡潔而有力的風格
+                voiceTemplate: 2,  // 文案模板 3（聲線固定男聲助眠）
                 climateType: 'polar',
                 description: '純淨的極地世界'
             },
@@ -1971,7 +1971,7 @@
                 icon: '🏜️',
                 position: 3,
                 latitudeRange: [[15, 35], [-35, -15]],  // 沙漠帶：15°~35° 或 -35°~-15°
-                voiceTemplate: 0,  // 模板 1：經典機長風格
+                voiceTemplate: 0,  // 文案模板 1（聲線固定男聲助眠）
                 climateType: 'desert',
                 description: '溫暖的沙漠氣息'
             },
@@ -1981,7 +1981,7 @@
                 icon: '🌊',
                 position: 4,
                 latitudeRange: [[35, 60], [-60, -35]],  // 海洋性：35°~60° 或 -60°~-35°
-                voiceTemplate: 4,  // 模板 5：專業而親切的風格
+                voiceTemplate: 4,  // 文案模板 5（聲線固定男聲助眠）
                 climateType: 'oceanic',
                 description: '清新的海洋微風'
             },
@@ -2991,33 +2991,49 @@
             }
         }
         
-        // 旋鈕何時需要輪詢、多快輪詢（Phase 4／起飛中不該狂打 5001）
+        // 旋鈕何時需要輪詢、多快輪詢（非選單階段盡量不打 5001）
         function getKnobPollIntervalMs() {
             // Phase 1/2 選時間、氣候：要靈敏
             if (currentState === State.TIMER || currentState === State.ANGLE) return 100;
+            // 機票回顧切換航程
+            if (currentState === 'TICKET_REVIEW') return 150;
             // Phase 7 情緒量表：中等即可（細部輪詢在 showFlightFeedback 內）
-            if (currentPhase === Phase.LANDING || currentPhase === 7) return 400;
+            if ((currentPhase === Phase.LANDING || currentPhase === 7) && window._feedbackWaitingForButton) return 400;
             // Phase 5 飛機餐偵測：不需要 100ms
-            if (currentPhase === Phase.CRUISE || currentPhase === 5) return 500;
+            if ((currentPhase === Phase.CRUISE || currentPhase === 5) && !midnightServiceTriggered) return 500;
             // 其他階段幾乎不用旋鈕
             return 2000;
         }
 
         function shouldPollKnobNow() {
             if (!knobMonitoringEnabled) return false;
-            // 起飛序列進行中／Phase 4：完全不打旋鈕 API，避免跟 TTS／存檔搶連線
+            // 起飛序列／非選單階段：完全不打旋鈕 API
             if (isTakeoffSequenceRunning) return false;
+            if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) return false;
+            if (currentPhase === Phase.DESTINATION_SHOW || currentPhase === 3) return false;
             if (currentPhase === Phase.TAKEOFF_PREP || currentPhase === 4) return false;
             if (currentPhase === Phase.DESCENT || currentPhase === 6) return false;
-            // Phase 5 飛機餐已觸發後也不用再狂輪詢
+            // Phase 5 飛機餐已觸發後也不用再輪詢
             if ((currentPhase === Phase.CRUISE || currentPhase === 5) && midnightServiceTriggered) return false;
-            // 選時間／氣候／巡航飛機餐／情緒量表／機票回顧才需要
+            // 僅選單／需要旋鈕互動時才輪詢
             if (currentState === State.TIMER || currentState === State.ANGLE) return true;
             if (currentState === 'TICKET_REVIEW') return true;
-            if (currentPhase === Phase.CRUISE || currentPhase === 5) return true;
-            if (currentPhase === Phase.LANDING || currentPhase === 7) return true;
+            if ((currentPhase === Phase.CRUISE || currentPhase === 5) && !midnightServiceTriggered) return true;
+            if ((currentPhase === Phase.LANDING || currentPhase === 7) && window._feedbackWaitingForButton) return true;
             return false;
         }
+
+        // 機長 TTS 節奏：起飛助眠偏慢；降落甦醒略快
+        const CAPTAIN_TTS = {
+            gender: 'male',
+            takeoffSpeed: 0.72,
+            takeoffRate: 0.72,
+            takeoffPitch: 0.80,
+            landingSpeed: 0.92,
+            landingRate: 0.90,
+            landingPitch: 0.95,
+            descentWakeSpeed: 0.90
+        };
 
         let lastKnobPollIntervalMs = null;
 
@@ -3042,11 +3058,16 @@
             lastKnobPollIntervalMs = intervalMs;
             console.log(`🔄 啟動旋鈕監控（間隔 ${intervalMs}ms；Phase 4／起飛中會跳過請求）`);
 
+            let knobPollInFlight = false;
             knobPollInterval = setInterval(async () => {
                 if (!shouldPollKnobNow()) {
                     return;
                 }
+                if (knobPollInFlight) {
+                    return;
+                }
 
+                knobPollInFlight = true;
                 try {
                     // 添加 cache: 'no-cache' 和 AbortController 來避免 ERR_CACHE_RACE 錯誤
                     const controller = new AbortController();
@@ -3125,6 +3146,8 @@
                         // 只有非預期的錯誤才記錄（可選）
                         // console.error('🔴 簡化監控抓旋鈕失敗:', e);
                     }
+                } finally {
+                    knobPollInFlight = false;
                 }
             }, intervalMs);
         }
@@ -3266,24 +3289,39 @@
             }
             
             // 定義輪詢函數（使用命名函數，避免 arguments.callee）
+            let buttonPollInFlight = false;
+
+            const getDesiredButtonPollInterval = () => {
+                // 起飛序列進行中：按鈕幾乎不需要，放慢避免跟 TTS 搶連線
+                if (isTakeoffSequenceRunning) return 800;
+                // Phase 5 三擊提前降落：保持靈敏
+                if (currentPhase === Phase.CRUISE || currentPhase === 5) return 100;
+                // Phase 1-4 選項／起飛確認：保持靈敏
+                if (currentPhase <= 4) return 100;
+                // Phase 6/7：中等
+                return 200;
+            };
+
             const pollButton = async () => {
                 // 如果監控被停用，直接返回（但不清除 interval，以便重新啟用）
                 if (!buttonMonitoringEnabled) {
                     return;
                 }
+
+                // 上一輪還沒結束就跳過，避免 setInterval 堆出上百個 pending fetch
+                if (buttonPollInFlight) {
+                    return;
+                }
                 
-                // 🔧 修正：在 Phase 5 (CRUISE) 時，保持正常輪詢頻率（100ms），確保按鈕偵測不會錯過
-                // 之前降低到 150ms 會導致按鈕按下容易被錯過
                 const isCruisePhase = currentPhase === Phase.CRUISE || currentPhase === 5;
-                const CRUISE_POLL_INTERVAL = 100; // Phase 5 時也使用 100ms，確保按鈕響應及時
+                const desiredBase = getDesiredButtonPollInterval();
                 
                 // 根據錯誤次數動態調整輪詢頻率（不再完全停止）
                 // 這樣可以確保即使 API 暫時失效，也不會完全錯過按鈕按下
                 if (buttonConsecutiveErrors > 0) {
                     // 根據錯誤次數計算新的輪詢間隔（線性退避，但不會完全停止）
                     const errorRatio = Math.min(buttonConsecutiveErrors / MAX_BUTTON_ERRORS, 1);
-                    const baseInterval = isCruisePhase ? CRUISE_POLL_INTERVAL : MIN_POLL_INTERVAL;
-                    const newInterval = Math.floor(baseInterval + (MAX_POLL_INTERVAL - baseInterval) * errorRatio);
+                    const newInterval = Math.floor(desiredBase + (MAX_POLL_INTERVAL - desiredBase) * errorRatio);
                     
                     // 如果間隔改變了，重新設置 interval
                     if (newInterval !== currentButtonPollInterval) {
@@ -3300,8 +3338,8 @@
                         return; // 這次不執行，等待下次用新間隔執行
                     }
                 } else {
-                    // 沒有錯誤，根據 Phase 決定正常頻率
-                    const targetInterval = isCruisePhase ? CRUISE_POLL_INTERVAL : MIN_POLL_INTERVAL;
+                    // 沒有錯誤，依 phase／起飛狀態調整
+                    const targetInterval = desiredBase;
                     if (currentButtonPollInterval !== targetInterval) {
                         currentButtonPollInterval = targetInterval;
                         if (buttonPollInterval) {
@@ -3310,8 +3348,7 @@
                         buttonPollInterval = setInterval(pollButton, currentButtonPollInterval);
                         // 只在真正恢復時輸出一次，避免刷屏
                         if (connectionErrorLogged) {
-                            const intervalText = isCruisePhase ? `${CRUISE_POLL_INTERVAL}ms（巡航模式）` : '100ms（正常模式）';
-                            console.log(`✅ 按鈕 API 已恢復，輪詢頻率恢復至正常（${intervalText}）`);
+                            console.log(`✅ 按鈕 API 已恢復，輪詢頻率恢復至 ${currentButtonPollInterval}ms`);
                             connectionErrorLogged = false;
                         }
                         return;
@@ -3321,6 +3358,8 @@
                 if (controller) {
                     controller.abort();
                 }
+
+                buttonPollInFlight = true;
                 
                 controller = new AbortController();
                 // 🔧 修正：增加超時時間到 1000ms，確保 API 響應慢時也能正確檢測按鈕狀態
@@ -3541,6 +3580,8 @@
                         // 只在第一次錯誤時記錄，避免重複日誌
                         connectionErrorLogged = true;
                     }
+                } finally {
+                    buttonPollInFlight = false;
                 }
             };
             
@@ -4201,17 +4242,15 @@
                 console.log('📢 [Phase 4] 顯示機長廣播中 UI...');
                 setBoardingStatus(true, '機長廣播中...');
                 
-                // 觸發起飛序列
-                if (!isTakeoffSequenceRunning && preparedAnnouncement) {
-                    console.log('✅ [Phase 4] 按鈕：開始起飛！');
-                    startTakeoffSequence();
-                } else if (isTakeoffSequenceRunning) {
+                // 觸發起飛序列（即使 TTS 文案尚未好，也允許起飛；序列內會跳過或即時生成）
+                if (isTakeoffSequenceRunning) {
                     console.log('⚠️ [Phase 4] 起飛序列正在進行中，忽略按鈕按下');
+                } else if (destinationData || preparedAnnouncement) {
+                    console.log('✅ [Phase 4] 按鈕：開始起飛！', preparedAnnouncement ? '(TTS 已備)' : '(TTS 未備，仍起飛)');
+                    startTakeoffSequence();
                 } else {
-                    console.log('⚠️ [Phase 4] 起飛準備未完成，嘗試重新準備...');
-                    if (destinationData) {
-                        prepareForTakeoff();
-                    }
+                    console.log('⚠️ [Phase 4] 尚無目的地，嘗試重新準備...');
+                    prepareForTakeoff();
                 }
                 return;
             }
@@ -4526,11 +4565,11 @@
                         
                         if (announcementResult && announcementResult.text) {
                             preparedAnnouncement = announcementResult.text;
-                            preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
+                            preparedAnnouncementGender = CAPTAIN_TTS.gender; // 固定男聲機長
                             preparedAudioId = null;
                                 // 🔧 改進：在背景生成 TTS 音檔（不阻塞，讓用戶可以立即看到目的地）
                                 console.log('⏳ [Phase 3] 開始在背景生成 TTS 音檔（不阻塞）...');
-                                generateTtsAudio(announcementResult.text, 'zh-TW', announcementResult.gender, 0.8).then(audioId => {
+                                generateTtsAudio(announcementResult.text, 'zh-TW', CAPTAIN_TTS.gender, CAPTAIN_TTS.takeoffSpeed).then(audioId => {
                                     if (audioId) {
                                         console.log('✅ [Phase 3] TTS 音檔已生成完成（背景），audio_id:', audioId);
                                     } else {
@@ -4539,7 +4578,7 @@
                                 }).catch(err => {
                                     console.warn('⚠️ [Phase 3] TTS 音檔生成時發生錯誤（背景）:', err);
                                 });
-                                console.log('✅ 起飛語音文字已準備（' + announcementResult.gender + ' 聲，語速 0.8）');
+                                console.log('✅ 起飛語音文字已準備（男聲助眠，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
                         } else {
                             console.warn('⚠️ 起飛語音文字生成失敗');
                             }
@@ -4548,7 +4587,7 @@
                             // 🔧 改進：即使文字已準備，如果音檔還沒生成，也在背景生成
                             if (!preparedAudioId && preparedAnnouncement) {
                                 console.log('⏳ [Phase 3] 文字已準備但音檔未生成，開始在背景生成 TTS 音檔...');
-                                generateTtsAudio(preparedAnnouncement, 'zh-TW', preparedAnnouncementGender, 0.8).then(audioId => {
+                                generateTtsAudio(preparedAnnouncement, 'zh-TW', CAPTAIN_TTS.gender, CAPTAIN_TTS.takeoffSpeed).then(audioId => {
                                     if (audioId) {
                                         console.log('✅ [Phase 3] TTS 音檔已生成完成（背景），audio_id:', audioId);
                                     } else {
@@ -4577,53 +4616,33 @@
                     
                 case State.DESTINATION:
                 case State.READY_TO_FLY:
-                    // 從準備起航 → 開始起飛
+                    // 從準備起航 → 開始起飛（有目的地即可，不等待 TTS 文案）
                     if (isTakeoffSequenceRunning) {
                         console.log('⚠️ 起飛序列正在進行中，忽略按鈕按下');
                         return;
                     }
-                    if (preparedAnnouncement) {
-                        console.log('✅ 按鈕：開始起飛！');
-                        
-                        // 🔧 改進：如果 TTS 音檔還沒準備好，顯示「準備中...」UI 並等待
-                        if (!preparedAudioId) {
-                            console.log('⏳ [Phase 3→4] TTS 音檔尚未準備好，顯示「準備中...」UI 並等待生成...');
-                            setBoardingStatus(true, '機組人員就位中，請稍候...');
-                            
-                            // 等待 TTS 生成完成（最多等待 10 秒）
-                            const waitForTts = async () => {
-                                const startTime = Date.now();
-                                const maxWaitTime = 10000; // 最多等待 10 秒
-                                
-                                while (!preparedAudioId && (Date.now() - startTime) < maxWaitTime) {
-                                    await new Promise(resolve => setTimeout(resolve, 100));
-                                }
-                                
-                                if (preparedAudioId) {
-                                    console.log('✅ [Phase 3→4] TTS 音檔已準備好，開始起飛序列');
-                                    setBoardingStatus(true, '機長廣播中...');
-                                    startTakeoffSequence();
-                                } else {
-                                    console.warn('⚠️ [Phase 3→4] TTS 音檔生成超時，使用即時生成模式');
-                                    setBoardingStatus(true, '機長廣播中...');
-                                    startTakeoffSequence();
-                                }
-                            };
-                            
-                            waitForTts();
-                        } else {
-                            // TTS 已準備好，立即開始起飛
-                            console.log('✅ [Phase 3→4] TTS 音檔已準備好，立即開始起飛序列');
-                        // 立即顯示「機長廣播中...」的動態 UI
-                        console.log('📢 [Phase 3→4] 顯示機長廣播中 UI...');
+                    if (!destinationData && !preparedAnnouncement) {
+                        console.log('⚠️ 起飛準備未完成，嘗試重新準備...');
+                        prepareForTakeoff();
+                        break;
+                    }
+                    console.log('✅ 按鈕：開始起飛！');
+                    // TTS 未備好時短暫顯示「準備中」，最多等 3 秒就起飛，避免按鈕像沒反應
+                    if (!preparedAudioId && preparedAnnouncement) {
+                        console.log('⏳ TTS 音檔尚未準備好，最多等待 3 秒後仍起飛...');
+                        setBoardingStatus(true, '機組人員就位中，請稍候...');
+                        const waitForTts = async () => {
+                            const startTime = Date.now();
+                            while (!preparedAudioId && (Date.now() - startTime) < 3000) {
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                            }
+                            setBoardingStatus(true, '機長廣播中...');
+                            startTakeoffSequence();
+                        };
+                        waitForTts();
+                    } else {
                         setBoardingStatus(true, '機長廣播中...');
                         startTakeoffSequence();
-                        }
-                    } else {
-                        console.log('⚠️ 起飛準備未完成，嘗試重新準備...');
-                        if (destinationData) {
-                            prepareForTakeoff();
-                        }
                     }
                     break;
                     
@@ -4667,13 +4686,13 @@
                 
                 if (announcementResult && announcementResult.text) {
                     preparedAnnouncement = announcementResult.text;
-                    preparedAnnouncementGender = announcementResult.gender; // 保存性別信息
+                    preparedAnnouncementGender = CAPTAIN_TTS.gender; // 固定男聲機長
                     preparedAudioId = null; // 重置先前的音檔 ID
-                    console.log('✅ TTS 語音已準備完成（等待起飛按鈕，' + announcementResult.gender + ' 聲，語速 0.8）');
+                    console.log('✅ TTS 語音已準備完成（等待起飛按鈕，男聲助眠，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
                     
                     // 🔧 改進：在背景生成 TTS 音檔（不阻塞，讓用戶可以立即看到目的地）
                     console.log('⏳ [prepareForTakeoff] 開始在背景生成 TTS 音檔（不阻塞）...');
-                    generateTtsAudio(announcementResult.text, 'zh-TW', announcementResult.gender, 0.8).then(audioId => {
+                    generateTtsAudio(announcementResult.text, 'zh-TW', CAPTAIN_TTS.gender, CAPTAIN_TTS.takeoffSpeed).then(audioId => {
                         if (audioId) {
                             console.log('✅ [prepareForTakeoff] TTS 音檔已生成完成（背景），audio_id:', audioId);
                         } else {
@@ -4704,6 +4723,7 @@
             console.log('🚀 開始起飛序列...');
             refreshKnobMonitoring('起飛序列開始，暫停旋鈕輪詢');
             
+            try {
             // 重置降落相關標記
             descentAnnouncementPlayed = false;
             manualLandingTriggered = false;
@@ -4772,25 +4792,24 @@
                         console.log('🔄 [起飛] TTS 音檔播放失敗，回退到即時生成...');
                         await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
                             isTakeoff: true,
-                            rate: 0.65,
-                            pitch: 0.85,
-                            volume: 0.7, /* 🔧 Phase 4 音量降低到 0.7 倍，晚上不會太大聲 */
-                            gender: preparedAnnouncementGender
+                            rate: CAPTAIN_TTS.takeoffRate,
+                            pitch: CAPTAIN_TTS.takeoffPitch,
+                            volume: 0.7,
+                            gender: CAPTAIN_TTS.gender
                         });
                     }
                 }
             } else if (preparedAnnouncement) {
                 console.log('2️⃣ 使用即時 TTS 生成並播放（無快取音檔）...');
                 try {
-                    // 🔧 改進：傳遞性別和更慢的語速
                     await playAnnouncement(preparedAnnouncement, 'zh-TW', { 
                         isTakeoff: true,
-                        rate: 0.65,  // 🔧 更慢的語速，更溫柔
-                        pitch: 0.85,  // 稍低音調（更柔和）
-                        volume: 0.7,  /* 🔧 Phase 4 音量降低到 0.7 倍，晚上不會太大聲 */
-                        gender: preparedAnnouncementGender  // 🔧 傳遞性別
+                        rate: CAPTAIN_TTS.takeoffRate,
+                        pitch: CAPTAIN_TTS.takeoffPitch,
+                        volume: 0.7,
+                        gender: CAPTAIN_TTS.gender
                     });
-                    console.log('✅ TTS 語音播放完成（' + preparedAnnouncementGender + ' 聲）');
+                    console.log('✅ TTS 語音播放完成（男聲助眠機長）');
                 } catch (error) {
                     console.warn('⚠️ TTS 語音播放時發生錯誤:', error);
                 }
@@ -5054,11 +5073,24 @@
             console.log('   🔍 調試資訊 - currentPhase:', currentPhase, 'Phase.CRUISE:', Phase.CRUISE);
             console.log('   🔍 調試資訊 - 兩者是否相等:', currentPhase === Phase.CRUISE);
             console.log('   🔍 調試資訊 - 按鈕監控狀態:', buttonMonitoringEnabled ? '啟用' : '停用');
-            
-            // 起飛序列完成，清除標記（允許後續按鈕操作）
-            isTakeoffSequenceRunning = false;
-            console.log('✅ 起飛序列完成，已清除防重複標記');
-            refreshKnobMonitoring('起飛完成，恢復 Phase 5 旋鈕節奏');
+            } catch (takeoffError) {
+                console.error('❌ 起飛序列發生錯誤:', takeoffError);
+                setBoardingStatus(false);
+                // 盡量仍進入巡航，避免卡在「準備起飛」
+                try {
+                    if (currentPhase !== Phase.CRUISE && currentPhase !== 5) {
+                        sleepStartTime = sleepStartTime || Date.now();
+                        switchToPhase(Phase.CRUISE);
+                    }
+                } catch (e) {
+                    console.warn('⚠️ 起飛錯誤後切換巡航失敗:', e);
+                }
+            } finally {
+                // 起飛序列完成／失敗都清除標記，避免按鈕永久無回應
+                isTakeoffSequenceRunning = false;
+                console.log('✅ 起飛序列結束，已清除防重複標記');
+                refreshKnobMonitoring('起飛結束，恢復旋鈕節奏');
+            }
         }
         
         // 輔助函數：隱藏所有狀態 UI（用於巡航模式）
@@ -7643,90 +7675,81 @@
                 : '您此刻想像中的氣候';
             const climateDescription = `一個擁有「${climateName}」氣候的地方`;
             
-            // 5組不同的起飛語音文字稿模板（精簡版，80-120字，加快 TTS 生成速度）
-            // 要點：
-            // 1. 開頭都要有「歡迎搭乘 Sleep Airline」
-            // 2. 明確告知目的地國家和城市
-            // 3. 語氣溫和、正常，像一般機長廣播
-            // 4. 性別標註：模板 1、3、5 為男聲；模板 2、4 為女聲
-            // 5. 精簡到 80-120 字，加快 TTS 生成速度
-            // 🔧 新增：包含當前位置、時間、距離資訊
+            // 5 組起飛語音：固定男聲機長、低沉廣播感、助眠導引（約 90–110 字）
+            // 要點：歡迎搭乘、航線資訊、飛航模式／窗簾、閉眼放鬆、正向收尾
             const announcementTemplates = [
-                // 模板 1：男聲 - 專業機長風格（精簡版，約 90 字）
-                `各位旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長為您廣播。
+                // 模板 1：經典艙音
+                `各位旅客，晚安。歡迎搭乘 Sleep Airline，這裡是機長為您廣播。
 
-現在時間是${currentTime}，我們正從${originCityName}出發，預計在${timeDescription}起飛，飛行時間約${durationDescription}，飛行距離${distanceDescription}。目的地是${countryName}的${cityName}，一個「${climateName}」的地方。
+現在時間 ${currentTime}，我們正從${originCityName}起飛，預計飛行約${durationDescription}，航程${distanceDescription}，前往${countryName}的${cityName}，一個「${climateName}」的地方。
 
-請將手機調整為飛航模式，調暗螢幕。如果方便的話，也可以拉下窗簾。
+請將手機調為飛航模式，螢幕調暗。若方便，也可輕輕拉下窗簾。
 
-現在，請讓身體放鬆，找到一個舒服的姿勢，閉上眼睛，慢慢放鬆。${weatherDescription}在窗外，飛機引擎的穩定聲響會陪伴您度過這段旅程。
+接下來，請讓背部靠穩，肩膀與頸部慢慢放鬆，輕輕閉上眼睛。${weatherDescription}在窗外，引擎穩定而平緩的聲響，會安靜地陪伴您入眠。
 
-預計在${durationDescription}後抵達${countryName}的${cityName}。感謝您選擇 Sleep Airline，祝您旅途愉快。`,
+我們將在約${durationDescription}後抵達。感謝您選擇 Sleep Airline，祝您一夜好夢。`,
 
-                // 模板 2：女聲 - 溫柔風格（精簡版，約 85 字）
-                `晚安，各位旅客，歡迎搭乘 Sleep Airline。這裡是機長。
+                // 模板 2：柔和導引入眠
+                `各位旅客晚安，歡迎搭乘 Sleep Airline。我是本次航班的機長。
 
-現在時間是${currentTime}，我們正從${originCityName}出發，今晚我們將進行一段約${durationDescription}的飛行，飛行距離${distanceDescription}，前往${countryName}的${cityName}，一個「${climateName}」的地方。
+此刻是 ${currentTime}，我們自${originCityName}出發，飛行時間約${durationDescription}，距離${distanceDescription}，目的地是${countryName}${cityName}，帶著「${climateName}」的氛圍。
 
-請將手機調成飛航模式，調暗螢幕。如果需要的話，也可以把窗簾拉下。
+請切換飛航模式，把光線調柔。需要時，請拉下窗簾，讓機艙更安靜。
 
-請找一個舒服的姿勢，放鬆肩膀和頸部，輕輕閉上眼睛。我們會在${timeDescription}起飛，${weatherDescription}會陪伴我們度過這段航程。
+請找一個最舒服的姿勢，放慢呼吸，讓眼皮自然合上。${weatherDescription}會在窗外靜靜流動，您只需要安心休息。
 
-預計在${durationDescription}後抵達${countryName}的${cityName}。感謝您搭乘 Sleep Airline，祝您有個舒適的旅程。`,
+預計${durationDescription}後抵達。Sleep Airline 祝您沉穩、溫柔地入睡。`,
 
-                // 模板 3：男聲 - 簡潔風格（精簡版，約 88 字）
-                `各位旅客晚安，歡迎搭乘 Sleep Airline，我是本次航班的機長。
+                // 模板 3：簡潔艙音
+                `晚安，各位旅客。歡迎搭乘 Sleep Airline，這裡是機長。
 
-現在時間是${currentTime}，我們正從${originCityName}出發，即將從${timeDescription}起飛，預計飛行時間約${durationDescription}，飛行距離${distanceDescription}。目的地是${countryName}的${cityName}，一個「${climateName}」的區域。
+時間 ${currentTime}，起飛點${originCityName}，飛行約${durationDescription}，航程${distanceDescription}，目的地${countryName}的${cityName}，「${climateName}」。
 
-請將手機調整為飛航模式，調暗螢幕。如果想要更好休息，可以把窗簾拉下。
+請開啟飛航模式、調暗螢幕；若想更好休息，請現在拉下窗簾。
 
-請讓身體靠在座椅上，放鬆肩膀與頸部，找到一個舒適的姿勢。飛機引擎的穩定聲響會陪伴您度過這段旅程。
+請把注意力放回呼吸，肩膀放鬆，輕輕閉上眼睛。引擎的穩定節奏，會像搖籃一樣陪您飛行。
 
-預計在${durationDescription}後抵達${countryName}的${cityName}。感謝您選擇 Sleep Airline，祝您旅途愉快。`,
+我們約在${durationDescription}後到達。感謝搭乘，祝您好眠。`,
 
-                // 模板 4：女聲 - 親切風格（精簡版，約 82 字）
-                `親愛的旅客，晚安，歡迎搭乘 Sleep Airline。這裡是機長。
+                // 模板 4：夜間助眠
+                `各位旅客，歡迎搭乘 Sleep Airline。我是機長，為您做起飛前廣播。
 
-現在時間是${currentTime}，我們正從${originCityName}出發，今晚我們將在${timeDescription}起飛，飛行時間約${durationDescription}，飛行距離${distanceDescription}。我們即將飛往${countryName}的${cityName}，一個「${climateName}」的地方。
+現在是 ${currentTime}，${timeDescription}，我們從${originCityName}前往${countryName}${cityName}，飛行約${durationDescription}，距離${distanceDescription}，航線帶著「${climateName}」的氣息。
 
-請將手機調成飛航模式，關閉不必要的通知。如果需要的話，也可以把窗簾拉下。
+請將手機與平板設為飛航模式，並調暗亮度。需要時請拉下窗簾，讓光線更柔和。
 
-請找一個舒服的姿勢，放鬆肩膀，輕輕閉上眼睛，讓身體慢慢放鬆。${weatherDescription}在窗外，機艙內的環境已經準備好讓您好好休息。
+請讓身體沉進座椅，慢慢吐氣，閉上眼睛。機艙燈光會漸漸安靜下來，陪伴您進入休息。
 
-預計在${durationDescription}後抵達${countryName}的${cityName}。感謝您搭乘 Sleep Airline，祝您有個舒適的夜晚。`,
+預計${durationDescription}後抵達。祝您這趟 Sleep Airline 旅途安穩入夢。`,
 
-                // 模板 5：男聲 - 專業公告風格（精簡版，約 95 字）
-                `各位旅客，您好，歡迎搭乘 Sleep Airline，這裡是本次航班的機長。
+                // 模板 5：專業而溫柔
+                `各位旅客您好，歡迎搭乘 Sleep Airline。本次航班由機長為您廣播。
 
-現在時間是${currentTime}，我們正從${originCityName}出發，將從${timeDescription}起飛，預計飛行時間約${durationDescription}，飛行距離${distanceDescription}。目的地是${countryName}的${cityName}，一個擁有「${climateName}」氣候的地方。
+目前時間 ${currentTime}，我們將自${originCityName}起飛，預計飛行${durationDescription}，航程${distanceDescription}，降落於${countryName}的${cityName}，一個「${climateName}」的所在。
 
-請確認安全帶已經繫好，手機與平板已切換到飛航模式。如果您希望更好休息，也可以現在就把窗簾拉下。
+請確認已切換飛航模式；若希望更好休息，也可現在拉下窗簾。
 
-接下來的時間，機艙燈光會逐漸調暗，讓您可以閉上眼睛休息。
+接下來請閉上眼睛，讓思緒慢慢變慢。${weatherDescription}在窗外，機組會守護這段安靜的飛行。
 
-預計在${durationDescription}後抵達${countryName}的${cityName}。代表全體機組，感謝您搭乘 Sleep Airline，祝您旅途愉快。`
+約${durationDescription}後抵達。感謝選擇 Sleep Airline，祝您一夜好眠。`
             ];
             
             // 根據氣候帶選擇模板，如果沒有指定則隨機選擇
             let selectedIndex;
-            if (climateZoneOption && climateZoneOption.voiceTemplate !== null) {
-                // 使用氣候帶指定的模板
+            if (climateZoneOption && climateZoneOption.voiceTemplate !== null && climateZoneOption.voiceTemplate !== undefined) {
+                // 使用氣候帶指定的模板（僅文案變化；聲線一律男聲）
                 selectedIndex = climateZoneOption.voiceTemplate;
-                console.log('🌍 根據氣候帶「' + climateZoneOption.name + '」選擇起飛語音模板 ' + (selectedIndex + 1) + '/5');
+                console.log('🌍 根據氣候帶「' + climateZoneOption.name + '」選擇起飛語音模板 ' + (selectedIndex + 1) + '/5（固定男聲）');
             } else {
-                // 隨機選擇（適用於「山脈清新」或其他未指定模板的選項）
                 selectedIndex = Math.floor(Math.random() * announcementTemplates.length);
-                console.log('🎲 隨機選擇起飛語音模板 ' + (selectedIndex + 1) + '/5');
+                console.log('🎲 隨機選擇起飛語音模板 ' + (selectedIndex + 1) + '/5（固定男聲）');
             }
             
             const announcement = announcementTemplates[selectedIndex];
-            // 返回文字和性別信息（模板 1、3、5 為男聲；模板 2、4 為女聲）
-            const isFemale = selectedIndex === 1 || selectedIndex === 3; // 模板 2 和 4 是女聲（索引從 0 開始）
             
             return {
                 text: announcement,
-                gender: isFemale ? 'female' : 'male',
+                gender: CAPTAIN_TTS.gender, // 固定低沉男聲機長
                 templateIndex: selectedIndex
             };
         }
@@ -7815,15 +7838,20 @@
         async function playAnnouncement(text, language = 'zh-TW', options = {}) {
             if (!text) return;
             
-            // 🔧 改進：更溫柔的語速和音調設置
+            // 起飛：低沉助眠；降落／喚醒：略快、略亮、仍用男聲機長
             const isTakeoffAnnouncement = options.isTakeoff || false;
-            const defaultRate = isTakeoffAnnouncement ? 0.65 : 0.75; // 🔧 更慢的語速，更溫柔
-            const defaultPitch = isTakeoffAnnouncement ? 0.85 : 0.90; // 🔧 稍低音調（更柔和、不刺耳）
+            const isLandingAnnouncement = options.isLanding || false;
+            const defaultRate = isTakeoffAnnouncement
+                ? CAPTAIN_TTS.takeoffRate
+                : (isLandingAnnouncement ? CAPTAIN_TTS.landingRate : 0.85);
+            const defaultPitch = isTakeoffAnnouncement
+                ? CAPTAIN_TTS.takeoffPitch
+                : (isLandingAnnouncement ? CAPTAIN_TTS.landingPitch : 0.90);
             const rate = (typeof options.rate === 'number') ? options.rate : defaultRate;
             const pitch = (typeof options.pitch === 'number') ? options.pitch : defaultPitch;
             const volume = (typeof options.volume === 'number') ? options.volume : 1.0; // 預設語音音量拉到 1.0
             const preloadOnly = options.preloadOnly || false; // 僅預載，不等待播放完成
-            const gender = options.gender || 'male'; // 🔧 獲取性別參數
+            const gender = options.gender || CAPTAIN_TTS.gender; // 固定男聲機長
             
             // 自動處理音樂音量：播放語音時調小音樂，語音結束後調大
             const musicList = []; // 儲存所有正在播放的音樂及其原始音量
@@ -7866,9 +7894,8 @@
                 };
                 const selectedVoice = voiceMap[gender] || 'onyx';
                 
-                // 🔧 將 rate 轉換為 OpenAI speed 參數（0.25-4.0）
-                // rate 0.65-0.85 對應 speed 0.7-0.9（較慢更溫柔）
-                const openaiSpeed = Math.max(0.7, Math.min(0.9, rate * 1.1));
+                // rate → OpenAI speed：起飛可更慢，降落可略快
+                const openaiSpeed = Math.max(0.65, Math.min(1.05, rate));
                 
                 console.log(`🎤 使用 ${gender} 聲（${selectedVoice}），語速 ${openaiSpeed.toFixed(2)}`);
                 
@@ -11094,16 +11121,13 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 );
                 
                 if (announcementResult && announcementResult.text) {
-                    console.log('🎤 語音生成完成，開始播放（' + announcementResult.gender + ' 聲）');
-                    // 根據性別調整 pitch：女聲較高（1.0-1.05），男聲較低（0.85-0.9）
-                    const pitch = announcementResult.gender === 'female' ? 1.0 : 0.85;
-                    // 使用 TTS 播放（本地 TTS 服務或瀏覽器 TTS）
-                    // 起飛語音使用特殊參數：柔和、有步調、但音量拉高一點
+                    console.log('🎤 語音生成完成，開始播放（固定男聲助眠機長）');
                     await playAnnouncement(announcementResult.text, 'zh-TW', { 
                         isTakeoff: true,
-                        rate: 0.7,     // 70% 語速（更慢、更有步調）
-                        pitch: pitch,   // 根據性別調整音調
-                        volume: 1.0    // 起飛語音拉到最大音量
+                        rate: CAPTAIN_TTS.takeoffRate,
+                        pitch: CAPTAIN_TTS.takeoffPitch,
+                        gender: CAPTAIN_TTS.gender,
+                        volume: 1.0
                     });
                 } else {
                     console.warn('⚠️ 語音生成失敗，繼續播放影片');
@@ -12612,8 +12636,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                             phase6VoiceAudioId = await generateTtsAudio(
                                 wakeUpAnnouncement,
                                 'zh-TW',
-                                'male',
-                                0.8
+                                CAPTAIN_TTS.gender,
+                                CAPTAIN_TTS.descentWakeSpeed
                             );
                             console.log('✅ [Phase 6] TTS 音頻已預先生成完成，audio_id:', phase6VoiceAudioId);
                         } catch (err) {
@@ -12641,9 +12665,11 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                                 // 如果預先生成失敗，回退到 playAnnouncement
                                 console.warn('⚠️ [Phase 6] TTS 音頻未預先生成，使用 playAnnouncement 生成並播放');
                                 await playAnnouncement(wakeUpAnnouncement, 'zh-TW', {
+                                    isLanding: true,
                                     volume: 1.0,
-                                    rate: 0.8,
-                                    pitch: 0.9,
+                                    rate: CAPTAIN_TTS.landingRate,
+                                    pitch: CAPTAIN_TTS.landingPitch,
+                                    gender: CAPTAIN_TTS.gender,
                                     waitForCompletion: true
                                 });
                                 console.log('✅ 準備降落的語音播放完成');
@@ -12718,10 +12744,11 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
         
         // 生成準備降落的喚醒語音
         function generateDescentWakeUpAnnouncement() {
+            // Phase 6：甦醒導引、略活潑、全程正向
             const templates = [
-                `各位旅客，我們即將在五分鐘後開始降落程序。請您慢慢醒來，輕輕活動一下身體。您可以睜開眼睛，感受一下機艙內的燈光。我們即將抵達目的地，請您準備好回到現實世界。`,
-                `親愛的旅客，我們的旅程即將結束。請您緩緩醒來，輕輕伸展一下。您可以慢慢睜開眼睛，感受周圍的環境。我們正在準備降落，很快您就會回到清醒的狀態。`,
-                `各位旅客，我們即將開始降落。請您慢慢從深層的休息中醒來，輕輕活動您的四肢。您可以睜開眼睛，適應一下光線。我們即將抵達，請您準備好迎接新的開始。`
+                `各位旅客，這裡是機長。我們將在大約五分鐘後開始降落。請慢慢醒來，輕輕伸展手指與肩膀，讓身體重新甦醒。您可以慢慢睜開眼睛，迎接機艙裡溫柔的光線。美好的航程即將抵達，請帶著清新的心情準備降落。`,
+                `親愛的旅客，晚安也早安。我們的休息飛行即將進入降落階段。請緩緩醒來，做一次深呼吸，活動一下頸部與手腕。窗外風景很快會出現，請準備好以輕鬆、明亮的心情迎接目的地。`,
+                `各位旅客，我是機長。降落程序即將開始。請慢慢從休息中回來，輕輕活動四肢，讓視線慢慢對焦。這趟旅程為您充電完成，接下來請帶著活力與好心情準備抵達。`
             ];
             return templates[Math.floor(Math.random() * templates.length)];
         }
@@ -13094,72 +13121,57 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         culturalContext = '親切自然';
                     }
                     
-                    // 根據 timeDiffMinutes 判斷降落狀況並設計轉換邏輯（加入幽默元素）
+                    // 根據 timeDiffMinutes 判斷降落狀況（全程正向、甦醒、略活潑）
                     if (timeDiffMinutes < -15) {
-                        // 提早超過 15 分鐘 = 緊急迫降
-                        landingSituation = '緊急迫降';
-                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
-                        const emergencyNarratives = [
-                            '由於緊急情況需要提前降落，機長已決定進行緊急降落程序。這是一個需要保持冷靜的時刻，但我們已經安全著陸。',
-                            `哈哈，告訴您一個有趣的小插曲！我們剛才發現${cityName}的機場工作人員還在準備開門，所以我們決定提前降落，給他們一個驚喜！雖然這不是原計劃，但我們已經安全著陸，而且您還多了一些時間欣賞這座城市。`,
-                            `各位旅客，有個特別的消息要告訴您！我們的機長剛才發現了一個"時空加速器"（開玩笑的），所以我們比預期提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。雖然這很意外，但請放心，我們已經安全著陸，而且這可能是一段特別的旅程！`
+                        landingSituation = '特別提早抵達';
+                        const earlyBonusNarratives = [
+                            `好消息！這趟休息飛行比預計更早完成，我們提前約 ${Math.abs(timeDiffMinutes)} 分鐘抵達${cityName}。多出來的時間，正好讓您帶著清新心情迎接這座城市。`,
+                            `各位旅客，航路特別順暢，我們比預計提早約 ${Math.abs(timeDiffMinutes)} 分鐘抵達。這像是旅途送給您的小禮物，請帶著活力與好心情準備降落。`,
+                            `歡迎即將到來的驚喜：我們比預期更早看見${cityName}。提前約 ${Math.abs(timeDiffMinutes)} 分鐘的時光，請慢慢醒來，享受這份清亮的抵達感。`
                         ];
-                        situationNarrative = emergencyNarratives[Math.floor(Math.random() * emergencyNarratives.length)];
-                        toneAdjustment = '專業、沉穩、安撫，帶有緊急情況下的專業處理感，但同時要傳達強烈的安全感和控制感，語氣要有力度和信心，可以加入輕微的幽默緩解緊張，但整體要讓乘客感受到機長的專業和可靠';
-                        console.log('🚨 [Prompt 設計] 緊急迫降狀況（提早超過 15 分鐘）');
+                        situationNarrative = earlyBonusNarratives[Math.floor(Math.random() * earlyBonusNarratives.length)];
+                        toneAdjustment = '正向、甦醒、略活潑；慶祝提早抵達是一份小禮物；禁止抱歉與負面字詞';
+                        console.log('🎁 [Prompt 設計] 特別提早抵達（提早超過 15 分鐘）');
                     } else if (timeDiffMinutes < -5) {
-                        // 提早 5-15 分鐘 = 提早抵達
                         landingSituation = '提早抵達';
-                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
                         const earlyNarratives = [
-                            `由於航路優化，我們比預期時間提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。這是一個意外的驚喜，讓您有更多時間探索這座城市。`,
-                            `哈哈，好消息！我們的機長剛才發現了一條"捷徑"（其實是風向特別好），所以我們比預期提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。這是一個意外的驚喜，讓您有更多時間探索這座城市！`,
-                            `各位旅客，告訴您一個有趣的小秘密！我們剛才遇到了一陣特別順的氣流，就像搭上了順風車一樣，所以我們比預期提早了 ${Math.abs(timeDiffMinutes)} 分鐘抵達。這是一個意外的驚喜，讓您有更多時間探索這座城市！`,
-                            `好消息！我們的機長剛才發現${cityName}的機場提前開門了（開玩笑的），所以我們決定提前降落。雖然這不是原計劃，但我們已經安全抵達，而且您還多了一些時間欣賞這座城市！`
+                            `由於航路優化，我們比預期提早約 ${Math.abs(timeDiffMinutes)} 分鐘抵達。多出來的時間，正好讓您慢慢醒來、伸展一下。`,
+                            `好消息！氣流特別友善，我們比預期提早約 ${Math.abs(timeDiffMinutes)} 分鐘抵達${cityName}。請帶著輕盈、明亮的心情迎接目的地。`,
+                            `各位旅客，我們比預計更早抵達，提前約 ${Math.abs(timeDiffMinutes)} 分鐘。這份餘裕時間，請用來好好感受甦醒後的清新。`
                         ];
                         situationNarrative = earlyNarratives[Math.floor(Math.random() * earlyNarratives.length)];
-                        toneAdjustment = '輕鬆、愉快、驚喜，帶有強烈的"意外收穫"正面情緒，語氣要活潑有活力，充滿興奮感，可以加入幽默元素，讓乘客感受到這是一個值得慶祝的驚喜';
+                        toneAdjustment = '輕鬆、愉快、驚喜；正向慶祝提早抵達；禁止抱歉與負面字詞';
                         console.log('⏰ [Prompt 設計] 提早抵達狀況（提早 ' + Math.abs(timeDiffMinutes) + ' 分鐘）');
                     } else if (timeDiffMinutes <= 5 && timeDiffMinutes >= -5) {
-                        // 準時（±5 分鐘內）
                         landingSituation = '準時降落';
-                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
                         const onTimeNarratives = [
-                            '我們已經準時抵達目的地。這是一次完美的飛行，一切都按照計劃進行。',
-                            `完美！我們就像瑞士手錶一樣精準，準時抵達了${cityName}。這次飛行完美得像教科書一樣，一切都按照計劃進行。`,
-                            `各位旅客，告訴您一個好消息！我們的機長剛才完美地計算了時間，就像數學家一樣精準，所以我們準時抵達了目的地。這是一次完美的飛行，一切都按照計劃進行！`,
-                            `哈哈，我們剛才完美地"踩點"抵達了${cityName}！就像約會時準時到達一樣完美。這次飛行完美得像教科書一樣，一切都按照計劃進行。`
+                            '我們已經準時抵達目的地。這是一次安穩、充實的休息飛行，請慢慢醒來迎接美好的抵達。',
+                            `完美踩點！我們準時抵達${cityName}。請輕輕活動身體，帶著被好好充電的感覺準備降落。`,
+                            `各位旅客，我們準時抵達。這趟旅程節奏剛好，現在請以清新、溫暖的心情迎接目的地。`
                         ];
                         situationNarrative = onTimeNarratives[Math.floor(Math.random() * onTimeNarratives.length)];
-                        toneAdjustment = '專業、滿意、慶祝，帶有強烈的"完美執行"成就感，語氣要自豪且自信，充滿滿足感，可以加入輕微的幽默，讓乘客感受到這是一次完美的旅程';
+                        toneAdjustment = '專業、滿意、正向慶祝；甦醒且略活潑；禁止負面字詞';
                         console.log('✅ [Prompt 設計] 準時降落狀況（差異 ' + timeDiffMinutes + ' 分鐘）');
                     } else if (timeDiffMinutes <= 15) {
-                        // 晚 5-15 分鐘 = 風大盤旋
-                        landingSituation = '延遲降落（風大盤旋）';
-                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
+                        landingSituation = '多給一點空中風景時間';
                         const delayNarratives = [
-                            `由於上空風勢較大，我們在上方盤旋了約 ${timeDiffMinutes} 分鐘。雖然讓您多等了一會兒，但我們已經安全調整好航線，現在準備降落。`,
-                            `哈哈，告訴您一個有趣的情況！我們剛才在上空"兜風"了約 ${timeDiffMinutes} 分鐘（其實是風勢較大需要盤旋）。雖然讓您多等了一會兒，但我們已經安全調整好航線，現在準備降落。而且，您還多了一些時間從空中欣賞${cityName}的風景！`,
-                            `各位旅客，有個小插曲要告訴您！我們剛才在上空遇到了一陣"調皮的風"，所以我們在上方盤旋了約 ${timeDiffMinutes} 分鐘。雖然讓您多等了一會兒，但我們已經安全調整好航線，現在準備降落。而且，您還多了一些時間從空中欣賞這座城市的風景！`,
-                            `告訴您一個有趣的小秘密！我們剛才在上空"繞了一圈"（其實是風勢較大需要盤旋），所以讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，我們已經安全調整好航線，現在準備降落。而且，您還多了一些時間從空中欣賞${cityName}的風景！`
+                            `這趟旅程多給了您約 ${timeDiffMinutes} 分鐘的空中時光，讓身體再充一點電。現在航線已調整就緒，我們準備以清新心情降落${cityName}。`,
+                            `剛才在上空多繞了一小段風景航線，約 ${timeDiffMinutes} 分鐘的延伸休息。現在請慢慢醒來，準備迎接${cityName}。`,
+                            `好消息是：您多享受了約 ${timeDiffMinutes} 分鐘的安靜飛行。機組已準備好降落，請帶著柔和活力迎接抵達。`
                         ];
                         situationNarrative = delayNarratives[Math.floor(Math.random() * delayNarratives.length)];
-                        toneAdjustment = '歉意、專業、安撫，帶有"雖然延遲但已處理好"的強烈專業感，語氣要誠懇且溫暖，不過度道歉但要有明顯的關懷，可以加入輕微的幽默緩解緊張，讓乘客感受到機組人員的用心';
-                        console.log('💨 [Prompt 設計] 延遲降落狀況（風大盤旋，晚 ' + timeDiffMinutes + ' 分鐘）');
+                        toneAdjustment = '正向、溫暖、甦醒；把多出的時間說成額外休息與風景，不要道歉、不要說延誤糟糕';
+                        console.log('🌤️ [Prompt 設計] 延伸休息航線（多 ' + timeDiffMinutes + ' 分鐘）');
                     } else {
-                        // 晚超過 15 分鐘 = 導航問題
-                        landingSituation = '延遲降落（導航問題）';
-                        // 🔧 幽默版本：隨機選擇幽默或專業的敘事
+                        landingSituation = '特別充實的延伸休息';
                         const navigationNarratives = [
-                            `由於導航系統的小小誤差，我們剛才飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。`,
-                            `哈哈，告訴您一個有趣的小插曲！我們的機長剛才可能有點"迷路"了（開玩笑的），所以我們飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。而且，您還多了一些時間從空中欣賞不同的風景！`,
-                            `各位旅客，有個特別的消息要告訴您！我們剛才發現${cityName}的機場工作人員可能還在"準備開門"（開玩笑的），所以我們決定先繞一圈，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。`,
-                            `告訴您一個有趣的小秘密！我們的機長剛才可能熬夜了（開玩笑的），不小心開錯路了，所以我們飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。而且，您還多了一些時間從空中欣賞不同的風景！`,
-                            `哈哈，有個小插曲要告訴您！我們剛才的導航系統可能"打瞌睡"了（開玩笑的），所以我們飛到了另一個機場附近，讓您多等了約 ${timeDiffMinutes} 分鐘。不過不用擔心，機長已經重新導航，我們現在正在前往正確的目的地。而且，您還多了一些時間從空中欣賞不同的風景！`
+                            `這趟飛行為您多安排了一段約 ${timeDiffMinutes} 分鐘的延伸休息，讓身心更飽滿。現在我們正以穩定節奏前往${cityName}，請慢慢醒來。`,
+                            `好消息：您獲得了約 ${timeDiffMinutes} 分鐘的加值充電時間。機長已對齊最終航線，請帶著清新心情準備降落。`,
+                            `各位旅客，這段旅程特別充實，多給了約 ${timeDiffMinutes} 分鐘安靜的空中時光。現在請伸展一下，準備迎接${cityName}的抵達。`
                         ];
                         situationNarrative = navigationNarratives[Math.floor(Math.random() * navigationNarratives.length)];
-                        toneAdjustment = '歉意、專業、幽默（適度），帶有"小插曲但已解決"的輕鬆感，語氣要誠懇且溫暖，可以用適度的幽默緩解緊張，要讓乘客感覺這是一個有趣的小插曲而不是嚴重的問題，同時要傳達強烈的專業處理能力';
-                        console.log('🌀 [Prompt 設計] 延遲降落狀況（導航問題，晚 ' + timeDiffMinutes + ' 分鐘）');
+                        toneAdjustment = '正向、溫暖、略活潑；強調額外充電與照顧，禁止抱歉、迷路、延誤等負面說法';
+                        console.log('🔋 [Prompt 設計] 特別充實延伸休息（多 ' + timeDiffMinutes + ' 分鐘）');
                     }
                     
                     // 🔧 顯示 Prompt 設計資訊（用於調試和展示）
@@ -13846,8 +13858,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             if (!landingData || !landingData.announcement) {
                 console.warn('⚠️ 降落內容生成失敗，使用預設文字');
                 landingData = {
-                    announcement: '各位旅客，我們即將開始降落程序。請您慢慢醒來，輕輕活動一下身體。我們正在接近目的地，很快您就會看到窗外的風景。',
-                    gender: 'male'
+                    announcement: '各位旅客，歡迎即將抵達。這裡是機長。請慢慢醒來，輕輕活動身體，讓精神重新明亮起來。我們正在接近目的地，窗外風景很快會迎接您。',
+                    gender: CAPTAIN_TTS.gender
                 };
             }
             
@@ -13864,8 +13876,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     await generateTtsAudio(
                         landingData.announcement,
                         'zh-TW',
-                        landingData.gender || 'male',
-                        0.75
+                        CAPTAIN_TTS.gender,
+                        CAPTAIN_TTS.landingSpeed
                     );
                     voiceAAudioId = preparedAudioId;
                     console.log('✅ [Phase 7] 語音A已預先生成完成（不播放），audio_id:', voiceAAudioId);
@@ -13970,8 +13982,10 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     // 如果預先生成失敗，回退到 playAnnouncement
                     console.warn('⚠️ [Phase 7] 語音A未預先生成，使用 playAnnouncement 生成並播放');
                     await playAnnouncement(landingData.announcement, 'zh-TW', {
-                        gender: landingData.gender || 'male',
-                        speed: 0.75,
+                        isLanding: true,
+                        gender: CAPTAIN_TTS.gender,
+                        rate: CAPTAIN_TTS.landingRate,
+                        pitch: CAPTAIN_TTS.landingPitch,
                         volume: 1.0,
                         waitForCompletion: true
                     });
@@ -14140,12 +14154,12 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                             welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
                         }
                         
-                        // 預先生成語音B（不播放）
+                        // 預先生成語音B（不播放）— 同樣用男聲機長、甦醒節奏
                         await generateTtsAudio(
                             welcomeMessage,
                             'zh-TW',
-                            'female',
-                            0.75
+                            CAPTAIN_TTS.gender,
+                            CAPTAIN_TTS.landingSpeed
                         );
                         const voiceBAudioId = preparedAudioId;
                         console.log('✅ [Phase 7] 語音B已預先生成完成（不播放），audio_id:', voiceBAudioId);
@@ -14267,8 +14281,10 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     const welcomeMessage = window._phase7WelcomeMessage || 
                         `歡迎來到${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
                     await playAnnouncement(welcomeMessage, 'zh-TW', {
-                        gender: 'female',
-                        speed: 0.75,
+                        isLanding: true,
+                        gender: CAPTAIN_TTS.gender,
+                        rate: CAPTAIN_TTS.landingRate,
+                        pitch: CAPTAIN_TTS.landingPitch,
                         volume: 1.0,
                         waitForCompletion: true
                     });
