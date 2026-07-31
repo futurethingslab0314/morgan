@@ -34,22 +34,39 @@ def create_app():
     def health():
         return jsonify({"ok": True})
 
+    def _parse_tts_request(data):
+        """從前端 JSON 取出 text / language / voice / speed。"""
+        text = (data.get("text") or "").strip()
+        language_code = (data.get("languageCode") or "zh").strip()
+        voice = (data.get("voice") or "").strip() or None
+        # 允許 gender 別名：male → onyx，female → nova
+        gender = (data.get("gender") or "").strip().lower()
+        if not voice and gender:
+            voice = "onyx" if gender == "male" else "nova" if gender == "female" else None
+        # 機長廣播預設男聲（前端若漏傳，也不再落到 config 的 nova）
+        if not voice:
+            voice = "onyx"
+        speed = data.get("speed", None)
+        return text, language_code, voice, speed
+
     @app.route("/tts/play", methods=["POST"])  # 播放文字（舊版：即時生成並播放）
     def tts_play():
         """
         舊版端點：接收文字，立即呼叫 OpenAI TTS 生成音檔並播放。
         注意：這會在 HTTP 請求期間同步等待整段語音播放完成。
+        body 可含 voice（如 onyx）與 speed（0.25–4.0）。
         """
         try:
             data = request.get_json(force=True, silent=True) or {}
-            text = (data.get("text") or "").strip()
-            language_code = (data.get("languageCode") or "zh").strip()
+            text, language_code, voice, speed = _parse_tts_request(data)
 
             if not text:
                 return jsonify({"success": False, "error": "text is required"}), 400
 
-            # 直接用 OpenAI 生成音檔並播放
-            audio_file = audio._generate_audio_openai_direct(text, language_code)
+            logger.info("/tts/play voice=%s speed=%s", voice, speed)
+            audio_file = audio._generate_audio_openai_direct(
+                text, language_code, voice=voice, speed=speed
+            )
             if not audio_file:
                 return jsonify({"success": False, "error": "TTS generation failed"}), 500
 
@@ -57,7 +74,7 @@ def create_app():
             if not played:
                 return jsonify({"success": False, "error": "audio playback failed"}), 500
 
-            resp = jsonify({"success": True})
+            resp = jsonify({"success": True, "voice": voice, "speed": speed})
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp
 
@@ -72,23 +89,28 @@ def create_app():
         """
         新端點：只生成 OpenAI TTS 音檔，不播放。
         用於「先準備好」，之後再透過 /tts/play_cached 播放。
+        body 可含 voice（如 onyx）與 speed（0.25–4.0）。
         """
         try:
             data = request.get_json(force=True, silent=True) or {}
-            text = (data.get("text") or "").strip()
-            language_code = (data.get("languageCode") or "zh").strip()
+            text, language_code, voice, speed = _parse_tts_request(data)
 
             if not text:
                 return jsonify({"success": False, "error": "text is required"}), 400
 
-            audio_file = audio._generate_audio_openai_direct(text, language_code)
+            logger.info("/tts/generate voice=%s speed=%s", voice, speed)
+            audio_file = audio._generate_audio_openai_direct(
+                text, language_code, voice=voice, speed=speed
+            )
             if not audio_file:
                 return jsonify({"success": False, "error": "TTS generation failed"}), 500
 
             resp = jsonify({
                 "success": True,
                 "audio_id": audio_file.name,      # 檔名（快取目錄下）
-                "path": str(audio_file)           # 完整路徑（除非必要，前端可不用）
+                "path": str(audio_file),          # 完整路徑（除非必要，前端可不用）
+                "voice": voice,
+                "speed": speed
             })
             resp.headers['Access-Control-Allow-Origin'] = '*'
             return resp

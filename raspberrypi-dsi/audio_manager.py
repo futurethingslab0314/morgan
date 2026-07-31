@@ -855,7 +855,7 @@ class AudioManager:
             self.logger.error(f"生成音頻失敗: {e}")
             return None
 
-    def _generate_audio_openai_direct(self, text: str, language_code: str, voice: str = None) -> Optional[Path]:
+    def _generate_audio_openai_direct(self, text: str, language_code: str, voice: str = None, speed: float = None) -> Optional[Path]:
         """
         直接使用 OpenAI TTS 生成音頻（繞過其他引擎選擇）
         
@@ -863,6 +863,7 @@ class AudioManager:
             text: 要轉換的文字
             language_code: 語言代碼
             voice: 指定的語音模型（可選，默認使用配置中的語音）
+            speed: 語速 0.25–4.0（可選，默認使用配置）
         
         Returns:
             Path: 生成的音頻文件路徑，如果失敗則返回 None
@@ -871,7 +872,14 @@ class AudioManager:
             # 創建音頻文件路徑
             import hashlib
             selected_voice = voice or TTS_CONFIG['openai_voice']
-            text_hash = hashlib.md5(f"{text}_{language_code}_{selected_voice}".encode()).hexdigest()
+            try:
+                selected_speed = float(speed) if speed is not None else float(TTS_CONFIG.get('openai_speed', 1.0))
+            except (TypeError, ValueError):
+                selected_speed = float(TTS_CONFIG.get('openai_speed', 1.0))
+            selected_speed = max(0.25, min(4.0, selected_speed))
+            text_hash = hashlib.md5(
+                f"{text}_{language_code}_{selected_voice}_{selected_speed:.2f}".encode()
+            ).hexdigest()
             audio_file = self.cache_dir / f"openai_direct_{language_code}_{selected_voice}_{text_hash}.wav"
             
             # 檢查是否已有快取
@@ -884,14 +892,14 @@ class AudioManager:
                 self.logger.error("OpenAI 客戶端未初始化")
                 return None
                 
-            self.logger.info(f"🤖 使用 OpenAI TTS 生成音頻: {selected_voice}")
+            self.logger.info(f"🤖 使用 OpenAI TTS 生成音頻: {selected_voice} (speed={selected_speed:.2f})")
             
             # 調用 OpenAI TTS API
             response = self.openai_client.audio.speech.create(
                 model=TTS_CONFIG['openai_model'],
                 voice=selected_voice,
                 input=text,
-                speed=TTS_CONFIG['openai_speed']
+                speed=selected_speed
             )
             
             # OpenAI 返回 MP3，直接保存為 MP3 然後轉換
