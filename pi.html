@@ -3523,19 +3523,26 @@
                 if (AudioCtx) {
                     if (!sharedAudioContext) sharedAudioContext = new AudioCtx();
                     if (sharedAudioContext.state === 'suspended') {
-                        await sharedAudioContext.resume();
+                        // GPIO 按鈕不算手勢時，resume() 可能卡住；強制逾時
+                        await Promise.race([
+                            sharedAudioContext.resume().catch(() => {}),
+                            new Promise((resolve) => setTimeout(resolve, 400))
+                        ]);
                     }
                 }
                 const silent = new Audio(SILENT_WAV);
                 silent.volume = 0.01;
-                await silent.play();
+                await Promise.race([
+                    silent.play(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('unlock timeout')), 500))
+                ]);
                 silent.pause();
                 silent.currentTime = 0;
                 audioUnlocked = true;
                 console.log('🔓 瀏覽器音訊已解鎖');
                 return true;
             } catch (err) {
-                console.warn('⚠️ 音訊解鎖尚未成功（需使用者互動）:', err && err.message ? err.message : err);
+                console.warn('⚠️ 音訊解鎖尚未成功（將改走樹莓派喇叭）:', err && err.message ? err.message : err);
                 return false;
             }
         }
@@ -3554,15 +3561,20 @@
                 if (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) {
                     absoluteUrl = new URL(url, window.location.href).href;
                 }
-                console.log('🔊 嘗試樹莓派後備播放:', absoluteUrl);
+                // 同時傳相對路徑，讓 Pi 端優先播本機 sounds/
+                const relativePath = (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) ? url.replace(/^\.\//, '') : null;
+                const fetchTimeoutMs = ((maxDuration && maxDuration > 0) ? maxDuration : 10) * 1000 + 8000;
+                console.log('🔊 嘗試樹莓派後備播放:', absoluteUrl, relativePath ? `(local: ${relativePath})` : '');
                 const response = await fetch(TTS_LOCAL_BASE + '/audio/play_url', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         url: absoluteUrl,
+                        path: relativePath,
                         max_duration: maxDuration,
                         volume: volume
-                    })
+                    }),
+                    signal: AbortSignal.timeout(fetchTimeoutMs)
                 });
                 if (!response.ok) {
                     console.warn('⚠️ 樹莓派後備播放 HTTP 錯誤:', response.status);
@@ -4666,7 +4678,7 @@
             if ('speechSynthesis' in window) {
                 speechSynthesis.cancel();
             }
-            await unlockAudio();
+            // 不單獨 await unlockAudio（可能卡住）；交由 playAudioFile 內部逾時處理
             const captainPlayPromise = playAudioFile('sounds/captain.mp3', 6, 0.5);
             
             // 🔧 改進：在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成（最多等待到 captain.mp3 播放完成）
@@ -5106,31 +5118,39 @@
             });
         }
         
-        // 播放音頻文件（瀏覽器優先；NotAllowedError 時改走樹莓派喇叭）
+        // 播放音頻文件：解鎖失敗時優先樹莓派；全程有硬性逾時，避免卡在機長廣播
         async function playAudioFile(url, maxDuration = null, volume = 1.0) {
-            await unlockAudio();
+            const playSeconds = (maxDuration && maxDuration > 0) ? maxDuration : 12;
+            const hardTimeoutMs = playSeconds * 1000 + 5000;
 
             const playInBrowser = () => new Promise((resolve, reject) => {
                 const audio = new Audio(url);
                 audio.preload = 'auto';
                 audio.volume = Math.max(0, Math.min(1, volume));
-                let timeoutId = null;
+                let playTimer = null;
+                let loadTimer = null;
                 let settled = false;
 
                 const finish = (ok, err) => {
                     if (settled) return;
                     settled = true;
-                    if (timeoutId) clearTimeout(timeoutId);
+                    if (playTimer) clearTimeout(playTimer);
+                    if (loadTimer) clearTimeout(loadTimer);
                     try {
                         audio.pause();
                         audio.currentTime = 0;
                     } catch (_) {}
-                    if (ok) resolve(audio);
+                    if (ok) resolve(true);
                     else reject(err || new Error('audio play failed'));
                 };
 
+                // 載入逾時：實體機常因 Autoplay 卡住 canplay
+                loadTimer = setTimeout(() => {
+                    finish(false, new Error('audio load timeout: ' + url));
+                }, 2500);
+
                 if (maxDuration && maxDuration > 0) {
-                    timeoutId = setTimeout(() => {
+                    playTimer = setTimeout(() => {
                         console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止:`, url);
                         finish(true);
                     }, maxDuration * 1000);
@@ -5147,6 +5167,10 @@
                 audio.onerror = () => finish(false, new Error('audio load/play error: ' + url));
 
                 const start = () => {
+                    if (loadTimer) {
+                        clearTimeout(loadTimer);
+                        loadTimer = null;
+                    }
                     console.log('📥 音頻準備播放:', url);
                     audio.play().then(() => {
                         console.log('▶️ 音頻開始播放:', url);
@@ -5163,15 +5187,38 @@
                 }
             });
 
+            const work = (async () => {
+                const unlocked = await unlockAudio();
+                // 樹莓派實體按鈕場景：解鎖失敗就先走本地喇叭，避免卡在瀏覽器
+                if (!unlocked) {
+                    console.log('🔊 瀏覽器音訊未解鎖，優先使用樹莓派喇叭:', url);
+                    const viaPiFirst = await playLocalSoundViaPi(url, maxDuration, volume);
+                    if (viaPiFirst) return true;
+                }
+
+                try {
+                    await playInBrowser();
+                    return true;
+                } catch (error) {
+                    const msg = error && error.message ? error.message : String(error);
+                    console.warn('⚠️ 瀏覽器播放失敗，嘗試樹莓派後備:', url, msg);
+                    const viaPi = await playLocalSoundViaPi(url, maxDuration, volume);
+                    if (viaPi) return true;
+                    console.warn('⚠️ 音頻最終播放失敗（瀏覽器與樹莓派皆不可用）:', url);
+                    return false;
+                }
+            })();
+
             try {
-                await playInBrowser();
-                return true;
-            } catch (error) {
-                const msg = error && error.message ? error.message : String(error);
-                console.warn('⚠️ 瀏覽器播放失敗，嘗試樹莓派後備:', url, msg);
-                const viaPi = await playLocalSoundViaPi(url, maxDuration, volume);
-                if (viaPi) return true;
-                console.warn('⚠️ 音頻最終播放失敗（瀏覽器與樹莓派皆不可用）:', url);
+                return await Promise.race([
+                    work,
+                    new Promise((resolve) => setTimeout(() => {
+                        console.warn(`⏱️ playAudioFile 硬性逾時（${hardTimeoutMs}ms），繼續起飛流程:`, url);
+                        resolve(false);
+                    }, hardTimeoutMs))
+                ]);
+            } catch (err) {
+                console.warn('⚠️ playAudioFile 例外，繼續流程:', err);
                 return false;
             }
         }

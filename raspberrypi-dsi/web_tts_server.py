@@ -144,79 +144,93 @@ def create_app():
     @app.route("/audio/play_url", methods=["POST"])
     def audio_play_url():
         """
-        瀏覽器被 Autoplay 擋住時的後備：下載遠端 mp3 並用本地喇叭播放。
-        body: { url, max_duration?, volume? }
+        瀏覽器被 Autoplay 擋住時的後備：優先播本機 sounds/，否則下載遠端 mp3。
+        body: { url, path?, max_duration?, volume? }
         """
         try:
             import tempfile
             import threading
-            import time
             import urllib.request
 
             data = request.get_json(force=True, silent=True) or {}
             url = (data.get("url") or "").strip()
+            rel_path = (data.get("path") or "").strip().lstrip("./")
             max_duration = data.get("max_duration")
             volume = data.get("volume", 1.0)
 
-            if not url:
-                return jsonify({"success": False, "error": "url is required"}), 400
+            if not url and not rel_path:
+                return jsonify({"success": False, "error": "url or path is required"}), 400
 
-            # 僅允許 http(s)，避免任意檔案讀取
-            if not (url.startswith("http://") or url.startswith("https://")):
-                return jsonify({"success": False, "error": "only http(s) urls allowed"}), 400
-
-            suffix = ".mp3"
-            lower = url.lower().split("?")[0]
-            if lower.endswith(".wav"):
-                suffix = ".wav"
-            elif lower.endswith(".ogg"):
-                suffix = ".ogg"
-            elif lower.endswith(".m4a"):
-                suffix = ".m4a"
+            # 僅允許安全的相對路徑（例如 sounds/captain.mp3）
+            local_file = None
+            if rel_path and ".." not in rel_path and not rel_path.startswith("/"):
+                # web_tts_server.py 位於 raspberrypi-dsi/，專案根目錄在上一層
+                project_root = Path(__file__).resolve().parent.parent
+                candidate = (project_root / rel_path).resolve()
+                if str(candidate).startswith(str(project_root)) and candidate.exists():
+                    local_file = candidate
+                    logger.info("audio/play_url 使用本機檔案: %s", candidate)
 
             tmp_path = None
+            play_path = local_file
             try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                    tmp_path = Path(tmp.name)
-                urllib.request.urlretrieve(url, str(tmp_path))
+                if play_path is None:
+                    if not (url.startswith("http://") or url.startswith("https://")):
+                        return jsonify({"success": False, "error": "only http(s) urls allowed"}), 400
 
-                # 若有 max_duration：背景播放並在時限後停止，避免 captain.mp3 整首播完
-                if max_duration is not None:
-                    try:
-                        max_seconds = float(max_duration)
-                    except (TypeError, ValueError):
-                        max_seconds = 0
+                    suffix = ".mp3"
+                    lower = url.lower().split("?")[0]
+                    if lower.endswith(".wav"):
+                        suffix = ".wav"
+                    elif lower.endswith(".ogg"):
+                        suffix = ".ogg"
+                    elif lower.endswith(".m4a"):
+                        suffix = ".m4a"
 
-                    if max_seconds > 0:
-                        result = {"ok": False}
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                        tmp_path = Path(tmp.name)
+                    # 下載逾時，避免卡死起飛流程
+                    with urllib.request.urlopen(url, timeout=10) as resp, open(tmp_path, "wb") as out:
+                        out.write(resp.read())
+                    play_path = tmp_path
 
-                        def _play():
-                            result["ok"] = bool(audio.play_audio_file_direct(tmp_path))
-
-                        t = threading.Thread(target=_play, daemon=True)
-                        t.start()
-                        t.join(timeout=max_seconds)
-                        # 超時則嘗試停止 pygame 播放
+                def _play_with_limit(path_obj):
+                    if max_duration is not None:
                         try:
-                            import pygame
-                            if pygame.mixer.get_init():
-                                pygame.mixer.music.stop()
-                        except Exception:
-                            pass
-                        # 再給一點時間讓執行緒收尾
-                        t.join(timeout=1.0)
-                        if not result["ok"] and t.is_alive():
-                            # 播放可能仍在進行但已強制停止；視為成功觸發
-                            pass
-                        resp = jsonify({"success": True, "volume": volume, "truncated": True, "max_duration": max_seconds})
-                        resp.headers["Access-Control-Allow-Origin"] = "*"
-                        return resp
+                            max_seconds = float(max_duration)
+                        except (TypeError, ValueError):
+                            max_seconds = 0
 
-                played = audio.play_audio_file_direct(tmp_path)
+                        if max_seconds > 0:
+                            result = {"ok": False}
+
+                            def _play():
+                                result["ok"] = bool(audio.play_audio_file_direct(path_obj))
+
+                            t = threading.Thread(target=_play, daemon=True)
+                            t.start()
+                            t.join(timeout=max_seconds)
+                            try:
+                                import pygame
+                                if pygame.mixer.get_init():
+                                    pygame.mixer.music.stop()
+                            except Exception:
+                                pass
+                            t.join(timeout=1.0)
+                            return True
+
+                    return bool(audio.play_audio_file_direct(path_obj))
+
+                played = _play_with_limit(play_path)
                 if not played:
                     return jsonify({"success": False, "error": "audio playback failed"}), 500
 
-                resp = jsonify({"success": True, "volume": volume})
+                resp = jsonify({
+                    "success": True,
+                    "volume": volume,
+                    "source": "local" if local_file else "download",
+                    "truncated": bool(max_duration)
+                })
                 resp.headers["Access-Control-Allow-Origin"] = "*"
                 return resp
             finally:
