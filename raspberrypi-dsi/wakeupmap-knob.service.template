@@ -1,0 +1,21 @@
+[Unit]
+Description=WakeUpMap knob/button API server (port 5001)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i/morgan/raspberrypi-dsi
+EnvironmentFile=-/home/%i/morgan/.env
+Environment=PATH=/home/%i/morgan/venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStartPre=/bin/mkdir -p /home/%i/morgan/logs
+ExecStart=/home/%i/morgan/venv/bin/python3 /home/%i/morgan/raspberrypi-dsi/knob_api_server.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/%i/morgan/logs/knob-server.log
+StandardError=append:/home/%i/morgan/logs/knob-server-error.log
+
+[Install]
+WantedBy=multi-user.target

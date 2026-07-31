@@ -11,7 +11,7 @@
 
 import argparse
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 try:
     from flask_cors import CORS
     CORS_AVAILABLE = True
@@ -22,17 +22,46 @@ from pathlib import Path
 from audio_manager import get_audio_manager
 
 
+def _cors_headers(resp):
+    """無論有無 flask-cors，都補齊瀏覽器從 Vercel 打本機所需的 CORS。"""
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    resp.headers["Access-Control-Max-Age"] = "86400"
+    return resp
+
+
 def create_app():
     app = Flask(__name__)
     # 啟用 CORS，允許從 https 網站呼叫 http://127.0.0.1:5005
     if CORS_AVAILABLE:
-        CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=False)
+        CORS(
+            app,
+            resources={r"/*": {"origins": "*"}},
+            supports_credentials=False,
+            allow_headers=["Content-Type", "Authorization"],
+            methods=["GET", "POST", "OPTIONS"],
+        )
     logger = logging.getLogger("pi-tts-server")
     audio = get_audio_manager()
 
+    @app.after_request
+    def add_cors(resp):
+        return _cors_headers(resp)
+
+    @app.route("/", methods=["OPTIONS"])
+    @app.route("/<path:any_path>", methods=["OPTIONS"])
+    def cors_preflight(any_path=None):
+        # 沒裝 flask-cors 時，也要明確回應 preflight，否則 Chrome 會報 CORS
+        return _cors_headers(make_response(("", 204)))
+
     @app.route("/health", methods=["GET"])  # 簡單健康檢查
     def health():
-        return jsonify({"ok": True})
+        return jsonify({
+            "ok": True,
+            "cors": True,
+            "flask_cors": CORS_AVAILABLE
+        })
 
     def _parse_tts_request(data):
         """從前端 JSON 取出 text / language / voice / speed。"""
@@ -74,15 +103,11 @@ def create_app():
             if not played:
                 return jsonify({"success": False, "error": "audio playback failed"}), 500
 
-            resp = jsonify({"success": True, "voice": voice, "speed": speed})
-            resp.headers['Access-Control-Allow-Origin'] = '*'
-            return resp
+            return jsonify({"success": True, "voice": voice, "speed": speed})
 
         except Exception as e:
             logger.exception("/tts/play error")
-            resp = jsonify({"success": False, "error": str(e)})
-            resp.headers['Access-Control-Allow-Origin'] = '*'
-            return resp, 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route("/tts/generate", methods=["POST"])  # 只生成音檔，不播放
     def tts_generate():
@@ -105,21 +130,17 @@ def create_app():
             if not audio_file:
                 return jsonify({"success": False, "error": "TTS generation failed"}), 500
 
-            resp = jsonify({
+            return jsonify({
                 "success": True,
                 "audio_id": audio_file.name,      # 檔名（快取目錄下）
                 "path": str(audio_file),          # 完整路徑（除非必要，前端可不用）
                 "voice": voice,
                 "speed": speed
             })
-            resp.headers['Access-Control-Allow-Origin'] = '*'
-            return resp
 
         except Exception as e:
             logger.exception("/tts/generate error")
-            resp = jsonify({"success": False, "error": str(e)})
-            resp.headers['Access-Control-Allow-Origin'] = '*'
-            return resp, 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route("/tts/play_cached", methods=["POST"])  # 播放已生成的音檔
     def tts_play_cached():
@@ -153,15 +174,11 @@ def create_app():
             if not played:
                 return jsonify({"success": False, "error": "audio playback failed"}), 500
 
-            resp = jsonify({"success": True})
-            resp.headers['Access-Control-Allow-Origin'] = '*'
-            return resp
+            return jsonify({"success": True})
 
         except Exception as e:
             logger.exception("/tts/play_cached error")
-            resp = jsonify({"success": False, "error": str(e)})
-            resp.headers['Access-Control-Allow-Origin'] = '*'
-            return resp, 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route("/audio/play_url", methods=["POST"])
     def audio_play_url():
@@ -247,14 +264,12 @@ def create_app():
                 if not played:
                     return jsonify({"success": False, "error": "audio playback failed"}), 500
 
-                resp = jsonify({
+                return jsonify({
                     "success": True,
                     "volume": volume,
                     "source": "local" if local_file else "download",
                     "truncated": bool(max_duration)
                 })
-                resp.headers["Access-Control-Allow-Origin"] = "*"
-                return resp
             finally:
                 if tmp_path and tmp_path.exists():
                     try:
@@ -264,9 +279,7 @@ def create_app():
 
         except Exception as e:
             logger.exception("/audio/play_url error")
-            resp = jsonify({"success": False, "error": str(e)})
-            resp.headers["Access-Control-Allow-Origin"] = "*"
-            return resp, 500
+            return jsonify({"success": False, "error": str(e)}), 500
 
     return app
 
@@ -284,5 +297,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
