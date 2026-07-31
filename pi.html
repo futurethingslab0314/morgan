@@ -2058,6 +2058,7 @@
             if (stateElement) {
                 stateElement.classList.add('active');
                 console.log('✅ 成功切換到狀態:', newState, '元素 ID:', stateId);
+                refreshKnobMonitoring('State → ' + newState);
                 
                 // 如果是目的地顯示狀態，更新目的地國旗
                 if (newState === State.DESTINATION) {
@@ -2990,16 +2991,59 @@
             }
         }
         
-        // 簡化版旋鈕監控：直接輪詢位置，有變就更新 UI
+        // 旋鈕何時需要輪詢、多快輪詢（Phase 4／起飛中不該狂打 5001）
+        function getKnobPollIntervalMs() {
+            // Phase 1/2 選時間、氣候：要靈敏
+            if (currentState === State.TIMER || currentState === State.ANGLE) return 100;
+            // Phase 7 情緒量表：中等即可（細部輪詢在 showFlightFeedback 內）
+            if (currentPhase === Phase.LANDING || currentPhase === 7) return 400;
+            // Phase 5 飛機餐偵測：不需要 100ms
+            if (currentPhase === Phase.CRUISE || currentPhase === 5) return 500;
+            // 其他階段幾乎不用旋鈕
+            return 2000;
+        }
+
+        function shouldPollKnobNow() {
+            if (!knobMonitoringEnabled) return false;
+            // 起飛序列進行中／Phase 4：完全不打旋鈕 API，避免跟 TTS／存檔搶連線
+            if (isTakeoffSequenceRunning) return false;
+            if (currentPhase === Phase.TAKEOFF_PREP || currentPhase === 4) return false;
+            if (currentPhase === Phase.DESCENT || currentPhase === 6) return false;
+            // Phase 5 飛機餐已觸發後也不用再狂輪詢
+            if ((currentPhase === Phase.CRUISE || currentPhase === 5) && midnightServiceTriggered) return false;
+            // 選時間／氣候／巡航飛機餐／情緒量表／機票回顧才需要
+            if (currentState === State.TIMER || currentState === State.ANGLE) return true;
+            if (currentState === 'TICKET_REVIEW') return true;
+            if (currentPhase === Phase.CRUISE || currentPhase === 5) return true;
+            if (currentPhase === Phase.LANDING || currentPhase === 7) return true;
+            return false;
+        }
+
+        let lastKnobPollIntervalMs = null;
+
+        function refreshKnobMonitoring(reason = '') {
+            if (!knobMonitoringEnabled) return;
+            const nextMs = getKnobPollIntervalMs();
+            if (knobPollInterval && lastKnobPollIntervalMs === nextMs) return;
+            startKnobMonitoring();
+            if (reason) {
+                console.log(`🔄 旋鈕輪詢節奏更新: ${nextMs}ms (${reason})`);
+            }
+        }
+
+        // 簡化版旋鈕監控：依 phase 調整頻率；起飛／Phase 4 不輪詢
         function startKnobMonitoring() {
             if (knobPollInterval) {
                 clearInterval(knobPollInterval);
+                knobPollInterval = null;
             }
 
-            console.log('🔄 啟動「簡化版」旋鈕監控（僅在狀態/位置變化時輸出 log）');
+            const intervalMs = getKnobPollIntervalMs();
+            lastKnobPollIntervalMs = intervalMs;
+            console.log(`🔄 啟動旋鈕監控（間隔 ${intervalMs}ms；Phase 4／起飛中會跳過請求）`);
 
             knobPollInterval = setInterval(async () => {
-                if (!knobMonitoringEnabled) {
+                if (!shouldPollKnobNow()) {
                     return;
                 }
 
@@ -3059,6 +3103,7 @@
                     if ((currentPhase === Phase.CRUISE || currentPhase === 5) && !midnightServiceTriggered && !midnightServiceActive) {
                         console.log('🍽️ [Phase 5] 檢測到旋鈕轉動，觸發飛機餐（一次旅程只觸發一次）');
                         midnightServiceTriggered = true; // 標記已觸發，防止重複觸發
+                        refreshKnobMonitoring('飛機餐已觸發');
                         triggerMidnightService();
                         return; // 觸發飛機餐後，不處理其他旋鈕邏輯
                     }
@@ -3081,7 +3126,7 @@
                         // console.error('🔴 簡化監控抓旋鈕失敗:', e);
                     }
                 }
-            }, 100); // 每 100ms 讀一次，提升響應速度
+            }, intervalMs);
         }
         
         // 提供全局函數來控制旋鈕監控
@@ -4657,6 +4702,7 @@
             
             isTakeoffSequenceRunning = true;
             console.log('🚀 開始起飛序列...');
+            refreshKnobMonitoring('起飛序列開始，暫停旋鈕輪詢');
             
             // 重置降落相關標記
             descentAnnouncementPlayed = false;
@@ -5012,6 +5058,7 @@
             // 起飛序列完成，清除標記（允許後續按鈕操作）
             isTakeoffSequenceRunning = false;
             console.log('✅ 起飛序列完成，已清除防重複標記');
+            refreshKnobMonitoring('起飛完成，恢復 Phase 5 旋鈕節奏');
         }
         
         // 輔助函數：隱藏所有狀態 UI（用於巡航模式）
@@ -10745,6 +10792,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             }
             currentPhase = phase;
             console.log('🔄 切換到 Phase ' + phase + '（最高已到達: ' + maxReachedPhase + '）');
+            refreshKnobMonitoring('Phase → ' + phase);
             
             // 🔧 改進：如果切換到非 Phase 0/7 的階段，清除時間更新的 interval
             if (phase !== Phase.POST_ARRIVAL && phase !== 0 && phase !== Phase.LANDING && phase !== 7) {
