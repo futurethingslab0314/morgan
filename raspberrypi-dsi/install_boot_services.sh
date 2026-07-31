@@ -28,9 +28,14 @@ fi
 
 mkdir -p "$LOG_DIR"
 
-# 確保 flask-cors 可用（避免 OPTIONS preflight 失敗）
-"$VENV_PY" -m pip install -q flask flask-cors openai pygame 2>/dev/null || \
-  "$VENV_PY" -m pip install -q flask flask-cors openai pygame --break-system-packages || true
+# 確保相依套件在 venv 內（systemd 用 venv，系統 Python 有 RPi.GPIO 也不會被用到）
+"$VENV_PY" -m pip install -q flask flask-cors openai pygame RPi.GPIO 2>/dev/null || \
+  "$VENV_PY" -m pip install -q flask flask-cors openai pygame RPi.GPIO --break-system-packages || true
+
+if ! "$VENV_PY" -c "import RPi.GPIO" 2>/dev/null; then
+  echo "⚠️  venv 仍無法 import RPi.GPIO。若是 Pi 5 請改裝 lgpio/gpiozero；先嘗試："
+  echo "   $VENV_PY -m pip install RPi.GPIO"
+fi
 
 # 產生實例化的 unit（把 %i 換成使用者名稱路徑）
 # 使用 systemd 的 user instance 模板寫法較複雜；這裡直接寫死路徑較穩
