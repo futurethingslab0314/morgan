@@ -3023,16 +3023,16 @@
             return false;
         }
 
-        // 機長 TTS 節奏：起飛助眠偏慢；降落甦醒略快
-                const CAPTAIN_TTS = {
+        // 機長 TTS：正常語速（避免過慢像 slow robot）；仍固定男聲 onyx
+        const CAPTAIN_TTS = {
             gender: 'male',
-            takeoffSpeed: 0.72,
-            takeoffRate: 0.72,
-            takeoffPitch: 0.80,
-            landingSpeed: 0.92,
-            landingRate: 0.90,
-            landingPitch: 0.95,
-            descentWakeSpeed: 0.90,
+            takeoffSpeed: 1.0,
+            takeoffRate: 1.0,
+            takeoffPitch: 0.95,
+            landingSpeed: 1.0,
+            landingRate: 1.0,
+            landingPitch: 1.0,
+            descentWakeSpeed: 1.0,
             // 機長廣播時背景音樂壓到極低，凸顯語音
             duckMusicVolume: 0.05
         };
@@ -4580,7 +4580,7 @@
                                 }).catch(err => {
                                     console.warn('⚠️ [Phase 3] TTS 音檔生成時發生錯誤（背景）:', err);
                                 });
-                                console.log('✅ 起飛語音文字已準備（男聲助眠，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
+                                console.log('✅ 起飛語音文字已準備（男聲，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
                         } else {
                             console.warn('⚠️ 起飛語音文字生成失敗');
                             }
@@ -4690,7 +4690,7 @@
                     preparedAnnouncement = announcementResult.text;
                     preparedAnnouncementGender = CAPTAIN_TTS.gender; // 固定男聲機長
                     preparedAudioId = null; // 重置先前的音檔 ID
-                    console.log('✅ TTS 語音已準備完成（等待起飛按鈕，男聲助眠，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
+                    console.log('✅ TTS 語音已準備完成（等待起飛按鈕，男聲，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
                     
                     // 🔧 改進：在背景生成 TTS 音檔（不阻塞，讓用戶可以立即看到目的地）
                     console.log('⏳ [prepareForTakeoff] 開始在背景生成 TTS 音檔（不阻塞）...');
@@ -6051,19 +6051,23 @@
             const windowContent = document.querySelector('.window-content');
             
             if (!videoContainer || !windowContent || !videoContainerEl) {
-                console.warn('⚠️ 找不到影片容器或 window-content，直接顯示降落圖片');
-                try {
-                    const landingImageUrl = await landingImagePromise;
-                    if (landingImageUrl) {
-                        // 🔧 使用代理 URL 避免 CORS 問題
+                console.warn('⚠️ 找不到影片容器，跳過影片、直接出情緒表');
+                setBoardingStatus(false);
+                if (finalDestination) {
+                    window._landingFeedbackPromise = showFlightFeedback(finalDestination);
+                }
+                if (landingImagePromise && windowContent) {
+                    Promise.race([
+                        landingImagePromise,
+                        new Promise(resolve => setTimeout(() => resolve(null), 45000))
+                    ]).then((landingImageUrl) => {
+                        if (!landingImageUrl) return;
                         const proxiedUrl = getProxiedImageUrl(landingImageUrl);
                         windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                         windowContent.style.backgroundSize = 'cover';
                         windowContent.style.backgroundPosition = 'center';
                         console.log('🖼️ 降落圖片已顯示（無影片容器）');
-                    }
-                } catch (e) {
-                    console.warn('⚠️ 顯示降落圖片失敗:', e);
+                    }).catch((e) => console.warn('⚠️ 顯示降落圖片失敗:', e));
                 }
                 return;
             }
@@ -6088,213 +6092,148 @@
             // 這樣可以避免白屏
             console.log('✅ [landing.mp4] 保持舊影片播放，等待 landing.mp4 準備就緒');
             
-            // 準備 landing.mp4 影片元素
+            // 準備 landing.mp4（muted 優先，避免 GPIO 觸發時被 Autoplay 永久卡住）
             const landingVideo = document.createElement('video');
             landingVideo.src = 'landing.mp4';
             landingVideo.className = 'takeoff-video';
             landingVideo.preload = 'auto';
-            landingVideo.muted = false;
+            landingVideo.muted = true; // 必須 muted 才保證無手勢也能播
+            landingVideo.defaultMuted = true;
             landingVideo.playsInline = true;
+            landingVideo.setAttribute('muted', '');
+            landingVideo.setAttribute('playsinline', '');
+            landingVideo.setAttribute('webkit-playsinline', '');
             landingVideo.loop = false;
             landingVideo.style.width = '100%';
             landingVideo.style.height = '100%';
-            landingVideo.style.objectFit = 'fill'; /* 🔧 改為 fill，拉伸填滿 850x800 容器（可能會變形） */
+            landingVideo.style.objectFit = 'fill';
             landingVideo.style.position = 'absolute';
             landingVideo.style.top = '0';
             landingVideo.style.left = '0';
             landingVideo.style.opacity = '0';
-            landingVideo.style.zIndex = '30'; // 確保在最上層
+            landingVideo.style.zIndex = '30';
             
-            // 先確保容器可見
             videoContainerEl.style.display = 'flex';
-            videoContainerEl.style.zIndex = '30'; // 確保容器在最上層
-            
+            videoContainerEl.style.zIndex = '30';
             videoContainer.appendChild(landingVideo);
-            console.log('✅ [landing.mp4] landing.mp4 元素已創建並添加到容器');
+            console.log('✅ [landing.mp4] 元素已建立');
             
-            // 等待影片可以播放再淡入，避免白屏
+            // 載入逾時：最多等 8 秒，絕不永久卡住
             await new Promise((resolve) => {
+                let settled = false;
+                const done = () => { if (!settled) { settled = true; resolve(); } };
                 if (landingVideo.readyState >= 3) {
-                    console.log('✅ [landing.mp4] landing.mp4 已準備就緒');
-                    resolve();
-                } else {
-                    landingVideo.addEventListener('canplaythrough', () => {
-                        console.log('✅ [landing.mp4] landing.mp4 canplaythrough 事件觸發');
-                        resolve();
-                    }, { once: true });
-                    landingVideo.addEventListener('error', (e) => {
-                        console.warn('⚠️ [landing.mp4] landing.mp4 載入錯誤:', e);
-                        resolve(); // 即使錯誤也繼續
-                    }, { once: true });
-                    landingVideo.load(); // 確保開始載入
+                    done();
+                    return;
                 }
+                landingVideo.addEventListener('canplaythrough', done, { once: true });
+                landingVideo.addEventListener('canplay', done, { once: true });
+                landingVideo.addEventListener('error', done, { once: true });
+                landingVideo.load();
+                setTimeout(done, 8000);
             });
             
-            // 此時 landing.mp4 已經可以播放，現在才暫停並移除舊影片（takeoff2.mp4），避免空窗期
-            console.log('🔄 [landing.mp4] landing.mp4 已準備就緒，現在暫停並移除舊影片（takeoff2.mp4）...');
+            console.log('🔄 [landing.mp4] 移除舊起飛影片...');
             existingVideos.forEach(video => {
                 try {
-                    // 使用淡出效果，讓切換更平滑
-                    video.style.transition = 'opacity 0.3s';
-                    video.style.opacity = '0';
-                    setTimeout(() => {
-                        video.pause();
-                        video.currentTime = 0;
-                        video.currentTime = 0;
-                        video.remove();
-                        console.log('✅ [landing.mp4] 已移除舊影片:', video.src || '未知來源');
-                    }, 300); // 等待淡出動畫完成
-                } catch (e) {
-                    console.warn('⚠️ [landing.mp4] 移除舊影片時發生錯誤:', e);
-                }
+                    video.pause();
+                    video.remove();
+                } catch (e) { /* ignore */ }
             });
             
-            // 清除 window-content 的背景
             windowContent.style.backgroundImage = 'none';
             windowContent.innerHTML = '';
-            
             landingVideo.style.opacity = '1';
-            landingVideo.style.transition = 'opacity 0.3s';
-            console.log('✅ [landing.mp4] landing.mp4 已淡入，準備播放');
+            
+            let videoPlayed = false;
+            try {
+                await landingVideo.play();
+                videoPlayed = true;
+                console.log('▶️ [landing.mp4] 開始播放（muted，避免 Autoplay 卡住）');
+            } catch (e) {
+                console.warn('⚠️ [landing.mp4] 連 muted 也播不出，跳過影片直接進情緒表:', e && e.message ? e.message : e);
+            }
+            
+            // 有播才等 ended；沒播立刻往下。另加硬性上限，避免永遠等 ended
+            if (videoPlayed) {
+                await new Promise((resolve) => {
+                    let settled = false;
+                    const done = () => { if (!settled) { settled = true; resolve(); } };
+                    landingVideo.addEventListener('ended', done, { once: true });
+                    landingVideo.addEventListener('error', done, { once: true });
+                    // landing.mp4 通常很短；15 秒硬切，絕不卡死降落
+                    setTimeout(done, 15000);
+                });
+            }
+            
+            console.log('⏹️ landing.mp4 步驟結束，顯示情緒量表');
             
             try {
-                await unlockAudio();
-                await landingVideo.play();
-                console.log('▶️ [landing.mp4] 開始播放 landing.mp4（舊影片已移除，無空窗期）');
-            } catch (e) {
-                console.warn('⚠️ [landing.mp4] 無法播放 landing.mp4，直接顯示降落圖片:', e);
-            }
+                landingVideo.pause();
+                if (landingVideo.duration && !isNaN(landingVideo.duration)) {
+                    landingVideo.currentTime = Math.max(0, landingVideo.duration - 0.1);
+                }
+            } catch (_) { /* ignore */ }
             
-            // 等待影片結束或錯誤
-            await new Promise((resolve) => {
-                landingVideo.addEventListener('ended', () => resolve(), { once: true });
-                landingVideo.addEventListener('error', () => resolve(), { once: true });
-            });
-            
-            console.log('⏹️ landing.mp4 播放結束，立即顯示情緒量表（不管圖片是否生成）');
-            
-            // 🔧 改進：landing.mp4 播放到最後一幀時，立即顯示情緒量表，不管圖片是否已經生成
-            // 停留在 landing.mp4 的最後一幀
-            landingVideo.pause();
-            // 確保停留在最後一幀
-            if (landingVideo.duration && !isNaN(landingVideo.duration)) {
-                landingVideo.currentTime = Math.max(0, landingVideo.duration - 0.1);
-            }
-            
-            // 隱藏「降落中，請稍後」UI
+            // 先出情緒表，圖片在背景換，絕不阻塞主流程
             setBoardingStatus(false);
-            console.log('✅ [landing.mp4] 已隱藏「降落中，請稍後」UI');
-            
-            // 🔧 改進：立即顯示情緒量表（不管圖片是否生成）
-            // 如果 finalDestination 存在，立即顯示情緒量表
             if (finalDestination) {
-                console.log('📋 [landing.mp4] 立即顯示情緒量表（不管圖片是否生成）...');
-                // 使用全局變數來傳遞情緒量表的 Promise，讓 handleLanding 可以等待
+                console.log('📋 [landing.mp4] 立即顯示情緒量表...');
                 window._landingFeedbackPromise = showFlightFeedback(finalDestination);
-                console.log('✅ [landing.mp4] 情緒量表已顯示');
             } else {
                 console.warn('⚠️ [landing.mp4] finalDestination 為 null，無法顯示情緒量表');
             }
             
-            // 檢查圖片是否已經準備好（但不等待，在背景處理）
-            let landingImageUrl = null;
-            let imageReady = false;
-            try {
-                // 嘗試立即獲取圖片（如果已經生成完成）
-                landingImageUrl = await Promise.race([
-                    landingImagePromise,
-                    new Promise(resolve => setTimeout(() => resolve(null), 100)) // 100ms 超時
-                ]);
-                if (landingImageUrl) {
-                    imageReady = true;
-                    console.log('✅ [landing.mp4] 圖片已準備好，立即顯示');
-                } else {
-                    console.log('⏳ [landing.mp4] 圖片尚未準備好，將在情緒量表顯示期間繼續生成');
-                }
-            } catch (e) {
-                console.warn('⚠️ 獲取降落圖片時發生錯誤:', e);
-            }
-            
-            if (landingImageUrl) {
-                // 圖片已經準備好，立即切換
-                console.log('✅ 降落圖片已準備好，立即切換');
-            existingVideos.forEach(v => v.remove());
-            landingVideo.remove();
-            videoContainerEl.style.display = 'none';
-            
-                    // 確保 window-content 在最上層，並且清除所有內容
+            const applyLandingImage = (landingImageUrl) => {
+                if (!landingImageUrl || !windowContent) return;
+                try {
+                    existingVideos.forEach(v => { try { v.remove(); } catch (_) {} });
+                    try { landingVideo.remove(); } catch (_) {}
+                    videoContainerEl.style.display = 'none';
                     windowContent.style.zIndex = '1000';
                     windowContent.style.position = 'relative';
-                    // 🔧 改進：先清除舊圖片，再顯示新圖片
                     windowContent.style.backgroundImage = 'none';
-                    windowContent.innerHTML = ''; // 清除所有內容（包括文字和 icon）
-                // 🔧 使用代理 URL 避免 CORS 問題
-                const proxiedUrl = getProxiedImageUrl(landingImageUrl);
-                windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
+                    windowContent.innerHTML = '';
+                    const proxiedUrl = getProxiedImageUrl(landingImageUrl);
+                    windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                     windowContent.style.backgroundSize = 'cover';
                     windowContent.style.backgroundPosition = 'center';
                     windowContent.style.backgroundRepeat = 'no-repeat';
-                    console.log('🖼️ [playLandingVideoAndShowImage] 新降落圖片已顯示（已清除舊圖片）:', landingImageUrl);
-                    
-                    // 🔧 改進：圖片顯示後，隱藏「降落中，請稍後」UI
-                    setBoardingStatus(false);
-                    console.log('✅ [landing.mp4] 圖片已顯示，已隱藏「降落中，請稍後」UI');
-                } else {
-                // 圖片還沒準備好，停留在 landing.mp4 的最後一幀
-                console.log('⏳ 降落圖片尚未準備好，停留在 landing.mp4 最後一幀，等待圖片生成...');
-                landingVideo.pause();
-                // 確保停留在最後一幀
-                if (landingVideo.duration && !isNaN(landingVideo.duration)) {
-                    landingVideo.currentTime = Math.max(0, landingVideo.duration - 0.1);
+                    windowContent.style.opacity = '1';
+                    console.log('🖼️ [landing.mp4] 降落圖片已顯示:', landingImageUrl);
+                } catch (e) {
+                    console.warn('⚠️ [landing.mp4] 套用降落圖片失敗:', e);
                 }
-                
-                // 等待圖片生成完成
+            };
+            
+            // 立刻試一次（100ms）；沒好就背景等，最多 45 秒，不卡住情緒表
+            let landingImageUrl = null;
+            if (landingImagePromise) {
                 try {
-                    landingImageUrl = await landingImagePromise;
-                    if (landingImageUrl) {
-                        console.log('✅ 降落圖片已生成完成，無縫切換');
-                        // 淡出影片，淡入圖片
-                        landingVideo.style.transition = 'opacity 0.5s';
-                        landingVideo.style.opacity = '0';
-                        
-                        setTimeout(() => {
-                            existingVideos.forEach(v => v.remove());
-                            landingVideo.remove();
-                            videoContainerEl.style.display = 'none';
-                            
-                            // 顯示圖片
-                            windowContent.style.zIndex = '1000';
-                            windowContent.style.position = 'relative';
-                            // 🔧 改進：先清除舊圖片，再顯示新圖片
-                            windowContent.style.backgroundImage = 'none';
-                            windowContent.innerHTML = '';
-                            const proxiedUrl = getProxiedImageUrl(landingImageUrl);
-                            windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
-                            windowContent.style.backgroundSize = 'cover';
-                            windowContent.style.backgroundPosition = 'center';
-                            windowContent.style.backgroundRepeat = 'no-repeat';
-                            windowContent.style.opacity = '0';
-                            windowContent.style.transition = 'opacity 0.5s';
-                            console.log('🖼️ [playLandingVideoAndShowImage] 新降落圖片已準備顯示（已清除舊圖片）:', landingImageUrl);
-                            
-                            // 淡入圖片
-                            setTimeout(() => {
-                                windowContent.style.opacity = '1';
-                                
-                                // 🔧 改進：圖片顯示後，隱藏「降落中，請稍後」UI
-                                setBoardingStatus(false);
-                                console.log('✅ [landing.mp4] 圖片已顯示，已隱藏「降落中，請稍後」UI');
-                            }, 50);
-                            
-                            console.log('🖼️ 降落圖片已無縫切換顯示');
-                        }, 500); // 等待淡出動畫完成
-                    } else {
-                        console.warn('⚠️ 降落圖片生成失敗，保持 landing.mp4 最後一幀');
-                }
-            } catch (e) {
-                    console.warn('⚠️ 等待降落圖片時發生錯誤:', e);
+                    landingImageUrl = await Promise.race([
+                        landingImagePromise,
+                        new Promise(resolve => setTimeout(() => resolve(null), 100))
+                    ]);
+                } catch (e) {
+                    console.warn('⚠️ [landing.mp4] 讀取圖片 Promise 失敗:', e);
                 }
             }
+            
+            if (landingImageUrl) {
+                applyLandingImage(landingImageUrl);
+            } else if (landingImagePromise) {
+                console.log('⏳ [landing.mp4] 圖片未好，背景繼續生成（不阻塞情緒表）');
+                Promise.race([
+                    landingImagePromise,
+                    new Promise(resolve => setTimeout(() => resolve(null), 45000))
+                ]).then((url) => {
+                    if (url) applyLandingImage(url);
+                    else console.warn('⚠️ [landing.mp4] 圖片逾時／失敗，維持目前畫面');
+                }).catch((e) => {
+                    console.warn('⚠️ [landing.mp4] 背景等圖片失敗:', e);
+                });
+            }
+            // 立刻 return，讓 handleLanding 去等情緒表，不再卡在這裡
         }
         
         // 驗證尺寸
@@ -7841,15 +7780,15 @@
         async function playAnnouncement(text, language = 'zh-TW', options = {}) {
             if (!text) return;
             
-            // 起飛：低沉助眠；降落／喚醒：略快、略亮、仍用男聲機長
+            // 起飛／降落皆用正常語速；仍固定男聲機長
             const isTakeoffAnnouncement = options.isTakeoff || false;
             const isLandingAnnouncement = options.isLanding || false;
             const defaultRate = isTakeoffAnnouncement
                 ? CAPTAIN_TTS.takeoffRate
-                : (isLandingAnnouncement ? CAPTAIN_TTS.landingRate : 0.85);
+                : (isLandingAnnouncement ? CAPTAIN_TTS.landingRate : 1.0);
             const defaultPitch = isTakeoffAnnouncement
                 ? CAPTAIN_TTS.takeoffPitch
-                : (isLandingAnnouncement ? CAPTAIN_TTS.landingPitch : 0.90);
+                : (isLandingAnnouncement ? CAPTAIN_TTS.landingPitch : 1.0);
             const rate = (typeof options.rate === 'number') ? options.rate : defaultRate;
             const pitch = (typeof options.pitch === 'number') ? options.pitch : defaultPitch;
             const volume = (typeof options.volume === 'number') ? options.volume : 1.0; // 預設語音音量拉到 1.0
@@ -7899,8 +7838,8 @@
                 };
                 const selectedVoice = voiceMap[gender] || 'onyx';
                 
-                // rate → OpenAI speed：起飛可更慢，降落可略快
-                const openaiSpeed = Math.max(0.65, Math.min(1.05, rate));
+                // rate → OpenAI speed（正常語速約 1.0）
+                const openaiSpeed = Math.max(0.85, Math.min(1.15, rate));
                 
                 console.log(`🎤 使用 ${gender} 聲（${selectedVoice}），語速 ${openaiSpeed.toFixed(2)}`);
                 
@@ -9991,67 +9930,48 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             const overlay = document.getElementById('midnightServiceOverlay');
             const imageEl = document.getElementById('midnightServiceImage');
             
-            // 播放飛機餐背景音樂（隨機選擇 airlinemeal.mp3 或 airlinemeal2.mp3）- 固定1分鐘
+            // 播放飛機餐背景音樂（隨機 airlinemeal / airlinemeal2）- 固定約 1 分鐘
+            // 檔案在專案根目錄（Vercel: /airlinemeal.mp3），不在 /sounds/
             const musicPromise = (async () => {
                 try {
-                    // 隨機選擇其中一個音樂
                     const musicFiles = ['airlinemeal.mp3', 'airlinemeal2.mp3'];
                     const randomMusic = musicFiles[Math.floor(Math.random() * musicFiles.length)];
-                    
-                    // 嘗試多種路徑格式（文件可能在根目錄或 sounds/ 目錄）
-                    const musicPaths = [
-                        randomMusic, // 先嘗試根目錄
-                        `./${randomMusic}`,
-                        `sounds/${randomMusic}`,
-                        `./sounds/${randomMusic}`,
-                        `/sounds/${randomMusic}`
-                    ];
-                    
-                    let musicLoaded = false;
-                    for (const musicPath of musicPaths) {
-                        try {
-                            mealMusic = new Audio(musicPath);
-                            window.mealMusic = mealMusic; // 🔧 改進：設置為全局變量，以便其他函數可以訪問
-                            mealMusic.volume = 0.6;
-                            mealMusic.loop = false;
-                            
-                            // 等待載入完成
-                            await new Promise((resolve, reject) => {
-                                const timeout = setTimeout(() => {
-                                    reject(new Error('載入超時'));
-                                }, 3000);
-                                
-                                mealMusic.addEventListener('canplaythrough', () => {
-                                    clearTimeout(timeout);
-                                    resolve();
-                                }, { once: true });
-                                
-                                mealMusic.addEventListener('error', (e) => {
-                                    clearTimeout(timeout);
-                                    reject(e);
-                                }, { once: true });
-                                
-                                mealMusic.load();
-                            });
-                            
-                            await mealMusic.play();
-                            console.log(`🎵 開始播放飛機餐背景音樂（路徑: ${musicPath}），將在1分鐘後結束`);
-                            musicLoaded = true;
-                            break;
-                        } catch (e) {
-                            // 繼續嘗試下一個路徑
-                            if (musicPaths.indexOf(musicPath) === musicPaths.length - 1) {
-                                console.warn(`⚠️ 無法載入 ${musicPath}:`, e.message);
-                            }
-                        }
+                    // 只用根目錄路徑（/sounds/ 會 404）
+                    const localPath = randomMusic;          // Pi 本機：專案根目錄 airlinemeal.mp3
+                    const webPath = '/' + randomMusic;      // Vercel：https://.../airlinemeal.mp3
+                    console.log('🍽️ 準備飛機餐音樂:', webPath);
+
+                    // 1) 優先樹莓派喇叭（GPIO 觸發時瀏覽器常被 Autoplay 擋住）
+                    const viaPi = await playLocalSoundViaPi(localPath, 60, 0.6);
+                    if (viaPi) {
+                        console.log('✅ 飛機餐音樂已由樹莓派喇叭播放:', localPath);
+                        return;
                     }
-                    
-                    if (!musicLoaded) {
-                        console.warn('⚠️ 無法載入飛機餐音樂（所有路徑都失敗），將繼續執行但不播放音樂');
-                    }
+
+                    // 2) 瀏覽器後備
+                    mealMusic = new Audio(webPath);
+                    window.mealMusic = mealMusic;
+                    mealMusic.volume = 0.6;
+                    mealMusic.loop = false;
+                    mealMusic.preload = 'auto';
+
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error('載入超時')), 15000);
+                        const ok = () => { clearTimeout(timeout); resolve(); };
+                        mealMusic.addEventListener('canplaythrough', ok, { once: true });
+                        mealMusic.addEventListener('error', () => {
+                            clearTimeout(timeout);
+                            reject(new Error('audio element error'));
+                        }, { once: true });
+                        mealMusic.load();
+                    });
+
+                    await unlockAudio();
+                    await mealMusic.play();
+                    console.log(`🎵 瀏覽器開始播放飛機餐音樂: ${webPath}`);
                 } catch (error) {
-                    console.warn('⚠️ 無法播放飛機餐音樂:', error);
-                    // 即使音樂無法播放，也繼續執行
+                    const msg = error && error.message ? error.message : String(error);
+                    console.warn('⚠️ 無法播放飛機餐音樂:', msg, '（檔案應在網站根目錄 /airlinemeal.mp3）');
                 }
             })();
             
@@ -10392,52 +10312,34 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             
             hideLandingConfirmation();
             
-            // 清除確認計時器
             if (landingConfirmTimeout) {
                 clearTimeout(landingConfirmTimeout);
                 landingConfirmTimeout = null;
             }
             
-            // 設置標記，防止 handleCruise 觸發 Phase 6
-            manualLandingTriggered = true;
-            
-            // 標記已提前降落，防止 Phase 6 的邏輯執行
-            window._earlyLandingConfirmed = true;
-            
-            // 🔧 改進：緊急降落流程 - 立即進入 Phase 7 並播放音樂，然後顯示「降落準備中請稍等」5秒，再顯示「機長準備廣播」，等語音準備好再播放
-            // 0. 立即切換到 Phase 7 並播放音樂（讓音樂在背景播放）
-            console.log('0️⃣ [緊急降落] 立即切換到 Phase 7 並播放音樂...');
             manualLandingTriggered = true;
             window._earlyLandingConfirmed = true;
             
-            // 先切換到 Phase 7（這樣 handleLanding 會立即播放音樂）
-            switchToPhase(Phase.LANDING);
+            // 先播 wakeup 音樂（不先進 Phase 7，避免 handleLanding 與預生成搶跑而卡住）
+            console.log('0️⃣ [緊急降落] 先播放 wakeup 音樂...');
+            playWakeupMusicForPhase7().catch(err => {
+                console.warn('⚠️ [緊急降落] wakeup 音樂失敗:', err);
+            });
             
-            // 🔧 改進：等待 Phase 7 初始化並確保音樂已開始播放
-            // 等待更長時間確保 handleLanding 已執行並音樂已開始播放
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // 🔧 改進：同時顯示「降落準備中請稍等...」和開始準備 TTS，以拖時間讓 TTS 有時間生成
-            // 1. 顯示「降落準備中請稍等...」
-            console.log('1️⃣ [緊急降落] 顯示「降落準備中請稍等...」...');
+            console.log('1️⃣ [緊急降落] 顯示「降落準備中請稍等...」並預生成降落內容...');
             setBoardingStatus(true, '降落準備中請稍等...');
             
-            // 2. 開始準備 TTS 文字內容（異步進行，與 UI 顯示同時進行）
-            console.log('2️⃣ [緊急降落] 開始準備 TTS 文字內容（與 UI 顯示同時進行）...');
-            const actualDuration = Math.floor((Date.now() - sleepStartTime) / (60 * 1000));
-            const punctuality = calculatePunctuality(selectedTimer, actualDuration);
-            const timeDiff = actualDuration - selectedTimer;
-            const timeDiffPercent = (timeDiff / selectedTimer) * 100;
+            const actualDuration = Math.max(1, Math.floor((Date.now() - (sleepStartTime || Date.now())) / (60 * 1000)));
+            const punctuality = calculatePunctuality(selectedTimer || actualDuration, actualDuration);
+            const timeDiff = actualDuration - (selectedTimer || actualDuration);
+            const timeDiffPercent = selectedTimer ? (timeDiff / selectedTimer) * 100 : 0;
             
-            // 提前計算目的地和生成降落內容（異步進行）
             let finalDestination = destinationData || null;
             let isWormhole = false;
-            const landingContentPromise = (async () => {
+            
+            window._earlyLandingContentPromise = (async () => {
                 try {
-                    // 獲取之前選擇的氣候帶選項（如果有的話）
                     const climateZone = destinationData?.climateZone || null;
-                    
-                    // 使用實際飛行時間計算最終目的地
                     finalDestination = await destinationCalculator.findDestination(
                         actualDuration,
                         selectedDirection,
@@ -10445,59 +10347,45 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         climateZone
                     );
                     
-                    // 檢查蟲洞效應（1/7 機率）
                     const wormholeChance = Math.random();
-                    if (wormholeChance < 1/7) {
-                        console.log('🌀 [蟲洞效應] 觸發機率：' + (wormholeChance * 100).toFixed(2) + '%，觸發蟲洞效應！');
-                        const originalDestination = finalDestination;
-                        finalDestination = await destinationCalculator.findDestinationWithWormhole(
+                    if (wormholeChance < 1/7 || !finalDestination) {
+                        const wormholeDest = await destinationCalculator.findDestinationWithWormhole(
                             selectedDirection,
                             climateZone
                         );
-                        if (finalDestination) {
-                            isWormhole = true;
-                            finalDestination.wormhole = true;
-                        }
-                    } else if (!finalDestination) {
-                        finalDestination = await destinationCalculator.findDestinationWithWormhole(
-                            selectedDirection,
-                            climateZone
-                        );
-                        if (finalDestination) {
+                        if (wormholeDest) {
+                            finalDestination = wormholeDest;
                             isWormhole = true;
                             finalDestination.wormhole = true;
                         }
                     }
                     
-                    // 生成降落內容（TTS）
-                    // 🔧 改進：無論是否為蟲洞，都傳入 finalDestination，確保語音和 UI 使用相同的目的地
                     const landingDataResult = await generateLandingContent(
                         timeDiff,
                         timeDiffPercent,
                         actualDuration,
-                        finalDestination // 始終傳入已計算好的目的地，確保一致性
+                        finalDestination
                     );
                     
-                    // 保存到全局變數，供 handleLanding 使用
                     window._preGeneratedLandingData = landingDataResult;
                     window._preGeneratedFinalDestination = finalDestination;
                     window._preGeneratedIsWormhole = isWormhole;
-                    
                     console.log('✅ [緊急降落] TTS 文字內容已準備完成');
                     return landingDataResult;
                 } catch (error) {
                     console.error('❌ [緊急降落] 準備 TTS 時發生錯誤:', error);
+                    // 仍帶上目前目的地，讓 handleLanding 可繼續
+                    window._preGeneratedFinalDestination = finalDestination || destinationData;
+                    window._preGeneratedIsWormhole = isWormhole;
                     return null;
                 }
             })();
             
-            // 4. 等待 TTS 文字內容準備完成（確保文字內容已生成）
-            console.log('4️⃣ [緊急降落] 等待 TTS 文字內容準備完成...');
-            const landingData = await landingContentPromise;
+            console.log('4️⃣ [緊急降落] 等待降落內容準備...');
+            await window._earlyLandingContentPromise;
             
-            // 5. 文字A已準備完成，保存到全局變數供 handleLanding 使用
-            // 注意：captain.mp3 和語音A的播放將在 handleLanding 中統一處理
-            console.log('5️⃣ [緊急降落] 文字A已準備完成，等待 handleLanding 統一處理播放...');
+            console.log('5️⃣ [緊急降落] 進入 Phase 7，交由 handleLanding 播 captain／語音A...');
+            switchToPhase(Phase.LANDING);
         }
         
         // 為提前降落播放 wakeup 音樂（帶淡入效果）
@@ -10567,149 +10455,106 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             window._earlyLandingWakeupMusic = audio;
         }
 
-        // 🔧 新增：為 Phase 7 播放新的 wakeup 音樂（進入降落階段時播放）
+        // Phase 7／緊急降落：播放 wakeup 音樂（檔案在網站根目錄，不在 /sounds/）
         async function playWakeupMusicForPhase7() {
-            // 先淡出現有的音樂（如果有的話）
-            if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                console.log('🔉 [Phase 7] 淡出現有的 descentWakeupMusic...');
-                await fadeOutAudio(descentWakeupMusic, 1000);
-                try {
-                    descentWakeupMusic.pause();
-                    descentWakeupMusic = null;
-                } catch (e) {
-                    console.warn('⚠️ [Phase 7] 停止 descentWakeupMusic 時發生錯誤:', e);
-                }
+            // 若已在播就不重複
+            if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                console.log('ℹ️ [Phase 7] wakeup 音樂已在播放，跳過重複啟動');
+                return;
             }
-            
-            // 如果還有提前降落的音樂在播放，也淡出
+
+            if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                try { await fadeOutAudio(descentWakeupMusic, 800); } catch (_) {}
+                try { descentWakeupMusic.pause(); descentWakeupMusic = null; } catch (_) {}
+            }
             if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
-                console.log('🔉 [Phase 7] 淡出現有的 _earlyLandingWakeupMusic...');
-                await fadeOutAudio(window._earlyLandingWakeupMusic, 1000);
+                try { await fadeOutAudio(window._earlyLandingWakeupMusic, 800); } catch (_) {}
                 try {
                     window._earlyLandingWakeupMusic.pause();
                     window._earlyLandingWakeupMusic = null;
-                } catch (e) {
-                    console.warn('⚠️ [Phase 7] 停止 _earlyLandingWakeupMusic 時發生錯誤:', e);
-                }
+                } catch (_) {}
             }
             
-            // 🔧 改進：根據選擇的氣候帶決定播放哪首 wakeup 音樂
-            // 如果選擇「熱帶夢境」，播放 wakeup4.mp3；否則從其他 wakeup 音樂中隨機選擇
-            let selectedMusic = null;
-            
-            // 檢查是否選擇了「熱帶夢境」
-            const isTropicalDreams = selectedDirection === 0 || 
-                (selectedDirection !== null && 
-                 climateZoneOptions[selectedDirection] && 
+            const isTropicalDreams = selectedDirection === 0 ||
+                (selectedDirection !== null &&
+                 climateZoneOptions[selectedDirection] &&
                  climateZoneOptions[selectedDirection].name === '熱帶夢境');
             
+            let selectedMusic;
             if (isTropicalDreams) {
-                // 選擇「熱帶夢境」，播放 wakeup4.mp3
                 selectedMusic = 'wakeup4.mp3';
-                console.log('🌴 [Phase 7] 檢測到「熱帶夢境」，將播放 wakeup4.mp3');
+                console.log('🌴 [Phase 7] 熱帶夢境 → wakeup4.mp3');
             } else {
-                // 其他氣候帶，從其他 wakeup 音樂中隨機選擇
                 const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
                 selectedMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
-                console.log('🎵 [Phase 7] 其他氣候帶，隨機選擇:', selectedMusic);
+                console.log('🎵 [Phase 7] 選擇:', selectedMusic);
             }
-            
-            // 嘗試多個路徑
-            const possiblePaths = [
-                selectedMusic,
-                './' + selectedMusic,
-                'sounds/' + selectedMusic,
-                './sounds/' + selectedMusic,
-                '/sounds/' + selectedMusic
-            ];
-            
-            let musicUrl = null;
-            for (const path of possiblePaths) {
-                try {
-                    const testAudio = new Audio(path);
-                    await new Promise((resolve, reject) => {
-                        testAudio.oncanplaythrough = resolve;
-                        testAudio.onerror = reject;
-                        testAudio.load();
-                        setTimeout(resolve, 500); // 超時保護
-                    });
-                    musicUrl = path;
-                    break;
-                } catch (e) {
-                    // 繼續嘗試下一個路徑
-                }
+
+            // 1) 優先 Pi 喇叭（GPIO 觸發常被 Autoplay 擋）
+            const viaPi = await playLocalSoundViaPi(selectedMusic, null, 0.6);
+            if (viaPi) {
+                console.log('✅ [Phase 7] wakeup 已由樹莓派喇叭播放:', selectedMusic);
+                // 佔位物件，後續 duck 音量時有參考（Pi 端無法從瀏覽器調音量）
+                window._phase7WakeupMusic = { paused: false, volume: 0.05, pause() {}, currentTime: 0 };
+                return;
             }
-            
-            if (!musicUrl) {
-                console.warn('⚠️ [Phase 7] 找不到 wakeup 音樂文件，跳過播放');
-                // 確保設置為 null，避免後續代碼出錯
+
+            // 2) 瀏覽器：只用根目錄路徑
+            const musicUrl = '/' + selectedMusic;
+            console.log('🎵 [Phase 7] 瀏覽器播放 wakeup:', musicUrl);
+            const audio = new Audio(musicUrl);
+            audio.volume = 0;
+            audio.loop = false;
+            audio.preload = 'auto';
+
+            try {
+                await unlockAudio();
+                await audio.play();
+            } catch (err) {
+                console.warn('⚠️ [Phase 7] 瀏覽器播放 wakeup 失敗:', err && err.message ? err.message : err);
                 window._phase7WakeupMusic = null;
                 return;
             }
-            
-            console.log('🎵 [Phase 7] 播放新的 wakeup 音樂（淡入）:', musicUrl);
-            const audio = new Audio(musicUrl);
-            audio.volume = 0; // 初始音量為 0，準備淡入
-            audio.loop = false;
-            
-            // 播放音樂（從靜音開始）
-            await audio.play().catch(err => {
-                console.warn('⚠️ [Phase 7] 播放 wakeup 音樂失敗:', err);
-            });
-            
-            // 音樂慢慢淡入（2秒淡入）
-            // 🔧 改進：清理之前的淡入 interval（如果有的話）
+
             if (window._phase7MusicFadeInInterval) {
                 clearInterval(window._phase7MusicFadeInInterval);
                 window._phase7MusicFadeInInterval = null;
             }
-            
-            const fadeInDuration = 2000; // 2秒淡入
-            const targetVolume = 0.6; // 目標音量
+            const fadeInDuration = 2000;
+            const targetVolume = 0.6;
             const startTime = Date.now();
-            
             window._phase7MusicFadeInInterval = setInterval(() => {
                 if (!audio || audio.paused) {
                     clearInterval(window._phase7MusicFadeInInterval);
                     window._phase7MusicFadeInInterval = null;
                     return;
                 }
-                
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / fadeInDuration, 1);
+                const progress = Math.min((Date.now() - startTime) / fadeInDuration, 1);
                 audio.volume = targetVolume * progress;
-                
                 if (progress >= 1) {
                     clearInterval(window._phase7MusicFadeInInterval);
                     window._phase7MusicFadeInInterval = null;
                     audio.volume = targetVolume;
-                    console.log('✅ [Phase 7] wakeup 音樂淡入完成');
                 }
-            }, 16); // 約 60fps
-            
-            // 保存引用到新的全局變數，以便後續調整音量或停止
+            }, 16);
+
             window._phase7WakeupMusic = audio;
-            
-            // 🔧 改進：等待音樂開始播放（確保音樂在返回前已經開始）
-            // 等待一小段時間確保音樂已經開始播放
-            await new Promise(resolve => setTimeout(resolve, 100));
-            console.log('✅ [Phase 7] wakeup 音樂已開始播放');
-            
-            // 音樂播放結束時清理
             audio.onended = () => {
                 console.log('✅ [Phase 7] wakeup 音樂播放完成');
                 window._phase7WakeupMusic = null;
-                // 清理淡入 interval（如果還在運行）
                 if (window._phase7MusicFadeInInterval) {
                     clearInterval(window._phase7MusicFadeInInterval);
                     window._phase7MusicFadeInInterval = null;
                 }
             };
+            console.log('✅ [Phase 7] wakeup 音樂已開始播放');
         }
 
         // 記錄深夜服務事件（睡眠中斷）
         async function saveMidnightServiceRecord(data) {
             try {
+                const city = (destinationData && (destinationData.city || destinationData.city_zh)) || 'Unknown';
+                const country = (destinationData && (destinationData.country || destinationData.country_zh)) || 'Unknown';
                 const recordData = {
                     userDisplayName: 'Pi User',
                     dataIdentifier: 'midnight_service_' + Date.now(),
@@ -10719,7 +10564,12 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     totalMinutes: data.totalMinutes,
                     progressPercent: data.progressPercent,
                     timestamp: data.timestamp,
-                    deviceType: 'raspberry_pi_sleep_flight'
+                    deviceType: 'raspberry_pi_sleep_flight',
+                    // save-record 新建記錄必填
+                    city,
+                    country,
+                    city_zh: (destinationData && destinationData.city_zh) || city,
+                    country_zh: (destinationData && destinationData.country_zh) || country
                 };
                 
                 const response = await fetch('https://morgan-orcin.vercel.app/api/save-record', {
@@ -13627,18 +13477,13 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             console.log('✅ [handleLanding] 已顯示等待語音生成的 UI（橘色三個點點）');
             
             // ============================================================================
-            // 步驟 1: 進入 Phase 7，先播放 wakeup 音樂（必須立即播放，不阻塞）
+            // 步驟 1: 進入 Phase 7，先播放 wakeup 音樂（緊急降落可能已先播過）
             // ============================================================================
-            console.log('1️⃣ [Phase 7] 立即播放 wakeup 音樂...');
-            // 🔧 改進：立即開始播放音樂（不等待完成），確保音樂在後續流程之前就開始
-            // 但等待一小段時間確保音樂已開始播放
-            const musicPromise = playWakeupMusicForPhase7().catch(err => {
+            console.log('1️⃣ [Phase 7] 播放／確認 wakeup 音樂...');
+            await playWakeupMusicForPhase7().catch(err => {
                 console.warn('⚠️ [Phase 7] 播放 wakeup 音樂失敗:', err);
             });
-            
-            // 等待一小段時間確保音樂已開始播放（不等待完整淡入）
-            await new Promise(resolve => setTimeout(resolve, 300));
-            console.log('✅ [Phase 7] wakeup 音樂已開始播放');
+            console.log('✅ [Phase 7] wakeup 音樂步驟完成');
             
             // 停止 takeoff2.mp4 的可見性檢查（但保持影片播放）
             console.log('🔄 [Phase 7] 停止 takeoff2.mp4 可見性檢查，保持播放直到 landing.mp4 準備就緒');
@@ -13680,11 +13525,27 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             let finalDestination = destinationData || null;
             let isWormhole = false;
             
+            // 緊急降落：若內容還在生成，先等完再繼續（避免卡在半套流程）
+            if (isEarlyLanding && !window._preGeneratedFinalDestination && window._earlyLandingContentPromise) {
+                console.log('⏳ [提前降落] 等待預生成降落內容...');
+                try {
+                    await Promise.race([
+                        window._earlyLandingContentPromise,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('early landing prep timeout')), 45000))
+                    ]);
+                } catch (waitErr) {
+                    console.warn('⚠️ [提前降落] 等待預生成逾時／失敗，改用現有目的地:', waitErr && waitErr.message ? waitErr.message : waitErr);
+                }
+            }
+
             // 如果提前降落，使用已準備好的目的地
             if (isEarlyLanding && window._preGeneratedFinalDestination) {
                 console.log('✅ [提前降落] 使用已準備好的目的地');
                 finalDestination = window._preGeneratedFinalDestination;
                 isWormhole = window._preGeneratedIsWormhole || false;
+            } else if (isEarlyLanding && window._preGeneratedLandingData) {
+                finalDestination = window._preGeneratedLandingData.destination || destinationData;
+                isWormhole = !!(finalDestination && finalDestination.wormhole);
             } else if (punctuality === 'ON_TIME' || punctuality === 'PERFECT') {
                 // 🔧 改進：準時降落時，使用原本設定的目的地，不重新計算
                 // 這樣可以確保目的地一致性，避免因為時間計算誤差導致目的地改變
@@ -14001,93 +13862,79 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             setBoardingStatus(false);
             
             // ============================================================================
-            // 步驟 5: 語音A播放完後，準備降落，播放 landing.mp4，背景生成文字B和語音B
+            // 步驟 5: 語音A完 → 播 landing.mp4（同時背景產文字B／語音B）
+            // 主線：影片／情緒表；支線：天氣、歡迎詞、TTS（可失敗、有硬超時）
             // ============================================================================
-            console.log('6️⃣ [Phase 7] 語音A播放完成，準備降落，播放 landing.mp4...');
+            console.log('6️⃣ [Phase 7] 語音A完成 → 降落影片 + 背景產城市介紹...');
+            setBoardingStatus(true, '降落中...');
             
-            // 背景生成文字B（新城市介紹）
-            console.log('📝 [Phase 7] 背景生成文字B（新城市介紹）...');
-            const destinationInfoPromise = generateDestinationInfo(finalDestination).then((info) => {
-                if (info) {
-                    window._preGeneratedDestinationInfo = info;
-                }
-                return info;
+            const withTimeout = (promise, ms, label) => Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error(label + ' timeout')), ms))
+            ]);
+            
+            // 背景：文字B（天氣／活動）— 硬超時 25s
+            console.log('📝 [Phase 7] 背景：城市資訊（文字B）...');
+            const destinationInfoPromise = withTimeout(
+                generateDestinationInfo(finalDestination).then((info) => {
+                    if (info) window._preGeneratedDestinationInfo = info;
+                    return info;
+                }),
+                25000,
+                'destinationInfo'
+            ).catch((err) => {
+                console.warn('⚠️ [Phase 7] 文字B逾時／失敗，用簡易備援:', err && err.message ? err.message : err);
+                const city = finalDestination.city_zh || finalDestination.city || '目的地';
+                return {
+                    time: '--:--',
+                    weather: '天氣資訊稍後更新',
+                    feature: `歡迎探索${city}`,
+                    source: 'fallback'
+                };
             });
             
-            // 🔧 改進：在 landing.mp4 播放時，等待文字B生成完成，然後立即預先生成語音B（不播放）
+            // 背景：語音B — 硬超時 40s（含 AI 歡迎詞 + TTS）
             const voiceBPromise = (async () => {
                 try {
-                    // 等待文字B生成完成
                     const destinationInfo = await destinationInfoPromise;
-                    console.log('✅ [Phase 7] 文字B已生成，立即預先生成語音B（不播放）...');
+                    console.log('✅ [Phase 7] 文字B就緒，預先生成語音B...');
                     
                     if (destinationInfo && finalDestination) {
                         const cityName = finalDestination.city_zh || finalDestination.city || '';
                         const countryName = finalDestination.country_zh || finalDestination.country || '';
                         
-                        // 🔧 改進：使用 AI 生成更有創意和即時性的歡迎訊息
                         let welcomeMessage = '';
                         try {
-                            // 🔧 結構化 Prompt 設計（參考論文範例）
-                            // 輸入變數 (Inputs)
                             const countryCode = finalDestination.country_iso_code || '';
-                            const hour = parseInt(destinationInfo.time.split(':')[0]) || 12;
+                            const hour = parseInt(String(destinationInfo.time || '12').split(':')[0]) || 12;
                             
-                            // Prompt 轉換邏輯 (Design Logic)
-                            // 1. 目的地 → 抓取當地文化語氣
                             let culturalTone = '親切自然';
-                            let culturalGreeting = '';
+                            let culturalGreeting = '親愛的旅客';
                             if (countryCode && window.COUNTRY_MENTAL_STATE && window.COUNTRY_MENTAL_STATE[countryCode]) {
                                 const countryInfo = window.COUNTRY_MENTAL_STATE[countryCode];
                                 culturalTone = countryInfo.culturalMood || culturalTone;
-                                // 根據國家特色調整問候語風格
-                                if (countryCode === 'GB') {
-                                    culturalGreeting = 'Good day everyone，紳士淑女們';
-                                } else if (countryCode === 'JP') {
-                                    culturalGreeting = 'おはようございます，各位旅客';
-                                } else if (countryCode === 'FR') {
-                                    culturalGreeting = 'Bonjour，親愛的旅客';
-                                } else if (countryCode === 'DE') {
-                                    culturalGreeting = 'Guten Tag，各位旅客';
-                                } else {
-                                    culturalGreeting = '親愛的旅客';
-                                }
-                            } else {
-                                culturalGreeting = '親愛的旅客';
+                                if (countryCode === 'GB') culturalGreeting = 'Good day everyone，紳士淑女們';
+                                else if (countryCode === 'JP') culturalGreeting = 'おはようございます，各位旅客';
+                                else if (countryCode === 'FR') culturalGreeting = 'Bonjour，親愛的旅客';
+                                else if (countryCode === 'DE') culturalGreeting = 'Guten Tag，各位旅客';
                             }
                             
-                            // 2. 天氣 → 轉換為敘事背景
-                            let weatherNarrative = '';
-                            if (destinationInfo.weather.includes('雨') || destinationInfo.weather.includes('rain')) {
-                                weatherNarrative = '雖然${cityName}目前${destinationInfo.weather}，但我們已平安降落，雨後的清新空氣正等待著您';
-                            } else if (destinationInfo.weather.includes('霧') || destinationInfo.weather.includes('fog')) {
-                                weatherNarrative = '${cityName}的${destinationInfo.weather}為這座城市增添了一層神秘氛圍，我們已安全抵達';
-                            } else {
-                                weatherNarrative = `此刻${destinationInfo.time}，${destinationInfo.weather}`;
+                            const weatherStr = destinationInfo.weather || '';
+                            let weatherNarrative = `此刻${destinationInfo.time}，${weatherStr}`;
+                            if (weatherStr.includes('雨') || weatherStr.includes('rain')) {
+                                weatherNarrative = `雖然${cityName}目前${weatherStr}，但我們已平安降落`;
+                            } else if (weatherStr.includes('霧') || weatherStr.includes('fog')) {
+                                weatherNarrative = `${cityName}的${weatherStr}為這座城市增添神秘氛圍，我們已安全抵達`;
                             }
                             
-                            // 3. 時間 → 調整音調與問候語
-                            let timeContext = '';
-                            let toneDescription = '';
-                            if (hour >= 5 && hour < 9) {
-                                timeContext = `在${cityName}微亮的清晨`;
-                                toneDescription = '溫柔、低沈的語調';
-                            } else if (hour >= 9 && hour < 12) {
-                                timeContext = `${cityName}的早晨`;
-                                toneDescription = '明亮、親切的語調';
-                            } else if (hour >= 12 && hour < 15) {
-                                timeContext = `${cityName}的午間時分`;
-                                toneDescription = '清晰、專業的語調';
-                            } else if (hour >= 15 && hour < 18) {
-                                timeContext = `${cityName}溫暖的午後`;
-                                toneDescription = '舒緩、親切的語調';
-                            } else if (hour >= 18 && hour < 21) {
-                                timeContext = `${cityName}的傍晚時分`;
-                                toneDescription = '溫暖、柔和的語調';
-                            } else {
-                                timeContext = `${cityName}寧靜的夜晚`;
-                                toneDescription = '低沈、溫柔的語調';
-                            }
+                            let timeContext = `${cityName}的時分`;
+                            let toneDescription = '親切的語調';
+                            if (hour >= 5 && hour < 9) { timeContext = `在${cityName}微亮的清晨`; toneDescription = '溫柔、低沈的語調'; }
+                            else if (hour >= 9 && hour < 12) { timeContext = `${cityName}的早晨`; toneDescription = '明亮、親切的語調'; }
+                            else if (hour >= 12 && hour < 15) { timeContext = `${cityName}的午間時分`; toneDescription = '清晰、專業的語調'; }
+                            else if (hour >= 15 && hour < 18) { timeContext = `${cityName}溫暖的午後`; toneDescription = '舒緩、親切的語調'; }
+                            else if (hour >= 18 && hour < 21) { timeContext = `${cityName}的傍晚時分`; toneDescription = '溫暖、柔和的語調'; }
+                            else { timeContext = `${cityName}寧靜的夜晚`; toneDescription = '低沈、溫柔的語調'; }
                             
                             const aiPrompt = `你是一位親切的機艙服務員，正在向剛降落的旅客介紹 ${cityName}，${countryName}。
 
@@ -14099,119 +13946,117 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
 
 【Prompt 轉換邏輯 (Design Logic)】
 1. 目的地文化語氣：${culturalTone}（使用${culturalGreeting}的問候方式）
-2. 天氣敘事背景：${weatherNarrative.replace(/\$\{cityName\}/g, cityName).replace(/\$\{destinationInfo\.weather\}/g, destinationInfo.weather)}
+2. 天氣敘事背景：${weatherNarrative}
 3. 時間音調調整：${toneDescription}（${timeContext}）
 
 【生成要求】
 請生成一句簡短（30字以內）的歡迎訊息，要：
 - 開頭用"歡迎來到${cityName}，${countryName}！"
 - 體現${culturalTone}的文化語氣
-- 融入${weatherNarrative.replace(/\$\{cityName\}/g, cityName).replace(/\$\{destinationInfo\.weather\}/g, destinationInfo.weather)}的敘事背景
-- 使用${toneDescription}，符合${timeContext}的氛圍
+- 融入天氣與時間氛圍
 - 自然地融入活動建議：${destinationInfo.feature}
-- 要有落地感，讓人想立即體驗
+- 要有落地感
 
 請直接返回歡迎訊息，不要加引號或其他格式。`;
 
-                            const aiResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-text', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    prompt: aiPrompt,
-                                    maxTokens: 100,
-                                    temperature: 0.8
-                                })
-                            });
+                            const aiResponse = await withTimeout(
+                                fetch('https://morgan-orcin.vercel.app/api/generate-text', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        prompt: aiPrompt,
+                                        maxTokens: 100,
+                                        temperature: 0.8
+                                    })
+                                }),
+                                12000,
+                                'welcomeAI'
+                            );
                             
-                            if (aiResponse.ok) {
+                            if (aiResponse && aiResponse.ok) {
                                 const aiData = await aiResponse.json();
                                 if (aiData.text) {
-                                    welcomeMessage = aiData.text.trim().replace(/^["']|["']$/g, ''); // 移除可能的引號
+                                    welcomeMessage = aiData.text.trim().replace(/^["']|["']$/g, '');
                                     console.log('✅ AI 生成的歡迎訊息:', welcomeMessage);
                                 }
-                            } else if (aiResponse.status === 404) {
-                                // API endpoint 不存在，使用備用邏輯（不顯示錯誤）
-                                console.log('ℹ️ 文本生成 API 尚未實現，將使用備用格式生成歡迎訊息');
                             }
                         } catch (error) {
-                            // 網路錯誤或其他錯誤，使用備用邏輯（不顯示錯誤，因為這是可選功能）
-                            console.log('ℹ️ 無法使用 AI 生成歡迎訊息，將使用備用格式');
+                            console.log('ℹ️ 歡迎訊息改用備援格式');
                         }
                         
-                        // 備用格式：如果 AI 生成失敗
                         if (!welcomeMessage) {
                             welcomeMessage = `歡迎來到${cityName}，${countryName}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
                         }
                         
-                        // 預先生成語音B（不播放）— 同樣用男聲機長、甦醒節奏
                         await generateTtsAudio(
                             welcomeMessage,
                             'zh-TW',
                             CAPTAIN_TTS.gender,
                             CAPTAIN_TTS.landingSpeed
                         );
-                        const voiceBAudioId = preparedAudioId;
-                        console.log('✅ [Phase 7] 語音B已預先生成完成（不播放），audio_id:', voiceBAudioId);
-                        
-                        // 將語音B的 audio_id 存儲到全局變量，供後續使用
-                        window._phase7VoiceBAudioId = voiceBAudioId;
+                        window._phase7VoiceBAudioId = preparedAudioId;
                         window._phase7WelcomeMessage = welcomeMessage;
+                        console.log('✅ [Phase 7] 語音B預先生成完成，audio_id:', window._phase7VoiceBAudioId);
                     }
                 } catch (error) {
-                    console.warn('⚠️ [Phase 7] 預先生成語音B時發生錯誤:', error);
+                    console.warn('⚠️ [Phase 7] 預先生成語音B失敗:', error && error.message ? error.message : error);
                 }
             })();
             
-            // 播放 landing.mp4（在播放的同時，語音B會在背景生成）
+            // 主線：landing.mp4 → 情緒表（內部已處理 Autoplay／超時）
             try {
                 await playLandingVideoAndShowImage(landingImagePromise, finalDestination);
-                console.log('✅ landing.mp4 播放完成');
+                console.log('✅ [Phase 7] 降落影片步驟完成（已出情緒表）');
             } catch (error) {
-                console.error('❌ landing.mp4 播放失敗:', error);
-                // 即使 landing.mp4 播放失敗，也繼續流程
+                console.error('❌ [Phase 7] 降落影片步驟失敗，仍繼續:', error);
+                if (!window._landingFeedbackPromise && finalDestination) {
+                    window._landingFeedbackPromise = showFlightFeedback(finalDestination);
+                }
             }
             
             // ============================================================================
-            // 步驟 6: landing.mp4 播完，跳出情緒表，如果圖片A也生成好就換成新的圖片A
+            // 步驟 6: 等情緒表（使用者操作）；圖片／文字B 繼續背景跑
             // ============================================================================
-            console.log('7️⃣ [Phase 7] landing.mp4 播完，等待情緒表完成...');
+            console.log('7️⃣ [Phase 7] 等待情緒表...');
             
-            // 等待情緒量表完成（已在 playLandingVideoAndShowImage 中顯示）
             let feedbackData = null;
             if (window._landingFeedbackPromise) {
-                console.log('📋 [Phase 7] 等待情緒量表完成...');
                 feedbackData = await window._landingFeedbackPromise;
-                console.log('✅ 情緒量表填寫完成，回饋數據:', feedbackData);
+                console.log('✅ 情緒量表完成:', feedbackData);
                 delete window._landingFeedbackPromise;
             } else {
                 console.warn('⚠️ [Phase 7] 情緒量表未顯示，使用預設值');
-                feedbackData = '3'; // 預設值
+                feedbackData = '3';
             }
             
-            // 確保圖片A已顯示（若尚未完成則繼續等待）
+            setBoardingStatus(true, '抵達資訊整理中...');
+            
+            // 圖片：最多再等 8 秒，沒好就略過（之後背景仍可能補上）
             let finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
             if (!finalImageUrl && landingImagePromise) {
-                console.log('⏳ [Phase 7] 情緒表完成後仍在等待圖片A...');
                 try {
-                    finalImageUrl = await landingImagePromise;
+                    finalImageUrl = await Promise.race([
+                        landingImagePromise,
+                        new Promise(resolve => setTimeout(() => resolve(null), 8000))
+                    ]);
                     if (finalImageUrl) {
                         window._manualLandingImageUrl = finalImageUrl;
                         destinationImageUrl = finalImageUrl;
-                        console.log('✅ [Phase 7] 圖片A等待完成:', finalImageUrl);
+                        console.log('✅ [Phase 7] 圖片A就緒:', finalImageUrl);
                     } else {
-                        console.warn('⚠️ [Phase 7] 圖片A Promise 回傳 null');
+                        console.warn('⚠️ [Phase 7] 圖片A尚未就緒，先繼續歡迎流程');
                     }
                 } catch (imgErr) {
                     console.warn('⚠️ [Phase 7] 等待圖片A失敗:', imgErr);
                 }
             }
             if (finalImageUrl && document.querySelector('.window-content')) {
-            const windowContent = document.querySelector('.window-content');
+                const windowContent = document.querySelector('.window-content');
                 const proxiedUrl = getProxiedImageUrl(finalImageUrl);
                 if (!windowContent.style.backgroundImage || !windowContent.style.backgroundImage.includes(proxiedUrl)) {
                     windowContent.innerHTML = '';
-                windowContent.style.zIndex = '1000';
-                windowContent.style.position = 'relative';
+                    windowContent.style.zIndex = '1000';
+                    windowContent.style.position = 'relative';
                     windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
                     windowContent.style.backgroundSize = 'cover';
                     windowContent.style.backgroundPosition = 'center';
@@ -14220,28 +14065,27 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 }
             }
             
-            // 確保影片容器已隱藏
             const videoContainerEl = document.getElementById('videoContainer');
             if (videoContainerEl) {
                 videoContainerEl.style.display = 'none';
             }
             
             // ============================================================================
-            // 步驟 7: 情緒表完成後，等待文字B和語音B生成完成，顯示文字B並播放語音B
+            // 步驟 7: 文字B／語音B（硬超時，絕不永久卡住）
             // ============================================================================
-            console.log('8️⃣ [Phase 7] 情緒表完成，等待文字B和語音B生成完成...');
+            console.log('8️⃣ [Phase 7] 等待文字B／語音B（有超時）...');
             
-            // 等待文字B和語音B生成完成（語音B已在 landing.mp4 播放時生成）
             const destinationInfo = await destinationInfoPromise;
-            console.log('✅ [Phase 7] 文字B（新城市介紹）已生成:', destinationInfo);
+            console.log('✅ [Phase 7] 文字B:', destinationInfo);
             
-            // 確保語音B已生成完成（等待生成完成）
             try {
-                await voiceBPromise;
-                console.log('✅ [Phase 7] 語音B已生成完成，準備播放');
+                await withTimeout(voiceBPromise, 40000, 'voiceB');
+                console.log('✅ [Phase 7] 語音B就緒');
             } catch (error) {
-                console.warn('⚠️ [Phase 7] 語音B生成可能失敗，將使用備用方案:', error);
+                console.warn('⚠️ [Phase 7] 語音B逾時／失敗，改備援播放:', error && error.message ? error.message : error);
             }
+            
+            setBoardingStatus(false);
             
             // 顯示文字B並播放語音B
             if (destinationInfo) {
