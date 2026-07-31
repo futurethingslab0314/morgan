@@ -119,7 +119,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { prompt, size = '1024x1024', referenceImage, quality = 'medium' } = req.body;
+        // 預設 low：gpt-image-2 medium/high 常超過 Vercel 60s 導致 FUNCTION_INVOCATION_TIMEOUT
+        const { prompt, size = '1024x1024', referenceImage, quality = 'low' } = req.body;
 
         if (!prompt) {
             res.status(400).json({ error: '缺少必要參數: prompt' });
@@ -135,8 +136,8 @@ export default async function handler(req, res) {
             apiKey: process.env.OPENAI_API_KEY
         });
 
-        // gpt-image-2 品質：low | medium | high（不再使用 dall-e-3 的 standard）
-        const imageQuality = ['low', 'medium', 'high'].includes(quality) ? quality : 'medium';
+        // gpt-image-2 品質：low | medium | high（預設 low 以避免 serverless 逾時）
+        const imageQuality = ['low', 'medium', 'high'].includes(quality) ? quality : 'low';
         let response;
         let usedReference = false;
 

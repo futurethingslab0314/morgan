@@ -3024,7 +3024,7 @@
         }
 
         // 機長 TTS 節奏：起飛助眠偏慢；降落甦醒略快
-        const CAPTAIN_TTS = {
+                const CAPTAIN_TTS = {
             gender: 'male',
             takeoffSpeed: 0.72,
             takeoffRate: 0.72,
@@ -3032,7 +3032,9 @@
             landingSpeed: 0.92,
             landingRate: 0.90,
             landingPitch: 0.95,
-            descentWakeSpeed: 0.90
+            descentWakeSpeed: 0.90,
+            // 機長廣播時背景音樂壓到極低，凸顯語音
+            duckMusicVolume: 0.05
         };
 
         let lastKnobPollIntervalMs = null;
@@ -7544,7 +7546,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         prompt: prompt,
-                        size: '1024x1024'
+                        size: '1024x1024',
+                        quality: 'low'
                     })
                 });
                 
@@ -7864,21 +7867,23 @@
                         name: name,
                         originalVolume: music.volume
                     });
-                    console.log(`🔉 播放語音時自動調小${name}音量（${music.volume.toFixed(2)} → 0.15）`);
-                    music.volume = 0.15; // 調小音量，讓語音更突出
+                    const duckTo = CAPTAIN_TTS.duckMusicVolume;
+                    console.log(`🔉 播放語音時自動調小${name}音量（${music.volume.toFixed(2)} → ${duckTo}）`);
+                    music.volume = duckTo; // 壓低背景音樂，凸顯機長語音
                 }
             };
             
-            // 檢查所有可能的音樂
+            // 檢查所有可能的音樂（含 Phase 7 喚醒音樂）
             checkAndLowerMusic(descentWakeupMusic, 'descentWakeupMusic');
             checkAndLowerMusic(window.mealMusic, 'mealMusic');
             checkAndLowerMusic(window._earlyLandingWakeupMusic, '_earlyLandingWakeupMusic');
+            checkAndLowerMusic(window._phase7WakeupMusic, '_phase7WakeupMusic');
             
             // 恢復音樂音量的函數
             const restoreMusicVolumes = () => {
                 musicList.forEach(({ music, name, originalVolume }) => {
                     if (music && !music.paused) {
-                        console.log(`🔉 語音播放完成，恢復${name}音量（0.15 → ${originalVolume.toFixed(2)}）`);
+                        console.log(`🔉 語音播放完成，恢復${name}音量（${CAPTAIN_TTS.duckMusicVolume} → ${originalVolume.toFixed(2)}）`);
                         music.volume = originalVolume;
                     }
                 });
@@ -10313,7 +10318,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         prompt: prompt,
-                        size: '1024x1024'
+                        size: '1024x1024',
+                        quality: 'low'
                     })
                 });
                 
@@ -12646,13 +12652,11 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         
                         // 降低音樂音量（讓語音更突出）- 使用漸變
                         if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                            console.log('🔉 [Phase 6] 漸變降低音樂音量（0.15 → 0.15，保持），讓語音更突出');
-                            // 如果當前音量不是 0.15，則漸變到 0.15
-                            if (Math.abs(descentWakeupMusic.volume - 0.15) > 0.01) {
-                                fadeVolume(descentWakeupMusic, 0.15, 1000).catch(err => {
-                                    console.warn('⚠️ [Phase 6] 漸變降低音樂音量失敗:', err);
-                                });
-                            }
+                            const duckTo = CAPTAIN_TTS.duckMusicVolume;
+                            console.log(`🔉 [Phase 6] 漸變降低音樂音量 → ${duckTo}，凸顯機長語音`);
+                            fadeVolume(descentWakeupMusic, duckTo, 800).catch(err => {
+                                console.warn('⚠️ [Phase 6] 漸變降低音樂音量失敗:', err);
+                            });
                         }
                         
                         // 播放語音
@@ -12774,8 +12778,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             // 如果在播放喚醒音樂期間按下，將音樂音量調小，繼續播放 - 使用漸變
             if (descentWakeupMusic && !descentWakeupMusic.paused) {
                 const currentVolume = descentWakeupMusic.volume;
-                console.log(`🔉 漸變調低喚醒音樂音量（${currentVolume.toFixed(2)} → 0.15），凸顯機長語音`);
-                fadeVolume(descentWakeupMusic, 0.15, 1000).catch(err => {
+                const duckTo = CAPTAIN_TTS.duckMusicVolume;
+                console.log(`🔉 漸變調低喚醒音樂音量（${currentVolume.toFixed(2)} → ${duckTo}），凸顯機長語音`);
+                fadeVolume(descentWakeupMusic, duckTo, 800).catch(err => {
                     console.warn('⚠️ 漸變降低音樂音量失敗:', err);
                 });
                 // 移除 onended 事件，讓音樂繼續播放直到結束
@@ -12785,8 +12790,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             // 🔧 改進：提早降落時，Phase 5 不播放音樂，所以這裡不需要處理 _earlyLandingWakeupMusic
             // 但如果還有提前降落的音樂在播放（舊版本可能還有），也調小音量 - 使用漸變
             if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
-                console.log('🔉 漸變調低提前降落 wakeup 音樂音量（舊版本殘留，0.6 → 0.15），凸顯機長語音');
-                fadeVolume(window._earlyLandingWakeupMusic, 0.15, 1000).catch(err => {
+                const duckTo = CAPTAIN_TTS.duckMusicVolume;
+                console.log(`🔉 漸變調低提前降落 wakeup 音樂音量 → ${duckTo}，凸顯機長語音`);
+                fadeVolume(window._earlyLandingWakeupMusic, duckTo, 800).catch(err => {
                     console.warn('⚠️ 漸變降低音樂音量失敗:', err);
                 });
             }
@@ -13484,16 +13490,13 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         prompt;
                 }
                 
+                // 用 low + 純文字生成：gpt-image-2 medium／以圖生圖常超過 Vercel 60s 逾時
                 const requestBody = {
                         prompt: prompt,
-                        size: '1024x1024'
+                        size: '1024x1024',
+                        quality: 'low'
                 };
-                
-                // 如果有參考圖片，加入 referenceImage 參數
-                if (referenceImageBase64) {
-                    requestBody.referenceImage = referenceImageBase64;
-                    console.log('🖼️ 使用以圖生圖模式，參考圖片已包含在請求中');
-                }
+                console.log('🖼️ 使用純文字生圖（quality=low，略過 reference 以避免逾時）');
                 
                 const response = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
                     method: 'POST',
@@ -13506,7 +13509,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 if (response.ok) {
                     const data = await response.json();
                     const imageUrl = data.imageUrl || data.url;
-                    console.log('✅ 降落圖片生成成功:', imageUrl);
+                    console.log('✅ 降落圖片生成成功:', imageUrl, 'model:', data.model);
                     return imageUrl;
                 } else {
                     const errorText = await response.text();
@@ -13517,25 +13520,6 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         errorData = { error: errorText };
                     }
                     console.error('❌ API 返回錯誤:', response.status, errorData);
-
-                    // 若帶參考圖失敗，改純文字 prompt 重試一次
-                    if (requestBody.referenceImage) {
-                        console.warn('⚠️ 以圖生圖失敗，改用純文字 prompt 重試...');
-                        delete requestBody.referenceImage;
-                        const retryResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(requestBody)
-                        });
-                        if (retryResponse.ok) {
-                            const retryData = await retryResponse.json();
-                            const retryUrl = retryData.imageUrl || retryData.url;
-                            console.log('✅ 降落圖片重試成功:', retryUrl);
-                            return retryUrl;
-                        }
-                        const retryErr = await retryResponse.text();
-                        console.error('❌ 降落圖片重試仍失敗:', retryResponse.status, retryErr);
-                    }
                 }
             } catch (error) {
                 console.warn('⚠️ 降落圖片生成失敗:', error);
@@ -13951,9 +13935,10 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             // 降低音樂音量（讓語音更突出）- 使用漸變
             if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
                 const currentVolume = window._phase7WakeupMusic.volume;
-                console.log(`🔉 [Phase 7] 漸變降低音樂音量（${currentVolume.toFixed(2)} → 0.15），讓語音更突出`);
+                const duckTo = CAPTAIN_TTS.duckMusicVolume;
+                console.log(`🔉 [Phase 7] 漸變降低音樂音量（${currentVolume.toFixed(2)} → ${duckTo}），凸顯機長語音`);
                 try {
-                    await fadeVolume(window._phase7WakeupMusic, 0.15, 1000); // 1 秒漸變
+                    await fadeVolume(window._phase7WakeupMusic, duckTo, 800);
                 } catch (err) {
                     console.warn('⚠️ [Phase 7] 漸變降低音樂音量失敗:', err);
                 }
@@ -13961,9 +13946,9 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 console.warn('⚠️ [Phase 7] window._phase7WakeupMusic 不存在或已暫停，無法降低音量');
             }
             
-            // 播放 captain.mp3（音量降低到 0.5，讓聲音更小）
+            // 播放 captain.mp3（只播前 6 秒；廣播提示音）
             try {
-                await playAudioFile('sounds/captain.mp3', 6, 0.5); /* 🔧 Phase 4→5 音量降低到 0.5 倍，晚上不會太大聲 */
+                await playAudioFile('sounds/captain.mp3', 6, 0.55);
                 console.log('✅ captain.mp3 播放完成');
             } catch (error) {
                 console.warn('⚠️ captain.mp3 播放失敗:', error);
@@ -13972,11 +13957,15 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             // captain.mp3 播放完後，立即播放已預先生成的語音A
             if (landingData && landingData.announcement) {
                 console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
+                // 語音播放期間再確認背景音樂維持極低
+                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                    window._phase7WakeupMusic.volume = CAPTAIN_TTS.duckMusicVolume;
+                }
                 
                 // 如果語音A已預先生成，使用 playCachedTts 播放
                 if (voiceAAudioId) {
                     console.log('✅ [Phase 7] 使用已預先生成的語音A，audio_id:', voiceAAudioId);
-                    await playCachedTts(voiceAAudioId);
+                    await playCachedTts(voiceAAudioId, 1.0);
                     console.log('✅ 語音A播放完成');
                 } else {
                     // 如果預先生成失敗，回退到 playAnnouncement
