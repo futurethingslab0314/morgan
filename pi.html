@@ -5118,7 +5118,7 @@
             });
         }
         
-        // 播放音頻文件：解鎖失敗時優先樹莓派；全程有硬性逾時，避免卡在機長廣播
+        // 播放音頻文件：正式環境以樹莓派喇叭為主（實體按鈕無瀏覽器手勢）
         async function playAudioFile(url, maxDuration = null, volume = 1.0) {
             const playSeconds = (maxDuration && maxDuration > 0) ? maxDuration : 12;
             const hardTimeoutMs = playSeconds * 1000 + 5000;
@@ -5171,9 +5171,9 @@
                         clearTimeout(loadTimer);
                         loadTimer = null;
                     }
-                    console.log('📥 音頻準備播放:', url);
+                    console.log('📥 瀏覽器音頻準備播放（後備）:', url);
                     audio.play().then(() => {
-                        console.log('▶️ 音頻開始播放:', url);
+                        console.log('▶️ 瀏覽器音頻開始播放（後備）:', url);
                         if (maxDuration && maxDuration > 0) {
                             console.log(`⏱️ 音頻將在 ${maxDuration} 秒後停止`);
                         }
@@ -5188,23 +5188,20 @@
             });
 
             const work = (async () => {
-                const unlocked = await unlockAudio();
-                // 樹莓派實體按鈕場景：解鎖失敗就先走本地喇叭，避免卡在瀏覽器
-                if (!unlocked) {
-                    console.log('🔊 瀏覽器音訊未解鎖，優先使用樹莓派喇叭:', url);
-                    const viaPiFirst = await playLocalSoundViaPi(url, maxDuration, volume);
-                    if (viaPiFirst) return true;
-                }
+                // 正式路徑：樹莓派喇叭（GPIO 操控時瀏覽器常無法出聲）
+                console.log('🔊 優先使用樹莓派喇叭播放:', url);
+                const viaPi = await playLocalSoundViaPi(url, maxDuration, volume);
+                if (viaPi) return true;
 
+                // 後備：桌面除錯／Pi 服務未啟動時才走瀏覽器
+                console.warn('⚠️ 樹莓派喇叭不可用，改走瀏覽器後備:', url);
+                await unlockAudio();
                 try {
                     await playInBrowser();
                     return true;
                 } catch (error) {
                     const msg = error && error.message ? error.message : String(error);
-                    console.warn('⚠️ 瀏覽器播放失敗，嘗試樹莓派後備:', url, msg);
-                    const viaPi = await playLocalSoundViaPi(url, maxDuration, volume);
-                    if (viaPi) return true;
-                    console.warn('⚠️ 音頻最終播放失敗（瀏覽器與樹莓派皆不可用）:', url);
+                    console.warn('⚠️ 瀏覽器後備播放也失敗:', url, msg);
                     return false;
                 }
             })();
