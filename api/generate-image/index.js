@@ -1,5 +1,10 @@
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import admin from 'firebase-admin';
+
+// gpt-image-2 生成較慢，延長 serverless 逾時
+export const config = {
+    maxDuration: 60
+};
 
 // 初始化 Firebase Admin SDK（如果尚未初始化）
 if (!admin.apps.length) {
@@ -18,6 +23,81 @@ if (!admin.apps.length) {
 
 const storage = admin.storage();
 const bucket = storage.bucket();
+
+const IMAGE_MODEL = 'gpt-image-2';
+
+function parseDataUrlOrBase64(input) {
+    if (!input || typeof input !== 'string') return null;
+    const trimmed = input.trim();
+    const dataUrlMatch = trimmed.match(/^data:([^;]+);base64,(.+)$/s);
+    if (dataUrlMatch) {
+        return {
+            mime: dataUrlMatch[1] || 'image/png',
+            buffer: Buffer.from(dataUrlMatch[2], 'base64')
+        };
+    }
+    // 純 base64
+    return {
+        mime: 'image/png',
+        buffer: Buffer.from(trimmed, 'base64')
+    };
+}
+
+async function uploadImageBuffer(imageData, contentType = 'image/png') {
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 15);
+    const ext = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
+    const fileName = `landing-images/${timestamp}_${randomStr}.${ext}`;
+    const file = bucket.file(fileName);
+
+    await file.save(imageData, {
+        metadata: {
+            contentType,
+            cacheControl: 'public, max-age=31536000',
+        },
+    });
+
+    try {
+        await file.makePublic();
+        console.log('✅ 文件已設置為公開讀取 (makePublic)');
+    } catch (publicError) {
+        console.warn('⚠️ makePublic 失敗，嘗試設置 ACL:', publicError.message);
+        try {
+            await file.acl.add({
+                entity: 'allUsers',
+                role: 'READER'
+            });
+            console.log('✅ 使用 ACL 設置為公開讀取');
+        } catch (aclError) {
+            console.warn('⚠️ ACL 設置也失敗:', aclError.message);
+        }
+    }
+
+    return `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+}
+
+function extractImageBytes(response) {
+    const item = response?.data?.[0];
+    if (!item) {
+        throw new Error('OpenAI 未返回圖片資料');
+    }
+
+    if (item.b64_json) {
+        return {
+            buffer: Buffer.from(item.b64_json, 'base64'),
+            temporaryUrl: null
+        };
+    }
+
+    if (item.url) {
+        return {
+            buffer: null,
+            temporaryUrl: item.url
+        };
+    }
+
+    throw new Error('OpenAI 回傳格式不支援（無 b64_json / url）');
+}
 
 export default async function handler(req, res) {
     // 設置 CORS 標頭
@@ -39,10 +119,15 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { prompt, size = '1024x1024', referenceImage } = req.body;
+        const { prompt, size = '1024x1024', referenceImage, quality = 'medium' } = req.body;
 
         if (!prompt) {
             res.status(400).json({ error: '缺少必要參數: prompt' });
+            return;
+        }
+
+        if (!process.env.OPENAI_API_KEY) {
+            res.status(500).json({ error: '圖片生成服務未配置（需要 OPENAI_API_KEY）' });
             return;
         }
 
@@ -50,112 +135,98 @@ export default async function handler(req, res) {
             apiKey: process.env.OPENAI_API_KEY
         });
 
+        // gpt-image-2 品質：low | medium | high（不再使用 dall-e-3 的 standard）
+        const imageQuality = ['low', 'medium', 'high'].includes(quality) ? quality : 'medium';
         let response;
-        
-        // 如果有參考圖片，增強 prompt 以更好地匹配參考圖片的風格
+        let usedReference = false;
+
         if (referenceImage) {
-            console.log('🖼️ 使用以圖生圖模式（參考圖片風格）');
-            // 在 prompt 開頭加入更詳細的風格參考說明
-            // 這樣可以讓 DALL-E 3 生成更接近參考圖片風格的結果
-            const enhancedPrompt = `${prompt} CRITICAL STYLE MATCH: The generated image must match the reference image's exact visual style, including: identical color palette and saturation levels, same lighting conditions and atmosphere, matching composition and perspective angle, same level of detail and rendering quality, identical artistic treatment and mood. The reference image serves as the definitive style guide - replicate its visual characteristics precisely while adapting only the city/landscape content.`;
-            
-            response = await openai.images.generate({
-                model: 'dall-e-3',
-                prompt: enhancedPrompt,
-                size: size,
-                quality: 'standard',
-                n: 1
-            });
-        } else {
-            // 沒有參考圖片，使用 DALL-E 3 正常生成
-            console.log('🎨 使用標準生成模式（DALL-E 3）');
-            response = await openai.images.generate({
-            model: 'dall-e-3',
-            prompt: prompt,
-            size: size,
-            quality: 'standard',
-            n: 1
-        });
+            console.log(`🖼️ 使用以圖生圖模式（${IMAGE_MODEL} + reference image）`);
+            const parsed = parseDataUrlOrBase64(referenceImage);
+            const enhancedPrompt =
+                `${prompt} CRITICAL STYLE MATCH: The generated image must match the reference image's exact visual style, including: identical color palette and saturation levels, same lighting conditions and atmosphere, matching composition and perspective angle, same level of detail and rendering quality, identical artistic treatment and mood. The reference image serves as the definitive style guide - replicate its visual characteristics precisely while adapting only the city/landscape content.`;
+
+            if (parsed?.buffer?.length) {
+                try {
+                    const imageFile = await toFile(parsed.buffer, 'reference.png', {
+                        type: parsed.mime || 'image/png'
+                    });
+                    response = await openai.images.edit({
+                        model: IMAGE_MODEL,
+                        image: imageFile,
+                        prompt: enhancedPrompt,
+                        size,
+                        quality: imageQuality
+                    });
+                    usedReference = true;
+                } catch (editError) {
+                    console.warn('⚠️ images.edit 失敗，改用純文字 generate:', editError.message);
+                }
+            }
         }
 
-        const temporaryImageUrl = response.data[0].url;
-        console.log('✅ OpenAI 圖片生成成功，臨時 URL:', temporaryImageUrl);
+        if (!response) {
+            console.log(`🎨 使用標準生成模式（${IMAGE_MODEL}）`);
+            const finalPrompt = referenceImage && !usedReference
+                ? `${prompt} CRITICAL STYLE MATCH: Maintain a consistent Pixar-like aerial airplane-window travel-poster style with clean vector colors and soft volumetric lighting.`
+                : prompt;
 
-        // 下載圖片並上傳到 Firebase Storage（永久儲存）
-        let permanentImageUrl = temporaryImageUrl; // 預設使用臨時 URL
-        
-        try {
-            // 下載圖片
-            const imageResponse = await fetch(temporaryImageUrl);
+            response = await openai.images.generate({
+                model: IMAGE_MODEL,
+                prompt: finalPrompt,
+                size,
+                quality: imageQuality
+            });
+        }
+
+        const { buffer: generatedBuffer, temporaryUrl } = extractImageBytes(response);
+        console.log('✅ OpenAI 圖片生成成功', {
+            model: IMAGE_MODEL,
+            usedReference,
+            hasB64: !!generatedBuffer,
+            hasUrl: !!temporaryUrl
+        });
+
+        let imageData = generatedBuffer;
+        let permanentImageUrl = temporaryUrl || null;
+
+        if (!imageData && temporaryUrl) {
+            const imageResponse = await fetch(temporaryUrl);
             if (!imageResponse.ok) {
                 throw new Error(`下載圖片失敗: ${imageResponse.status}`);
             }
-            
-            const imageBuffer = await imageResponse.arrayBuffer();
-            const imageData = Buffer.from(imageBuffer);
-            
-            // 生成唯一的文件名（使用時間戳 + 隨機字串）
-            const timestamp = Date.now();
-            const randomStr = Math.random().toString(36).substring(2, 15);
-            const fileName = `landing-images/${timestamp}_${randomStr}.png`;
-            
-            // 上傳到 Firebase Storage
-            const file = bucket.file(fileName);
-            
-            // 🔧 改進：上傳文件並設置為公開讀取
-            await file.save(imageData, {
-                metadata: {
-                    contentType: 'image/png',
-                    cacheControl: 'public, max-age=31536000', // 1年快取
-                },
-            });
-            
-            // 🔧 改進：確保文件是公開的（使用正確的 Firebase Admin SDK 方法）
-            try {
-                // 方法1：使用 makePublic()（推薦）
-            await file.makePublic();
-                console.log('✅ 文件已設置為公開讀取 (makePublic)');
-            } catch (publicError) {
-                console.warn('⚠️ makePublic 失敗，嘗試設置 ACL:', publicError.message);
-                // 方法2：如果 makePublic 失敗，嘗試手動設置 ACL
-                try {
-                    await file.acl.add({
-                        entity: 'allUsers',
-                        role: 'READER'
-                    });
-                    console.log('✅ 使用 ACL 設置為公開讀取');
-                } catch (aclError) {
-                    console.warn('⚠️ ACL 設置也失敗:', aclError.message);
-                    // 即使失敗也繼續，因為文件可能已經是公開的
-                }
-            }
-            
-            // 🔧 改進：使用正確的公開 URL 格式
-            // Firebase Storage 公開文件的標準 URL 格式
-            permanentImageUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-            
+            imageData = Buffer.from(await imageResponse.arrayBuffer());
+        }
+
+        if (!imageData) {
+            throw new Error('無法取得圖片位元組資料');
+        }
+
+        try {
+            permanentImageUrl = await uploadImageBuffer(imageData, 'image/png');
             console.log('✅ 圖片已上傳到 Firebase Storage，永久 URL:', permanentImageUrl);
-            
         } catch (uploadError) {
-            console.warn('⚠️ 上傳到 Firebase Storage 失敗，使用臨時 URL:', uploadError.message);
-            // 如果上傳失敗，仍然返回臨時 URL（至少可以短期使用）
+            console.warn('⚠️ 上傳到 Firebase Storage 失敗，改回傳 data URL:', uploadError.message);
+            // Firebase 失敗時仍可用 data URL，避免整段降落沒圖
+            permanentImageUrl = `data:image/png;base64,${imageData.toString('base64')}`;
         }
 
         res.status(200).json({
             imageUrl: permanentImageUrl,
-            url: permanentImageUrl, // 兼容性
-            prompt: prompt,
-            size: size,
+            url: permanentImageUrl,
+            prompt,
+            size,
+            model: IMAGE_MODEL,
+            usedReference,
             timestamp: new Date().toISOString(),
-            isPermanent: permanentImageUrl !== temporaryImageUrl // 標記是否為永久 URL
+            isPermanent: typeof permanentImageUrl === 'string' && permanentImageUrl.startsWith('https://')
         });
 
     } catch (error) {
         console.error('生成圖片時發生錯誤:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             error: error.message || '生成圖片時發生錯誤',
-            details: error.response?.data || null
+            details: error.response?.data || error.error || null
         });
     }
 }
-
