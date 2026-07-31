@@ -11368,11 +11368,12 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 containerLeft: videoContainer.offsetLeft
             });
             
-            // 準備起飛音效（takeoff.mp3）— 先解鎖音訊，避免 NotAllowedError
-            await unlockAudio();
+            // 起飛音效：正式環境走樹莓派喇叭（實體按鈕無瀏覽器手勢）
             const takeoffAudio = new Audio('sounds/takeoff.mp3');
             takeoffAudio.preload = 'auto';
-            takeoffAudio.volume = 0; // 初始音量為 0，之後淡入
+            takeoffAudio.volume = 0; // 瀏覽器後備淡入用
+            let takeoffAudioPlaying = false;
+            let takeoffViaPi = false;
             
             try {
                 // 先確保第二個影片也已載入（避免等一下切過去黑畫面）
@@ -11428,25 +11429,29 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     video2Ready: video2.readyState
                 });
                 
-                // 1）同時開始播放 takeoff1.mp4 + takeoff.mp3（帶淡入效果）
-                console.log('🎬 開始播放 takeoff1.mp4 ＋ 🎵 takeoff.mp3（帶淡入效果）');
+                // 1）同時開始播放 takeoff1.mp4 + takeoff.mp3（喇叭優先 Pi）
+                console.log('🎬 開始播放 takeoff1.mp4 ＋ 🎵 takeoff.mp3（樹莓派喇叭優先）');
                 
-                let takeoffAudioPlaying = false;
-                try {
-                    await takeoffAudio.play();
-                    takeoffAudioPlaying = true;
-                    console.log('🎵 takeoff.mp3 開始播放，開始淡入');
-                    fadeInAudio(takeoffAudio, 1000).then(() => {
+                // 不阻塞影片：背景播 takeoff 音效
+                (async () => {
+                    const ok = await playLocalSoundViaPi('sounds/takeoff.mp3', null, 1.0);
+                    if (ok) {
+                        takeoffViaPi = true;
+                        console.log('✅ takeoff.mp3 已由樹莓派喇叭播放');
+                        return;
+                    }
+                    console.warn('⚠️ 樹莓派喇叭不可用，takeoff.mp3 改走瀏覽器後備');
+                    await unlockAudio();
+                    try {
+                        await takeoffAudio.play();
+                        takeoffAudioPlaying = true;
+                        console.log('🎵 takeoff.mp3 瀏覽器後備開始播放，開始淡入');
+                        await fadeInAudio(takeoffAudio, 1000);
                         console.log('✅ takeoff.mp3 淡入完成');
-                    });
-                } catch (err) {
-                    console.warn('⚠️ takeoff.mp3 瀏覽器播放失敗，改走樹莓派後備:', err && err.message ? err.message : err);
-                    // 後備：不阻塞影片；背景交給樹莓派喇叭
-                    playLocalSoundViaPi('sounds/takeoff.mp3', null, 1.0).then((ok) => {
-                        if (ok) console.log('✅ takeoff.mp3 已由樹莓派喇叭播放');
-                        else console.warn('⚠️ takeoff.mp3 樹莓派後備也失敗');
-                    });
-                }
+                    } catch (err) {
+                        console.warn('⚠️ takeoff.mp3 瀏覽器後備也失敗:', err && err.message ? err.message : err);
+                    }
+                })();
                 // 播放第一支影片
                 await new Promise((resolve) => {
                     video1.onended = () => {
