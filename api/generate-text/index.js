@@ -77,7 +77,18 @@ export default async function handler(req, res) {
             max_tokens: tokens
         });
 
-        const generatedText = response.choices[0].message.content.trim();
+        const generatedTextRaw = response.choices[0].message.content.trim();
+        // 剝離常見的 markdown code fence，避免前端 JSON.parse 失敗
+        let generatedText = generatedTextRaw;
+        const fenceMatch = generatedText.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
+        if (fenceMatch) {
+            generatedText = fenceMatch[1].trim();
+        } else {
+            generatedText = generatedText
+                .replace(/^```(?:json)?\s*/i, '')
+                .replace(/\s*```$/i, '')
+                .trim();
+        }
 
         console.log('✅ [generate-text] 文本生成成功，長度:', generatedText.length);
 

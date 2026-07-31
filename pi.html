@@ -3507,6 +3507,96 @@
         }
         
         // ============================================================================
+        // 音訊解鎖（解決瀏覽器 NotAllowedError / Autoplay 政策）
+        // GPIO 按鈕不算使用者手勢；需靠點擊／鍵盤，或走樹莓派本地喇叭後備
+        // ============================================================================
+        let audioUnlocked = false;
+        let sharedAudioContext = null;
+        const TTS_LOCAL_BASE = 'http://127.0.0.1:5005';
+        // 極短靜音 WAV，用來在使用者手勢時解鎖音訊管道
+        const SILENT_WAV = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
+        async function unlockAudio() {
+            if (audioUnlocked) return true;
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    if (!sharedAudioContext) sharedAudioContext = new AudioCtx();
+                    if (sharedAudioContext.state === 'suspended') {
+                        await sharedAudioContext.resume();
+                    }
+                }
+                const silent = new Audio(SILENT_WAV);
+                silent.volume = 0.01;
+                await silent.play();
+                silent.pause();
+                silent.currentTime = 0;
+                audioUnlocked = true;
+                console.log('🔓 瀏覽器音訊已解鎖');
+                return true;
+            } catch (err) {
+                console.warn('⚠️ 音訊解鎖尚未成功（需使用者互動）:', err && err.message ? err.message : err);
+                return false;
+            }
+        }
+
+        // 盡早在任何使用者互動時解鎖（桌面測試／觸控）
+        ['pointerdown', 'touchstart', 'keydown', 'click'].forEach((evtName) => {
+            document.addEventListener(evtName, () => { unlockAudio(); }, { capture: true, passive: true });
+        });
+        // 供 Selenium／外部腳本呼叫
+        window.unlockAudio = unlockAudio;
+
+        // 樹莓派本地喇叭後備：瀏覽器被擋時，下載並由 pygame 播放
+        async function playLocalSoundViaPi(url, maxDuration = null, volume = 1.0) {
+            try {
+                let absoluteUrl = url;
+                if (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) {
+                    absoluteUrl = new URL(url, window.location.href).href;
+                }
+                console.log('🔊 嘗試樹莓派後備播放:', absoluteUrl);
+                const response = await fetch(TTS_LOCAL_BASE + '/audio/play_url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: absoluteUrl,
+                        max_duration: maxDuration,
+                        volume: volume
+                    })
+                });
+                if (!response.ok) {
+                    console.warn('⚠️ 樹莓派後備播放 HTTP 錯誤:', response.status);
+                    return false;
+                }
+                const data = await response.json();
+                if (data.success) {
+                    console.log('✅ 樹莓派後備播放成功');
+                    return true;
+                }
+                console.warn('⚠️ 樹莓派後備播放失敗:', data.error);
+                return false;
+            } catch (err) {
+                console.warn('⚠️ 樹莓派後備播放不可用:', err && err.message ? err.message : err);
+                return false;
+            }
+        }
+
+        // 解析 AI 回傳（常被包成 ```json ... ```）
+        function parseAiJson(text) {
+            if (text == null) throw new SyntaxError('empty AI text');
+            let s = String(text).trim();
+            const fence = s.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
+            if (fence) s = fence[1].trim();
+            // 去掉殘留的單一 fence 行
+            s = s.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+            if (!s.startsWith('{') && !s.startsWith('[')) {
+                const m = s.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+                if (m) s = m[1];
+            }
+            return JSON.parse(s);
+        }
+
+        // ============================================================================
         // 音頻淡入淡出函數（全局作用域，供所有函數使用）
         // ============================================================================
         function fadeInAudio(audio, duration = 1000, targetVolume = 1) {
@@ -4570,86 +4660,14 @@
                 setBoardingStatus(true, '機長廣播中...');
             }
             
-            // 1. 先播放 captain.mp3（只播放前 6 秒），必須完全播放完成後才能繼續
-            // 🔧 改進：TTS 應該在確定目標時就已經開始生成（prepareForTakeoff），
-            // 從確定目標到播放 TTS 之間有足夠的時間（顯示準備起航 UI + 用戶按按鈕 + captain.mp3 6秒 = 10+ 秒）
+            // 在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成
             console.log('1️⃣ 開始播放 captain.mp3（只播放前 6 秒）...');
             console.log('🔧 [起飛] TTS 預生成狀態:', preparedAudioId ? '已準備好' : '尚未準備好（將在播放 captain.mp3 時等待）');
-            
-            // 先取消所有 TTS 播放
             if ('speechSynthesis' in window) {
                 speechSynthesis.cancel();
-                console.log('✅ 已取消所有 TTS 播放');
             }
-            
-            // 在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成
-            const captainPlayPromise = (async () => {
-            try {
-                // 使用 new Audio() 和 Promise 確保完全播放完成
-                const captainAudio = new Audio('sounds/captain.mp3');
-                captainAudio.volume = 0.5; /* 🔧 Phase 4→5 音量降低到 0.5 倍，晚上不會太大聲 */
-                captainAudio.preload = 'auto';
-                
-                // 等待音頻載入完成
-                await new Promise((resolve) => {
-                    if (captainAudio.readyState >= 2) {
-                        resolve();
-                    } else {
-                        captainAudio.addEventListener('canplaythrough', () => resolve(), { once: true });
-                        captainAudio.addEventListener('error', () => resolve(), { once: true });
-                        captainAudio.load();
-                    }
-                });
-                
-                // 播放 captain.mp3，使用 setTimeout 精確控制 6 秒
-                await new Promise((resolve) => {
-                    const timeout = setTimeout(() => {
-                        captainAudio.pause();
-                        captainAudio.currentTime = 0;
-                        console.log('✅ captain.mp3 已播放 6 秒並停止');
-                        resolve();
-                    }, 6000);
-                    
-                    captainAudio.onended = () => {
-                        clearTimeout(timeout);
-                        console.log('✅ captain.mp3 自然播放完成（但只播放 6 秒）');
-                        resolve();
-                    };
-                    
-                    captainAudio.onerror = (e) => {
-                        clearTimeout(timeout);
-                        // 檢查是否是預期的停止操作（6秒後手動停止可能觸發 error 事件）
-                        // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
-                        if (captainAudio.currentTime > 0) {
-                            console.log('ℹ️ captain.mp3 播放過程中觸發 error 事件（可能是預期的停止操作）');
-                        } else {
-                            console.warn('⚠️ captain.mp3 播放錯誤（載入失敗）:', e);
-                        }
-                        resolve(); // 即使錯誤也繼續
-                    };
-                    
-                    captainAudio.play().then(() => {
-                        console.log('▶️ captain.mp3 開始播放');
-                    }).catch(err => {
-                        clearTimeout(timeout);
-                        console.warn('⚠️ captain.mp3 播放失敗:', err);
-                        resolve(); // 即使失敗也繼續
-                    });
-                });
-                
-                // 確保音頻完全停止
-                captainAudio.pause();
-                captainAudio.currentTime = 0;
-                captainAudio.src = ''; // 清空音源，確保完全釋放
-                
-                // 完全停止後等待 0ms（立即繼續，不等待）
-                // 注意：雖然是 0ms，但這會讓瀏覽器有機會完成音頻停止操作
-                await new Promise(resolve => setTimeout(resolve, 0));
-                console.log('✅ captain.mp3 已完全停止，準備播放 TTS 語音');
-            } catch (error) {
-                console.warn('⚠️ captain.mp3 播放時發生錯誤（繼續執行）:', error);
-            }
-            })();
+            await unlockAudio();
+            const captainPlayPromise = playAudioFile('sounds/captain.mp3', 6, 0.5);
             
             // 🔧 改進：在播放 captain.mp3 的同時，如果 TTS 還沒準備好，等待生成完成（最多等待到 captain.mp3 播放完成）
             if (!preparedAudioId && preparedAnnouncement) {
@@ -4681,6 +4699,7 @@
             
             // 等待 captain.mp3 播放完成
             await captainPlayPromise;
+            console.log('✅ captain.mp3 播放流程結束，準備播放 TTS 語音');
             
             // 2. captain.mp3 播放完成後，立即播放準備好的 TTS 語音
             if (preparedAudioId) {
@@ -5087,93 +5106,74 @@
             });
         }
         
-        // 播放音頻文件（確保正確等待指定時長）
-        function playAudioFile(url, maxDuration = null, volume = 1.0) {
-            return new Promise((resolve) => {
+        // 播放音頻文件（瀏覽器優先；NotAllowedError 時改走樹莓派喇叭）
+        async function playAudioFile(url, maxDuration = null, volume = 1.0) {
+            await unlockAudio();
+
+            const playInBrowser = () => new Promise((resolve, reject) => {
                 const audio = new Audio(url);
-                audio.volume = volume; // 🔧 設置音量（0.0-1.0）
+                audio.preload = 'auto';
+                audio.volume = Math.max(0, Math.min(1, volume));
                 let timeoutId = null;
-                let resolved = false;
-                
-                // 🔧 改進：先設置 timeout（如果指定了最大播放時長）
+                let settled = false;
+
+                const finish = (ok, err) => {
+                    if (settled) return;
+                    settled = true;
+                    if (timeoutId) clearTimeout(timeoutId);
+                    try {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    } catch (_) {}
+                    if (ok) resolve(audio);
+                    else reject(err || new Error('audio play failed'));
+                };
+
                 if (maxDuration && maxDuration > 0) {
-                    // 設置 timeout，在指定時間後停止音頻
                     timeoutId = setTimeout(() => {
-                        if (resolved) return;
-                        resolved = true;
-                        try {
-                            if (!audio.paused) {
-                            audio.pause();
-                            }
-                            audio.currentTime = 0;
-                            console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止`);
-                        } catch (e) {
-                            console.warn('⚠️ 停止音頻時發生錯誤:', e);
-                        }
-                        resolve();
+                        console.log(`⏱️ 音頻播放 ${maxDuration} 秒後停止:`, url);
+                        finish(true);
                     }, maxDuration * 1000);
-                    
-                    // 如果音頻提前結束，也要等待完整的時長
                     audio.onended = () => {
-                        // 不立即 resolve，等待 timeout 完成
-                        console.log('✅ 音頻自然播放完成（但等待完整時長）');
+                        console.log('✅ 音頻自然播放完成（等待完整時長）:', url);
                     };
                 } else {
-                    // 沒有指定時長，音頻自然播放完成時 resolve
                     audio.onended = () => {
-                        if (resolved) return;
-                        resolved = true;
-                        console.log('✅ 音頻播放完成');
-                        resolve();
+                        console.log('✅ 音頻播放完成:', url);
+                        finish(true);
                     };
                 }
-                
-                // 錯誤處理
-                audio.onerror = (e) => {
-                    if (resolved) return;
-                    resolved = true;
-                    if (timeoutId) clearTimeout(timeoutId);
-                    // 檢查是否是預期的停止操作（maxDuration 時手動停止可能觸發 error 事件）
-                    // 如果音頻已經播放了一段時間，這可能是正常的停止操作，不是真正的錯誤
-                    if (maxDuration && audio.currentTime > 0 && audio.currentTime >= maxDuration * 0.9) {
-                        // 已經播放了接近完整的時長，這可能是預期的停止操作
-                        console.log(`ℹ️ 音頻播放過程中觸發 error 事件（已播放 ${audio.currentTime.toFixed(1)} 秒，可能是預期的停止操作）:`, url);
-                    } else {
-                        console.warn('⚠️ 音頻播放失敗:', url);
-                    }
-                    resolve(); // 即使失敗也繼續
-                };
-                
-                // 🔧 改進：載入完成後立即播放（不等待）
-                audio.addEventListener('loadeddata', () => {
-                    console.log('📥 音頻已載入，開始播放:', url);
+
+                audio.onerror = () => finish(false, new Error('audio load/play error: ' + url));
+
+                const start = () => {
+                    console.log('📥 音頻準備播放:', url);
                     audio.play().then(() => {
                         console.log('▶️ 音頻開始播放:', url);
-                        // 如果指定了最大播放時長，記錄開始時間
                         if (maxDuration && maxDuration > 0) {
                             console.log(`⏱️ 音頻將在 ${maxDuration} 秒後停止`);
                         }
-                    }).catch((error) => {
-                        if (resolved) return;
-                        resolved = true;
-                        if (timeoutId) clearTimeout(timeoutId);
-                        console.warn('⚠️ 音頻播放錯誤:', error);
-                        resolve();
-                    });
-                }, { once: true });
-                
-                // 如果載入失敗
-                audio.addEventListener('error', () => {
-                    if (resolved) return;
-                    resolved = true;
-                    if (timeoutId) clearTimeout(timeoutId);
-                    console.error('❌ 音頻載入失敗:', url);
-                    resolve();
-                }, { once: true });
-                
-                // 🔧 改進：立即開始載入音頻
-                audio.load();
+                    }).catch((error) => finish(false, error));
+                };
+
+                if (audio.readyState >= 2) start();
+                else {
+                    audio.addEventListener('canplay', start, { once: true });
+                    audio.load();
+                }
             });
+
+            try {
+                await playInBrowser();
+                return true;
+            } catch (error) {
+                const msg = error && error.message ? error.message : String(error);
+                console.warn('⚠️ 瀏覽器播放失敗，嘗試樹莓派後備:', url, msg);
+                const viaPi = await playLocalSoundViaPi(url, maxDuration, volume);
+                if (viaPi) return true;
+                console.warn('⚠️ 音頻最終播放失敗（瀏覽器與樹莓派皆不可用）:', url);
+                return false;
+            }
         }
         
         // 播放起飛影片（takeoff1.mp4 一次，然後 loop takeoff2.mp4）
@@ -6033,6 +6033,7 @@
             console.log('✅ [landing.mp4] landing.mp4 已淡入，準備播放');
             
             try {
+                await unlockAudio();
                 await landingVideo.play();
                 console.log('▶️ [landing.mp4] 開始播放 landing.mp4（舊影片已移除，無空窗期）');
             } catch (e) {
@@ -9445,7 +9446,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         const aiData = await aiResponse.json();
                         if (aiData.text) {
                             try {
-                                const parsed = JSON.parse(aiData.text);
+                                const parsed = parseAiJson(aiData.text);
                                 weather = parsed.weather || weather;
                                 feature = parsed.feature || feature;
                                 console.log('✅ 使用 API 生成的活動建議:', feature);
@@ -9617,11 +9618,14 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             }
         }
         
-        async function showLandingCountryInfo(destination) {
+        async function showLandingCountryInfo(destination, preGeneratedInfo = null) {
             return new Promise(async (resolve) => {
-                // 🔧 改進：優先使用已生成的目的地資訊，如果沒有則生成
+                // 🔧 優先使用呼叫端傳入的資訊，其次用全局預生成，最後才重打 API
                 let destinationInfo;
-                if (window._preGeneratedDestinationInfo) {
+                if (preGeneratedInfo) {
+                    console.log('✅ [showLandingCountryInfo] 使用傳入的已生成目的地資訊');
+                    destinationInfo = preGeneratedInfo;
+                } else if (window._preGeneratedDestinationInfo) {
                     console.log('✅ [showLandingCountryInfo] 使用已生成的目的地資訊');
                     destinationInfo = window._preGeneratedDestinationInfo;
                     // 清除已使用的資訊
@@ -11320,13 +11324,11 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 containerLeft: videoContainer.offsetLeft
             });
             
-            // 準備起飛音效（takeoff.mp3）
+            // 準備起飛音效（takeoff.mp3）— 先解鎖音訊，避免 NotAllowedError
+            await unlockAudio();
             const takeoffAudio = new Audio('sounds/takeoff.mp3');
-            
-            // 🔧 改進：為 takeoff.mp3 添加淡入淡出效果
-            takeoffAudio.volume = 0; // 初始音量為 0
-            
-            // 使用全局的 fadeInAudio 和 fadeOutAudio 函數
+            takeoffAudio.preload = 'auto';
+            takeoffAudio.volume = 0; // 初始音量為 0，之後淡入
             
             try {
                 // 先確保第二個影片也已載入（避免等一下切過去黑畫面）
@@ -11385,23 +11387,29 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 // 1）同時開始播放 takeoff1.mp4 + takeoff.mp3（帶淡入效果）
                 console.log('🎬 開始播放 takeoff1.mp4 ＋ 🎵 takeoff.mp3（帶淡入效果）');
                 
-                // 先啟動音效（帶淡入效果）
-                takeoffAudio.play().then(() => {
+                let takeoffAudioPlaying = false;
+                try {
+                    await takeoffAudio.play();
+                    takeoffAudioPlaying = true;
                     console.log('🎵 takeoff.mp3 開始播放，開始淡入');
                     fadeInAudio(takeoffAudio, 1000).then(() => {
                         console.log('✅ takeoff.mp3 淡入完成');
                     });
-                }).catch(err => {
-                    console.warn('⚠️ takeoff.mp3 播放失敗（可能被瀏覽器阻擋）:', err);
-                });
-                
+                } catch (err) {
+                    console.warn('⚠️ takeoff.mp3 瀏覽器播放失敗，改走樹莓派後備:', err && err.message ? err.message : err);
+                    // 後備：不阻塞影片；背景交給樹莓派喇叭
+                    playLocalSoundViaPi('sounds/takeoff.mp3', null, 1.0).then((ok) => {
+                        if (ok) console.log('✅ takeoff.mp3 已由樹莓派喇叭播放');
+                        else console.warn('⚠️ takeoff.mp3 樹莓派後備也失敗');
+                    });
+                }
                 // 播放第一支影片
                 await new Promise((resolve) => {
                     video1.onended = () => {
                         console.log('✅ takeoff1.mp4 播放完成');
                         // 影片 1 結束時，音效淡出
                         try {
-                            if (!takeoffAudio.paused) {
+                            if (takeoffAudioPlaying && !takeoffAudio.paused) {
                                 console.log('🎵 takeoff.mp3 開始淡出');
                                 fadeOutAudio(takeoffAudio, 800).then(() => {
                                     console.log('✅ takeoff.mp3 淡出完成');
@@ -11415,7 +11423,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     video1.onerror = (error) => {
                         console.error('❌ takeoff1.mp4 播放失敗:', error);
                         // 即使出錯也淡出音效
-                        if (!takeoffAudio.paused) {
+                        if (takeoffAudioPlaying && !takeoffAudio.paused) {
                             fadeOutAudio(takeoffAudio, 800);
                         }
                         resolve();
@@ -11423,7 +11431,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     video1.play().catch(error => {
                         console.error('❌ takeoff1.mp4 播放錯誤:', error);
                         // 即使出錯也淡出音效
-                        if (!takeoffAudio.paused) {
+                        if (takeoffAudioPlaying && !takeoffAudio.paused) {
                             fadeOutAudio(takeoffAudio, 800);
                         }
                         resolve();
@@ -13257,7 +13265,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         const aiData = await aiResponse.json();
                         if (aiData.text) {
                             try {
-                                const visualData = JSON.parse(aiData.text);
+                                const visualData = parseAiJson(aiData.text);
                                 timeOfDayVisual = visualData.timeOfDayVisual || timeSegment;
                                 lightingDescription = visualData.lightingDescription || '';
                                 weatherDescription = visualData.weatherDescription || weatherState;
@@ -13400,6 +13408,25 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         errorData = { error: errorText };
                     }
                     console.error('❌ API 返回錯誤:', response.status, errorData);
+
+                    // 若帶參考圖失敗，改純文字 prompt 重試一次
+                    if (requestBody.referenceImage) {
+                        console.warn('⚠️ 以圖生圖失敗，改用純文字 prompt 重試...');
+                        delete requestBody.referenceImage;
+                        const retryResponse = await fetch('https://morgan-orcin.vercel.app/api/generate-image', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestBody)
+                        });
+                        if (retryResponse.ok) {
+                            const retryData = await retryResponse.json();
+                            const retryUrl = retryData.imageUrl || retryData.url;
+                            console.log('✅ 降落圖片重試成功:', retryUrl);
+                            return retryUrl;
+                        }
+                        const retryErr = await retryResponse.text();
+                        console.error('❌ 降落圖片重試仍失敗:', retryResponse.status, retryErr);
+                    }
                 }
             } catch (error) {
                 console.warn('⚠️ 降落圖片生成失敗:', error);
@@ -13758,12 +13785,18 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             if (finalDestination && !window._phase7ImageAPromise && !window._earlyLandingImagePromise) {
                 console.log('🖼️ [Phase 7] 開始生成圖片A（背景進行，只生成一次）...');
                 window._phase7ImageAPromise = (async () => {
-                    // 🔧 改進：先獲取天氣信息，然後傳入圖片生成
+                    // 🔧 只取天氣，不要走完整 generateDestinationInfo（避免重複 AI／拖慢出圖）
                     let weatherInfo = null;
                     try {
-                        const tempDestinationInfo = await generateDestinationInfo(finalDestination);
-                        weatherInfo = tempDestinationInfo.realWeatherData || null;
-                        console.log('✅ [Phase 7] 已獲取天氣信息供圖片生成使用:', weatherInfo);
+                        if (finalDestination.latitude && finalDestination.longitude) {
+                            const weatherResponse = await fetch(
+                                `https://morgan-orcin.vercel.app/api/get-weather?lat=${finalDestination.latitude}&lon=${finalDestination.longitude}`
+                            );
+                            if (weatherResponse.ok) {
+                                weatherInfo = await weatherResponse.json();
+                                console.log('✅ [Phase 7] 已獲取天氣信息供圖片生成使用:', weatherInfo);
+                            }
+                        }
                     } catch (error) {
                         console.warn('⚠️ [Phase 7] 獲取天氣信息失敗，將使用時間推測:', error);
                     }
@@ -13773,7 +13806,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         finalDestination.country,
                         finalDestination.timezone || 'UTC',
                         new Date().toISOString(),
-                        weatherInfo // 傳入真實天氣數據
+                        weatherInfo
                     );
                     if (url) {
                         window._manualLandingImageUrl = url;
@@ -13874,7 +13907,12 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             
             // 背景生成文字B（新城市介紹）
             console.log('📝 [Phase 7] 背景生成文字B（新城市介紹）...');
-            const destinationInfoPromise = generateDestinationInfo(finalDestination);
+            const destinationInfoPromise = generateDestinationInfo(finalDestination).then((info) => {
+                if (info) {
+                    window._preGeneratedDestinationInfo = info;
+                }
+                return info;
+            });
             
             // 🔧 改進：在 landing.mp4 播放時，等待文字B生成完成，然後立即預先生成語音B（不播放）
             const voiceBPromise = (async () => {
@@ -14050,8 +14088,23 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 feedbackData = '3'; // 預設值
             }
             
-            // 確保圖片A已顯示（如果還沒顯示）
-            const finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
+            // 確保圖片A已顯示（若尚未完成則繼續等待）
+            let finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
+            if (!finalImageUrl && landingImagePromise) {
+                console.log('⏳ [Phase 7] 情緒表完成後仍在等待圖片A...');
+                try {
+                    finalImageUrl = await landingImagePromise;
+                    if (finalImageUrl) {
+                        window._manualLandingImageUrl = finalImageUrl;
+                        destinationImageUrl = finalImageUrl;
+                        console.log('✅ [Phase 7] 圖片A等待完成:', finalImageUrl);
+                    } else {
+                        console.warn('⚠️ [Phase 7] 圖片A Promise 回傳 null');
+                    }
+                } catch (imgErr) {
+                    console.warn('⚠️ [Phase 7] 等待圖片A失敗:', imgErr);
+                }
+            }
             if (finalImageUrl && document.querySelector('.window-content')) {
             const windowContent = document.querySelector('.window-content');
                 const proxiedUrl = getProxiedImageUrl(finalImageUrl);

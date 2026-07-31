@@ -157,6 +157,24 @@ class WebControllerDSI:
             
             # 自動點擊載入資料按鈕
             self._click_load_data_button()
+
+            # 解鎖瀏覽器音訊（避免 takeoff.mp3 / captain.mp3 被 Autoplay 擋住）
+            try:
+                self.driver.execute_script("""
+                    try {
+                      if (typeof window.unlockAudio === 'function') {
+                        window.unlockAudio();
+                      }
+                      // 模擬一次使用者手勢：點擊 body
+                      var evt = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+                      document.body.dispatchEvent(evt);
+                    } catch (e) {
+                      console.warn('unlockAudio bootstrap failed', e);
+                    }
+                """)
+                self.logger.info("已嘗試解鎖瀏覽器音訊")
+            except Exception as e:
+                self.logger.warning(f"解鎖瀏覽器音訊失敗：{e}")
             
             self.logger.info("網站載入和設定完成")
             return True
