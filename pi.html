@@ -322,6 +322,10 @@
             margin: 0; /* 🔧 確保沒有 margin */
             z-index: 100 !important; /* 🔧 確保 info-bar 在覆蓋層上方 */
         }
+
+        .restoring-flight .info-bar {
+            visibility: hidden;
+        }
         
         /* 機長廣播中/準備降落消息顯示 - 保留用於其他用途，但主要使用 stateCaptainAnnouncement */
         .info-bar-message {
@@ -2653,7 +2657,24 @@
             checkNightMode();
         }
         
-        document.addEventListener('DOMContentLoaded', () => {
+        document.documentElement.classList.add('restoring-flight');
+        const appRestoreSingleFlight = MorganRuntime.createSingleFlight();
+        const phase7MusicGeneration = MorganRuntime.createGenerationGuard();
+        const backgroundPlaybackIds = MorganRuntime.createPlaybackIdGenerator();
+        const pageAudioFenceId = backgroundPlaybackIds.next();
+        let appRestorePromise = null;
+
+        async function ensureFlightRestored() {
+            if (!appRestorePromise) {
+                appRestorePromise = appRestoreSingleFlight.run(() => restoreFlightState());
+                appRestorePromise.finally(() => {
+                    document.documentElement.classList.remove('restoring-flight');
+                });
+            }
+            return appRestorePromise;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
             // 再次檢查（確保 DOM 已載入）
             checkNightMode();
             
@@ -2673,9 +2694,7 @@
                 countryFlagEl.textContent = '🏳️';
             }
             
-            // 先停上一趟殘留喇叭，再恢復未完成飛行（避免音樂不停 + 誤觸飛機餐）
-            stopLocalSoundViaPi().catch(() => {});
-            restoreFlightState();
+            await ensureFlightRestored();
             
             const nextButton = document.getElementById('nextButton');
             if (nextButton) {
@@ -3681,7 +3700,9 @@
         window.unlockAudio = unlockAudio;
 
         // 樹莓派本地喇叭後備：瀏覽器被擋時，下載並由 pygame 播放
-        async function playLocalSoundViaPi(url, maxDuration = null, volume = 1.0) {
+        async function playLocalSoundViaPi(url, maxDuration = null, volume = 1.0, options = {}) {
+            const isBackground = options.background === true;
+            const playbackId = isBackground ? backgroundPlaybackIds.next() : null;
             try {
                 let absoluteUrl = url;
                 if (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) {
@@ -3699,51 +3720,125 @@
                         url: absoluteUrl,
                         path: relativePath,
                         max_duration: maxDuration,
-                        volume: volume
+                        volume: volume,
+                        background: isBackground,
+                        playback_id: playbackId
                     }),
                     signal: AbortSignal.timeout(fetchTimeoutMs)
                 });
+                const data = await response.json().catch(() => ({}));
+                if (isBackground) {
+                    const success = response.ok && data.success === true;
+                    if (playbackId === backgroundPlaybackIds.highest()) {
+                        window._piAudioPlaying = success;
+                    }
+                    if (!success) {
+                        console.warn('⚠️ 樹莓派背景播放未成功:', response.status, data);
+                    }
+                    return {
+                        success,
+                        playbackId: data.playback_id || playbackId,
+                        cancelled: data.cancelled === true
+                    };
+                }
+
                 window._piAudioPlaying = false;
-                if (!response.ok) {
+                if (!response.ok || data.success !== true) {
                     console.warn('⚠️ 樹莓派後備播放 HTTP 錯誤:', response.status);
                     return false;
                 }
-                const data = await response.json();
-                if (data.success) {
-                    console.log('✅ 樹莓派後備播放成功');
-                    return true;
-                }
-                console.warn('⚠️ 樹莓派後備播放失敗:', data.error);
-                return false;
+                console.log('✅ 樹莓派後備播放成功');
+                return true;
             } catch (err) {
-                window._piAudioPlaying = false;
+                if (!isBackground || playbackId === backgroundPlaybackIds.highest()) {
+                    window._piAudioPlaying = false;
+                }
                 console.warn('⚠️ 樹莓派後備播放不可用:', err && err.message ? err.message : err);
+                return isBackground
+                    ? { success: false, playbackId, cancelled: false }
+                    : false;
+            }
+        }
+
+        async function setLocalBackgroundVolume(volume, fadeMs = 0) {
+            try {
+                const response = await fetch(TTS_LOCAL_BASE + '/audio/volume', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ volume, fade_ms: fadeMs }),
+                    signal: AbortSignal.timeout(Math.max(2500, fadeMs + 1500))
+                });
+                return response.ok;
+            } catch (err) {
+                console.warn('⚠️ 調整樹莓派背景音量失敗:', err && err.message ? err.message : err);
                 return false;
             }
         }
 
         // 立刻停止樹莓派喇叭（重整／飛機餐結束／切階段時必須呼叫，否則音會殘留）
-        async function stopLocalSoundViaPi() {
-            try {
-                await fetch(TTS_LOCAL_BASE + '/audio/stop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: '{}',
-                    signal: AbortSignal.timeout(2500)
-                });
-                window._piAudioPlaying = false;
-                console.log('🔇 已請求樹莓派停止喇叭');
-                return true;
-            } catch (err) {
-                console.warn('⚠️ 停止樹莓派喇叭失敗:', err && err.message ? err.message : err);
-                return false;
+        async function stopLocalSoundViaPi({
+            throughId = null,
+            scope = 'all',
+            retries = 0,
+            retryDelayMs = 200,
+            keepalive = false
+        } = {}) {
+            const effectiveThroughId = throughId === null
+                ? backgroundPlaybackIds.highest()
+                : throughId;
+
+            for (let attempt = 0; attempt <= retries; attempt += 1) {
+                try {
+                    const response = await fetch(TTS_LOCAL_BASE + '/audio/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            through_id: effectiveThroughId,
+                            scope: scope
+                        }),
+                        signal: AbortSignal.timeout(2500),
+                        keepalive
+                    });
+                    const data = await response.json().catch(() => null);
+                    if (MorganRuntime.isSuccessfulAudioStopResponse(response, data)) {
+                        if (backgroundPlaybackIds.highest() <= effectiveThroughId) {
+                            window._piAudioPlaying = false;
+                        }
+                        if (
+                            window._mealMusicViaPi
+                            && (!window._mealMusicPlaybackId || window._mealMusicPlaybackId <= effectiveThroughId)
+                        ) {
+                            window._mealMusicViaPi = false;
+                            window._mealMusicPlaybackId = null;
+                        }
+                        if (
+                            window._phase7WakeupMusic
+                            && window._phase7WakeupMusic.source === 'pi'
+                            && window._phase7WakeupMusic.playbackId <= effectiveThroughId
+                        ) {
+                            window._phase7WakeupMusic.paused = true;
+                            window._phase7WakeupMusic = null;
+                        }
+                        console.log('🔇 已請求樹莓派停止喇叭');
+                        return true;
+                    }
+                    console.warn('⚠️ 樹莓派停止喇叭未成功:', response.status, data);
+                } catch (err) {
+                    console.warn('⚠️ 停止樹莓派喇叭失敗:', err && err.message ? err.message : err);
+                }
+                if (attempt < retries) {
+                    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+                }
             }
+            return false;
         }
         window.stopLocalSoundViaPi = stopLocalSoundViaPi;
 
         // 頁面重整／關閉：先停喇叭，避免上一趟音樂繼續響
-        window.addEventListener('pagehide', () => { stopLocalSoundViaPi(); });
-        window.addEventListener('beforeunload', () => { stopLocalSoundViaPi(); });
+        window.addEventListener('pagehide', () => {
+            phase7MusicGeneration.cancel();
+            stopLocalSoundViaPi({ scope: 'all', keepalive: true });
+        });
 
         // 解析 AI 回傳（常被包成 ```json ... ```）
         function parseAiJson(text) {
@@ -5534,6 +5629,13 @@
             console.log('🚀 初始化應用程式...');
             console.log('   初始狀態:', currentState);
             console.log('   初始 Phase:', currentPhase);
+
+            const restoreResult = await ensureFlightRestored();
+            if (restoreResult.restored) {
+                console.log('✅ 應用程式已恢復飛行，跳過 Phase 0 初始化');
+                updateNextButton();
+                return;
+            }
             
             // 重要：只有在 Phase 0 時才設置初始狀態，避免覆蓋用戶已切換的狀態
             if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) {
@@ -6220,6 +6322,7 @@
             try {
                 await landingVideo.play();
                 videoPlayed = true;
+                setPhase7MusicVolume(0, 8000).catch(() => {});
                 console.log('▶️ [landing.mp4] 開始播放（muted，避免 Autoplay 卡住）');
             } catch (e) {
                 console.warn('⚠️ [landing.mp4] 連 muted 也播不出，跳過影片直接進情緒表:', e && e.message ? e.message : e);
@@ -8894,6 +8997,30 @@
             }
         }
         
+        function ensureFlightProgressUpdater() {
+            const wrapper = document.getElementById('flightProgressWrapper');
+            const fill = document.getElementById('flightProgressFill');
+            const glow = document.getElementById('flightProgressGlow');
+            if (!wrapper || !fill || !glow || !sleepStartTime || !selectedTimer) return;
+
+            wrapper.style.display = 'block';
+            wrapper.style.visibility = 'visible';
+            wrapper.style.opacity = '1';
+
+            if (window._flightProgressInterval) {
+                clearInterval(window._flightProgressInterval);
+            }
+
+            const durationMs = selectedTimer * 60 * 1000;
+            const update = () => {
+                const progress = Math.min(1, Math.max(0, (Date.now() - sleepStartTime) / durationMs));
+                fill.style.width = (progress * 100).toFixed(1) + '%';
+                glow.style.left = Math.min(100, progress * 100 + 2) + '%';
+            };
+            update();
+            window._flightProgressInterval = setInterval(update, 1000);
+        }
+
         // 🔧 新增：恢復未完成的飛行狀態（從 Firebase 載入）
         async function restoreFlightState() {
             try {
@@ -8914,7 +9041,7 @@
                 
                 if (!response.ok) {
                     console.warn('⚠️ [恢復狀態] 獲取飛行記錄失敗:', response.status);
-                    return;
+                    return { restored: false };
                 }
                 
                 const data = await response.json();
@@ -8930,7 +9057,7 @@
                         localStorage.removeItem('currentFlightId');
                         console.log('🗑️ [恢復狀態] 已清除舊的 flightId');
                     }
-                    return;
+                    return { restored: false };
                 }
                 
                 console.log('🔄 [恢復狀態] 找到未完成的飛行記錄:', inFlightRecord);
@@ -8977,57 +9104,51 @@
                     
                     // 計算剩餘時間
                     const remainingTime = expectedArrivalTime - now;
+                    const restorePlan = MorganRuntime.buildRestorePlan(remainingTime);
                     
                     console.log('🕐 [恢復狀態] 起飛時間:', new Date(takeoffTime).toLocaleString('zh-TW'));
                     console.log('🕐 [恢復狀態] 預計到達時間:', new Date(expectedArrivalTime).toLocaleString('zh-TW'));
                     console.log('🕐 [恢復狀態] 當前時間:', new Date(now).toLocaleString('zh-TW'));
                     console.log('🕐 [恢復狀態] 剩餘時間:', Math.round(remainingTime / 1000 / 60), '分鐘');
                     
-                    // 先停殘留喇叭（上一趟飛機餐／wakeup 可能還在播）
-                    stopLocalSoundViaPi().catch(() => {});
+                    // 必須先確認停止請求完成，才可進入 Phase 5/6 啟動後續音訊。
+                    phase7MusicGeneration.cancel();
+                    const audioStopped = await stopLocalSoundViaPi({ scope: 'all', retries: 2 });
+                    if (!audioStopped) {
+                        console.error('❌ [恢復狀態] 無法確認舊背景音已停止，取消恢復以避免音訊重疊');
+                        return { restored: false, audioStopFailed: true };
+                    }
 
                     sleepStartTime = takeoffTime;
-                    maxReachedPhase = Phase.CRUISE;
+                    maxReachedPhase = restorePlan.phase;
                     // 旋鈕基準尚未建立 + 短暫 grace，避免重整後第一次讀值誤觸飛機餐
                     lastKnobPosition = null;
                     window._cruiseMealReadyAt = Date.now() + 4000;
 
-                    if (remainingTime <= 0) {
-                        console.log('✅ [恢復狀態] 已超過預計到達時間 → 恢復巡航，請按按鈕進降落（不自動飛機餐）');
+                    if (restorePlan.overdue) {
+                        console.log('✅ [恢復狀態] 已超過預計到達時間 → 直接恢復 Phase 6');
                     } else {
-                        console.log('✅ [恢復狀態] 恢復巡航，剩餘:', Math.round(remainingTime / 1000 / 60), '分鐘');
+                        console.log('✅ [恢復狀態] 恢復 Phase', restorePlan.phase, '，剩餘:', Math.round(remainingTime / 1000 / 60), '分鐘');
                     }
 
-                    // 用正式切換更新 UI（進度條等），不要只改 currentPhase
+                    // 最後五分鐘（包含逾時）直接進 Phase 6，絕不先閃過 Phase 5
                     try {
-                        switchToPhase(Phase.CRUISE, { force: true });
+                        switchToPhase(restorePlan.phase, { force: true });
                     } catch (e) {
-                        currentPhase = Phase.CRUISE;
+                        currentPhase = restorePlan.phase;
                         console.warn('⚠️ [恢復狀態] switchToPhase 失敗，僅設定 currentPhase:', e);
                     }
 
-                    // 重設「降落前 5 分鐘」倒數（handleCruise 在 sleepStartTime 已存在時會 early return）
                     if (sleepTimer) {
                         clearTimeout(sleepTimer);
                         sleepTimer = null;
                     }
-                    const fiveMinMs = 5 * 60 * 1000;
-                    if (remainingTime > fiveMinMs) {
+                    if (restorePlan.descentDelayMs !== null) {
                         sleepTimer = setTimeout(() => {
                             switchToPhase(Phase.DESCENT);
-                        }, remainingTime - fiveMinMs);
-                        console.log('⏰ [恢復狀態] 已重設 Phase 6 倒數:', Math.round((remainingTime - fiveMinMs) / 60000), '分鐘後');
-                    } else if (remainingTime > 0) {
-                        // 已進入最後 5 分鐘 → 直接進 Phase 6
-                        console.log('⏰ [恢復狀態] 已在最後 5 分鐘內，切到 Phase 6');
-                        try { switchToPhase(Phase.DESCENT, { force: true }); } catch (_) {}
-                    }
-
-                    const flightProgressWrapper = document.getElementById('flightProgressWrapper');
-                    if (flightProgressWrapper && selectedTimer) {
-                        flightProgressWrapper.style.display = 'block';
-                        flightProgressWrapper.style.visibility = 'visible';
-                        flightProgressWrapper.style.opacity = '1';
+                        }, restorePlan.descentDelayMs);
+                        console.log('⏰ [恢復狀態] 已重設 Phase 6 倒數:', Math.round(restorePlan.descentDelayMs / 60000), '分鐘後');
+                        ensureFlightProgressUpdater();
                     }
                     
                     // 保存 flightId 到 localStorage（如果記錄有 id）
@@ -9035,12 +9156,15 @@
                         localStorage.setItem('currentFlightId', inFlightRecord.id);
                         console.log('💾 [恢復狀態] 已保存 flightId 到 localStorage:', inFlightRecord.id);
                     }
+                    return { restored: true, phase: restorePlan.phase };
                 } else {
                     console.warn('⚠️ [恢復狀態] 缺少起飛時間或預計到達時間，無法恢復飛行狀態');
+                    return { restored: false };
                 }
                 
             } catch (error) {
                 console.error('❌ [恢復狀態] 恢復飛行狀態時發生錯誤:', error);
+                return { restored: false };
             }
         }
         
@@ -10034,13 +10158,13 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     console.log('🍽️ 準備飛機餐音樂:', webPath);
 
                     // 1) 優先樹莓派喇叭（GPIO 觸發時瀏覽器常被 Autoplay 擋住）
-                    window._mealMusicViaPi = true;
-                    const viaPi = await playLocalSoundViaPi(localPath, 60, 0.6);
-                    if (viaPi) {
+                    const viaPi = await playLocalSoundViaPi(localPath, 60, 0.6, { background: true });
+                    if (viaPi.success) {
+                        window._mealMusicViaPi = true;
+                        window._mealMusicPlaybackId = viaPi.playbackId;
                         console.log('✅ 飛機餐音樂已由樹莓派喇叭播放:', localPath);
                         return;
                     }
-                    window._mealMusicViaPi = false;
 
                     // 2) 瀏覽器後備
                     mealMusic = new Audio(webPath);
@@ -10077,9 +10201,11 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 const currentOverlay = document.getElementById('midnightServiceOverlay');
                 
                 // 一定停樹莓派喇叭（飛機餐常走 Pi，只 pause 瀏覽器音會停不掉）
-                if (window._mealMusicViaPi || window._piAudioPlaying) {
-                    stopLocalSoundViaPi().catch(() => {});
-                    window._mealMusicViaPi = false;
+                if (window._mealMusicViaPi && window._mealMusicPlaybackId) {
+                    stopLocalSoundViaPi({
+                        throughId: window._mealMusicPlaybackId,
+                        scope: 'background'
+                    }).catch(() => false);
                 }
 
                 // 淡出音樂（如果還在播放）
@@ -10555,99 +10681,152 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             window._earlyLandingWakeupMusic = audio;
         }
 
+        const phase7MusicSingleFlight = MorganRuntime.createSingleFlight();
+
+        async function setPhase7MusicVolume(target, duration = 0) {
+            const music = window._phase7WakeupMusic;
+            if (!music || music.paused) return;
+            const clamped = Math.min(1, Math.max(0, target));
+
+            if (music.source === 'pi') {
+                await setLocalBackgroundVolume(clamped, duration);
+                music.volume = clamped;
+                if (clamped === 0) music.paused = true;
+                return;
+            }
+
+            if (duration <= 0) {
+                music.volume = clamped;
+                return;
+            }
+            await fadeVolume(music, clamped, duration);
+        }
+
         // Phase 7／緊急降落：播放 wakeup 音樂（檔案在網站根目錄，不在 /sounds/）
         async function playWakeupMusicForPhase7() {
-            // 若已在播就不重複
-            if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                console.log('ℹ️ [Phase 7] wakeup 音樂已在播放，跳過重複啟動');
-                return;
-            }
+            return phase7MusicSingleFlight.run(async () => {
+                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                    console.log('ℹ️ [Phase 7] wakeup 音樂已在播放，跳過重複啟動');
+                    return window._phase7WakeupMusic;
+                }
 
-            if (descentWakeupMusic && !descentWakeupMusic.paused) {
-                try { await fadeOutAudio(descentWakeupMusic, 800); } catch (_) {}
-                try { descentWakeupMusic.pause(); descentWakeupMusic = null; } catch (_) {}
-            }
-            if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
-                try { await fadeOutAudio(window._earlyLandingWakeupMusic, 800); } catch (_) {}
+                const startToken = phase7MusicGeneration.next();
+                const startingRef = { source: 'starting', token: startToken, paused: false, volume: 0 };
+                window._phase7WakeupMusic = startingRef;
+                let ownedRef = startingRef;
+                let startCompleted = false;
+
                 try {
-                    window._earlyLandingWakeupMusic.pause();
-                    window._earlyLandingWakeupMusic = null;
-                } catch (_) {}
-            }
-            
-            const isTropicalDreams = selectedDirection === 0 ||
-                (selectedDirection !== null &&
-                 climateZoneOptions[selectedDirection] &&
-                 climateZoneOptions[selectedDirection].name === '熱帶夢境');
-            
-            let selectedMusic;
-            if (isTropicalDreams) {
-                selectedMusic = 'wakeup4.mp3';
-                console.log('🌴 [Phase 7] 熱帶夢境 → wakeup4.mp3');
-            } else {
-                const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
-                selectedMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
-                console.log('🎵 [Phase 7] 選擇:', selectedMusic);
-            }
+                    // 在任何 await 前先佔位，並停止 Phase 6 所有可能回頭調音量的計時器。
+                    ['_phase6MusicFadeInInterval', '_phase6VolumeFadeInterval'].forEach((key) => {
+                        if (window[key]) {
+                            clearInterval(window[key]);
+                            window[key] = null;
+                        }
+                    });
+                    if (window._phase6AutoPlayTimeout) {
+                        clearTimeout(window._phase6AutoPlayTimeout);
+                        window._phase6AutoPlayTimeout = null;
+                    }
+                    if (window._volumeFadeInterval) {
+                        clearInterval(window._volumeFadeInterval);
+                        window._volumeFadeInterval = null;
+                    }
 
-            // 1) 優先 Pi 喇叭（GPIO 觸發常被 Autoplay 擋）
-            const viaPi = await playLocalSoundViaPi(selectedMusic, null, 0.6);
-            if (viaPi) {
-                console.log('✅ [Phase 7] wakeup 已由樹莓派喇叭播放:', selectedMusic);
-                // 佔位物件，後續 duck 音量時有參考（Pi 端無法從瀏覽器調音量）
-                window._phase7WakeupMusic = { paused: false, volume: 0.05, pause() {}, currentTime: 0 };
-                return;
-            }
+                    if (descentWakeupMusic && !descentWakeupMusic.paused) {
+                        try { await fadeOutAudio(descentWakeupMusic, 800); } catch (_) {}
+                        try { descentWakeupMusic.pause(); descentWakeupMusic = null; } catch (_) {}
+                    }
+                    if (window._earlyLandingWakeupMusic && !window._earlyLandingWakeupMusic.paused) {
+                        try { await fadeOutAudio(window._earlyLandingWakeupMusic, 800); } catch (_) {}
+                        try {
+                            window._earlyLandingWakeupMusic.pause();
+                            window._earlyLandingWakeupMusic = null;
+                        } catch (_) {}
+                    }
 
-            // 2) 瀏覽器：只用根目錄路徑
-            const musicUrl = '/' + selectedMusic;
-            console.log('🎵 [Phase 7] 瀏覽器播放 wakeup:', musicUrl);
-            const audio = new Audio(musicUrl);
-            audio.volume = 0;
-            audio.loop = false;
-            audio.preload = 'auto';
+                    if (!phase7MusicGeneration.isCurrent(startToken)) return null;
 
-            try {
-                await unlockAudio();
-                await audio.play();
-            } catch (err) {
-                console.warn('⚠️ [Phase 7] 瀏覽器播放 wakeup 失敗:', err && err.message ? err.message : err);
-                window._phase7WakeupMusic = null;
-                return;
-            }
+                    const isTropicalDreams = selectedDirection === 0 ||
+                        (selectedDirection !== null &&
+                         climateZoneOptions[selectedDirection] &&
+                         climateZoneOptions[selectedDirection].name === '熱帶夢境');
 
-            if (window._phase7MusicFadeInInterval) {
-                clearInterval(window._phase7MusicFadeInInterval);
-                window._phase7MusicFadeInInterval = null;
-            }
-            const fadeInDuration = 2000;
-            const targetVolume = 0.6;
-            const startTime = Date.now();
-            window._phase7MusicFadeInInterval = setInterval(() => {
-                if (!audio || audio.paused) {
-                    clearInterval(window._phase7MusicFadeInInterval);
-                    window._phase7MusicFadeInInterval = null;
-                    return;
+                    let selectedMusic;
+                    if (isTropicalDreams) {
+                        selectedMusic = 'wakeup4.mp3';
+                        console.log('🌴 [Phase 7] 熱帶夢境 → wakeup4.mp3');
+                    } else {
+                        const wakeupMusicFiles = ['wakeup1.mp3', 'wakeup2.mp3', 'wakeup3.mp3'];
+                        selectedMusic = wakeupMusicFiles[Math.floor(Math.random() * wakeupMusicFiles.length)];
+                        console.log('🎵 [Phase 7] 選擇:', selectedMusic);
+                    }
+
+                    const viaPi = await playLocalSoundViaPi(selectedMusic, null, 0.6, { background: true });
+                    const playbackId = viaPi.playbackId;
+                    if (!phase7MusicGeneration.isCurrent(startToken)) {
+                        if (viaPi.success) {
+                            await stopLocalSoundViaPi({
+                                throughId: playbackId,
+                                scope: 'background',
+                                retries: 2
+                            });
+                        }
+                        return null;
+                    }
+                    if (viaPi.success) {
+                        console.log('✅ [Phase 7] wakeup 已由樹莓派喇叭播放:', selectedMusic);
+                        const piRef = {
+                            source: 'pi',
+                            paused: false,
+                            volume: 0.6,
+                            playbackId
+                        };
+                        if (phase7MusicGeneration.isCurrent(startToken)) {
+                            ownedRef = piRef;
+                            window._phase7WakeupMusic = piRef;
+                            startCompleted = true;
+                        }
+                        return piRef;
+                    }
+
+                    const musicUrl = '/' + selectedMusic;
+                    console.log('🎵 [Phase 7] 瀏覽器播放 wakeup:', musicUrl);
+                    const audio = new Audio(musicUrl);
+                    audio.source = 'browser';
+                    audio.volume = 0;
+                    audio.loop = false;
+                    audio.preload = 'auto';
+                    if (!phase7MusicGeneration.isCurrent(startToken)) return null;
+                    ownedRef = audio;
+                    window._phase7WakeupMusic = audio;
+
+                    await unlockAudio();
+                    await audio.play();
+                    if (!phase7MusicGeneration.isCurrent(startToken)) {
+                        audio.pause();
+                        return null;
+                    }
+
+                    startCompleted = true;
+                    fadeVolume(audio, 0.6, 2000).catch(() => {});
+                    audio.onended = () => {
+                        if (window._phase7WakeupMusic === audio) {
+                            console.log('✅ [Phase 7] wakeup 音樂播放完成');
+                            window._phase7WakeupMusic = null;
+                        }
+                    };
+                    console.log('✅ [Phase 7] wakeup 音樂已開始播放');
+                    return audio;
+                } catch (err) {
+                    console.warn('⚠️ [Phase 7] wakeup 音樂啟動失敗:', err && err.message ? err.message : err);
+                    return null;
+                } finally {
+                    if (!startCompleted && window._phase7WakeupMusic === ownedRef) {
+                        window._phase7WakeupMusic = null;
+                    }
                 }
-                const progress = Math.min((Date.now() - startTime) / fadeInDuration, 1);
-                audio.volume = targetVolume * progress;
-                if (progress >= 1) {
-                    clearInterval(window._phase7MusicFadeInInterval);
-                    window._phase7MusicFadeInInterval = null;
-                    audio.volume = targetVolume;
-                }
-            }, 16);
-
-            window._phase7WakeupMusic = audio;
-            audio.onended = () => {
-                console.log('✅ [Phase 7] wakeup 音樂播放完成');
-                window._phase7WakeupMusic = null;
-                if (window._phase7MusicFadeInInterval) {
-                    clearInterval(window._phase7MusicFadeInInterval);
-                    window._phase7MusicFadeInInterval = null;
-                }
-            };
-            console.log('✅ [Phase 7] wakeup 音樂已開始播放');
+            });
         }
 
         // 記錄深夜服務事件（睡眠中斷）
@@ -12115,8 +12294,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             }
             
             // 清除音頻相關狀態（含樹莓派喇叭殘留）
-            stopLocalSoundViaPi().catch(() => {});
-            window._mealMusicViaPi = false;
+            phase7MusicGeneration.cancel();
+            stopLocalSoundViaPi({ scope: 'all' }).catch(() => false);
             if (window.mealMusic) {
                 try {
                     window.mealMusic.pause();
@@ -12134,11 +12313,16 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             }
             // 清除 Phase 7 的 wakeup 音樂
             if (window._phase7WakeupMusic) {
-                try {
-                    window._phase7WakeupMusic.pause();
-                    window._phase7WakeupMusic = null;
-                } catch (e) {
-                    // 忽略錯誤
+                const phase7Music = window._phase7WakeupMusic;
+                if (phase7Music.source !== 'pi' && phase7Music.source !== 'starting') {
+                    try {
+                        phase7Music.pause();
+                    } catch (e) {
+                        // 忽略錯誤
+                    }
+                    if (window._phase7WakeupMusic === phase7Music) {
+                        window._phase7WakeupMusic = null;
+                    }
                 }
             }
             // 清除 Phase 6 的 descentWakeupMusic
@@ -12252,12 +12436,17 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             
             // 🔧 改進：清理 Phase 7 的音樂和定時器
             if (window._phase7WakeupMusic) {
-                try {
-                    window._phase7WakeupMusic.pause();
-                    window._phase7WakeupMusic.currentTime = 0;
-                    window._phase7WakeupMusic = null;
-                } catch (e) {
-                    console.warn('⚠️ [resetFlightState] 停止 _phase7WakeupMusic 時發生錯誤:', e);
+                const phase7Music = window._phase7WakeupMusic;
+                if (phase7Music.source !== 'pi' && phase7Music.source !== 'starting') {
+                    try {
+                        phase7Music.pause();
+                        phase7Music.currentTime = 0;
+                    } catch (e) {
+                        console.warn('⚠️ [resetFlightState] 停止 _phase7WakeupMusic 時發生錯誤:', e);
+                    }
+                    if (window._phase7WakeupMusic === phase7Music) {
+                        window._phase7WakeupMusic = null;
+                    }
                 }
             }
             if (window._phase7MusicFadeInInterval) {
@@ -12358,8 +12547,12 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 midnightServiceActive = false;
                 
                 // 停止飛機餐音樂（瀏覽器 + 樹莓派）
-                stopLocalSoundViaPi().catch(() => {});
-                window._mealMusicViaPi = false;
+                if (window._mealMusicPlaybackId) {
+                    stopLocalSoundViaPi({
+                        throughId: window._mealMusicPlaybackId,
+                        scope: 'background'
+                    }).catch(() => false);
+                }
                 if (window.mealMusic) {
                     try {
                         window.mealMusic.pause();
@@ -13900,7 +14093,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 const duckTo = CAPTAIN_TTS.duckMusicVolume;
                 console.log(`🔉 [Phase 7] 漸變降低音樂音量（${currentVolume.toFixed(2)} → ${duckTo}），凸顯機長語音`);
                 try {
-                    await fadeVolume(window._phase7WakeupMusic, duckTo, 800);
+                    await setPhase7MusicVolume(duckTo, 800);
                 } catch (err) {
                     console.warn('⚠️ [Phase 7] 漸變降低音樂音量失敗:', err);
                 }
@@ -13921,7 +14114,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
                 // 語音播放期間再確認背景音樂維持極低
                 if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    window._phase7WakeupMusic.volume = CAPTAIN_TTS.duckMusicVolume;
+                    await setPhase7MusicVolume(CAPTAIN_TTS.duckMusicVolume, 0);
                 }
                 
                 // 如果語音A已預先生成，使用 playCachedTts 播放
@@ -13948,7 +14141,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     const currentVolume = window._phase7WakeupMusic.volume;
                     console.log(`🔉 [Phase 7] 語音A播放完成，漸變恢復音樂音量（${currentVolume.toFixed(2)} → 0.6）`);
                     try {
-                        fadeVolume(window._phase7WakeupMusic, 0.6, 2000).catch(err => {
+                        setPhase7MusicVolume(0.6, 2000).catch(err => {
                             console.warn('⚠️ 漸變恢復音樂音量失敗:', err);
                         });
                     } catch (err) {
@@ -14114,6 +14307,39 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     window._landingFeedbackPromise = showFlightFeedback(finalDestination);
                 }
             }
+
+            // 無論影片成功、跳過或丟錯，語音 B 前都必須確定背景音已停止。
+            const remainingPhase7Music = window._phase7WakeupMusic;
+            const remainingPlaybackId = remainingPhase7Music && remainingPhase7Music.playbackId;
+            let stoppedRemainingMusic = true;
+            phase7MusicGeneration.cancel();
+            if (remainingPhase7Music && remainingPhase7Music.source !== 'pi') {
+                try {
+                    remainingPhase7Music.pause();
+                    remainingPhase7Music.currentTime = 0;
+                } catch (_) {}
+                window._phase7WakeupMusic = null;
+            } else {
+                stoppedRemainingMusic = await stopLocalSoundViaPi({
+                    throughId: remainingPlaybackId,
+                    scope: 'background',
+                    retries: 2
+                });
+            }
+            window._landingAudioStopFailed = !stoppedRemainingMusic;
+            if (!stoppedRemainingMusic) {
+                console.error('❌ [Phase 7] 無法確認背景音停止，將略過語音 B 並排程最後一次重試');
+                setTimeout(async () => {
+                    const retryStopped = await stopLocalSoundViaPi({
+                        throughId: remainingPlaybackId,
+                        scope: 'background',
+                        retries: 2
+                    });
+                    if (retryStopped) {
+                        window._landingAudioStopFailed = false;
+                    }
+                }, 200);
+            }
             
             // ============================================================================
             // 步驟 6: 等情緒表（使用者操作）；圖片／文字B 繼續背景跑
@@ -14194,35 +14420,29 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 await showLandingCountryInfo(finalDestination, destinationInfo);
                 
                 // 播放已預先生成的語音B
-                console.log('🔊 [Phase 7] 播放語音B（新城市介紹）...');
-                
-                // 🔧 改進：在播放語音B之前，淡出背景音樂（3秒）
-                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    console.log('🔉 [Phase 7] 開始淡出背景音樂（3秒）...');
-                    fadeOutAudio(window._phase7WakeupMusic, 3000).catch(err => {
-                        console.warn('⚠️ 淡出背景音樂失敗:', err);
-                    });
-                }
-                
-                // 如果語音B已預先生成，使用 playCachedTts 播放
-                if (window._phase7VoiceBAudioId) {
-                    console.log('✅ [Phase 7] 使用已預先生成的語音B，audio_id:', window._phase7VoiceBAudioId);
-                    await playCachedTts(window._phase7VoiceBAudioId);
-                    console.log('✅ 語音B播放完成');
+                if (window._landingAudioStopFailed) {
+                    console.error('❌ [Phase 7] 背景音尚未確認停止，略過語音 B（文字仍顯示）');
                 } else {
-                    // 如果預先生成失敗，回退到 playAnnouncement
-                    console.warn('⚠️ [Phase 7] 語音B未預先生成，使用 playAnnouncement 生成並播放');
-                    const welcomeMessage = window._phase7WelcomeMessage || 
-                        `歡迎來到${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
-                    await playAnnouncement(welcomeMessage, 'zh-TW', {
-                        isLanding: true,
-                        gender: CAPTAIN_TTS.gender,
-                        rate: CAPTAIN_TTS.landingRate,
-                        pitch: CAPTAIN_TTS.landingPitch,
-                        volume: 1.0,
-                        waitForCompletion: true
-                    });
-                    console.log('✅ 語音B播放完成');
+                    console.log('🔊 [Phase 7] 播放語音B（新城市介紹）...');
+                    if (window._phase7VoiceBAudioId) {
+                        console.log('✅ [Phase 7] 使用已預先生成的語音B，audio_id:', window._phase7VoiceBAudioId);
+                        await playCachedTts(window._phase7VoiceBAudioId);
+                        console.log('✅ 語音B播放完成');
+                    } else {
+                        // 如果預先生成失敗，回退到 playAnnouncement
+                        console.warn('⚠️ [Phase 7] 語音B未預先生成，使用 playAnnouncement 生成並播放');
+                        const welcomeMessage = window._phase7WelcomeMessage ||
+                            `歡迎來到${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
+                        await playAnnouncement(welcomeMessage, 'zh-TW', {
+                            isLanding: true,
+                            gender: CAPTAIN_TTS.gender,
+                            rate: CAPTAIN_TTS.landingRate,
+                            pitch: CAPTAIN_TTS.landingPitch,
+                            volume: 1.0,
+                            waitForCompletion: true
+                        });
+                        console.log('✅ 語音B播放完成');
+                    }
                 }
                 
                 // 🔧 改進：保留 window._phase7WelcomeMessage 供 Phase 0 使用，不立即刪除

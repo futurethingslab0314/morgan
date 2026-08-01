@@ -129,6 +129,102 @@
     return remainingMs > 300000 ? 5 : 6;
   }
 
+  function buildRestorePlan(remainingMs) {
+    if (remainingMs > 300000) {
+      return {
+        phase: 5,
+        descentDelayMs: remainingMs - 300000,
+        overdue: false
+      };
+    }
+
+    return {
+      phase: 6,
+      descentDelayMs: null,
+      overdue: remainingMs <= 0
+    };
+  }
+
+  function createSingleFlight() {
+    var inFlight = null;
+
+    return {
+      run: function (factory) {
+        if (inFlight) {
+          return inFlight;
+        }
+
+        try {
+          inFlight = Promise.resolve(factory());
+        } catch (error) {
+          inFlight = Promise.reject(error);
+        }
+
+        var current = inFlight;
+        inFlight = current.finally(function () {
+          if (inFlight === wrapped) {
+            inFlight = null;
+          }
+        });
+        var wrapped = inFlight;
+        return wrapped;
+      }
+    };
+  }
+
+  function createGenerationGuard() {
+    var generation = 0;
+
+    return {
+      next: function () {
+        generation += 1;
+        return generation;
+      },
+      cancel: function () {
+        generation += 1;
+      },
+      isCurrent: function (token) {
+        return token === generation;
+      }
+    };
+  }
+
+  function isSuccessfulAudioStopResponse(response, data) {
+    return Boolean(response && response.ok && data && data.success === true);
+  }
+
+  function createPlaybackIdGenerator(now) {
+    var getNow = now || Date.now;
+    var lastTimestamp = null;
+    var sequence = 0;
+    var highest = 0;
+
+    return {
+      next: function () {
+        var timestamp = Number(getNow());
+        if (!Number.isFinite(timestamp)) {
+          timestamp = Date.now();
+        }
+        timestamp = Math.floor(timestamp);
+        if (timestamp === lastTimestamp) {
+          sequence += 1;
+        } else {
+          lastTimestamp = timestamp;
+          sequence = 0;
+        }
+        var candidate = timestamp * 1000 + sequence;
+        if (candidate <= highest) {
+          candidate = highest + 1;
+        }
+        highest = candidate;
+        return candidate;
+      },
+      highest: function () {
+        return highest;
+      }
+    };
+  }
+
   function canTriggerMeal(ctx) {
     var readyAt = ctx.readyAt === undefined ? 0 : ctx.readyAt;
 
@@ -242,6 +338,11 @@
     isPreparationTransition: isPreparationTransition,
     planPreparationStateTransition: planPreparationStateTransition,
     restoreTarget: restoreTarget,
+    buildRestorePlan: buildRestorePlan,
+    createSingleFlight: createSingleFlight,
+    createGenerationGuard: createGenerationGuard,
+    isSuccessfulAudioStopResponse: isSuccessfulAudioStopResponse,
+    createPlaybackIdGenerator: createPlaybackIdGenerator,
     canTriggerMeal: canTriggerMeal,
     createTimerRegistry: createTimerRegistry,
     createLogger: createLogger,

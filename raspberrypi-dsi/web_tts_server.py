@@ -11,6 +11,8 @@
 
 import argparse
 import logging
+import threading
+import time
 from flask import Flask, request, jsonify, make_response
 try:
     from flask_cors import CORS
@@ -22,6 +24,242 @@ from pathlib import Path
 from audio_manager import get_audio_manager
 
 
+class BackgroundAudioController:
+    """以獨立 pygame Channel 控制可立即回應、可調音量的背景音樂。"""
+
+    CANCELLED = "cancelled"
+
+    def __init__(
+        self,
+        mixer,
+        channel_index=1,
+        timer_factory=threading.Timer,
+        thread_factory=threading.Thread,
+        sleep=time.sleep,
+    ):
+        self._mixer = mixer
+        self._channel_index = channel_index
+        self._timer_factory = timer_factory
+        self._thread_factory = thread_factory
+        self._sleep = sleep
+        self._lock = threading.RLock()
+        self._channel = None
+        self._sound = None
+        self._stop_timer = None
+        self._generation = 0
+        self._fade_generation = 0
+        self._volume = 1.0
+        self._cancelled_through_id = 0
+        self._latest_playback_id = 0
+        self._current_playback_id = None
+
+    @property
+    def is_playing(self):
+        with self._lock:
+            return self._sound is not None
+
+    @property
+    def current_playback_id(self):
+        with self._lock:
+            return self._current_playback_id
+
+    @property
+    def latest_playback_id(self):
+        with self._lock:
+            return self._latest_playback_id
+
+    @staticmethod
+    def _clamp(volume):
+        try:
+            return max(0.0, min(1.0, float(volume)))
+        except (TypeError, ValueError):
+            return 1.0
+
+    @staticmethod
+    def _coerce_playback_id(value):
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return 0
+
+    def _stop_current_locked(self):
+        self._fade_generation += 1
+        if self._stop_timer is not None:
+            self._stop_timer.cancel()
+            self._stop_timer = None
+        if self._channel is not None and self._sound is not None:
+            self._channel.stop()
+        self._sound = None
+        self._current_playback_id = None
+
+    def _stop_locked(self):
+        self._generation += 1
+        self._stop_current_locked()
+
+    def stop(self, through_id=None):
+        with self._lock:
+            threshold = self._coerce_playback_id(through_id)
+            if through_id is None:
+                threshold = max(
+                    self._cancelled_through_id,
+                    self._latest_playback_id,
+                    self._current_playback_id or 0,
+                )
+            self._cancelled_through_id = max(self._cancelled_through_id, threshold)
+
+            if self._latest_playback_id <= threshold:
+                self._generation += 1
+
+            stopped = False
+            if (
+                self._current_playback_id is not None
+                and self._current_playback_id <= threshold
+            ):
+                self._stop_current_locked()
+                stopped = True
+
+            return {
+                "through_id": threshold,
+                "stopped": stopped,
+                "cancelled": True,
+            }
+
+    def reserve(self, playback_id=None):
+        """保留最新播放世代，並使所有較舊載入失效。"""
+        with self._lock:
+            requested_id = self._coerce_playback_id(playback_id)
+            if playback_id is None:
+                requested_id = max(
+                    self._cancelled_through_id,
+                    self._latest_playback_id,
+                ) + 1
+            if (
+                requested_id <= self._cancelled_through_id
+                or requested_id <= self._latest_playback_id
+            ):
+                return self.CANCELLED
+
+            self._generation += 1
+            self._stop_current_locked()
+            self._latest_playback_id = requested_id
+            return self._generation
+
+    def play(
+        self,
+        path,
+        volume=1.0,
+        max_duration=None,
+        generation=None,
+        playback_id=None,
+    ):
+        requested_id = self._coerce_playback_id(playback_id)
+        if generation is None:
+            token = self.reserve(playback_id=playback_id)
+            if token == self.CANCELLED:
+                return self.CANCELLED
+            if playback_id is None:
+                with self._lock:
+                    requested_id = self._latest_playback_id
+        else:
+            token = generation
+
+        with self._lock:
+            if (
+                token != self._generation
+                or requested_id <= self._cancelled_through_id
+                or requested_id != self._latest_playback_id
+            ):
+                return self.CANCELLED
+            needs_init = not self._mixer.get_init()
+
+        if needs_init:
+            self._mixer.init()
+
+        # Sound 會先把檔案完整載入；回傳後即可安全刪除下載暫存檔。
+        sound = self._mixer.Sound(str(path))
+
+        with self._lock:
+            if (
+                token != self._generation
+                or requested_id <= self._cancelled_through_id
+                or requested_id != self._latest_playback_id
+            ):
+                return self.CANCELLED
+            self._volume = self._clamp(volume)
+            channel = self._mixer.Channel(self._channel_index)
+            channel.set_volume(self._volume)
+            # channel.play 前仍持有鎖並再次驗證，stop/新播放不可能插隊。
+            if (
+                token != self._generation
+                or requested_id <= self._cancelled_through_id
+                or requested_id != self._latest_playback_id
+            ):
+                return self.CANCELLED
+            channel.play(sound)
+            self._sound = sound
+            self._channel = channel
+            self._current_playback_id = requested_id
+
+            try:
+                max_seconds = float(max_duration) if max_duration is not None else 0
+            except (TypeError, ValueError):
+                max_seconds = 0
+            if max_seconds > 0:
+                def stop_if_current():
+                    with self._lock:
+                        if token == self._generation:
+                            self._stop_locked()
+
+                self._stop_timer = self._timer_factory(max_seconds, stop_if_current)
+                self._stop_timer.daemon = True
+                self._stop_timer.start()
+        return True
+
+    def set_volume(self, volume, fade_ms=0):
+        target = self._clamp(volume)
+        try:
+            duration = max(0.0, float(fade_ms) / 1000.0)
+        except (TypeError, ValueError):
+            duration = 0
+
+        with self._lock:
+            if self._sound is None or self._channel is None:
+                self._volume = target
+                return target
+            self._fade_generation += 1
+            fade_generation = self._fade_generation
+            start = self._volume
+            channel = self._channel
+
+        if duration <= 0:
+            with self._lock:
+                if fade_generation == self._fade_generation and self._sound is not None:
+                    channel.set_volume(target)
+                    self._volume = target
+                    if target == 0:
+                        self._stop_locked()
+            return target
+
+        def fade():
+            steps = max(1, min(100, int(duration / 0.05)))
+            for step in range(1, steps + 1):
+                with self._lock:
+                    if fade_generation != self._fade_generation or self._sound is None:
+                        return
+                    current = start + (target - start) * (step / steps)
+                    channel.set_volume(current)
+                    self._volume = current
+                self._sleep(duration / steps)
+            if target == 0:
+                with self._lock:
+                    if fade_generation == self._fade_generation:
+                        self._stop_locked()
+
+        worker = self._thread_factory(target=fade, daemon=True)
+        worker.start()
+        return target
+
+
 def _cors_headers(resp):
     """無論有無 flask-cors，都補齊瀏覽器從 Vercel 打本機所需的 CORS。"""
     resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -31,7 +269,7 @@ def _cors_headers(resp):
     return resp
 
 
-def create_app():
+def create_app(audio_manager=None, background_controller=None, pygame_module=None):
     app = Flask(__name__)
     # 啟用 CORS，允許從 https 網站呼叫 http://127.0.0.1:5005
     if CORS_AVAILABLE:
@@ -43,7 +281,15 @@ def create_app():
             methods=["GET", "POST", "OPTIONS"],
         )
     logger = logging.getLogger("pi-tts-server")
-    audio = get_audio_manager()
+    audio = audio_manager or get_audio_manager()
+    if pygame_module is None:
+        try:
+            import pygame as pygame_module
+        except Exception:
+            pygame_module = None
+    background_audio = background_controller
+    if background_audio is None and pygame_module is not None:
+        background_audio = BackgroundAudioController(pygame_module.mixer)
 
     @app.after_request
     def add_cors(resp):
@@ -185,17 +431,57 @@ def create_app():
         """立刻停止目前喇叭播放（pygame / 背景音檔）。重整頁面或飛機餐結束時用。"""
         if request.method == "OPTIONS":
             return _cors_headers(make_response("", 204))
+        data = request.get_json(force=True, silent=True) or {}
+        through_id = data.get("through_id")
+        scope = data.get("scope", "all")
+        if scope not in ("background", "all"):
+            return jsonify({
+                "success": False,
+                "error": "scope must be 'background' or 'all'",
+            }), 400
+        errors = {}
+        stop_result = {
+            "through_id": through_id,
+            "stopped": False,
+            "cancelled": False,
+        }
         try:
-            try:
-                import pygame
-                if pygame.mixer.get_init():
-                    pygame.mixer.music.stop()
-            except Exception as e:
-                logger.warning("audio/stop pygame stop: %s", e)
-            logger.info("audio/stop OK")
-            return jsonify({"success": True})
+            if background_audio is not None:
+                stop_result = background_audio.stop(through_id=through_id)
         except Exception as e:
-            logger.exception("/audio/stop error")
+            errors["background"] = str(e)
+            logger.exception("/audio/stop background error")
+        if scope == "all":
+            try:
+                if pygame_module is not None and pygame_module.mixer.get_init():
+                    pygame_module.mixer.music.stop()
+            except Exception as e:
+                errors["music"] = str(e)
+                logger.exception("/audio/stop mixer.music error")
+        if errors:
+            return jsonify({
+                "success": False,
+                "errors": errors,
+                "scope": scope,
+                **stop_result,
+            }), 500
+        logger.info("audio/stop OK")
+        return jsonify({"success": True, "scope": scope, **stop_result})
+
+    @app.route("/audio/volume", methods=["POST"])
+    def audio_volume():
+        """只調整背景 Channel，不影響 mixer.music 上的 TTS／一次性音效。"""
+        try:
+            if background_audio is None:
+                return jsonify({"success": False, "error": "background audio unavailable"}), 503
+            data = request.get_json(force=True, silent=True) or {}
+            applied = background_audio.set_volume(
+                data.get("volume", 1.0),
+                fade_ms=data.get("fade_ms", 0),
+            )
+            return jsonify({"success": True, "volume": applied})
+        except Exception as e:
+            logger.exception("/audio/volume error")
             return jsonify({"success": False, "error": str(e)}), 500
 
     @app.route("/audio/play_url", methods=["POST"])
@@ -214,6 +500,8 @@ def create_app():
             rel_path = (data.get("path") or "").strip().lstrip("./")
             max_duration = data.get("max_duration")
             volume = data.get("volume", 1.0)
+            background = data.get("background") is True
+            playback_id = data.get("playback_id")
 
             if not url and not rel_path:
                 return jsonify({"success": False, "error": "url or path is required"}), 400
@@ -227,6 +515,21 @@ def create_app():
                 if str(candidate).startswith(str(project_root)) and candidate.exists():
                     local_file = candidate
                     logger.info("audio/play_url 使用本機檔案: %s", candidate)
+
+            background_generation = None
+            if background:
+                if background_audio is None:
+                    return jsonify({"success": False, "error": "background audio unavailable"}), 503
+                # 在任何下載或 Sound 載入前保留世代，讓 stop/較新請求可取消本次。
+                background_generation = background_audio.reserve(playback_id=playback_id)
+                if background_generation == BackgroundAudioController.CANCELLED:
+                    return jsonify({
+                        "success": False,
+                        "cancelled": True,
+                        "playback_id": playback_id,
+                    }), 409
+                if playback_id is None:
+                    playback_id = background_audio.latest_playback_id
 
             tmp_path = None
             play_path = local_file
@@ -278,13 +581,31 @@ def create_app():
 
                     return bool(audio.play_audio_file_direct(path_obj))
 
-                played = _play_with_limit(play_path)
+                if background:
+                    played = background_audio.play(
+                        play_path,
+                        volume=volume,
+                        max_duration=max_duration,
+                        generation=background_generation,
+                        playback_id=playback_id,
+                    )
+                else:
+                    played = _play_with_limit(play_path)
+                if played == BackgroundAudioController.CANCELLED:
+                    return jsonify({
+                        "success": False,
+                        "cancelled": True,
+                        "playback_id": playback_id,
+                    }), 409
                 if not played:
                     return jsonify({"success": False, "error": "audio playback failed"}), 500
 
                 return jsonify({
                     "success": True,
                     "volume": volume,
+                    "background": background,
+                    "playback_id": playback_id,
+                    "cancelled": False,
                     "source": "local" if local_file else "download",
                     "truncated": bool(max_duration)
                 })

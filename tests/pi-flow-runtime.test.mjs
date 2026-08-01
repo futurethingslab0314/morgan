@@ -12,6 +12,11 @@ const {
   isPreparationTransition,
   planPreparationStateTransition,
   restoreTarget,
+  buildRestorePlan,
+  createSingleFlight,
+  createGenerationGuard,
+  createPlaybackIdGenerator,
+  isSuccessfulAudioStopResponse,
   canTriggerMeal,
   createTimerRegistry,
   createLogger,
@@ -201,6 +206,110 @@ test('restoreTarget selects phase 5 only above five minutes', () => {
   assert.equal(restoreTarget(-1), 6);
 });
 
+test('buildRestorePlan schedules phase 5 only above five minutes', () => {
+  assert.deepEqual(buildRestorePlan(300001), {
+    phase: 5,
+    descentDelayMs: 1,
+    overdue: false,
+  });
+});
+
+test('buildRestorePlan enters phase 6 during the final five minutes', () => {
+  assert.deepEqual(buildRestorePlan(300000), {
+    phase: 6,
+    descentDelayMs: null,
+    overdue: false,
+  });
+  assert.deepEqual(buildRestorePlan(1), {
+    phase: 6,
+    descentDelayMs: null,
+    overdue: false,
+  });
+});
+
+test('buildRestorePlan marks zero and negative remaining time overdue in phase 6', () => {
+  assert.deepEqual(buildRestorePlan(0), {
+    phase: 6,
+    descentDelayMs: null,
+    overdue: true,
+  });
+  assert.deepEqual(buildRestorePlan(-1), {
+    phase: 6,
+    descentDelayMs: null,
+    overdue: true,
+  });
+});
+
+test('createSingleFlight shares an in-flight promise and clears after settlement', async () => {
+  const singleFlight = createSingleFlight();
+  let calls = 0;
+  let resolveFirst;
+  const firstFactory = () => {
+    calls += 1;
+    return new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+  };
+
+  const first = singleFlight.run(firstFactory);
+  const concurrent = singleFlight.run(() => {
+    calls += 1;
+    return Promise.resolve('unexpected');
+  });
+
+  assert.equal(concurrent, first);
+  assert.equal(calls, 1);
+  resolveFirst('first');
+  assert.equal(await first, 'first');
+
+  const later = singleFlight.run(() => {
+    calls += 1;
+    return Promise.resolve('later');
+  });
+  assert.notEqual(later, first);
+  assert.equal(await later, 'later');
+  assert.equal(calls, 2);
+});
+
+test('createSingleFlight clears after rejection', async () => {
+  const singleFlight = createSingleFlight();
+  const failed = singleFlight.run(() => Promise.reject(new Error('failed')));
+
+  await assert.rejects(failed, /failed/);
+  assert.equal(await singleFlight.run(() => Promise.resolve('recovered')), 'recovered');
+});
+
+test('generation guard invalidates older work on newer start and cancel', () => {
+  const guard = createGenerationGuard();
+  const first = guard.next();
+  assert.equal(guard.isCurrent(first), true);
+
+  const second = guard.next();
+  assert.equal(guard.isCurrent(first), false);
+  assert.equal(guard.isCurrent(second), true);
+
+  guard.cancel();
+  assert.equal(guard.isCurrent(second), false);
+});
+
+test('audio stop success requires both HTTP and payload success', () => {
+  assert.equal(isSuccessfulAudioStopResponse({ ok: true }, { success: true }), true);
+  assert.equal(isSuccessfulAudioStopResponse({ ok: false }, { success: true }), false);
+  assert.equal(isSuccessfulAudioStopResponse({ ok: true }, { success: false }), false);
+  assert.equal(isSuccessfulAudioStopResponse({ ok: true }, null), false);
+});
+
+test('playback ID generator uses millisecond base and stays increasing', () => {
+  const values = [100, 100, 99, 101];
+  const ids = createPlaybackIdGenerator(() => values.shift());
+
+  assert.equal(ids.next(), 100000);
+  assert.equal(ids.next(), 100001);
+  assert.equal(ids.next(), 100002);
+  assert.equal(ids.next(), 101000);
+  assert.equal(ids.highest(), 101000);
+});
+
 test('canTriggerMeal accepts a qualifying position change at ready time', () => {
   assert.equal(canTriggerMeal({
     phase: 5,
@@ -375,4 +484,131 @@ test('preparation navigation does not preassign currentState before switchState'
     outsideSwitchState,
     /currentState\s*=\s*State\.(?:TIMER|ANGLE|DESTINATION|READY_TO_FLY)\s*;[\s\S]{0,200}?switchState\s*\(/,
   );
+});
+
+test('restore wiring uses the tested restore plan and shared restore promise', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+
+  assert.match(html, /MorganRuntime\.buildRestorePlan\(remainingTime\)/);
+  assert.match(html, /const appRestoreSingleFlight = MorganRuntime\.createSingleFlight\(\)/);
+  assert.match(html, /async function ensureFlightRestored\(\)/);
+  assert.match(html, /await ensureFlightRestored\(\)/);
+  assert.match(html, /document\.documentElement\.classList\.add\('restoring-flight'\)/);
+  assert.match(html, /\.restoring-flight \.info-bar\s*\{\s*visibility:\s*hidden/);
+  const domStart = html.indexOf("document.addEventListener('DOMContentLoaded'");
+  const domEnd = html.indexOf('// 處理下一步按鈕點擊', domStart);
+  assert.doesNotMatch(html.slice(domStart, domEnd), /stopLocalSoundViaPi\(\)/);
+  const restoreStart = html.indexOf('async function restoreFlightState()');
+  const restoreEnd = html.indexOf('async function saveSleepRecord', restoreStart);
+  const restoreSource = html.slice(restoreStart, restoreEnd);
+  assert.equal((restoreSource.match(/stopLocalSoundViaPi\(\{/g) || []).length, 1);
+  const stopIndex = restoreSource.indexOf("await stopLocalSoundViaPi({ scope: 'all', retries: 2 })");
+  const switchIndex = restoreSource.indexOf('switchToPhase(restorePlan.phase');
+  assert.ok(stopIndex >= 0);
+  assert.ok(switchIndex > stopIndex);
+  assert.match(restoreSource, /audioStopFailed:\s*true/);
+});
+
+test('Pi audio wiring sends background requests and exposes volume control', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+  const playStart = html.indexOf('async function playLocalSoundViaPi(');
+  const playEnd = html.indexOf('async function stopLocalSoundViaPi()', playStart);
+  const playSource = html.slice(playStart, playEnd);
+
+  assert.match(playSource, /const isBackground = options\.background === true/);
+  assert.match(playSource, /playback_id:\s*playbackId/);
+  assert.match(html, /async function setLocalBackgroundVolume\(volume,\s*fadeMs\s*=\s*0\)/);
+  assert.match(html, /TTS_LOCAL_BASE \+ '\/audio\/volume'/);
+  assert.match(html, /playLocalSoundViaPi\(localPath,\s*60,\s*0\.6,\s*\{\s*background:\s*true\s*\}\)/);
+  assert.match(html, /playLocalSoundViaPi\(selectedMusic,\s*null,\s*0\.6,\s*\{\s*background:\s*true\s*\}\)/);
+  const stopStart = html.indexOf('async function stopLocalSoundViaPi({');
+  const stopEnd = html.indexOf('// 頁面重整／關閉', stopStart);
+  const stopSource = html.slice(stopStart, stopEnd);
+  assert.match(stopSource, /async function stopLocalSoundViaPi\(\{\s*throughId/);
+  assert.match(stopSource, /through_id:\s*effectiveThroughId/);
+  assert.match(stopSource, /scope:\s*scope/);
+  assert.match(stopSource, /scope\s*=\s*'all'/);
+  assert.match(stopSource, /retries/);
+  assert.match(stopSource, /await response\.json\(\)\.catch/);
+  assert.match(stopSource, /MorganRuntime\.isSuccessfulAudioStopResponse\(response,\s*data\)/);
+  assert.doesNotMatch(stopSource, /phase7MusicGeneration\.cancel/);
+  assert.match(html, /stopLocalSoundViaPi\(\{\s*scope:\s*'all',\s*keepalive:\s*true\s*\}\)/);
+  assert.doesNotMatch(html, /addEventListener\('beforeunload'.*stopLocalSoundViaPi/);
+  assert.doesNotMatch(
+    html,
+    /stopLocalSoundViaPi\([^;]*\);?\s*window\._(?:phase7WakeupMusic|mealMusicViaPi|piAudioPlaying)\s*=/,
+  );
+});
+
+test('Phase 7 wakeup wiring uses single-flight and explicit Pi references', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+  const start = html.indexOf('async function playWakeupMusicForPhase7()');
+  const end = html.indexOf('// 記錄深夜服務事件', start);
+  const source = html.slice(start, end);
+
+  assert.match(html, /const phase7MusicSingleFlight = MorganRuntime\.createSingleFlight\(\)/);
+  assert.match(html, /const phase7MusicGeneration = MorganRuntime\.createGenerationGuard\(\)/);
+  assert.match(source, /phase7MusicSingleFlight\.run/);
+  assert.match(source, /try\s*\{/);
+  assert.match(source, /catch\s*\(/);
+  assert.match(source, /finally\s*\{/);
+  assert.match(source, /phase7MusicGeneration\.isCurrent\(startToken\)/);
+  assert.match(source, /playbackId/);
+  assert.match(source, /stopLocalSoundViaPi\(\{\s*throughId:\s*playbackId,\s*scope:\s*'background'/);
+  assert.match(source, /let ownedRef = startingRef/);
+  assert.match(source, /let startCompleted = false/);
+  assert.match(source, /if \(!startCompleted && window\._phase7WakeupMusic === ownedRef\)/);
+  assert.match(source, /source:\s*'pi'[\s\S]*paused:\s*false[\s\S]*playbackId/);
+  assert.doesNotMatch(source, /pause\(\)\s*\{\s*\}/);
+});
+
+test('Phase 7 browser volume applies zero-duration changes immediately', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+  const start = html.indexOf('async function setPhase7MusicVolume(');
+  const end = html.indexOf('// Phase 7／緊急降落', start);
+  const source = html.slice(start, end);
+
+  assert.match(source, /if \(duration <= 0\) \{\s*music\.volume = clamped;\s*return;\s*\}/);
+});
+
+test('landing wiring fades and explicitly stops background audio before voice B', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+  const landingVideoStart = html.indexOf('async function playLandingVideoAndShowImage(');
+  const landingVideoEnd = html.indexOf('// 驗證尺寸', landingVideoStart);
+  const landingVideoSource = html.slice(landingVideoStart, landingVideoEnd);
+
+  assert.match(landingVideoSource, /setPhase7MusicVolume\(0,\s*8000\)/);
+
+  const landingFlowStart = html.indexOf('await playLandingVideoAndShowImage(');
+  const voiceBStart = html.indexOf('// 步驟 6: 等情緒表', landingFlowStart);
+  const landingFlowSource = html.slice(landingFlowStart, voiceBStart);
+  assert.match(landingFlowSource, /await stopLocalSoundViaPi\(\{[\s\S]*scope:\s*'background'[\s\S]*retries:\s*2/);
+  assert.match(landingFlowSource, /window\._landingAudioStopFailed = !stoppedRemainingMusic/);
+  assert.match(landingFlowSource, /setTimeout\(async \(\) =>/);
+
+  const voiceBFlowStart = html.indexOf('// 顯示文字B並播放語音B', voiceBStart);
+  const voiceBFlowEnd = html.indexOf('// 步驟 8: 保存到 Firebase', voiceBFlowStart);
+  const voiceBSource = html.slice(voiceBFlowStart, voiceBFlowEnd);
+  assert.match(voiceBSource, /if \(window\._landingAudioStopFailed\)/);
+});
+
+test('stop callers use all scope only for lifecycle resets', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+  const conditionalCalls = [...html.matchAll(/stopLocalSoundViaPi\(\{([\s\S]*?)\}\)/g)]
+    .map((match) => match[1])
+    .filter((body) => /\bthroughId\s*:/.test(body));
+  assert.ok(conditionalCalls.length > 0);
+  for (const body of conditionalCalls) {
+    assert.match(body, /scope:\s*'background'/);
+  }
+
+  const resetStart = html.indexOf('function resetFlightState()');
+  const resetEnd = html.indexOf('// 設置旋鈕事件監聽器', resetStart);
+  const resetSource = html.slice(resetStart, resetEnd);
+  assert.match(resetSource, /stopLocalSoundViaPi\(\{\s*scope:\s*'all'/);
+
+  const mealStart = html.indexOf('async function triggerMidnightService()');
+  const mealEnd = html.indexOf('async function generateMidnightServiceImage()', mealStart);
+  const mealSource = html.slice(mealStart, mealEnd);
+  assert.match(mealSource, /throughId:\s*window\._mealMusicPlaybackId,\s*scope:\s*'background'/);
 });
