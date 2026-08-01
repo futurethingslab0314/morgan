@@ -3071,13 +3071,15 @@
             return false;
         }
 
-        // 機長 TTS：gpt-4o-mini-tts + ash，較自然的男聲
+        // 機長 TTS：onyx + 溫柔陪伴提示詞（使用者實聽偏好）
         const CAPTAIN_TTS = {
             gender: 'male',
-            voice: 'ash',
+            voice: 'onyx',
             instructions:
-                'Speak as a calm, warm male airline captain in Mandarin Chinese. ' +
-                'Natural pacing and intonation, not robotic or monotonous.',
+                'Speak Mandarin Chinese in a soft, gentle, reassuring male voice. ' +
+                'Sound like a calm companion quietly guiding someone to sleep, not a formal airport PA or textbook reader. ' +
+                'Low energy, warm and intimate, slight smile, natural conversational pacing with soft pauses. ' +
+                'Avoid theatrical projection, stiff formality, exaggerated clarity, or announcer cadence.',
             takeoffSpeed: 1.0,
             takeoffRate: 1.0,
             takeoffPitch: 0.95,
@@ -4700,7 +4702,7 @@
                                 }).catch(err => {
                                     console.warn('⚠️ [氣候確認] TTS 生成錯誤:', err);
                                 });
-                                console.log('✅ 起飛語音文字已準備（ash，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
+                                console.log('✅ 起飛語音文字已準備（onyx，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
                             } else {
                                 console.warn('⚠️ 起飛語音文字生成失敗');
                             }
@@ -4751,9 +4753,9 @@
                         }
                         
                         if (preparedAudioId) {
-                            console.log('✅ 起飛 TTS 已在氣候確認後準備完成（' + preparedAnnouncementGender + ' / ash）');
+                            console.log('✅ 起飛 TTS 已在氣候確認後準備完成（' + preparedAnnouncementGender + ' / onyx）');
                         } else if (preparedAnnouncement) {
-                            console.log('⏳ 起飛 TTS 正在背景生成中（ash）...');
+                            console.log('⏳ 起飛 TTS 正在背景生成中（onyx）...');
                         }
                         
                         // 切換到準備起飛狀態
@@ -8032,10 +8034,10 @@
             try {
                 // 🔧 改進：根據性別選擇 OpenAI 語音
                 const voiceMap = {
-                    'male': CAPTAIN_TTS.voice || 'ash',
+                    'male': CAPTAIN_TTS.voice || 'onyx',
                     'female': 'nova'
                 };
-                const selectedVoice = options.voice || voiceMap[gender] || CAPTAIN_TTS.voice || 'ash';
+                const selectedVoice = options.voice || voiceMap[gender] || CAPTAIN_TTS.voice || 'onyx';
                 
                 // rate → OpenAI speed（正常語速約 1.0）
                 const openaiSpeed = Math.max(0.85, Math.min(1.15, rate));
@@ -8305,10 +8307,10 @@
             const TTS_BASE = 'http://127.0.0.1:5005';
             try {
                 const voiceMap = {
-                    'male': CAPTAIN_TTS.voice || 'ash',
+                    'male': CAPTAIN_TTS.voice || 'onyx',
                     'female': 'nova'
                 };
-                const selectedVoice = voiceMap[gender] || CAPTAIN_TTS.voice || 'ash';
+                const selectedVoice = voiceMap[gender] || CAPTAIN_TTS.voice || 'onyx';
                 
                 console.log(`🎵 呼叫 /tts/generate 預先生成 TTS 音檔（${gender}/${selectedVoice}，語速 ${speed}）...`);
                 const response = await fetch(TTS_BASE + '/tts/generate', {

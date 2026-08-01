@@ -376,13 +376,13 @@ def create_app(
         text = (data.get("text") or "").strip()
         language_code = (data.get("languageCode") or "zh").strip()
         voice = (data.get("voice") or "").strip() or None
-        # 允許 gender 別名：male → ash，female → nova
+        # 允許 gender 別名：male → onyx，female → nova
         gender = (data.get("gender") or "").strip().lower()
         if not voice and gender:
-            voice = "ash" if gender == "male" else "nova" if gender == "female" else None
-        # 機長廣播預設男聲 ash（前端若漏傳，也不再落到舊的 onyx）
+            voice = "onyx" if gender == "male" else "nova" if gender == "female" else None
+        # 機長廣播預設男聲 onyx
         if not voice:
-            voice = "ash"
+            voice = "onyx"
         speed = data.get("speed", None)
         instructions = (data.get("instructions") or "").strip() or None
         return text, language_code, voice, speed, instructions

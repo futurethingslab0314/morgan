@@ -69,12 +69,14 @@ TTS_CONFIG = {
     # OpenAI TTS 配置
     'openai_api_key': os.getenv('OPENAI_API_KEY', ''),  # 從環境變數讀取 OpenAI API 金鑰
     'openai_model': 'gpt-4o-mini-tts',  # 可帶 instructions 的自然語音模型
-    'openai_voice': 'ash',  # 較自然的男聲機長預設
-    'openai_speed': 1.0,  # 0.25 到 4.0
+    'openai_voice': 'onyx',  # 實聽偏好：穩、溫、適合機長
+    'openai_speed': 1.0,  # 正常語速；溫柔感交給 instructions
     # 僅 gpt-4o-mini-tts 系列有效；tts-1 / tts-1-hd 會忽略
     'openai_instructions': (
-        'Speak as a calm, warm male airline captain in Mandarin Chinese. '
-        'Natural pacing and intonation, not robotic or monotonous.'
+        'Speak Mandarin Chinese in a soft, gentle, reassuring male voice. '
+        'Sound like a calm companion quietly guiding someone to sleep, not a formal airport PA or textbook reader. '
+        'Low energy, warm and intimate, slight smile, natural conversational pacing with soft pauses. '
+        'Avoid theatrical projection, stiff formality, exaggerated clarity, or announcer cadence.'
     ),
     
     # Nova 整合模式
