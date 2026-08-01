@@ -6205,6 +6205,12 @@
 
         // 播放降落影片（landing.mp4 一次），結束後無縫切換到降落圖片
         async function playLandingVideoAndShowImage(landingImagePromise, finalDestination = null) {
+            window._landingEffectPlaybackId = null;
+            window._landingAudioStopFailed = false;
+            const landingResult = {
+                landingEffectPlaybackId: null,
+                landingEffectStopped: true
+            };
             // 🔧 改進：在 landing.mp4 播放時顯示「降落中，請稍後」UI（使用統一的設計）
             console.log('🛬 [landing.mp4] 播放降落影片，顯示「降落中，請稍後」UI...');
             setBoardingStatus(true, '降落中，請稍後...');
@@ -6242,7 +6248,7 @@
                         console.log('🖼️ 降落圖片已顯示（無影片容器）');
                     }).catch((e) => console.warn('⚠️ 顯示降落圖片失敗:', e));
                 }
-                return;
+                return landingResult;
             }
             
             // 停止 takeoff2.mp4 的可見性檢查（如果還在運行）
@@ -6319,10 +6325,43 @@
             landingVideo.style.opacity = '1';
             
             let videoPlayed = false;
+            let landingEffectPlaybackId = null;
+            let landingEffectStartPromise = null;
             try {
                 await landingVideo.play();
                 videoPlayed = true;
-                setPhase7MusicVolume(0, 8000).catch(() => {});
+                phase7MusicGeneration.cancel();
+                const landingWakeupMusic = window._phase7WakeupMusic;
+                if (
+                    landingWakeupMusic
+                    && landingWakeupMusic.source !== 'pi'
+                    && typeof landingWakeupMusic.pause === 'function'
+                ) {
+                    try {
+                        landingWakeupMusic.pause();
+                        landingWakeupMusic.currentTime = 0;
+                    } catch (error) {
+                        console.warn('⚠️ [landing.mp4] 停止瀏覽器 wakeup 音樂失敗:', error);
+                    }
+                }
+                window._phase7WakeupMusic = null;
+                landingEffectStartPromise = playLocalSoundViaPi(
+                    'sounds/takeoff.mp3',
+                    15,
+                    1.0,
+                    { background: true }
+                );
+                landingEffectPlaybackId = backgroundPlaybackIds.highest();
+                landingResult.landingEffectPlaybackId = landingEffectPlaybackId;
+                landingResult.landingEffectStopped = false;
+                window._landingEffectPlaybackId = landingEffectPlaybackId;
+                landingEffectStartPromise.then((result) => {
+                    if (!result || result.success !== true) {
+                        console.warn('⚠️ [landing.mp4] 降落音效未成功啟動，繼續降落流程:', result);
+                    }
+                }).catch((error) => {
+                    console.warn('⚠️ [landing.mp4] 降落音效啟動失敗，繼續降落流程:', error);
+                });
                 console.log('▶️ [landing.mp4] 開始播放（muted，避免 Autoplay 卡住）');
             } catch (e) {
                 console.warn('⚠️ [landing.mp4] 連 muted 也播不出，跳過影片直接進情緒表:', e && e.message ? e.message : e);
@@ -6338,6 +6377,26 @@
                     // landing.mp4 通常很短；15 秒硬切，絕不卡死降落
                     setTimeout(done, 15000);
                 });
+            }
+
+            if (landingEffectPlaybackId !== null) {
+                try {
+                    landingResult.landingEffectStopped = await stopLocalSoundViaPi({
+                        throughId: landingEffectPlaybackId,
+                        scope: 'background',
+                        retries: 2
+                    });
+                    if (landingResult.landingEffectStopped) {
+                        if (window._landingEffectPlaybackId === landingEffectPlaybackId) {
+                            window._landingEffectPlaybackId = null;
+                        }
+                    } else {
+                        console.warn('⚠️ [landing.mp4] 無法確認降落音效已停止，繼續降落流程');
+                    }
+                } catch (error) {
+                    landingResult.landingEffectStopped = false;
+                    console.warn('⚠️ [landing.mp4] 停止降落音效失敗，繼續降落流程:', error);
+                }
             }
             
             console.log('⏹️ landing.mp4 步驟結束，顯示情緒量表');
@@ -6408,6 +6467,7 @@
                 });
             }
             // 立刻 return，讓 handleLanding 去等情緒表，不再卡在這裡
+            return landingResult;
         }
         
         // 驗證尺寸
@@ -12268,6 +12328,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             descentAnnouncementPlayed = false;
             landingConfirmActive = false;
             window._earlyLandingConfirmed = false;
+            window._landingEffectPlaybackId = null;
+            window._landingAudioStopFailed = false;
             
             // 清除按鈕相關狀態
             lastButtonPressTime = 0;
@@ -14298,8 +14360,15 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             })();
             
             // 主線：landing.mp4 → 情緒表（內部已處理 Autoplay／超時）
+            let landingVideoResult = {
+                landingEffectPlaybackId: null,
+                landingEffectStopped: true
+            };
             try {
-                await playLandingVideoAndShowImage(landingImagePromise, finalDestination);
+                landingVideoResult = await playLandingVideoAndShowImage(
+                    landingImagePromise,
+                    finalDestination
+                );
                 console.log('✅ [Phase 7] 降落影片步驟完成（已出情緒表）');
             } catch (error) {
                 console.error('❌ [Phase 7] 降落影片步驟失敗，仍繼續:', error);
@@ -14310,8 +14379,13 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
 
             // 無論影片成功、跳過或丟錯，語音 B 前都必須確定背景音已停止。
             const remainingPhase7Music = window._phase7WakeupMusic;
-            const remainingPlaybackId = remainingPhase7Music && remainingPhase7Music.playbackId;
-            let stoppedRemainingMusic = true;
+            const wakeupPlaybackId = remainingPhase7Music && remainingPhase7Music.playbackId;
+            const landingEffectPlaybackId = landingVideoResult.landingEffectPlaybackId
+                ?? window._landingEffectPlaybackId
+                ?? null;
+            const latestPlaybackId = landingEffectPlaybackId ?? wakeupPlaybackId;
+            let stoppedRemainingMusic = latestPlaybackId === null
+                && landingVideoResult.landingEffectStopped !== false;
             phase7MusicGeneration.cancel();
             if (remainingPhase7Music && remainingPhase7Music.source !== 'pi') {
                 try {
@@ -14319,24 +14393,35 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     remainingPhase7Music.currentTime = 0;
                 } catch (_) {}
                 window._phase7WakeupMusic = null;
-            } else {
+            }
+            if (latestPlaybackId !== null && latestPlaybackId !== undefined) {
                 stoppedRemainingMusic = await stopLocalSoundViaPi({
-                    throughId: remainingPlaybackId,
+                    throughId: latestPlaybackId,
                     scope: 'background',
                     retries: 2
                 });
+            }
+            if (
+                stoppedRemainingMusic
+                && landingEffectPlaybackId !== null
+                && window._landingEffectPlaybackId === landingEffectPlaybackId
+            ) {
+                window._landingEffectPlaybackId = null;
             }
             window._landingAudioStopFailed = !stoppedRemainingMusic;
             if (!stoppedRemainingMusic) {
                 console.error('❌ [Phase 7] 無法確認背景音停止，將略過語音 B 並排程最後一次重試');
                 setTimeout(async () => {
                     const retryStopped = await stopLocalSoundViaPi({
-                        throughId: remainingPlaybackId,
+                        throughId: latestPlaybackId,
                         scope: 'background',
                         retries: 2
                     });
                     if (retryStopped) {
                         window._landingAudioStopFailed = false;
+                        if (window._landingEffectPlaybackId === landingEffectPlaybackId) {
+                            window._landingEffectPlaybackId = null;
+                        }
                     }
                 }, 200);
             }

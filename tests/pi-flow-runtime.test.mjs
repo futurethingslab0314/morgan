@@ -571,25 +571,138 @@ test('Phase 7 browser volume applies zero-duration changes immediately', () => {
   assert.match(source, /if \(duration <= 0\) \{\s*music\.volume = clamped;\s*return;\s*\}/);
 });
 
-test('landing wiring fades and explicitly stops background audio before voice B', () => {
+test('landing wiring transfers wakeup ownership and stops the latest background ID before voice B', () => {
   const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
   const landingVideoStart = html.indexOf('async function playLandingVideoAndShowImage(');
   const landingVideoEnd = html.indexOf('// 驗證尺寸', landingVideoStart);
   const landingVideoSource = html.slice(landingVideoStart, landingVideoEnd);
+  const effectStart = landingVideoSource.indexOf('landingEffectStartPromise = playLocalSoundViaPi(');
+  const generationCancel = landingVideoSource.indexOf('phase7MusicGeneration.cancel()', 0);
+  const browserPause = landingVideoSource.indexOf('landingWakeupMusic.pause()', generationCancel);
+  const browserReset = landingVideoSource.indexOf('landingWakeupMusic.currentTime = 0', browserPause);
+  const clearWakeupRef = landingVideoSource.indexOf('window._phase7WakeupMusic = null', browserReset);
 
-  assert.match(landingVideoSource, /setPhase7MusicVolume\(0,\s*8000\)/);
+  assert.ok(generationCancel >= 0);
+  assert.ok(browserPause > generationCancel);
+  assert.ok(browserReset > browserPause);
+  assert.ok(clearWakeupRef > browserReset);
+  assert.ok(effectStart > clearWakeupRef);
+  assert.doesNotMatch(landingVideoSource.slice(effectStart), /setPhase7MusicVolume\(/);
 
-  const landingFlowStart = html.indexOf('await playLandingVideoAndShowImage(');
+  const landingFlowStart = html.indexOf('let landingVideoResult =');
   const voiceBStart = html.indexOf('// 步驟 6: 等情緒表', landingFlowStart);
   const landingFlowSource = html.slice(landingFlowStart, voiceBStart);
-  assert.match(landingFlowSource, /await stopLocalSoundViaPi\(\{[\s\S]*scope:\s*'background'[\s\S]*retries:\s*2/);
+  assert.match(
+    landingFlowSource,
+    /landingVideoResult = await playLandingVideoAndShowImage\(\s*landingImagePromise,\s*finalDestination\s*\)/,
+  );
+  assert.match(
+    landingFlowSource,
+    /const landingEffectPlaybackId = landingVideoResult\.landingEffectPlaybackId\s*\?\?\s*window\._landingEffectPlaybackId\s*\?\?\s*null/,
+  );
+  assert.match(
+    landingFlowSource,
+    /const latestPlaybackId = landingEffectPlaybackId\s*\?\?\s*wakeupPlaybackId/,
+  );
+  assert.equal(
+    (landingFlowSource.match(/throughId:\s*latestPlaybackId/g) || []).length,
+    2,
+  );
   assert.match(landingFlowSource, /window\._landingAudioStopFailed = !stoppedRemainingMusic/);
   assert.match(landingFlowSource, /setTimeout\(async \(\) =>/);
+  assert.match(
+    landingFlowSource,
+    /if \(\s*stoppedRemainingMusic[\s\S]*window\._landingEffectPlaybackId === landingEffectPlaybackId[\s\S]*window\._landingEffectPlaybackId = null/,
+  );
+  assert.match(
+    landingFlowSource,
+    /if \(retryStopped\)[\s\S]*window\._landingAudioStopFailed = false[\s\S]*window\._landingEffectPlaybackId = null/,
+  );
 
   const voiceBFlowStart = html.indexOf('// 顯示文字B並播放語音B', voiceBStart);
   const voiceBFlowEnd = html.indexOf('// 步驟 8: 保存到 Firebase', voiceBFlowStart);
   const voiceBSource = html.slice(voiceBFlowStart, voiceBFlowEnd);
   assert.match(voiceBSource, /if \(window\._landingAudioStopFailed\)/);
+});
+
+test('landing video starts and fences the shared Pi background effect', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+  const landingStart = html.indexOf('async function playLandingVideoAndShowImage(');
+  const landingEnd = html.indexOf('// 驗證尺寸', landingStart);
+  const source = html.slice(landingStart, landingEnd);
+  const videoPlay = source.indexOf('await landingVideo.play()');
+  const successfulBranchEnd = source.indexOf('} catch (e) {', videoPlay);
+  const videoWait = source.indexOf('if (videoPlayed) {', successfulBranchEnd);
+  const hardTimeout = source.indexOf('setTimeout(done, 15000)', videoWait);
+  const proceed = source.indexOf("console.log('⏹️ landing.mp4 步驟結束", videoWait);
+
+  assert.ok(landingStart >= 0);
+  assert.ok(landingEnd > landingStart);
+  assert.match(source, /let landingEffectPlaybackId = null;/);
+  assert.match(source, /let landingEffectStartPromise = null;/);
+  assert.match(
+    source,
+    /const landingResult = \{\s*landingEffectPlaybackId:\s*null,\s*landingEffectStopped:\s*true\s*\}/,
+  );
+  assert.match(
+    source,
+    /landingEffectStartPromise = playLocalSoundViaPi\(\s*'sounds\/takeoff\.mp3',\s*15,\s*1\.0,\s*\{\s*background:\s*true\s*\}\s*\);\s*landingEffectPlaybackId = backgroundPlaybackIds\.highest\(\);/,
+  );
+  assert.match(source, /window\._landingEffectPlaybackId = landingEffectPlaybackId/);
+  assert.match(source, /landingEffectStartPromise\.then\(\(result\) =>/);
+  assert.match(source, /result\.success !== true/);
+  assert.match(source, /\.catch\(\(error\) =>/);
+  assert.ok((source.match(/return landingResult;/g) || []).length >= 2);
+  assert.match(
+    source,
+    /landingResult\.landingEffectPlaybackId = landingEffectPlaybackId/,
+  );
+  assert.match(
+    source,
+    /landingResult\.landingEffectStopped = await stopLocalSoundViaPi\(/,
+  );
+
+  const effectStart = source.indexOf('landingEffectStartPromise = playLocalSoundViaPi(');
+  const idCapture = source.indexOf('landingEffectPlaybackId = backgroundPlaybackIds.highest()', effectStart);
+  assert.ok(effectStart > videoPlay);
+  assert.ok(effectStart < successfulBranchEnd);
+  assert.ok(idCapture > effectStart);
+  assert.equal((source.match(/playLocalSoundViaPi\(\s*'sounds\/takeoff\.mp3'/g) || []).length, 1);
+  assert.doesNotMatch(source.slice(effectStart, videoWait), /await\s+landingEffectStartPromise/);
+
+  const stopCall = source.indexOf('await stopLocalSoundViaPi({', videoWait);
+  assert.ok(videoWait > successfulBranchEnd);
+  assert.ok(hardTimeout > videoWait);
+  assert.ok(stopCall > hardTimeout);
+  assert.ok(proceed > stopCall);
+  assert.match(
+    source.slice(stopCall, proceed),
+    /await stopLocalSoundViaPi\(\{\s*throughId:\s*landingEffectPlaybackId,\s*scope:\s*'background',\s*retries:\s*2\s*\}\)/,
+  );
+});
+
+test('landing retained state resets for flight reset and new sequence entry', () => {
+  const html = readFileSync(new URL('../pi.html', import.meta.url), 'utf8');
+  const resetStart = html.indexOf('function resetFlightState()');
+  const resetEnd = html.indexOf('async function handleDescent()', resetStart);
+  const resetSource = html.slice(resetStart, resetEnd);
+  assert.match(resetSource, /window\._landingEffectPlaybackId = null;/);
+  assert.match(resetSource, /window\._landingAudioStopFailed = false;/);
+
+  const landingStart = html.indexOf('async function playLandingVideoAndShowImage(');
+  const landingEnd = html.indexOf('// 驗證尺寸', landingStart);
+  const landingSource = html.slice(landingStart, landingEnd);
+  const entryClear = landingSource.indexOf('window._landingEffectPlaybackId = null;');
+  const earlyReturnGuard = landingSource.indexOf('if (!videoContainer || !windowContent || !videoContainerEl)');
+  const effectStart = landingSource.indexOf('landingEffectStartPromise = playLocalSoundViaPi(');
+
+  assert.ok(entryClear >= 0);
+  assert.ok(entryClear < earlyReturnGuard);
+  assert.ok(entryClear < effectStart);
+  assert.equal(
+    (landingSource.slice(0, effectStart).match(/window\._landingEffectPlaybackId = null;/g) || []).length,
+    1,
+  );
 });
 
 test('stop callers use all scope only for lifecycle resets', () => {
@@ -603,7 +716,7 @@ test('stop callers use all scope only for lifecycle resets', () => {
   }
 
   const resetStart = html.indexOf('function resetFlightState()');
-  const resetEnd = html.indexOf('// 設置旋鈕事件監聽器', resetStart);
+  const resetEnd = html.indexOf('async function handleDescent()', resetStart);
   const resetSource = html.slice(resetStart, resetEnd);
   assert.match(resetSource, /stopLocalSoundViaPi\(\{\s*scope:\s*'all'/);
 

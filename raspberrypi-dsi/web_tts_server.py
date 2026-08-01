@@ -11,6 +11,9 @@
 
 import argparse
 import logging
+import shutil
+import subprocess
+import tempfile
 import threading
 import time
 from flask import Flask, request, jsonify, make_response
@@ -22,6 +25,59 @@ except Exception:
 from pathlib import Path
 
 from audio_manager import get_audio_manager
+
+
+def prepare_background_audio(path, which=None, run=None, temp_factory=None):
+    """將 SDL_mixer 不一定能解碼的壓縮音訊安全轉為暫存 WAV。"""
+    source = Path(path)
+    if source.suffix.lower() not in (".mp3", ".m4a"):
+        return source
+
+    which = which or shutil.which
+    run = run or subprocess.run
+    temp_factory = temp_factory or tempfile.NamedTemporaryFile
+
+    if which("ffmpeg"):
+        command_prefix = [
+            "ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i",
+        ]
+    elif which("sox"):
+        command_prefix = ["sox"]
+    else:
+        raise RuntimeError(
+            "Background audio decoder unavailable/failed: "
+            "install ffmpeg or sox"
+        )
+
+    with temp_factory(delete=False, suffix=".wav") as temporary:
+        destination = Path(temporary.name)
+
+    command = command_prefix + [str(source), str(destination)]
+    try:
+        result = run(
+            command,
+            timeout=15,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = (getattr(result, "stderr", "") or "").strip()
+            raise RuntimeError(detail or f"decoder exited {result.returncode}")
+        if not destination.exists() or destination.stat().st_size <= 0:
+            raise RuntimeError("decoder produced no WAV output")
+        return destination
+    except Exception as error:
+        try:
+            destination.unlink()
+        except FileNotFoundError:
+            pass
+        if isinstance(error, RuntimeError) and str(error).startswith(
+            "Background audio decoder unavailable/failed"
+        ):
+            raise
+        raise RuntimeError(
+            f"Background audio decoder unavailable/failed: {error}"
+        ) from error
 
 
 class BackgroundAudioController:
@@ -269,7 +325,12 @@ def _cors_headers(resp):
     return resp
 
 
-def create_app(audio_manager=None, background_controller=None, pygame_module=None):
+def create_app(
+    audio_manager=None,
+    background_controller=None,
+    pygame_module=None,
+    background_preparer=None,
+):
     app = Flask(__name__)
     # 啟用 CORS，允許從 https 網站呼叫 http://127.0.0.1:5005
     if CORS_AVAILABLE:
@@ -282,6 +343,7 @@ def create_app(audio_manager=None, background_controller=None, pygame_module=Non
         )
     logger = logging.getLogger("pi-tts-server")
     audio = audio_manager or get_audio_manager()
+    prepare_background = background_preparer or prepare_background_audio
     if pygame_module is None:
         try:
             import pygame as pygame_module
@@ -532,6 +594,7 @@ def create_app(audio_manager=None, background_controller=None, pygame_module=Non
                     playback_id = background_audio.latest_playback_id
 
             tmp_path = None
+            prepared_path = None
             play_path = local_file
             try:
                 if play_path is None:
@@ -582,8 +645,9 @@ def create_app(audio_manager=None, background_controller=None, pygame_module=Non
                     return bool(audio.play_audio_file_direct(path_obj))
 
                 if background:
+                    prepared_path = prepare_background(play_path)
                     played = background_audio.play(
-                        play_path,
+                        prepared_path,
                         volume=volume,
                         max_duration=max_duration,
                         generation=background_generation,
@@ -610,6 +674,15 @@ def create_app(audio_manager=None, background_controller=None, pygame_module=Non
                     "truncated": bool(max_duration)
                 })
             finally:
+                if (
+                    prepared_path
+                    and prepared_path != play_path
+                    and prepared_path.exists()
+                ):
+                    try:
+                        prepared_path.unlink()
+                    except Exception:
+                        pass
                 if tmp_path and tmp_path.exists():
                     try:
                         tmp_path.unlink()

@@ -1,5 +1,7 @@
 import io
+import subprocess
 import sys
+import tempfile
 import threading
 import types
 import unittest
@@ -24,6 +26,139 @@ audio_manager_stub = types.ModuleType("audio_manager")
 audio_manager_stub.get_audio_manager = Mock()
 sys.modules["audio_manager"] = audio_manager_stub
 import web_tts_server
+
+
+class BackgroundAudioPreparationTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.root = Path(self.temp_dir.name)
+
+    def temp_factory(self, **kwargs):
+        return tempfile.NamedTemporaryFile(dir=self.root, **kwargs)
+
+    def test_mp3_uses_exact_ffmpeg_command_and_returns_wav(self):
+        source = self.root / "meal.mp3"
+        source.write_bytes(b"mp3")
+        calls = []
+
+        def run(command, **kwargs):
+            calls.append((command, kwargs))
+            Path(command[-1]).write_bytes(b"RIFF-wav")
+            return Mock(returncode=0, stderr="")
+
+        prepared = web_tts_server.prepare_background_audio(
+            source,
+            which=lambda name: f"/usr/bin/{name}" if name == "ffmpeg" else None,
+            run=run,
+            temp_factory=self.temp_factory,
+        )
+        self.addCleanup(lambda: prepared.unlink(missing_ok=True))
+
+        self.assertEqual(
+            calls[0][0],
+            [
+                "ffmpeg", "-nostdin", "-loglevel", "error", "-y",
+                "-i", str(source), str(prepared),
+            ],
+        )
+        self.assertEqual(calls[0][1]["timeout"], 15)
+        self.assertTrue(calls[0][1]["capture_output"])
+        self.assertEqual(prepared.suffix, ".wav")
+        self.assertGreater(prepared.stat().st_size, 0)
+
+    def test_sox_is_used_when_ffmpeg_is_missing(self):
+        source = self.root / "meal.m4a"
+        source.write_bytes(b"m4a")
+        commands = []
+
+        def run(command, **_kwargs):
+            commands.append(command)
+            Path(command[-1]).write_bytes(b"RIFF-wav")
+            return Mock(returncode=0, stderr="")
+
+        prepared = web_tts_server.prepare_background_audio(
+            source,
+            which=lambda name: "/usr/bin/sox" if name == "sox" else None,
+            run=run,
+            temp_factory=self.temp_factory,
+        )
+        self.addCleanup(lambda: prepared.unlink(missing_ok=True))
+
+        self.assertEqual(commands, [["sox", str(source), str(prepared)]])
+
+    def test_missing_decoders_raises_clear_error(self):
+        source = self.root / "meal.mp3"
+        source.write_bytes(b"mp3")
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Background audio decoder unavailable/failed",
+        ):
+            web_tts_server.prepare_background_audio(
+                source,
+                which=lambda _name: None,
+                run=Mock(),
+                temp_factory=self.temp_factory,
+            )
+
+    def test_conversion_nonzero_cleans_temporary_wav(self):
+        source = self.root / "meal.mp3"
+        source.write_bytes(b"mp3")
+        destination = {}
+
+        def run(command, **_kwargs):
+            destination["path"] = Path(command[-1])
+            destination["path"].write_bytes(b"partial")
+            return Mock(returncode=1, stderr="decode failed")
+
+        with self.assertRaisesRegex(RuntimeError, "decoder unavailable/failed"):
+            web_tts_server.prepare_background_audio(
+                source,
+                which=lambda name: name == "ffmpeg",
+                run=run,
+                temp_factory=self.temp_factory,
+            )
+
+        self.assertFalse(destination["path"].exists())
+
+    def test_conversion_timeout_cleans_temporary_wav(self):
+        source = self.root / "meal.m4a"
+        source.write_bytes(b"m4a")
+        destination = {}
+
+        def run(command, **_kwargs):
+            destination["path"] = Path(command[-1])
+            destination["path"].write_bytes(b"partial")
+            raise subprocess.TimeoutExpired(command, 15)
+
+        with self.assertRaisesRegex(RuntimeError, "decoder unavailable/failed"):
+            web_tts_server.prepare_background_audio(
+                source,
+                which=lambda name: name == "ffmpeg",
+                run=run,
+                temp_factory=self.temp_factory,
+            )
+
+        self.assertFalse(destination["path"].exists())
+
+    def test_wav_passthrough_does_not_run_or_delete_source(self):
+        source = self.root / "ready.wav"
+        source.write_bytes(b"RIFF-wav")
+        run = Mock()
+        temp_factory = Mock()
+
+        prepared = web_tts_server.prepare_background_audio(
+            source,
+            which=Mock(),
+            run=run,
+            temp_factory=temp_factory,
+        )
+
+        self.assertEqual(prepared, source)
+        self.assertTrue(source.exists())
+        run.assert_not_called()
+        temp_factory.assert_not_called()
 
 
 class FakeTimer:
@@ -346,6 +481,7 @@ class WebTtsServerAudioRouteTests(unittest.TestCase):
             audio_manager=self.audio,
             background_controller=self.background,
             pygame_module=self.pygame,
+            background_preparer=lambda path: Path(path),
         )
         self.client = self.app.test_client()
 
@@ -377,6 +513,82 @@ class WebTtsServerAudioRouteTests(unittest.TestCase):
         self.assertFalse(response.payload["cancelled"])
         self.assertFalse(Path(play_path).exists())
         self.audio.play_audio_file_direct.assert_not_called()
+
+    def test_local_mp3_background_plays_converted_wav_and_cleans_it(self):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as converted:
+            converted.write(b"RIFF-wav")
+            converted_path = Path(converted.name)
+        preparer = Mock(return_value=converted_path)
+        app = web_tts_server.create_app(
+            audio_manager=self.audio,
+            background_controller=self.background,
+            pygame_module=self.pygame,
+            background_preparer=preparer,
+        )
+        client = app.test_client()
+
+        with patch.object(Path, "exists", return_value=True):
+            response = client.post("/audio/play_url", json={
+                "url": "https://example.com/airlinemeal.mp3",
+                "path": "airlinemeal.mp3",
+                "background": True,
+                "playback_id": 100,
+            })
+
+        self.assertEqual(response.status_code, 200)
+        source_path = preparer.call_args.args[0]
+        self.assertEqual(source_path.name, "airlinemeal.mp3")
+        self.assertEqual(self.background.play.call_args.args[0], converted_path)
+        self.assertFalse(converted_path.exists())
+
+    def test_stop_during_conversion_returns_409_and_never_loads_sound(self):
+        mixer = FakeMixer()
+        background = web_tts_server.BackgroundAudioController(mixer)
+        conversion_started = threading.Event()
+        release_conversion = threading.Event()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as converted:
+            converted.write(b"RIFF-wav")
+            converted_path = Path(converted.name)
+
+        def blocking_preparer(_path):
+            conversion_started.set()
+            release_conversion.wait(timeout=2)
+            return converted_path
+
+        app = web_tts_server.create_app(
+            audio_manager=self.audio,
+            background_controller=background,
+            pygame_module=self.pygame,
+            background_preparer=blocking_preparer,
+        )
+        client = app.test_client()
+        response_holder = {}
+
+        with patch.object(Path, "exists", return_value=True):
+            worker = threading.Thread(
+                target=lambda: response_holder.setdefault(
+                    "response",
+                    client.post("/audio/play_url", json={
+                        "url": "https://example.com/airlinemeal.mp3",
+                        "path": "airlinemeal.mp3",
+                        "background": True,
+                        "playback_id": 100,
+                    }),
+                )
+            )
+            worker.start()
+            self.assertTrue(conversion_started.wait(timeout=1))
+            stop_response = client.post("/audio/stop", json={
+                "through_id": 100,
+                "scope": "background",
+            })
+            release_conversion.set()
+            worker.join(timeout=1)
+
+        self.assertEqual(stop_response.status_code, 200)
+        self.assertEqual(response_holder["response"].status_code, 409)
+        self.assertEqual(mixer.sound_paths, [])
+        self.assertFalse(converted_path.exists())
 
     def test_audio_volume_controls_only_background_channel(self):
         self.background.set_volume.return_value = 0.25
@@ -438,6 +650,7 @@ class WebTtsServerAudioRouteTests(unittest.TestCase):
             audio_manager=self.audio,
             background_controller=background,
             pygame_module=self.pygame,
+            background_preparer=lambda path: Path(path),
         )
         client = app.test_client()
         download_started = threading.Event()

@@ -28,6 +28,13 @@ fi
 
 mkdir -p "$LOG_DIR"
 
+# 背景音樂檔中有 MPEG-4 容器但沿用 .mp3 副檔名；pygame Sound 無法直接解碼，
+# web_tts_server 會透過 ffmpeg 轉成 WAV 後再播放。
+if ! command -v ffmpeg >/dev/null 2>&1; then
+  echo "⚠️  找不到 ffmpeg，飛機餐／甦醒背景音樂將無法播放。"
+  echo "   請先執行：sudo apt update && sudo apt install -y ffmpeg"
+fi
+
 # 確保相依套件在 venv 內（systemd 用 venv，系統 Python 有 RPi.GPIO 也不會被用到）
 "$VENV_PY" -m pip install -q flask flask-cors openai pygame RPi.GPIO 2>/dev/null || \
   "$VENV_PY" -m pip install -q flask flask-cors openai pygame RPi.GPIO --break-system-packages || true
