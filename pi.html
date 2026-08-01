@@ -3071,9 +3071,13 @@
             return false;
         }
 
-        // 機長 TTS：正常語速（避免過慢像 slow robot）；仍固定男聲 onyx
+        // 機長 TTS：gpt-4o-mini-tts + ash，較自然的男聲
         const CAPTAIN_TTS = {
             gender: 'male',
+            voice: 'ash',
+            instructions:
+                'Speak as a calm, warm male airline captain in Mandarin Chinese. ' +
+                'Natural pacing and intonation, not robotic or monotonous.',
             takeoffSpeed: 1.0,
             takeoffRate: 1.0,
             takeoffPitch: 0.95,
@@ -3801,18 +3805,23 @@
                     });
                     const data = await response.json().catch(() => null);
                     if (MorganRuntime.isSuccessfulAudioStopResponse(response, data)) {
-                        if (backgroundPlaybackIds.highest() <= effectiveThroughId) {
+                        if (
+                            scope !== 'oneshot'
+                            && backgroundPlaybackIds.highest() <= effectiveThroughId
+                        ) {
                             window._piAudioPlaying = false;
                         }
                         if (
-                            window._mealMusicViaPi
+                            scope !== 'oneshot'
+                            && window._mealMusicViaPi
                             && (!window._mealMusicPlaybackId || window._mealMusicPlaybackId <= effectiveThroughId)
                         ) {
                             window._mealMusicViaPi = false;
                             window._mealMusicPlaybackId = null;
                         }
                         if (
-                            window._phase7WakeupMusic
+                            scope !== 'oneshot'
+                            && window._phase7WakeupMusic
                             && window._phase7WakeupMusic.source === 'pi'
                             && window._phase7WakeupMusic.playbackId <= effectiveThroughId
                         ) {
@@ -4662,6 +4671,47 @@
                         destinationData.climateZone = selectedClimateZone;
                         
                         console.log('✅ 目的地計算完成（按鈕確認後）:', destinationData);
+
+                        // 目的地一確定就立刻背景生成起飛語音（不等 UI／不再重複讀 Firebase）
+                        if (!preparedAnnouncement) {
+                            console.log('🎤 氣候確認後立刻生成起飛 TTS...');
+                            const announcementResult = generateTakeoffAnnouncement(
+                                destinationData,
+                                destinationData.country,
+                                selectedTimer,
+                                selectedClimateZone,
+                                lastLanding || null
+                            );
+                            if (announcementResult && announcementResult.text) {
+                                preparedAnnouncement = announcementResult.text;
+                                preparedAnnouncementGender = CAPTAIN_TTS.gender;
+                                preparedAudioId = null;
+                                generateTtsAudio(
+                                    announcementResult.text,
+                                    'zh-TW',
+                                    CAPTAIN_TTS.gender,
+                                    CAPTAIN_TTS.takeoffSpeed
+                                ).then(audioId => {
+                                    if (audioId) {
+                                        console.log('✅ [氣候確認] TTS 音檔已生成，audio_id:', audioId);
+                                    } else {
+                                        console.warn('⚠️ [氣候確認] TTS 音檔生成失敗，起飛前會再試');
+                                    }
+                                }).catch(err => {
+                                    console.warn('⚠️ [氣候確認] TTS 生成錯誤:', err);
+                                });
+                                console.log('✅ 起飛語音文字已準備（ash，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
+                            } else {
+                                console.warn('⚠️ 起飛語音文字生成失敗');
+                            }
+                        } else if (!preparedAudioId && preparedAnnouncement) {
+                            generateTtsAudio(
+                                preparedAnnouncement,
+                                'zh-TW',
+                                CAPTAIN_TTS.gender,
+                                CAPTAIN_TTS.takeoffSpeed
+                            ).catch(() => {});
+                        }
                         
                         // 4. 隱藏計算動畫（在切換到 Phase 3 之前）
                         if (calculatingState) {
@@ -4700,64 +4750,10 @@
                             destinationClimateEl.textContent = '🌍 ' + selectedClimateZone.name + ' - ' + selectedClimateZone.description;
                         }
                         
-                        // 🔧 改進：如果 TTS 已經在時機1準備好了，就不需要重新生成
-                        if (!preparedAnnouncement) {
-                            console.log('🎤 生成起飛 TTS 語音文字與音檔（按鈕確認後，時機1未生成）...');
-                        const climateZone = destinationData.climateZone || null;
-                        // 🔧 新增：獲取實際起點位置
-                        let originLocation = null;
-                        try {
-                            originLocation = await loadLastLandingLocation();
-                            if (originLocation) {
-                                destinationCalculator.setOrigin(originLocation.latitude, originLocation.longitude);
-                                console.log('✅ [Phase 3] 使用實際起點位置:', originLocation.city_zh || originLocation.city);
-                            }
-                        } catch (error) {
-                            console.warn('⚠️ [Phase 3] 獲取起點位置失敗，使用預設值:', error);
-                        }
-                        
-                        const announcementResult = generateTakeoffAnnouncement(
-                            destinationData,
-                            destinationData.country,
-                            selectedTimer,
-                            climateZone,
-                            originLocation // 🔧 新增：傳遞起點位置信息
-                        );
-                        
-                        if (announcementResult && announcementResult.text) {
-                            preparedAnnouncement = announcementResult.text;
-                            preparedAnnouncementGender = CAPTAIN_TTS.gender; // 固定男聲機長
-                            preparedAudioId = null;
-                                // 🔧 改進：在背景生成 TTS 音檔（不阻塞，讓用戶可以立即看到目的地）
-                                console.log('⏳ [Phase 3] 開始在背景生成 TTS 音檔（不阻塞）...');
-                                generateTtsAudio(announcementResult.text, 'zh-TW', CAPTAIN_TTS.gender, CAPTAIN_TTS.takeoffSpeed).then(audioId => {
-                                    if (audioId) {
-                                        console.log('✅ [Phase 3] TTS 音檔已生成完成（背景），audio_id:', audioId);
-                                    } else {
-                                        console.warn('⚠️ [Phase 3] TTS 音檔生成失敗（背景），將在 Phase 4 時重新生成');
-                                    }
-                                }).catch(err => {
-                                    console.warn('⚠️ [Phase 3] TTS 音檔生成時發生錯誤（背景）:', err);
-                                });
-                                console.log('✅ 起飛語音文字已準備（男聲，語速 ' + CAPTAIN_TTS.takeoffSpeed + '）');
-                        } else {
-                            console.warn('⚠️ 起飛語音文字生成失敗');
-                            }
-                        } else {
-                            console.log('✅ 起飛 TTS 語音已在時機1準備完成，直接使用（' + preparedAnnouncementGender + ' 聲）');
-                            // 🔧 改進：即使文字已準備，如果音檔還沒生成，也在背景生成
-                            if (!preparedAudioId && preparedAnnouncement) {
-                                console.log('⏳ [Phase 3] 文字已準備但音檔未生成，開始在背景生成 TTS 音檔...');
-                                generateTtsAudio(preparedAnnouncement, 'zh-TW', CAPTAIN_TTS.gender, CAPTAIN_TTS.takeoffSpeed).then(audioId => {
-                                    if (audioId) {
-                                        console.log('✅ [Phase 3] TTS 音檔已生成完成（背景），audio_id:', audioId);
-                                    } else {
-                                        console.warn('⚠️ [Phase 3] TTS 音檔生成失敗（背景），將在 Phase 4 時重新生成');
-                                    }
-                                }).catch(err => {
-                                    console.warn('⚠️ [Phase 3] TTS 音檔生成時發生錯誤（背景）:', err);
-                                });
-                            }
+                        if (preparedAudioId) {
+                            console.log('✅ 起飛 TTS 已在氣候確認後準備完成（' + preparedAnnouncementGender + ' / ash）');
+                        } else if (preparedAnnouncement) {
+                            console.log('⏳ 起飛 TTS 正在背景生成中（ash）...');
                         }
                         
                         // 切換到準備起飛狀態
@@ -6208,8 +6204,7 @@
             window._landingEffectPlaybackId = null;
             window._landingAudioStopFailed = false;
             const landingResult = {
-                landingEffectPlaybackId: null,
-                landingEffectStopped: true
+                landingOneshotStarted: false
             };
             // 🔧 改進：在 landing.mp4 播放時顯示「降落中，請稍後」UI（使用統一的設計）
             console.log('🛬 [landing.mp4] 播放降落影片，顯示「降落中，請稍後」UI...');
@@ -6325,44 +6320,23 @@
             landingVideo.style.opacity = '1';
             
             let videoPlayed = false;
-            let landingEffectPlaybackId = null;
-            let landingEffectStartPromise = null;
+            let landingOneshotStarted = false;
             try {
                 await landingVideo.play();
                 videoPlayed = true;
-                phase7MusicGeneration.cancel();
-                const landingWakeupMusic = window._phase7WakeupMusic;
-                if (
-                    landingWakeupMusic
-                    && landingWakeupMusic.source !== 'pi'
-                    && typeof landingWakeupMusic.pause === 'function'
-                ) {
-                    try {
-                        landingWakeupMusic.pause();
-                        landingWakeupMusic.currentTime = 0;
-                    } catch (error) {
-                        console.warn('⚠️ [landing.mp4] 停止瀏覽器 wakeup 音樂失敗:', error);
-                    }
-                }
-                window._phase7WakeupMusic = null;
-                landingEffectStartPromise = playLocalSoundViaPi(
-                    'sounds/takeoff.mp3',
-                    15,
-                    1.0,
-                    { background: true }
-                );
-                landingEffectPlaybackId = backgroundPlaybackIds.highest();
-                landingResult.landingEffectPlaybackId = landingEffectPlaybackId;
-                landingResult.landingEffectStopped = false;
-                window._landingEffectPlaybackId = landingEffectPlaybackId;
-                landingEffectStartPromise.then((result) => {
-                    if (!result || result.success !== true) {
-                        console.warn('⚠️ [landing.mp4] 降落音效未成功啟動，繼續降落流程:', result);
-                    }
-                }).catch((error) => {
-                    console.warn('⚠️ [landing.mp4] 降落音效啟動失敗，繼續降落流程:', error);
-                });
-                console.log('▶️ [landing.mp4] 開始播放（muted，避免 Autoplay 卡住）');
+                // takeoff.mp3 走一次性聲道，保留 wakeup 背景音樂繼續播
+                landingResult.landingOneshotStarted = true;
+                landingOneshotStarted = true;
+                playLocalSoundViaPi('sounds/takeoff.mp3', 15, 1.0)
+                    .then((ok) => {
+                        if (!ok) {
+                            console.warn('⚠️ [landing.mp4] 降落音效未成功啟動，繼續降落流程');
+                        }
+                    })
+                    .catch((error) => {
+                        console.warn('⚠️ [landing.mp4] 降落音效啟動失敗，繼續降落流程:', error);
+                    });
+                console.log('▶️ [landing.mp4] 開始播放（muted；takeoff.mp3 走 oneshot，wakeup 續播）');
             } catch (e) {
                 console.warn('⚠️ [landing.mp4] 連 muted 也播不出，跳過影片直接進情緒表:', e && e.message ? e.message : e);
             }
@@ -6379,23 +6353,14 @@
                 });
             }
 
-            if (landingEffectPlaybackId !== null) {
+            if (landingOneshotStarted) {
                 try {
-                    landingResult.landingEffectStopped = await stopLocalSoundViaPi({
-                        throughId: landingEffectPlaybackId,
-                        scope: 'background',
-                        retries: 2
+                    await stopLocalSoundViaPi({
+                        scope: 'oneshot',
+                        retries: 1
                     });
-                    if (landingResult.landingEffectStopped) {
-                        if (window._landingEffectPlaybackId === landingEffectPlaybackId) {
-                            window._landingEffectPlaybackId = null;
-                        }
-                    } else {
-                        console.warn('⚠️ [landing.mp4] 無法確認降落音效已停止，繼續降落流程');
-                    }
                 } catch (error) {
-                    landingResult.landingEffectStopped = false;
-                    console.warn('⚠️ [landing.mp4] 停止降落音效失敗，繼續降落流程:', error);
+                    console.warn('⚠️ [landing.mp4] 停止降落 oneshot 音效失敗，繼續降落流程:', error);
                 }
             }
             
@@ -8067,13 +8032,14 @@
             try {
                 // 🔧 改進：根據性別選擇 OpenAI 語音
                 const voiceMap = {
-                    'male': 'onyx',    // 深沉、穩重的男聲
-                    'female': 'nova'   // 明亮、活潑的女聲
+                    'male': CAPTAIN_TTS.voice || 'ash',
+                    'female': 'nova'
                 };
-                const selectedVoice = voiceMap[gender] || 'onyx';
+                const selectedVoice = options.voice || voiceMap[gender] || CAPTAIN_TTS.voice || 'ash';
                 
                 // rate → OpenAI speed（正常語速約 1.0）
                 const openaiSpeed = Math.max(0.85, Math.min(1.15, rate));
+                const instructions = options.instructions || CAPTAIN_TTS.instructions || null;
                 
                 console.log(`🎤 使用 ${gender} 聲（${selectedVoice}），語速 ${openaiSpeed.toFixed(2)}`);
                 
@@ -8083,8 +8049,9 @@
                     body: JSON.stringify({
                         text: text,
                         languageCode: language === 'zh-TW' ? 'zh' : 'en',
-                        voice: selectedVoice,  // 🔧 傳遞語音性別
-                        speed: openaiSpeed     // 🔧 傳遞語速（較慢更溫柔）
+                        voice: selectedVoice,
+                        speed: openaiSpeed,
+                        instructions: instructions
                     }),
                     timeout: 10000
                 });
@@ -8337,24 +8304,22 @@
             
             const TTS_BASE = 'http://127.0.0.1:5005';
             try {
-                // 🔧 改進：根據性別選擇 OpenAI 語音
-                // 男聲：onyx, echo, alloy
-                // 女聲：nova, shimmer, fable
                 const voiceMap = {
-                    'male': 'onyx',    // 深沉、穩重的男聲
-                    'female': 'nova'   // 明亮、活潑的女聲
+                    'male': CAPTAIN_TTS.voice || 'ash',
+                    'female': 'nova'
                 };
-                const selectedVoice = voiceMap[gender] || 'onyx';
+                const selectedVoice = voiceMap[gender] || CAPTAIN_TTS.voice || 'ash';
                 
-                console.log(`🎵 呼叫 /tts/generate 預先生成 TTS 音檔（${gender} 聲，語速 ${speed}）...`);
+                console.log(`🎵 呼叫 /tts/generate 預先生成 TTS 音檔（${gender}/${selectedVoice}，語速 ${speed}）...`);
                 const response = await fetch(TTS_BASE + '/tts/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         text: text,
                         languageCode: language === 'zh-TW' ? 'zh' : 'en',
-                        voice: selectedVoice,  // 🔧 傳遞語音性別
-                        speed: speed           // 🔧 傳遞語速（0.25-4.0，0.8 較慢更溫柔）
+                        voice: selectedVoice,
+                        speed: speed,
+                        instructions: CAPTAIN_TTS.instructions || null
                     }),
                     timeout: 20000
                 });
@@ -8364,7 +8329,7 @@
                     if (data.success && data.audio_id) {
                         preparedAudioId = data.audio_id;
                         console.log('✅ TTS 音檔預先生成成功，audio_id:', preparedAudioId);
-                        return preparedAudioId; // 🔧 改進：返回 audio_id
+                        return preparedAudioId;
                     } else {
                         console.warn('⚠️ /tts/generate 返回錯誤:', data.error);
                         return null;
@@ -10751,7 +10716,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             if (music.source === 'pi') {
                 await setLocalBackgroundVolume(clamped, duration);
                 music.volume = clamped;
-                if (clamped === 0) music.paused = true;
+                // 漸變淡出時不要立刻標記 paused，否則後續邏輯會誤判音樂已停
+                if (clamped === 0 && duration <= 0) music.paused = true;
                 return;
             }
 
@@ -14360,12 +14326,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             })();
             
             // 主線：landing.mp4 → 情緒表（內部已處理 Autoplay／超時）
-            let landingVideoResult = {
-                landingEffectPlaybackId: null,
-                landingEffectStopped: true
-            };
             try {
-                landingVideoResult = await playLandingVideoAndShowImage(
+                await playLandingVideoAndShowImage(
                     landingImagePromise,
                     finalDestination
                 );
@@ -14377,54 +14339,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 }
             }
 
-            // 無論影片成功、跳過或丟錯，語音 B 前都必須確定背景音已停止。
-            const remainingPhase7Music = window._phase7WakeupMusic;
-            const wakeupPlaybackId = remainingPhase7Music && remainingPhase7Music.playbackId;
-            const landingEffectPlaybackId = landingVideoResult.landingEffectPlaybackId
-                ?? window._landingEffectPlaybackId
-                ?? null;
-            const latestPlaybackId = landingEffectPlaybackId ?? wakeupPlaybackId;
-            let stoppedRemainingMusic = latestPlaybackId === null
-                && landingVideoResult.landingEffectStopped !== false;
-            phase7MusicGeneration.cancel();
-            if (remainingPhase7Music && remainingPhase7Music.source !== 'pi') {
-                try {
-                    remainingPhase7Music.pause();
-                    remainingPhase7Music.currentTime = 0;
-                } catch (_) {}
-                window._phase7WakeupMusic = null;
-            }
-            if (latestPlaybackId !== null && latestPlaybackId !== undefined) {
-                stoppedRemainingMusic = await stopLocalSoundViaPi({
-                    throughId: latestPlaybackId,
-                    scope: 'background',
-                    retries: 2
-                });
-            }
-            if (
-                stoppedRemainingMusic
-                && landingEffectPlaybackId !== null
-                && window._landingEffectPlaybackId === landingEffectPlaybackId
-            ) {
-                window._landingEffectPlaybackId = null;
-            }
-            window._landingAudioStopFailed = !stoppedRemainingMusic;
-            if (!stoppedRemainingMusic) {
-                console.error('❌ [Phase 7] 無法確認背景音停止，將略過語音 B 並排程最後一次重試');
-                setTimeout(async () => {
-                    const retryStopped = await stopLocalSoundViaPi({
-                        throughId: latestPlaybackId,
-                        scope: 'background',
-                        retries: 2
-                    });
-                    if (retryStopped) {
-                        window._landingAudioStopFailed = false;
-                        if (window._landingEffectPlaybackId === landingEffectPlaybackId) {
-                            window._landingEffectPlaybackId = null;
-                        }
-                    }
-                }, 200);
-            }
+            // 降落影片結束後不停止 wakeup；等情緒量表後、國家介紹／語音 B 再淡出。
             
             // ============================================================================
             // 步驟 6: 等情緒表（使用者操作）；圖片／文字B 繼續背景跑
@@ -14499,35 +14414,66 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             
             setBoardingStatus(false);
             
-            // 顯示文字B並播放語音B
+            // 顯示文字B並播放語音B：國家介紹開始時，wakeup 約 2 秒淡出並同時播語音 B
             if (destinationInfo) {
                 console.log('9️⃣ [Phase 7] 顯示文字B並播放語音B...');
                 await showLandingCountryInfo(finalDestination, destinationInfo);
-                
-                // 播放已預先生成的語音B
-                if (window._landingAudioStopFailed) {
-                    console.error('❌ [Phase 7] 背景音尚未確認停止，略過語音 B（文字仍顯示）');
+
+                phase7MusicGeneration.cancel();
+                const remainingPhase7Music = window._phase7WakeupMusic;
+                const wakeupPlaybackId = remainingPhase7Music && remainingPhase7Music.playbackId;
+                window._landingAudioStopFailed = false;
+
+                // 先啟動淡出，不阻塞語音 B
+                if (remainingPhase7Music && remainingPhase7Music.source !== 'pi') {
+                    setPhase7MusicVolume(0, 2000).then(() => {
+                        try {
+                            remainingPhase7Music.pause();
+                            remainingPhase7Music.currentTime = 0;
+                        } catch (_) {}
+                        if (window._phase7WakeupMusic === remainingPhase7Music) {
+                            window._phase7WakeupMusic = null;
+                        }
+                    }).catch((fadeErr) => {
+                        console.warn('⚠️ [Phase 7] wakeup 淡出失敗:', fadeErr);
+                    });
+                } else if (remainingPhase7Music) {
+                    setPhase7MusicVolume(0, 2000).catch((fadeErr) => {
+                        console.warn('⚠️ [Phase 7] wakeup 淡出失敗:', fadeErr);
+                    });
+                    setTimeout(() => {
+                        stopLocalSoundViaPi({
+                            throughId: wakeupPlaybackId,
+                            scope: 'background',
+                            retries: 2
+                        }).then((stopped) => {
+                            if (stopped && window._phase7WakeupMusic
+                                && window._phase7WakeupMusic.playbackId === wakeupPlaybackId) {
+                                window._phase7WakeupMusic = null;
+                            }
+                        }).catch(() => {});
+                    }, 2000);
+                }
+
+                // 與淡出同時播放語音 B
+                console.log('🔊 [Phase 7] 播放語音B（新城市介紹，wakeup 同步淡出）...');
+                if (window._phase7VoiceBAudioId) {
+                    console.log('✅ [Phase 7] 使用已預先生成的語音B，audio_id:', window._phase7VoiceBAudioId);
+                    await playCachedTts(window._phase7VoiceBAudioId);
+                    console.log('✅ 語音B播放完成');
                 } else {
-                    console.log('🔊 [Phase 7] 播放語音B（新城市介紹）...');
-                    if (window._phase7VoiceBAudioId) {
-                        console.log('✅ [Phase 7] 使用已預先生成的語音B，audio_id:', window._phase7VoiceBAudioId);
-                        await playCachedTts(window._phase7VoiceBAudioId);
-                        console.log('✅ 語音B播放完成');
-                    } else {
-                        // 如果預先生成失敗，回退到 playAnnouncement
-                        console.warn('⚠️ [Phase 7] 語音B未預先生成，使用 playAnnouncement 生成並播放');
-                        const welcomeMessage = window._phase7WelcomeMessage ||
-                            `歡迎來到${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
-                        await playAnnouncement(welcomeMessage, 'zh-TW', {
-                            isLanding: true,
-                            gender: CAPTAIN_TTS.gender,
-                            rate: CAPTAIN_TTS.landingRate,
-                            pitch: CAPTAIN_TTS.landingPitch,
-                            volume: 1.0,
-                            waitForCompletion: true
-                        });
-                        console.log('✅ 語音B播放完成');
-                    }
+                    console.warn('⚠️ [Phase 7] 語音B未預先生成，使用 playAnnouncement 生成並播放');
+                    const welcomeMessage = window._phase7WelcomeMessage ||
+                        `歡迎來到${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
+                    await playAnnouncement(welcomeMessage, 'zh-TW', {
+                        isLanding: true,
+                        gender: CAPTAIN_TTS.gender,
+                        rate: CAPTAIN_TTS.landingRate,
+                        pitch: CAPTAIN_TTS.landingPitch,
+                        volume: 1.0,
+                        waitForCompletion: true
+                    });
+                    console.log('✅ 語音B播放完成');
                 }
                 
                 // 🔧 改進：保留 window._phase7WelcomeMessage 供 Phase 0 使用，不立即刪除

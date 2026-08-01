@@ -855,7 +855,14 @@ class AudioManager:
             self.logger.error(f"生成音頻失敗: {e}")
             return None
 
-    def _generate_audio_openai_direct(self, text: str, language_code: str, voice: str = None, speed: float = None) -> Optional[Path]:
+    def _generate_audio_openai_direct(
+        self,
+        text: str,
+        language_code: str,
+        voice: str = None,
+        speed: float = None,
+        instructions: str = None,
+    ) -> Optional[Path]:
         """
         直接使用 OpenAI TTS 生成音頻（繞過其他引擎選擇）
         
@@ -864,6 +871,7 @@ class AudioManager:
             language_code: 語言代碼
             voice: 指定的語音模型（可選，默認使用配置中的語音）
             speed: 語速 0.25–4.0（可選，默認使用配置）
+            instructions: gpt-4o-mini-tts 風格提示（可選）
         
         Returns:
             Path: 生成的音頻文件路徑，如果失敗則返回 None
@@ -877,8 +885,16 @@ class AudioManager:
             except (TypeError, ValueError):
                 selected_speed = float(TTS_CONFIG.get('openai_speed', 1.0))
             selected_speed = max(0.25, min(4.0, selected_speed))
+            selected_instructions = (
+                (instructions or "").strip()
+                or (TTS_CONFIG.get('openai_instructions') or "").strip()
+                or None
+            )
+            model_name = TTS_CONFIG['openai_model']
+            can_instruct = str(model_name).startswith('gpt-4o-mini-tts')
+            instructions_key = selected_instructions if (can_instruct and selected_instructions) else ''
             text_hash = hashlib.md5(
-                f"{text}_{language_code}_{selected_voice}_{selected_speed:.2f}".encode()
+                f"{text}_{language_code}_{selected_voice}_{selected_speed:.2f}_{model_name}_{instructions_key}".encode()
             ).hexdigest()
             audio_file = self.cache_dir / f"openai_direct_{language_code}_{selected_voice}_{text_hash}.wav"
             
@@ -892,69 +908,34 @@ class AudioManager:
                 self.logger.error("OpenAI 客戶端未初始化")
                 return None
                 
-            self.logger.info(f"🤖 使用 OpenAI TTS 生成音頻: {selected_voice} (speed={selected_speed:.2f})")
-            
-            # 調用 OpenAI TTS API
-            response = self.openai_client.audio.speech.create(
-                model=TTS_CONFIG['openai_model'],
-                voice=selected_voice,
-                input=text,
-                speed=selected_speed
+            self.logger.info(
+                f"🤖 使用 OpenAI TTS 生成音頻: model={model_name} voice={selected_voice} "
+                f"speed={selected_speed:.2f} instructions={'yes' if instructions_key else 'no'}"
             )
             
-            # OpenAI 返回 MP3，直接保存為 MP3 然後轉換
-            temp_mp3_file = audio_file.with_suffix('.mp3')
+            # 直接要 WAV，省掉本機 ffmpeg 轉檔時間
+            create_kwargs = {
+                "model": model_name,
+                "voice": selected_voice,
+                "input": text,
+                "speed": selected_speed,
+                "response_format": "wav",
+            }
+            if can_instruct and selected_instructions:
+                create_kwargs["instructions"] = selected_instructions
+
+            response = self.openai_client.audio.speech.create(**create_kwargs)
             
-            # 將音頻數據寫入 MP3 文件
-            with open(temp_mp3_file, 'wb') as f:
+            with open(audio_file, 'wb') as f:
                 for chunk in response.iter_bytes(1024):
                     f.write(chunk)
             
-            # 驗證 MP3 文件
-            if temp_mp3_file.exists() and temp_mp3_file.stat().st_size > 0:
-                self.logger.info(f"OpenAI MP3 文件生成成功: {temp_mp3_file.stat().st_size} bytes")
-                
-                # 轉換 MP3 到 WAV
-                try:
-                    import subprocess
-                    # 嘗試 ffmpeg
-                    convert_cmd = ['ffmpeg', '-i', str(temp_mp3_file), '-y', str(audio_file)]
-                    result = subprocess.run(convert_cmd, capture_output=True, timeout=30)
-                    
-                    if result.returncode == 0 and audio_file.exists():
-                        self.logger.info("ffmpeg 轉換成功")
-                        temp_mp3_file.unlink()  # 刪除臨時 MP3
-                    else:
-                        # ffmpeg 失敗，嘗試 sox
-                        self.logger.warning("ffmpeg 失敗，嘗試 sox")
-                        convert_cmd = ['sox', str(temp_mp3_file), str(audio_file)]
-                        result = subprocess.run(convert_cmd, capture_output=True, timeout=30)
-                        
-                        if result.returncode == 0 and audio_file.exists():
-                            self.logger.info("sox 轉換成功")
-                            temp_mp3_file.unlink()  # 刪除臨時 MP3
-                        else:
-                            # 兩個都失敗，直接用 MP3
-                            self.logger.warning("格式轉換失敗，直接使用 MP3")
-                            temp_mp3_file.rename(audio_file.with_suffix('.mp3'))
-                            audio_file = audio_file.with_suffix('.mp3')
-                            
-                except Exception as e:
-                    self.logger.warning(f"音頻格式轉換失敗: {e}")
-                    # 如果轉換失敗，使用原始 MP3
-                    temp_mp3_file.rename(audio_file.with_suffix('.mp3'))
-                    audio_file = audio_file.with_suffix('.mp3')
-                
-                # 最終驗證文件
-                if audio_file.exists() and audio_file.stat().st_size > 0:
-                    self.logger.info(f"✨ OpenAI TTS 音頻生成成功: {audio_file}")
-                    return audio_file
-                else:
-                    self.logger.error("音頻文件轉換後無效")
-                    return None
-            else:
-                self.logger.error("OpenAI MP3 文件生成失敗")
-                return None
+            if audio_file.exists() and audio_file.stat().st_size > 0:
+                self.logger.info(f"✨ OpenAI TTS 音頻生成成功: {audio_file} ({audio_file.stat().st_size} bytes)")
+                return audio_file
+
+            self.logger.error("OpenAI WAV 文件生成失敗")
+            return None
                 
         except Exception as e:
             self.logger.error(f"Nova 直接生成失敗: {e}")

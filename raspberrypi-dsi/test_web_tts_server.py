@@ -618,6 +618,17 @@ class WebTtsServerAudioRouteTests(unittest.TestCase):
         self.pygame.mixer.music.stop.assert_not_called()
         self.assertEqual(response.payload["scope"], "background")
 
+    def test_audio_stop_oneshot_scope_stops_only_mixer_music(self):
+        response = self.client.post("/audio/stop", json={
+            "through_id": 100,
+            "scope": "oneshot",
+        })
+
+        self.assertEqual(response.status_code, 200)
+        self.background.stop.assert_not_called()
+        self.pygame.mixer.music.stop.assert_called_once_with()
+        self.assertEqual(response.payload["scope"], "oneshot")
+
     def test_audio_stop_all_scope_stops_background_and_mixer_music(self):
         response = self.client.post("/audio/stop", json={
             "through_id": 100,

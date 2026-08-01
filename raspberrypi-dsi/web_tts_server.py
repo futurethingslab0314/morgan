@@ -372,37 +372,38 @@ def create_app(
         })
 
     def _parse_tts_request(data):
-        """從前端 JSON 取出 text / language / voice / speed。"""
+        """從前端 JSON 取出 text / language / voice / speed / instructions。"""
         text = (data.get("text") or "").strip()
         language_code = (data.get("languageCode") or "zh").strip()
         voice = (data.get("voice") or "").strip() or None
-        # 允許 gender 別名：male → onyx，female → nova
+        # 允許 gender 別名：male → ash，female → nova
         gender = (data.get("gender") or "").strip().lower()
         if not voice and gender:
-            voice = "onyx" if gender == "male" else "nova" if gender == "female" else None
-        # 機長廣播預設男聲（前端若漏傳，也不再落到 config 的 nova）
+            voice = "ash" if gender == "male" else "nova" if gender == "female" else None
+        # 機長廣播預設男聲 ash（前端若漏傳，也不再落到舊的 onyx）
         if not voice:
-            voice = "onyx"
+            voice = "ash"
         speed = data.get("speed", None)
-        return text, language_code, voice, speed
+        instructions = (data.get("instructions") or "").strip() or None
+        return text, language_code, voice, speed, instructions
 
     @app.route("/tts/play", methods=["POST"])  # 播放文字（舊版：即時生成並播放）
     def tts_play():
         """
         舊版端點：接收文字，立即呼叫 OpenAI TTS 生成音檔並播放。
         注意：這會在 HTTP 請求期間同步等待整段語音播放完成。
-        body 可含 voice（如 onyx）與 speed（0.25–4.0）。
+        body 可含 voice（如 ash）與 speed（0.25–4.0）、instructions。
         """
         try:
             data = request.get_json(force=True, silent=True) or {}
-            text, language_code, voice, speed = _parse_tts_request(data)
+            text, language_code, voice, speed, instructions = _parse_tts_request(data)
 
             if not text:
                 return jsonify({"success": False, "error": "text is required"}), 400
 
             logger.info("/tts/play voice=%s speed=%s", voice, speed)
             audio_file = audio._generate_audio_openai_direct(
-                text, language_code, voice=voice, speed=speed
+                text, language_code, voice=voice, speed=speed, instructions=instructions
             )
             if not audio_file:
                 return jsonify({"success": False, "error": "TTS generation failed"}), 500
@@ -422,18 +423,18 @@ def create_app(
         """
         新端點：只生成 OpenAI TTS 音檔，不播放。
         用於「先準備好」，之後再透過 /tts/play_cached 播放。
-        body 可含 voice（如 onyx）與 speed（0.25–4.0）。
+        body 可含 voice（如 ash）與 speed（0.25–4.0）、instructions。
         """
         try:
             data = request.get_json(force=True, silent=True) or {}
-            text, language_code, voice, speed = _parse_tts_request(data)
+            text, language_code, voice, speed, instructions = _parse_tts_request(data)
 
             if not text:
                 return jsonify({"success": False, "error": "text is required"}), 400
 
             logger.info("/tts/generate voice=%s speed=%s", voice, speed)
             audio_file = audio._generate_audio_openai_direct(
-                text, language_code, voice=voice, speed=speed
+                text, language_code, voice=voice, speed=speed, instructions=instructions
             )
             if not audio_file:
                 return jsonify({"success": False, "error": "TTS generation failed"}), 500
@@ -496,10 +497,10 @@ def create_app(
         data = request.get_json(force=True, silent=True) or {}
         through_id = data.get("through_id")
         scope = data.get("scope", "all")
-        if scope not in ("background", "all"):
+        if scope not in ("background", "all", "oneshot"):
             return jsonify({
                 "success": False,
-                "error": "scope must be 'background' or 'all'",
+                "error": "scope must be 'background', 'all', or 'oneshot'",
             }), 400
         errors = {}
         stop_result = {
@@ -507,16 +508,23 @@ def create_app(
             "stopped": False,
             "cancelled": False,
         }
-        try:
-            if background_audio is not None:
-                stop_result = background_audio.stop(through_id=through_id)
-        except Exception as e:
-            errors["background"] = str(e)
-            logger.exception("/audio/stop background error")
-        if scope == "all":
+        if scope in ("background", "all"):
+            try:
+                if background_audio is not None:
+                    stop_result = background_audio.stop(through_id=through_id)
+            except Exception as e:
+                errors["background"] = str(e)
+                logger.exception("/audio/stop background error")
+        if scope in ("all", "oneshot"):
             try:
                 if pygame_module is not None and pygame_module.mixer.get_init():
                     pygame_module.mixer.music.stop()
+                    if scope == "oneshot":
+                        stop_result = {
+                            "through_id": through_id,
+                            "stopped": True,
+                            "cancelled": False,
+                        }
             except Exception as e:
                 errors["music"] = str(e)
                 logger.exception("/audio/stop mixer.music error")
@@ -527,7 +535,7 @@ def create_app(
                 "scope": scope,
                 **stop_result,
             }), 500
-        logger.info("audio/stop OK")
+        logger.info("audio/stop OK scope=%s", scope)
         return jsonify({"success": True, "scope": scope, **stop_result})
 
     @app.route("/audio/volume", methods=["POST"])
