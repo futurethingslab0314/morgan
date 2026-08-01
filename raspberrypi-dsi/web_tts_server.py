@@ -180,6 +180,24 @@ def create_app():
             logger.exception("/tts/play_cached error")
             return jsonify({"success": False, "error": str(e)}), 500
 
+    @app.route("/audio/stop", methods=["POST", "OPTIONS"])
+    def audio_stop():
+        """立刻停止目前喇叭播放（pygame / 背景音檔）。重整頁面或飛機餐結束時用。"""
+        if request.method == "OPTIONS":
+            return _cors_headers(make_response("", 204))
+        try:
+            try:
+                import pygame
+                if pygame.mixer.get_init():
+                    pygame.mixer.music.stop()
+            except Exception as e:
+                logger.warning("audio/stop pygame stop: %s", e)
+            logger.info("audio/stop OK")
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.exception("/audio/stop error")
+            return jsonify({"success": False, "error": str(e)}), 500
+
     @app.route("/audio/play_url", methods=["POST"])
     def audio_play_url():
         """

@@ -1863,7 +1863,10 @@
     <!-- 下一步按鈕 - 已隱藏，改用實體按鈕 -->
     <button id="nextButton" class="next-button" style="display: none;">下一步</button>
 
+    <script src="./pi-flow-runtime.js"></script>
     <script>
+        const MorganRuntime = window.MorganRuntime;
+
         // Phase 定義
         const Phase = {
             POST_ARRIVAL: 0,      // Phase 0: 醒來後的窗戶存在狀態
@@ -1919,6 +1922,7 @@
         window.COUNTRY_MENTAL_STATE = COUNTRY_MENTAL_STATE;
         
         let maxReachedPhase = Phase.POST_ARRIVAL; // 記錄已到達的最高 phase，確保不可逆
+
         let selectedTimer = null;
         let selectedAngle = null;
         let isTakeoffSequenceRunning = false; // 防止起飛序列重複觸發
@@ -2012,6 +2016,46 @@
         // 切換狀態
         function switchState(newState) {
             console.log('switchState 被調用，新狀態:', newState);
+
+            if (typeof newState !== 'string') {
+                console.warn('⚠️ 無效狀態，拒絕切換:', newState);
+                return false;
+            }
+
+            const isSpecialState = newState === 'ARRIVAL_INFO' || newState === 'TICKET_REVIEW';
+            let stateId;
+            if (newState === 'ARRIVAL_INFO') {
+                stateId = 'stateArrivalInfo';
+            } else if (newState === 'TICKET_REVIEW') {
+                stateId = 'stateTicketReview';
+            } else {
+                stateId = 'state' + newState.charAt(0).toUpperCase() + newState.slice(1);
+            }
+
+            const stateElement = document.getElementById(stateId);
+            if (!stateElement) {
+                console.error('❌ 找不到狀態元素:', stateId, '狀態:', newState);
+                return false;
+            }
+
+            let plan = MorganRuntime.planPreparationStateTransition(currentPhase, newState);
+            if (!plan && isSpecialState) {
+                plan = {
+                    state: newState,
+                    phase: currentPhase,
+                    maxReachedPhase: null
+                };
+            }
+            if (!plan) {
+                console.warn('⚠️ 不允許的狀態切換:', currentPhase, '→', newState);
+                return false;
+            }
+
+            currentState = newState;
+            currentPhase = plan.phase;
+            if (plan.maxReachedPhase !== null) {
+                maxReachedPhase = plan.maxReachedPhase;
+            }
             
             // 控制 stateCountry（所在國家）的顯示：只在 Phase 0 顯示
             const stateCountry = document.getElementById('stateCountry');
@@ -2040,21 +2084,6 @@
             });
 
             // 顯示新狀態
-            // 特殊處理 'ARRIVAL_INFO' 和 'TICKET_REVIEW' 狀態
-            let stateId;
-            if (newState === 'ARRIVAL_INFO') {
-                stateId = 'stateArrivalInfo';
-            } else if (newState === 'TICKET_REVIEW') {
-                stateId = 'stateTicketReview';
-            } else {
-            currentState = newState;
-                // 將狀態名稱轉換為元素 ID：ready_to_fly -> stateReady_to_fly
-                stateId = 'state' + newState.charAt(0).toUpperCase() + newState.slice(1);
-                // 處理下劃線：ready_to_fly -> Ready_to_fly -> stateReady_to_fly
-            }
-            
-            const stateElement = document.getElementById(stateId);
-            
             if (stateElement) {
                 stateElement.classList.add('active');
                 console.log('✅ 成功切換到狀態:', newState, '元素 ID:', stateId);
@@ -2256,8 +2285,6 @@
                         }
                     })();
                 }
-            } else {
-                console.error('❌ 找不到狀態元素:', stateId, '狀態:', newState);
             }
             
             // 如果切換到時間選擇或氣候帶選擇，立即讀取旋鈕位置
@@ -2281,6 +2308,7 @@
             
             // 更新按鈕狀態
             updateNextButton();
+            return true;
         }
 
         // 選擇時間
@@ -2645,7 +2673,8 @@
                 countryFlagEl.textContent = '🏳️';
             }
             
-            // 🔧 新增：檢查並恢復未完成的飛行狀態
+            // 先停上一趟殘留喇叭，再恢復未完成飛行（避免音樂不停 + 誤觸飛機餐）
+            stopLocalSoundViaPi().catch(() => {});
             restoreFlightState();
             
             const nextButton = document.getElementById('nextButton');
@@ -3123,7 +3152,16 @@
                     }
                     
                     // Phase 5 (CRUISE) 時，旋鈕轉動觸發飛機餐（一次旅程只觸發一次）
+                    // 注意：old === null 代表剛恢復／剛進巡航的「第一次基準讀值」，不是真的轉動
                     if ((currentPhase === Phase.CRUISE || currentPhase === 5) && !midnightServiceTriggered && !midnightServiceActive) {
+                        if (old === null || old === undefined) {
+                            console.log('ℹ️ [Phase 5] 旋鈕基準位置已建立（', pos, '），忽略首次讀值，不觸發飛機餐');
+                            return;
+                        }
+                        if (window._cruiseMealReadyAt && Date.now() < window._cruiseMealReadyAt) {
+                            console.log('ℹ️ [Phase 5] 巡航剛進入／剛恢復，忽略旋鈕飛機餐（grace）');
+                            return;
+                        }
                         console.log('🍽️ [Phase 5] 檢測到旋鈕轉動，觸發飛機餐（一次旅程只觸發一次）');
                         midnightServiceTriggered = true; // 標記已觸發，防止重複觸發
                         refreshKnobMonitoring('飛機餐已觸發');
@@ -3653,6 +3691,7 @@
                 const relativePath = (!/^https?:\/\//i.test(url) && !url.startsWith('data:')) ? url.replace(/^\.\//, '') : null;
                 const fetchTimeoutMs = ((maxDuration && maxDuration > 0) ? maxDuration : 10) * 1000 + 8000;
                 console.log('🔊 嘗試樹莓派後備播放:', absoluteUrl, relativePath ? `(local: ${relativePath})` : '');
+                window._piAudioPlaying = true;
                 const response = await fetch(TTS_LOCAL_BASE + '/audio/play_url', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3664,6 +3703,7 @@
                     }),
                     signal: AbortSignal.timeout(fetchTimeoutMs)
                 });
+                window._piAudioPlaying = false;
                 if (!response.ok) {
                     console.warn('⚠️ 樹莓派後備播放 HTTP 錯誤:', response.status);
                     return false;
@@ -3676,10 +3716,34 @@
                 console.warn('⚠️ 樹莓派後備播放失敗:', data.error);
                 return false;
             } catch (err) {
+                window._piAudioPlaying = false;
                 console.warn('⚠️ 樹莓派後備播放不可用:', err && err.message ? err.message : err);
                 return false;
             }
         }
+
+        // 立刻停止樹莓派喇叭（重整／飛機餐結束／切階段時必須呼叫，否則音會殘留）
+        async function stopLocalSoundViaPi() {
+            try {
+                await fetch(TTS_LOCAL_BASE + '/audio/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: '{}',
+                    signal: AbortSignal.timeout(2500)
+                });
+                window._piAudioPlaying = false;
+                console.log('🔇 已請求樹莓派停止喇叭');
+                return true;
+            } catch (err) {
+                console.warn('⚠️ 停止樹莓派喇叭失敗:', err && err.message ? err.message : err);
+                return false;
+            }
+        }
+        window.stopLocalSoundViaPi = stopLocalSoundViaPi;
+
+        // 頁面重整／關閉：先停喇叭，避免上一趟音樂繼續響
+        window.addEventListener('pagehide', () => { stopLocalSoundViaPi(); });
+        window.addEventListener('beforeunload', () => { stopLocalSoundViaPi(); });
 
         // 解析 AI 回傳（常被包成 ```json ... ```）
         function parseAiJson(text) {
@@ -4602,8 +4666,10 @@
                         }
                         
                         // 切換到準備起飛狀態
-                        currentState = State.READY_TO_FLY;
-                        switchState(State.READY_TO_FLY);
+                        if (!switchState(State.READY_TO_FLY)) {
+                            console.warn('⚠️ 無法切換到準備起飛狀態，保留目前畫面');
+                            return;
+                        }
                         console.log('🛫 已準備好起飛，等待按鈕開始起飛序列');
                     } catch (error) {
                         console.error('❌ 在按鈕確認時計算目的地失敗:', error);
@@ -4705,7 +4771,10 @@
                     });
                     
                     // 切換到準備起航狀態
-                    currentState = State.READY_TO_FLY;
+                    if (!switchState(State.READY_TO_FLY)) {
+                        console.warn('⚠️ [prepareForTakeoff] 無法切換到準備起航狀態');
+                        return;
+                    }
                     console.log('🛫 已準備好起飛，等待按鈕...');
                 } else {
                     console.warn('⚠️ 語音生成失敗');
@@ -5069,6 +5138,8 @@
             // 注意：不再自動切換到 Phase 7，必須在 Phase 6 時按下按鈕才會觸發降落
             
             // 設置當前階段為 CRUISE（但不調用 handleCruise，因為進度條已經顯示）
+            lastKnobPosition = null;
+            window._cruiseMealReadyAt = Date.now() + 2500;
             switchToPhase(Phase.CRUISE);
             
             console.log('✅ 已進入巡航階段，進度條和影片已顯示');
@@ -8912,30 +8983,51 @@
                     console.log('🕐 [恢復狀態] 當前時間:', new Date(now).toLocaleString('zh-TW'));
                     console.log('🕐 [恢復狀態] 剩餘時間:', Math.round(remainingTime / 1000 / 60), '分鐘');
                     
-                    // 如果已經超過預計到達時間，應該進入降落階段
+                    // 先停殘留喇叭（上一趟飛機餐／wakeup 可能還在播）
+                    stopLocalSoundViaPi().catch(() => {});
+
+                    sleepStartTime = takeoffTime;
+                    maxReachedPhase = Phase.CRUISE;
+                    // 旋鈕基準尚未建立 + 短暫 grace，避免重整後第一次讀值誤觸飛機餐
+                    lastKnobPosition = null;
+                    window._cruiseMealReadyAt = Date.now() + 4000;
+
                     if (remainingTime <= 0) {
-                        console.log('✅ [恢復狀態] 已超過預計到達時間，應該進入降落階段');
-                        // 設置 sleepStartTime 為起飛時間，這樣計算會正確
-                        sleepStartTime = takeoffTime;
-                        // 切換到 Phase 5（巡航階段），等待用戶觸發降落
-                        currentPhase = Phase.CRUISE;
-                        maxReachedPhase = Phase.CRUISE;
-                        console.log('✅ [恢復狀態] 已恢復到 Phase 5（巡航階段）');
+                        console.log('✅ [恢復狀態] 已超過預計到達時間 → 恢復巡航，請按按鈕進降落（不自動飛機餐）');
                     } else {
-                        // 還在飛行中，恢復到 Phase 5 並繼續計時
-                        sleepStartTime = takeoffTime;
+                        console.log('✅ [恢復狀態] 恢復巡航，剩餘:', Math.round(remainingTime / 1000 / 60), '分鐘');
+                    }
+
+                    // 用正式切換更新 UI（進度條等），不要只改 currentPhase
+                    try {
+                        switchToPhase(Phase.CRUISE, { force: true });
+                    } catch (e) {
                         currentPhase = Phase.CRUISE;
-                        maxReachedPhase = Phase.CRUISE;
-                        console.log('✅ [恢復狀態] 已恢復到 Phase 5（巡航階段），剩餘時間:', Math.round(remainingTime / 1000 / 60), '分鐘');
-                        
-                        // 恢復進度條顯示
-                        const flightProgressWrapper = document.getElementById('flightProgressWrapper');
-                        if (flightProgressWrapper && selectedTimer) {
-                            flightProgressWrapper.style.display = 'block';
-                            flightProgressWrapper.style.visibility = 'visible';
-                            flightProgressWrapper.style.opacity = '1';
-                            console.log('✅ [恢復狀態] 已恢復進度條顯示');
-                        }
+                        console.warn('⚠️ [恢復狀態] switchToPhase 失敗，僅設定 currentPhase:', e);
+                    }
+
+                    // 重設「降落前 5 分鐘」倒數（handleCruise 在 sleepStartTime 已存在時會 early return）
+                    if (sleepTimer) {
+                        clearTimeout(sleepTimer);
+                        sleepTimer = null;
+                    }
+                    const fiveMinMs = 5 * 60 * 1000;
+                    if (remainingTime > fiveMinMs) {
+                        sleepTimer = setTimeout(() => {
+                            switchToPhase(Phase.DESCENT);
+                        }, remainingTime - fiveMinMs);
+                        console.log('⏰ [恢復狀態] 已重設 Phase 6 倒數:', Math.round((remainingTime - fiveMinMs) / 60000), '分鐘後');
+                    } else if (remainingTime > 0) {
+                        // 已進入最後 5 分鐘 → 直接進 Phase 6
+                        console.log('⏰ [恢復狀態] 已在最後 5 分鐘內，切到 Phase 6');
+                        try { switchToPhase(Phase.DESCENT, { force: true }); } catch (_) {}
+                    }
+
+                    const flightProgressWrapper = document.getElementById('flightProgressWrapper');
+                    if (flightProgressWrapper && selectedTimer) {
+                        flightProgressWrapper.style.display = 'block';
+                        flightProgressWrapper.style.visibility = 'visible';
+                        flightProgressWrapper.style.opacity = '1';
                     }
                     
                     // 保存 flightId 到 localStorage（如果記錄有 id）
@@ -9942,11 +10034,13 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     console.log('🍽️ 準備飛機餐音樂:', webPath);
 
                     // 1) 優先樹莓派喇叭（GPIO 觸發時瀏覽器常被 Autoplay 擋住）
+                    window._mealMusicViaPi = true;
                     const viaPi = await playLocalSoundViaPi(localPath, 60, 0.6);
                     if (viaPi) {
                         console.log('✅ 飛機餐音樂已由樹莓派喇叭播放:', localPath);
                         return;
                     }
+                    window._mealMusicViaPi = false;
 
                     // 2) 瀏覽器後備
                     mealMusic = new Audio(webPath);
@@ -9982,6 +10076,12 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 // 重新獲取覆蓋層元素（確保存在）
                 const currentOverlay = document.getElementById('midnightServiceOverlay');
                 
+                // 一定停樹莓派喇叭（飛機餐常走 Pi，只 pause 瀏覽器音會停不掉）
+                if (window._mealMusicViaPi || window._piAudioPlaying) {
+                    stopLocalSoundViaPi().catch(() => {});
+                    window._mealMusicViaPi = false;
+                }
+
                 // 淡出音樂（如果還在播放）
                 if (mealMusic && !mealMusic.paused) {
                     console.log('🎵 開始淡出飛機餐音樂');
@@ -10621,6 +10721,14 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 // Phase 不可逆檢查：只能前進或保持在當前 phase
                 const isPhaseAdvance = phase > maxReachedPhase;
                 const isPhaseStay = phase === currentPhase;
+                const isPreparationPair = Number.isInteger(currentPhase)
+                    && currentPhase >= 0
+                    && currentPhase <= 4
+                    && Number.isInteger(phase)
+                    && phase >= 0
+                    && phase <= 4;
+                const isNonPreparationAdvance = isPhaseAdvance && !isPreparationPair;
+                const isPreparationNavigation = MorganRuntime.isPreparationTransition(currentPhase, phase);
                 const isEarlyLanding = (phase === Phase.LANDING || phase === 7) && 
                                        (currentPhase === Phase.CRUISE || currentPhase === 5) &&
                                        window._earlyLandingConfirmed;
@@ -10633,14 +10741,17 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 // 2. 前進到新的 phase（phase > maxReachedPhase）
                 // 3. 保持在當前 phase（phase === currentPhase）
                 // 4. 提前降落（從 Phase 5 跳到 Phase 7）
-                if (!isLandingToPhase0 && !isPhaseAdvance && !isPhaseStay && !isEarlyLanding) {
+                // 5. Phase 0–4 之間向前或向後導覽
+                if (!isLandingToPhase0 && !isNonPreparationAdvance && !isPhaseStay && !isEarlyLanding && !isPreparationNavigation) {
                     console.warn('⚠️ [Phase 不可逆] 嘗試回退到 Phase ' + phase + '，但當前已到達 Phase ' + maxReachedPhase + '，拒絕切換');
                     console.warn('   當前 Phase:', currentPhase, '目標 Phase:', phase, '最高已到達 Phase:', maxReachedPhase);
                     return; // 拒絕切換
                 }
                 
-                // 更新最高已到達的 phase（只記錄前進的情況，不包括回退）
-                if (phase > maxReachedPhase) {
+                // 準備階段允許雙向導覽，因此最高階段需與目前目標同步
+                if (isPreparationNavigation) {
+                    maxReachedPhase = phase;
+                } else if (isNonPreparationAdvance) {
                     maxReachedPhase = phase;
                     console.log('📈 [Phase 不可逆] 更新最高已到達 Phase:', maxReachedPhase);
                 }
@@ -10775,32 +10886,11 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
             switch (phase) {
                 case Phase.DESTINATION_SHOW:
                     // Phase 3: 顯示目的地
-                    const destinationState = document.getElementById('stateDestination');
-                    if (destinationState) {
-                        destinationState.classList.add('active');
-                        currentState = State.DESTINATION;
-                        console.log('✅ 切換到目的地顯示狀態');
-                        
-                        // 更新目的地國旗
-                        if (destinationData) {
-                            const destinationFlagEl = document.getElementById('destinationFlag');
-                            if (destinationFlagEl) {
-                                const countryCode = destinationData.country_iso_code || '';
-                                let flagEmoji = '🏳️';
-                                if (countryCode && countryCode.length === 2) {
-                                    const codePoints = countryCode
-                                        .toUpperCase()
-                                        .split('')
-                                        .map(char => 0x1F1E6 + char.charCodeAt(0) - 65);
-                                    if (codePoints.length === 2) {
-                                        flagEmoji = String.fromCodePoint(...codePoints);
-                                    }
-                                }
-                                destinationFlagEl.textContent = flagEmoji;
-                                console.log('✅ 目的地國旗已更新:', flagEmoji, '國家:', destinationData.country_zh || destinationData.country);
-                            }
-                        }
+                    if (!switchState(State.DESTINATION)) {
+                        console.warn('⚠️ 無法切換到目的地顯示狀態');
+                        return;
                     }
+                    console.log('✅ 切換到目的地顯示狀態');
                     break;
                 case Phase.TAKEOFF_PREP:
                     // Phase 4: 起飛準備
@@ -12024,7 +12114,16 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 window._takeoff2VisibilityCheck = null;
             }
             
-            // 清除音頻相關狀態
+            // 清除音頻相關狀態（含樹莓派喇叭殘留）
+            stopLocalSoundViaPi().catch(() => {});
+            window._mealMusicViaPi = false;
+            if (window.mealMusic) {
+                try {
+                    window.mealMusic.pause();
+                    window.mealMusic.currentTime = 0;
+                    window.mealMusic = null;
+                } catch (e) { /* ignore */ }
+            }
             if (window._earlyLandingWakeupMusic) {
                 try {
                     window._earlyLandingWakeupMusic.pause();
@@ -12258,7 +12357,9 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 console.log('🛑 終止飛機餐服務');
                 midnightServiceActive = false;
                 
-                // 停止飛機餐音樂
+                // 停止飛機餐音樂（瀏覽器 + 樹莓派）
+                stopLocalSoundViaPi().catch(() => {});
+                window._mealMusicViaPi = false;
                 if (window.mealMusic) {
                     try {
                         window.mealMusic.pause();
@@ -14411,47 +14512,54 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             }
             
             // ============================================================================
-            // 優先級 2: Phase 0/1/2 雙擊返回上一步
+            // 優先級 2: 準備階段雙擊返回上一步
             // ============================================================================
-            
-            // 🔧 新增：Phase 0, 1, 2 雙擊返回上一步
-            if (currentPhase === Phase.DIRECTION_SELECTION || currentPhase === 2) {
-                // Phase 2 (DIRECTION_SELECTION) → Phase 1 (TIME_SELECTION)
-                console.log('🔘 [Phase 2] 雙擊：返回 Phase 1 (時間選擇)');
-                // 🔧 清除當次設定的內容（氣候帶選擇）
-                selectedDirection = null;
-                selectedAngle = null;
+
+            const backTarget = MorganRuntime.preparationBackTarget(currentPhase, currentState);
+            if (backTarget) {
+                console.log('🔘 [準備階段] 雙擊返回:', currentPhase, '→', backTarget.phase);
                 currentPosition = 0;
-                // 清除 UI 高亮
-                document.querySelectorAll('.angle-option').forEach((option) => {
-                    option.classList.remove('active');
-                });
-                switchToPhase(Phase.TIME_SELECTION);
-                switchState(State.TIMER);
-                return;
-            }
-            
-            if (currentPhase === Phase.TIME_SELECTION || currentPhase === 1) {
-                // Phase 1 (TIME_SELECTION) → Phase 0 (POST_ARRIVAL)
-                console.log('🔘 [Phase 1] 雙擊：返回 Phase 0 (首頁)');
-                // 🔧 清除當次設定的內容（時間選擇）
-                selectedTimer = null;
-                currentPosition = 0;
-                // 清除 UI 高亮
-                document.querySelectorAll('.timer-progress-segment').forEach((segment) => {
-                    segment.classList.remove('active');
-                });
-                document.querySelectorAll('.timer-option').forEach((option) => {
-                    option.classList.remove('active');
-                });
-                switchToPhase(Phase.POST_ARRIVAL);
-                switchState(State.COUNTRY);
-                return;
-            }
-            
-            if (currentPhase === Phase.POST_ARRIVAL || currentPhase === 0) {
-                // Phase 0 (POST_ARRIVAL) → 已經是最前面，不做任何事
-                console.log('🔘 [Phase 0] 雙擊：已在首頁，不做任何事');
+                const cleanupPolicy = MorganRuntime.preparationReturnCleanup(backTarget.phase);
+                if (!cleanupPolicy) {
+                    console.warn('⚠️ [準備階段] 缺少返回清理策略:', backTarget.phase);
+                    return;
+                }
+
+                if (cleanupPolicy.clearTimer) {
+                    selectedTimer = null;
+                    document.querySelectorAll('.timer-progress-segment').forEach((segment) => {
+                        segment.classList.remove('active');
+                    });
+                    document.querySelectorAll('.timer-option').forEach((option) => {
+                        option.classList.remove('active');
+                    });
+                }
+
+                if (cleanupPolicy.clearAngle && !cleanupPolicy.preservesAngle) {
+                    selectedDirection = null;
+                    selectedAngle = null;
+                    document.querySelectorAll('.angle-option').forEach((option) => {
+                        option.classList.remove('active');
+                    });
+                }
+
+                if (cleanupPolicy.clearDownstream) {
+                    destinationData = null;
+                    destinationImageUrl = null;
+                    preparedAnnouncement = null;
+                    preparedAnnouncementGender = 'male';
+                    preparedAudioId = null;
+                    setBoardingStatus(false);
+
+                    const calculatingState = document.getElementById('stateCalculating');
+                    if (calculatingState) {
+                        calculatingState.style.display = 'none';
+                        calculatingState.classList.remove('active');
+                    }
+                }
+
+                switchToPhase(backTarget.phase);
+                switchState(backTarget.state);
                 return;
             }
             
