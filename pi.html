@@ -3075,18 +3075,25 @@
         const CAPTAIN_TTS = {
             gender: 'male',
             voice: 'onyx',
+            // 起飛：溫柔哄睡
             instructions:
                 'Speak Mandarin Chinese in a soft, gentle, reassuring male voice. ' +
                 'Sound like a calm companion quietly guiding someone to sleep, not a formal airport PA or textbook reader. ' +
                 'Low energy, warm and intimate, slight smile, natural conversational pacing with soft pauses. ' +
                 'Avoid theatrical projection, stiff formality, exaggerated clarity, or announcer cadence.',
+            // 降落／喚醒：清醒有活力，仍溫暖不像廣播腔
+            landingInstructions:
+                'Speak Mandarin Chinese in a warm, lively, clear male voice. ' +
+                'Sound like a friendly airline captain gently waking passengers for arrival — bright, upbeat, and reassuring, with natural energy and a slight smile. ' +
+                'Medium-high energy, crisp diction, pleasant pacing; not sleepy, not monotone, not theatrical. ' +
+                'Avoid low-energy lullaby tone, stiff PA formality, exaggerated shout, or textbook reading.',
             takeoffSpeed: 1.0,
             takeoffRate: 1.0,
             takeoffPitch: 0.95,
-            landingSpeed: 1.0,
-            landingRate: 1.0,
-            landingPitch: 1.0,
-            descentWakeSpeed: 1.0,
+            landingSpeed: 1.05,
+            landingRate: 1.05,
+            landingPitch: 1.05,
+            descentWakeSpeed: 1.05,
             // 機長廣播時背景音樂壓到極低，凸顯語音
             duckMusicVolume: 0.05
         };
@@ -8009,6 +8016,9 @@
             const volume = (typeof options.volume === 'number') ? options.volume : 1.0; // 預設語音音量拉到 1.0
             const preloadOnly = options.preloadOnly || false; // 僅預載，不等待播放完成
             const gender = options.gender || CAPTAIN_TTS.gender; // 固定男聲機長
+            const defaultInstructions = isLandingAnnouncement
+                ? (CAPTAIN_TTS.landingInstructions || CAPTAIN_TTS.instructions)
+                : CAPTAIN_TTS.instructions;
             
             // 自動處理音樂音量：播放語音時調小音樂，語音結束後調大
             const musicList = []; // 儲存所有正在播放的音樂及其原始音量
@@ -8062,9 +8072,9 @@
                 
                 // rate → OpenAI speed（正常語速約 1.0）
                 const openaiSpeed = Math.max(0.85, Math.min(1.15, rate));
-                const instructions = options.instructions || CAPTAIN_TTS.instructions || null;
+                const instructions = options.instructions || defaultInstructions || null;
                 
-                console.log(`🎤 使用 ${gender} 聲（${selectedVoice}），語速 ${openaiSpeed.toFixed(2)}`);
+                console.log(`🎤 使用 ${gender} 聲（${selectedVoice}），語速 ${openaiSpeed.toFixed(2)}${isLandingAnnouncement ? '，降落活力語氣' : ''}`);
                 
                 const response = await fetch(TTS_BASE + '/tts/play', {
                     method: 'POST',
@@ -8322,7 +8332,7 @@
         }
 
         // 預先生成 TTS 音檔（使用 /tts/generate，只生成，不播放）
-        async function generateTtsAudio(text, language = 'zh-TW', gender = 'male', speed = 0.8) {
+        async function generateTtsAudio(text, language = 'zh-TW', gender = 'male', speed = 0.8, instructions = null) {
             if (!text) return null;
             
             const TTS_BASE = 'http://127.0.0.1:5005';
@@ -8332,6 +8342,7 @@
                     'female': 'nova'
                 };
                 const selectedVoice = voiceMap[gender] || CAPTAIN_TTS.voice || 'onyx';
+                const selectedInstructions = instructions || CAPTAIN_TTS.instructions || null;
                 
                 console.log(`🎵 呼叫 /tts/generate 預先生成 TTS 音檔（${gender}/${selectedVoice}，語速 ${speed}）...`);
                 const response = await fetch(TTS_BASE + '/tts/generate', {
@@ -8342,7 +8353,7 @@
                         languageCode: language === 'zh-TW' ? 'zh' : 'en',
                         voice: selectedVoice,
                         speed: speed,
-                        instructions: CAPTAIN_TTS.instructions || null
+                        instructions: selectedInstructions
                     }),
                     timeout: 20000
                 });
@@ -12832,7 +12843,8 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                                 wakeUpAnnouncement,
                                 'zh-TW',
                                 CAPTAIN_TTS.gender,
-                                CAPTAIN_TTS.descentWakeSpeed
+                                CAPTAIN_TTS.descentWakeSpeed,
+                                CAPTAIN_TTS.landingInstructions
                             );
                             console.log('✅ [Phase 6] TTS 音頻已預先生成完成，audio_id:', phase6VoiceAudioId);
                         } catch (err) {
@@ -13645,37 +13657,38 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     }
                 }
                 
-                // 🔧 改進：第一人稱機翼視角（完全沒有窗戶框，純粹的機翼和城市風景）
-                // ⚠️ CRITICAL: 在 prompt 開頭就明確說明不要窗框，不要噴射孔，使用一般民航機
+                // 經典橢圓舷窗視角：有厚度／內框，窗外城市＋機翼
                 let prompt = 'CRITICAL REQUIREMENTS: ' +
-                    '1. Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries whatsoever. ' +
-                    '2. Standard commercial airliner wing (like Boeing 737 or Airbus A320), NO visible engine nacelles, NO jet engine intakes, NO engine details underneath the wing. Just a clean, simple commercial airliner wing. ' +
+                    '1. Viewed from inside a commercial airplane cabin THROUGH a classic oval airplane porthole window. ' +
+                    'The window MUST be clearly visible: thick rounded oval frame, inner bezel, soft cabin-side padding, subtle double-glass reflection and slight edge vignette. ' +
+                    'Do NOT make a full-bleed borderless photo; the oval window frame is an essential foreground element framing the outside view. ' +
+                    '2. Outside the window: standard commercial airliner wing (Boeing 737 or Airbus A320 style), NO visible engine nacelles, NO jet engine intakes, clean simple wing. ' +
                     '3. Time and weather must match exactly: ' + (timeOfDayVisual || timeSegment) + ' time with ' + weatherDescription + ', ' + skyCondition + '. ' +
                     (hour >= 21 || hour < 5 ? 'MUST be night scene: dark sky, city lights illuminated, stars visible, no daylight. ' : '') +
-                    (realWeatherData && (realWeatherData.condition?.toLowerCase().includes('rain') || realWeatherData.condition?.toLowerCase().includes('雨')) ? 'MUST show rain: raindrops visible, overcast sky, wet surfaces, atmospheric rain. ' : '') +
-                    'Square 1024x1024 full-frame edge-to-edge composition, first-person view from inside airplane cabin looking directly outward, ' +
-                    'WING: Large commercial airliner wing (Boeing 737 or Airbus A320 style) extending diagonally from lower left to middle right, ' +
-                    'clean white or light gray wing surface, simple wing design, NO engine nacelles visible, NO jet engines, NO engine intakes, NO engine details, ' +
+                    (realWeatherData && (realWeatherData.condition?.toLowerCase().includes('rain') || realWeatherData.condition?.toLowerCase().includes('雨')) ? 'MUST show rain: raindrops on the glass, overcast sky, wet surfaces, atmospheric rain. ' : '') +
+                    'Square 1024x1024 composition, first-person passenger seat view looking outward through the oval porthole, ' +
+                    'WINDOW FRAME: prominent classic airplane oval porthole with dimensional thickness, inner lip, soft gray/white cabin surround, gentle glass reflections — centered so the outside scenery is seen through the oval opening. ' +
+                    'WING: Large commercial airliner wing extending diagonally beyond the glass in the lower portion of the outside view, ' +
+                    'clean white or light gray wing surface, simple wing design, NO engine nacelles visible, NO jet engines, NO engine intakes, ' +
                     'seen from passenger seat perspective inside cabin, ' +
-                    'slightly upturned wingtip visible on left side, ' +
+                    'slightly upturned wingtip visible when composition allows, ' +
                     'subtle panel lines on wing surface, ' +
-                    'wing occupies foreground bottom portion, creating immersive first-person depth from inside cabin. ' +
-                    'VIEWPOINT: First-person perspective from inside airplane cabin, looking directly outward, image fills entire frame from edge to edge with no visible borders or frames. ' +
-                    'COMPOSITION: The entire image must be edge-to-edge, full-frame, with absolutely no visible borders, frames, or window structures. The view should appear as if the camera lens is directly at the cabin wall, with no window frame visible. Image must fill 100% of the frame from edge to edge. ' +
-                    'BACKGROUND: ' + city + ', ' + country + ' cityscape below and beyond wing, ' +
+                    'wing occupies the lower outside view beyond the glass, creating immersive cabin-to-sky depth. ' +
+                    'VIEWPOINT: First-person perspective from inside airplane cabin looking out through the oval window; cabin interior barely hinted at the frame edges only. ' +
+                    'COMPOSITION: The oval window frame must remain visible around the scenery; do not crop away the frame; do not use rectangular monitor bezels; use a true aircraft porthole oval. ' +
+                    'BACKGROUND (outside glass): ' + city + ', ' + country + ' cityscape below and beyond wing, ' +
                     (timeOfDayVisual || timeSegment) + ' time (' + (lightingDescription || 'appropriate lighting for ' + timeSegment) + '), ' +
                     weatherDescription + ', ' + skyCondition + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing, ' +
                     (realWeatherData ? `realistic weather conditions matching: ${realWeatherData.condition || ''}, temperature ${realWeatherData.temperature || ''}°C, ${realWeatherData.description || ''}. ` : '') +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
-                    'FINAL REQUIREMENT: Full-frame edge-to-edge composition, absolutely NO window frames, NO window borders, NO window edges, NO window structure, NO glass, NO oval borders, NO circular frames, NO rectangular frames, NO visible window boundaries, NO engine nacelles, NO jet engines, NO engine intakes, standard commercial airliner wing only, wing prominent in foreground, cityscape visible below and beyond, pure first-person perspective with image filling entire frame from edge to edge, no visible window frame elements whatsoever.';
+                    'FINAL REQUIREMENT: Classic oval airplane porthole with visible thickness and inner frame, glass reflection, wing prominent outside the glass, cityscape visible below and beyond, immersive passenger first-person view.';
                 
-                // 如果有參考圖片，在 prompt 開頭加入風格參考說明
-                // 🔧 重要：即使使用參考圖片，也必須移除窗戶邊框
+                // 如果有參考圖片，在 prompt 開頭加入風格參考說明（可覆蓋參考圖無窗框的習慣）
                 if (referenceImageBase64) {
-                    prompt = 'Generate an image with the EXACT same visual style, composition, color palette, lighting, perspective, and artistic treatment as the reference image. ' +
-                        'Maintain identical: camera angle, wing position and appearance, sky color and atmosphere, overall mood and tone, image quality and rendering style. ' +
-                        'CRITICAL: Even if the reference image contains window frames or borders, you MUST remove them completely. Generate a full-frame edge-to-edge image with NO window frames, NO borders, NO window structure visible. ' +
+                    prompt = 'Generate an image with a similar visual style, color palette, lighting, and artistic treatment as the reference image, ' +
+                        'BUT composition MUST include a classic oval airplane porthole window frame with thickness and inner bezel framing the outside view. ' +
+                        'Do not copy a borderless full-bleed crop; keep the oval window as a clear foreground element. ' +
                         prompt;
                 }
                 
@@ -14061,7 +14074,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         landingData.announcement,
                         'zh-TW',
                         CAPTAIN_TTS.gender,
-                        CAPTAIN_TTS.landingSpeed
+                        CAPTAIN_TTS.landingSpeed,
+                        CAPTAIN_TTS.landingInstructions
                     );
                     voiceAAudioId = preparedAudioId;
                     console.log('✅ [Phase 7] 語音A已預先生成完成（不播放），audio_id:', voiceAAudioId);
@@ -14331,7 +14345,8 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                             welcomeMessage,
                             'zh-TW',
                             CAPTAIN_TTS.gender,
-                            CAPTAIN_TTS.landingSpeed
+                            CAPTAIN_TTS.landingSpeed,
+                            CAPTAIN_TTS.landingInstructions
                         );
                         window._phase7VoiceBAudioId = preparedAudioId;
                         window._phase7WelcomeMessage = welcomeMessage;
