@@ -13811,36 +13811,36 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     }
                 }
                 
-                // 細邊橢圓舷窗：風景為主，窗框只佔邊緣層次／反光
+                // 橢圓舷窗：風景為主，窗框略加一點厚度／層次（不要厚到搶戲）
                 let prompt = 'CRITICAL REQUIREMENTS: ' +
                     '1. First-person view from inside a commercial airplane cabin looking OUT through a classic oval airplane porthole. ' +
-                    'The glass opening must dominate the image: about 75–85% of the frame is clear outside scenery through the glass. ' +
-                    'The window frame must be SLIM and discreet — a thin oval rim with subtle layered bevel, soft inner lip, and gentle glass edge reflections only. ' +
-                    'Do NOT use a thick bulky multi-ring plastic frame; do NOT let the frame occupy large empty beige areas; keep cabin surround minimal at the very edges. ' +
+                    'The glass opening should still be the main subject: about 65–75% of the image is clear outside scenery through the glass. ' +
+                    'The window frame should be moderately visible — a classic oval rim with clear but not bulky thickness, layered inner bezel, soft cabin-side lip, and gentle glass edge reflections. ' +
+                    'Give the frame a bit more presence than a hairline border, but do NOT use a huge multi-ring plastic surround that eats the scenery. ' +
                     '2. Outside the glass: standard commercial airliner wing (Boeing 737 or Airbus A320 style), NO visible engine nacelles, NO jet engine intakes, clean simple wing. ' +
                     '3. Time and weather must match exactly: ' + (timeOfDayVisual || timeSegment) + ' time with ' + weatherDescription + ', ' + skyCondition + '. ' +
                     (hour >= 21 || hour < 5 ? 'MUST be night scene: dark sky, city lights illuminated, stars visible, no daylight. ' : '') +
                     (realWeatherData && (realWeatherData.condition?.toLowerCase().includes('rain') || realWeatherData.condition?.toLowerCase().includes('雨')) ? 'MUST show rain: light raindrops on the glass, overcast sky, wet surfaces, atmospheric rain. ' : '') +
                     'Square 1024x1024 composition, passenger seat POV looking outward, ' +
-                    'WINDOW FRAME: slim classic oval porthole — thin dimensional edge, soft highlight/reflection on glass perimeter, tiny depth only; scenery fills most of the oval interior. ' +
+                    'WINDOW FRAME: classic oval porthole with moderate dimensional edge, visible inner lip and subtle layered bevel, soft highlight/reflection on glass perimeter; scenery still fills most of the oval interior. ' +
                     'WING: commercial airliner wing visible in the lower part of the outside view beyond the glass, ' +
                     'clean white or light gray wing, NO engines, ' +
                     'subtle panel lines, immersive cabin-to-sky depth. ' +
-                    'VIEWPOINT: close to the glass so the landscape is large and readable; frame is a delicate border, not the subject. ' +
-                    'COMPOSITION: maximize scenic area inside the oval; avoid heavy padded surrounds; true aircraft porthole oval, not a rectangular monitor bezel. ' +
+                    'VIEWPOINT: close enough that the landscape is large and readable; frame is noticeable around the edges without dominating. ' +
+                    'COMPOSITION: keep a clear oval porthole frame with a bit of depth; avoid both hairline-only frames and heavy padded surrounds; true aircraft porthole oval, not a rectangular monitor bezel. ' +
                     'BACKGROUND (outside glass): ' + city + ', ' + country + ' cityscape below and beyond wing, ' +
                     (timeOfDayVisual || timeSegment) + ' time (' + (lightingDescription || 'appropriate lighting for ' + timeSegment) + '), ' +
                     weatherDescription + ', ' + skyCondition + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing, ' +
                     (realWeatherData ? `realistic weather conditions matching: ${realWeatherData.condition || ''}, temperature ${realWeatherData.temperature || ''}°C, ${realWeatherData.description || ''}. ` : '') +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
-                    'FINAL REQUIREMENT: Slim oval porthole with subtle edge layers and glass reflections only; large glass scenic area; wing and cityscape clearly visible through the opening.';
+                    'FINAL REQUIREMENT: Moderately visible oval porthole with layered thickness and glass reflections; scenery remains majority of the image through the opening; wing and cityscape clearly visible.';
                 
                 // 如果有參考圖片，在 prompt 開頭加入風格參考說明（可覆蓋參考圖無窗框的習慣）
                 if (referenceImageBase64) {
                     prompt = 'Generate an image with a similar visual style, color palette, lighting, and artistic treatment as the reference image, ' +
-                        'BUT composition MUST include a SLIM classic oval airplane porthole with only a thin frame and subtle glass-edge reflections; ' +
-                        'outside scenery must fill most of the image through a large glass opening — avoid thick bulky window surrounds. ' +
+                        'BUT composition MUST include a classic oval airplane porthole with moderate frame thickness, layered bezel, and subtle glass-edge reflections; ' +
+                        'outside scenery should still fill most of the image — avoid both hairline frames and overly thick bulky surrounds. ' +
                         prompt;
                 }
                 
