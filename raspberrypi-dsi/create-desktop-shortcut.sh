@@ -48,7 +48,7 @@ Name=甦醒地圖
 Name[en]=WakeUp Map
 Comment=啟動甦醒地圖應用程式
 Comment[en]=Start WakeUp Map Application
-Icon=${SCRIPT_DIR}/../icon-192x192.png
+Icon=${SCRIPT_DIR}/../SleepAirline.png
 Exec=${SCRIPT_DIR}/wakeup-map-launcher.sh
 Terminal=true
 StartupNotify=false
@@ -71,7 +71,7 @@ echo -e "   工作目錄: ${SCRIPT_DIR}"
 echo ""
 
 # 檢查項目圖標文件
-ICON_FILE="${SCRIPT_DIR}/../icon-192x192.png"
+ICON_FILE="${SCRIPT_DIR}/../SleepAirline.png"
 if [ -f "$ICON_FILE" ]; then
     echo -e "${GREEN}🎨 使用項目圖標: ${ICON_FILE}${NC}"
 else

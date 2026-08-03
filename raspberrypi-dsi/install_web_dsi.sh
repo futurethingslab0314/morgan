@@ -204,6 +204,7 @@ install_audio() {
         "espeak-data"
         "sox"
         "libsox-fmt-all"
+        "ffmpeg"
         "portaudio19-dev"
     )
     

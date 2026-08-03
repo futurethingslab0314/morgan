@@ -1031,6 +1031,11 @@ window.addEventListener('firebaseReady', async (event) => {
 
     // 新增：狀態管理函數
     function setState(newState, message = '') {
+        if (window.wakeUpMapGame && window.wakeUpMapGame.gameState && window.wakeUpMapGame.gameState.gameStarted) {
+            console.log('[Flight] 已啟動，忽略舊狀態切換:', newState, message);
+            return;
+        }
+
         console.log(`🔄 狀態切換: ${currentState} -> ${newState}`);
 
         try {
@@ -1130,6 +1135,8 @@ window.addEventListener('firebaseReady', async (event) => {
         } catch (e) {
             console.error('❌ 狀態切換失敗:', e);
         }
+
+        console.log('🔄 重設按鈕狀態');
     }
 
     // 移除重複的 setState 定義
@@ -1189,87 +1196,10 @@ window.addEventListener('firebaseReady', async (event) => {
         }
     }
 
-    // 初始化今日甦醒地圖
+    // 初始化今日甦醒地圖（已停用，改用 Flight 版本地圖）
     function initClockMap(latitude, longitude, cityName, countryName) {
-        try {
-            console.log('🗺️ 初始化今日甦醒地圖:', cityName, countryName);
-
-            // 清理現有地圖
-            if (clockLeafletMap) {
-                clockLeafletMap.remove();
-                clockLeafletMap = null;
-            }
-
-            // 如果主地圖已存在，直接更新而不重新創建
-            if (mainInteractiveMap) {
-                console.log('🗺️ 使用現有主地圖實例更新位置');
-                mainInteractiveMap.setView([latitude, longitude - 3], 3);  // 增加偏移量到-3
-                clockLeafletMap = mainInteractiveMap; // 重用主地圖實例
-            } else {
-                // 創建新地圖（使用滿版容器）
-                clockLeafletMap = L.map('mainMapContainer', {
-                    zoomControl: false, // 禁用默認縮放控制，使用自定義按鈕
-                    scrollWheelZoom: true,
-                    doubleClickZoom: true,
-                    boxZoom: true,
-                    keyboard: true,
-                    dragging: true,
-                    attributionControl: true
-                }).setView([latitude, longitude - 3], 3); // 增加偏移量到-3，大區域視角
-
-                // 將時鐘地圖實例設為主地圖實例
-                mainInteractiveMap = clockLeafletMap;
-            }
-
-            // 添加地圖圖層
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 18,
-                minZoom: 2
-            }).addTo(clockLeafletMap);
-
-            // 添加甦醒位置標記
-            const marker = L.marker([latitude, longitude], {
-                title: `甦醒位置：${cityName}, ${countryName}`
-            }).addTo(clockLeafletMap);
-
-            // 自定義彈出窗口內容
-            const popupContent = `
-                <div style="text-align: center; font-family: 'ByteBounce', 'GB18030 Bitmap', 'VT323', 'Microsoft YaHei', '微軟雅黑', monospace; font-size: 14px;">
-                    <strong style="color: #000000;">🌅 甦醒位置</strong><br>
-                    <span style="color: #333333; font-size: 16px;">${cityName}</span><br>
-                    <span style="color: #666666; font-size: 14px;">${countryName}</span><br>
-                    <small style="color: #999999; font-size: 12px;">${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°</small>
-                </div>
-            `;
-
-            marker.bindPopup(popupContent, {
-                maxWidth: 200,
-                className: 'wake-up-popup'
-            });
-
-            // 調整地圖大小（重要：確保地圖正確渲染）
-            setTimeout(() => {
-                if (clockLeafletMap) {
-                    clockLeafletMap.invalidateSize();
-
-                    // 添加載入完成動畫
-                    const mapContainer = document.getElementById('mapContainer');
-                    if (mapContainer) {
-                        mapContainer.classList.add('loaded');
-                    }
-
-                    // 初始化自定義縮放按鈕
-                    initCustomZoomControls();
-
-                    console.log('🗺️ 地圖大小已調整');
-                }
-            }, 200);
-
-            console.log('✅ 今日甦醒地圖初始化完成');
-        } catch (error) {
-            console.error('❌ 地圖初始化失敗:', error);
-        }
+        console.log('🗺️ initClockMap 已停用（使用 Flight 地圖）');
+        return;
     }
 
     // 初始化歷史地圖
@@ -1553,147 +1483,20 @@ window.addEventListener('firebaseReady', async (event) => {
         }
     }
 
-    // 新增：顯示甦醒結果
+    // 新增：顯示甦醒結果（已停用，保持相容時僅記錄 Log）
     async function displayAwakeningResult(cityData) {
-        console.log('🎨 顯示甦醒結果:', cityData);
-
-        try {
-            // 設定城市名稱
-            if (cityNameEl) {
-                cityNameEl.textContent = cityData.name || cityData.city;
-            }
-
-            // 設定國家名稱
-            if (countryNameEl) {
-                countryNameEl.textContent = cityData.country;
-            }
-
-            // 設定國旗
-            if (countryFlagImg && cityData.country_iso_code) {
-                const flagUrl = `https://flagcdn.com/96x72/${cityData.country_iso_code.toLowerCase()}.png`;
-                countryFlagImg.src = flagUrl;
-                countryFlagImg.style.display = 'block';
-                console.log('🏁 國旗載入:', flagUrl);
-            }
-
-            // 獲取並設定故事和問候語
-            await generateAndDisplayStoryAndGreeting(cityData);
-
-            // 設定座標資訊
-            if (coordinatesEl) {
-                coordinatesEl.textContent =
-                    `${cityData.latitude.toFixed(4)}°, ${cityData.longitude.toFixed(4)}°`;
-            }
-
-            // 初始化地圖
-            initClockMap(
-                cityData.latitude,
-                cityData.longitude,
-                cityData.name,
-                cityData.country
-            );
-
-            // 🔧 移除這裡的軌跡載入 - 現在在 piStoryReady 事件中處理
-            // 確保軌跡載入在 result 狀態激活後進行
-
-            // 設定結果文字（保持相容性）
-            const resultText = `今天你在 ${cityData.name}, ${cityData.country} 甦醒！`;
-            if (resultTextDiv) resultTextDiv.textContent = resultText;
-
-            // 更新除錯資訊（保持相容性）
-            if (debugInfoSmall) {
-                debugInfoSmall.textContent = `緯度: ${cityData.latitude.toFixed(4)}, 經度: ${cityData.longitude.toFixed(4)}`;
-            }
-
-            // 🔧 修復：不立即切換到結果狀態，等待故事準備完成
-            // setState('result'); // 改為在 piStoryReady 事件中切換
-            console.log('🔄 城市資料已準備，等待語音和故事生成完成...');
-
-            console.log('✅ 結果顯示完成');
-
-        } catch (error) {
-            console.error('❌ 顯示結果失敗:', error);
-            setState('error', '顯示結果時發生錯誤');
-        }
+        console.log('🎨 displayAwakeningResult 已停用（Wake Up Flight 介面改為新地圖流程）', cityData);
+        return;
     }
 
     // 只允許樹莓派內容，generateAndDisplayStoryAndGreeting 只等待 piStoryReady，不再 fallback
     async function generateAndDisplayStoryAndGreeting(cityData) {
-        console.log('📖 等待樹莓派生成甦醒故事和問候語...');
-        console.log('🔍 重要：畫面將只顯示樹莓派傳來的故事，與語音播放保持一致');
-
-        try {
-            let receivedPiStory = false;
-            const waitForPiStory = new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    if (!receivedPiStory) {
-                        console.warn('⏱️ 等待樹莓派故事超時，但不使用備用方案');
-                        console.warn('🔍 畫面將等待樹莓派故事，確保與語音播放一致');
-                        reject(new Error('等待樹莓派故事超時'));
-                    }
-                }, 60000); // 延長到60秒，確保有足夠時間等待樹莓派
-
-                const handlePiStory = (event) => {
-                    receivedPiStory = true;
-                    clearTimeout(timeout);
-                    window.removeEventListener('piStoryReady', handlePiStory);
-                    console.log('✅ 收到樹莓派故事，這將與語音播放內容一致');
-                    resolve(event.detail);
-                };
-
-                window.addEventListener('piStoryReady', handlePiStory);
-
-                // 檢查是否已經有故事內容
-                if (window.piGeneratedStory) {
-                    receivedPiStory = true;
-                    clearTimeout(timeout);
-                    console.log('✅ 使用已存在的樹莓派故事');
-                    resolve(window.piGeneratedStory);
-                }
-            });
-
-            const storyResult = await waitForPiStory;
-            console.log('📖 收到樹莓派故事，與語音播放內容一致:', storyResult);
-
-            // 獲取當前的 day 計數
-            const q = query(
-                collection(db, 'wakeup_records'),
-                where('userId', '==', rawUserDisplayName)
-            );
-            const querySnapshot = await getDocs(q);
-            const currentDay = querySnapshot.size;
-
-            // 更新結果頁面數據 - 只使用樹莓派的故事
-            const resultData = {
-                city: cityData.name,
-                country: cityData.country,
-                countryCode: cityData.country_iso_code,
-                latitude: cityData.latitude,
-                longitude: cityData.longitude,
-                greeting: storyResult.greeting,
-                language: storyResult.language,
-                story: storyResult.story,
-                day: currentDay,
-                flag: cityData.country_iso_code ? `https://flagcdn.com/96x72/${cityData.country_iso_code.toLowerCase()}.png` : ''
-            };
-
-            // 🔧 標記語音故事已顯示，避免 updateResultData 重複生成故事
-            window.voiceStoryDisplayed = true;
-            window.voiceStoryContent = storyResult.story;
-            console.log('✅ [generateAndDisplayStoryAndGreeting] 標記語音故事已顯示');
-
-            // 使用新的結果數據更新函數
-            updateResultData(resultData);
-            console.log('✅ 畫面顯示樹莓派故事，與語音播放一致');
-
-        } catch (error) {
-            console.error('❌ 未收到樹莓派故事內容，畫面將顯示等待狀態:', error);
-            // 不再使用備用方案，保持與語音播放一致
-            const storyTextEl = document.getElementById('storyText');
-            if (storyTextEl) {
-                storyTextEl.textContent = '等待樹莓派故事內容...與語音播放保持同步';
-            }
-        }
+        console.log('📖 Flight 版本：樹莓派故事功能已停用，直接顯示預設文字');
+        return {
+            story: 'Wake Up Flight 模式啟動。',
+            greeting: '',
+            language: 'zh-TW'
+        };
     }
 
     // === 所有備用故事生成函數已刪除 ===
@@ -2994,12 +2797,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 初始化背景地圖
     setTimeout(() => {
-        console.log('🗺️ 初始化背景地圖...');
-        try {
-            initMainInteractiveMap(); // 初始化世界地圖作為背景
-            console.log('✅ 背景地圖初始化成功');
-        } catch (error) {
-            console.error('❌ 背景地圖初始化失敗:', error);
+        const mainMapContainer = document.getElementById('mainMapContainer');
+        if (!mainMapContainer) {
+            console.log('🗺️ 未偵測到舊版背景地圖容器，略過初始化');
+        } else {
+            console.log('🗺️ 初始化背景地圖...');
+            try {
+                initMainInteractiveMap();
+                console.log('✅ 背景地圖初始化成功');
+            } catch (error) {
+                console.error('❌ 背景地圖初始化失敗:', error);
+            }
         }
     }, 500);
 
@@ -3026,15 +2834,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('gameStarted', (event) => {
         console.log('🎮 遊戲開始事件觸發:', event.detail);
         gameStarted = true;
+        if (window.wakeUpMapGame && window.wakeUpMapGame.gameState && window.wakeUpMapGame.gameState.gameStarted) {
+            console.log('[Flight] 已啟動，跳過舊等待畫面與自動 startTheDay');
+            return;
+        }
+
         showWaitingState();
 
-        // 自動開始這一天（不需要按鍵）
         setTimeout(() => {
             console.log('🎮 自動開始這一天...');
             if (typeof window.startTheDay === 'function') {
                 window.startTheDay();
             }
-        }, 2000); // 延遲 2 秒讓用戶看到遊戲開始畫面
+        }, 2000);
     });
 });
 

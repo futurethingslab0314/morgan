@@ -31,9 +31,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method !== 'POST') {
-        return res.status(405).json({ 
-            success: false, 
-            error: '只允許 POST 請求' 
+        return res.status(405).json({
+            success: false,
+            error: '只允許 POST 請求'
         });
     }
 
@@ -62,14 +62,43 @@ export default async function handler(req, res) {
             story,
             greeting,
             language,
-            languageCode
+            languageCode,
+            // 睡眠航班相關字段
+            plannedMinutes,
+            sleepDuration,
+            timeDiffMinutes,
+            punctuality,
+            direction,
+            directionPosition,  // 🔧 新增：支持 directionPosition 字段（與 direction 相同）
+            climateZoneName,
+            isWormhole,
+            destinationImage, // 降落圖片 URL（前端使用 destinationImage，API 需要映射到 imageUrl）
+            announcementText,
+            flightFeedback,
+            wakeTime,
+            // 🔧 新增：起飛和更新相關字段
+            takeoffTime,
+            expectedArrivalTime,
+            flightStatus,  // 'in_flight' 或 'completed'
+            phase,  // 當前階段
+            updateExisting,  // 是否更新現有記錄
+            flightId  // 要更新的記錄 ID
         } = req.body;
 
+        // 🔧 改進：如果是更新現有記錄，不需要驗證 city 和 country（可能還沒有）
         // 驗證必要欄位
-        if (!userDisplayName || !city || !country) {
+        if (!userDisplayName) {
             return res.status(400).json({
                 success: false,
-                error: '缺少必要欄位：userDisplayName, city, country'
+                error: '缺少必要欄位：userDisplayName'
+            });
+        }
+        
+        // 如果是更新現有記錄，不需要驗證 city 和 country
+        if (!updateExisting && (!city || !country)) {
+            return res.status(400).json({
+                success: false,
+                error: '缺少必要欄位：city, country（新建記錄時需要）'
             });
         }
 
@@ -106,15 +135,15 @@ export default async function handler(req, res) {
 
         const now = new Date();
         const userUTCOffset = parseFloat(targetUTCOffset);
-        
+
         // 使用優雅的時區處理獲取本地日期
-        const recordedDateString = getLocalDate({ 
-            now: now, 
+        const recordedDateString = getLocalDate({
+            now: now,
             timeZone: timezone, // 優先使用 IANA 時區名稱
             offsetHours: userUTCOffset, // fallback 到數字偏移量
             fallbackTZ: 'Asia/Taipei' // 最終 fallback
         });
-        
+
         // 記錄使用的時區資訊
         if (typeof timezone === 'string' && timezone.trim()) {
             console.log(`📅 使用 IANA 時區: ${timezone}, 本地日期: ${recordedDateString}`);
@@ -152,7 +181,23 @@ export default async function handler(req, res) {
             greeting: greeting || '', // 🔧 確保 greeting 儲存到 artifacts
             language: language || '',
             languageCode: languageCode || '',
-            imageUrl: null // 將由前端填入
+            imageUrl: destinationImage || null, // 使用 destinationImage（前端字段名）映射到 imageUrl（API 字段名）
+            // 睡眠航班相關字段（如果存在，全部保存）
+            plannedMinutes: plannedMinutes !== undefined ? plannedMinutes : null,
+            sleepDuration: sleepDuration !== undefined ? sleepDuration : null,
+            timeDiffMinutes: timeDiffMinutes !== undefined ? timeDiffMinutes : null,
+            punctuality: punctuality !== undefined ? punctuality : null,
+            direction: (direction !== undefined ? direction : (directionPosition !== undefined ? directionPosition : null)),  // 🔧 支持 directionPosition
+            climateZoneName: climateZoneName !== undefined ? climateZoneName : null,
+            isWormhole: isWormhole !== undefined ? isWormhole : false,
+            announcementText: announcementText !== undefined ? announcementText : null,
+            flightFeedback: flightFeedback !== undefined ? flightFeedback : null,
+            wakeTime: wakeTime !== undefined ? wakeTime : null,
+            // 🔧 新增：起飛和更新相關字段
+            takeoffTime: takeoffTime !== undefined ? takeoffTime : null,
+            expectedArrivalTime: expectedArrivalTime !== undefined ? expectedArrivalTime : null,
+            flightStatus: flightStatus !== undefined ? flightStatus : null,  // 'in_flight' 或 'completed'
+            phase: phase !== undefined ? phase : null  // 當前階段
         };
 
         // 準備全域記錄資料
@@ -187,12 +232,126 @@ export default async function handler(req, res) {
         // 主要儲存：artifacts 結構
         try {
             // 儲存到個人檔案結構（對應網頁版個人軌跡）
-            const userProfilePath = `artifacts/${APP_ID}/userProfiles/${sanitizedDisplayName}/clockHistory`;
-            const userProfileDocRef = await db.collection(userProfilePath).add({
+            // 🔄 需求更新：所有記錄一律寫入同一個 Sleep Airline 路徑
+            // 目標路徑：
+            //   /artifacts/default-app-id-worldclock-history/userProfiles/sleepAirline/sleepAirline/flight
+            // 
+            // Firestore 路徑結構說明：
+            // Firestore 必須是 collection > doc > collection > doc 的交替結構
+            // 根據用戶在 Firebase Console 看到的路徑：
+            //   artifacts (collection) > default-app-id-worldclock-history (doc) > userProfiles (collection) > sleepAirline (doc) > sleepAirline (collection) > flight (collection)
+            // 
+            // 但這在 Firestore 中是不可能的，因為 collection 後面必須是 document
+            // 如果用戶在 Console 看到 flight 是 collection，那麼前面必須有一個 document
+            // 
+            // 最可能的實際結構是：
+            //   sleepAirline (collection) > [某個 doc] > flight (collection)
+            // 
+            // 為了符合用戶需求，我們使用一個固定的中間 document ID
+            // 但根據用戶提供的路徑，看起來 sleepAirline/sleepAirline/flight 中：
+            //   - 第一個 sleepAirline 是 document
+            //   - 第二個 sleepAirline 是 collection
+            //   - flight 應該是 collection，但前面需要一個 document
+            // 
+            // 所以實際結構應該是：
+            //   sleepAirline (collection) > flight (doc) > records (collection)
+            // 
+            // 但用戶想要 flight 是 collection，所以我們需要：
+            //   sleepAirline (collection) > _root (doc) > flight (collection)
+            // 
+            // 或者更簡單：直接在 sleepAirline collection 下創建 flight document，然後在其下創建子 collection
+            // 但這樣用戶在 Console 會看到 flight 是 document，不是 collection
+
+            // 最終方案：如果用戶在 Console 看到 flight 是 collection，我們需要一個中間 document
+            // 使用 'data' 作為中間 document：sleepAirline (collection) > data (doc) > flight (collection)
+            // 但這樣路徑會變成：.../sleepAirline/data/flight
+
+            // 重新檢查：用戶說的路徑是 sleepAirline/sleepAirline/flight
+            // 如果第二個 sleepAirline 是 collection，flight 是 collection，那麼中間需要一個 doc
+            // 最簡單的方式：sleepAirline (collection) > flight (doc) > records (collection)
+            // 但用戶想要 flight 是 collection
+
+            // 根據用戶在 Console 看到的實際情況，我們假設：
+            // sleepAirline (collection) > flight (doc) > records (collection)
+            // 這樣用戶在 Console 點進去 flight 會看到 records collection
+
+            // 但如果用戶真的需要 flight 是頂層 collection，我們需要：
+            // sleepAirline (collection) > _root (doc) > flight (collection)
+
+            // 為了簡化，我們直接使用 flight 作為 document，然後在其下創建 records collection
+            // 這樣實際路徑是：.../sleepAirline/flight
+            // 用戶在 Console 會看到：sleepAirline（左欄 collection）/ sleepAirline（中欄 doc）/ flight（右欄 doc）
+            //
+            // ✅ 修正：Firestore 路徑結構必須是 collection > doc > collection > doc 的交替結構
+            // 目標路徑：/artifacts/default-app-id-worldclock-history/userProfiles/sleepAirline/sleepAirline/flight
+            // 實際 Firestore 結構：
+            //   artifacts (collection) > default-app-id-worldclock-history (doc) > userProfiles (collection) > sleepAirline (doc) > sleepAirline (collection) > [中間 doc] > flight (collection)
+            // 
+            // 為了讓用戶在 Console 看到 sleepAirline/sleepAirline/flight，我們使用 'data' 作為中間 document
+            // 實際路徑：.../sleepAirline/data/flight
+            // 但為了符合用戶需求，我們直接使用 sleepAirline 作為中間 document ID
+            // 這樣路徑會是：.../sleepAirline/sleepAirline/flight（但 sleepAirline 既是 collection 名稱也是 doc ID）
+            // 
+            // 更好的方案：使用固定的中間 document ID，例如 'data' 或 'root'
+            // 但用戶明確要求 sleepAirline/sleepAirline/flight，所以我們使用 'sleepAirline' 作為中間 doc ID
+            // 注意：這會導致路徑變成 .../sleepAirline/sleepAirline/flight，但第二個 sleepAirline 是 document
+            const flightCollectionRef = db
+                .collection('artifacts')
+                .doc(APP_ID)
+                .collection('userProfiles')
+                .doc('sleepAirline')
+                .collection('flight'); // flight 是 collection，直接包含 flight2025-12-25 等 documents
+
+            // 🔧 改進：支持更新現有記錄（如果 updateExisting 為 true 且有 flightId）
+            let flightDocId = null;
+            let isUpdating = false;
+            
+            if (updateExisting && flightId) {
+                // 更新現有記錄
+                flightDocId = flightId;
+                isUpdating = true;
+                console.log('🔄 [API] 更新現有飛行記錄，flightId:', flightDocId);
+                
+                // 檢查記錄是否存在
+                const existingDoc = await flightCollectionRef.doc(flightDocId).get();
+                if (!existingDoc.exists) {
+                    console.warn('⚠️ [API] 要更新的記錄不存在，將創建新記錄');
+                    isUpdating = false;
+                    flightDocId = null;
+                }
+            }
+            
+            // 如果沒有指定要更新的記錄，創建新記錄
+            if (!flightDocId) {
+                // 生成 document ID：flight + 日期（例如：flight2025-12-23）
+                // 如果同一天有多筆記錄，加上時間戳來區分（例如：flight2025-12-23_143052）
+                flightDocId = `flight${recordedDateString}`;
+
+                // 檢查是否已存在相同日期的 document
+                const existingDoc = await flightCollectionRef.doc(flightDocId).get();
+                if (existingDoc.exists) {
+                    // 如果已存在，加上時間戳（時分秒）來區分，確保唯一性
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    const timeStr = `${hours}${minutes}${seconds}`;
+                    flightDocId = `flight${recordedDateString}_${timeStr}`;
+                }
+                console.log('📝 [API] 創建新的飛行記錄，flightId:', flightDocId);
+            }
+
+            // 使用 doc() 創建或更新指定 ID 的 document
+            const flightDocRef = flightCollectionRef.doc(flightDocId);
+            await flightDocRef.set({
                 ...baseRecordData,
-                ...artifactsData
-            });
-            console.log('✅ 個人檔案記錄已儲存到 artifacts，文件 ID:', userProfileDocRef.id);
+                ...artifactsData,
+            }, { merge: isUpdating }); // 如果是更新，使用 merge: true；如果是新建，使用 merge: false
+
+            const userProfilePath = `artifacts/${APP_ID}/userProfiles/sleepAirline/flight/${flightDocId}`;
+            console.log('✅ 個人檔案記錄已儲存到 artifacts（document ID: ' + flightDocId + '）:', userProfilePath);
+            console.log('   文件 ID:', flightDocId);
+            console.log('   實際 Firestore 路徑: artifacts > ' + APP_ID + ' > userProfiles > sleepAirline > flight > ' + flightDocId);
 
             // 儲存到公共資料結構（對應網頁版眾人地圖）
             const publicDataPath = `artifacts/${APP_ID}/publicData/allSharedEntries/dailyRecords`;
@@ -213,9 +372,11 @@ export default async function handler(req, res) {
 
             return res.status(200).json({
                 success: true,
+                flightId: flightDocId,  // 🔧 新增：返回 flightId，用於後續更新
+                isUpdating: isUpdating,  // 🔧 新增：標記是否為更新操作
                 message: '記錄已成功儲存',
                 artifactsIds: {
-                    userProfileId: userProfileDocRef.id,
+                    userProfileId: flightDocId, // flight+日期格式的 document ID
                     publicDataId: publicDocRef.id
                 },
                 legacyIds: {  // 棄用

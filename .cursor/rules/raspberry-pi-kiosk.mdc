@@ -1,0 +1,33 @@
+---
+description: Sleep Airline 以樹莓派實體裝置為主：實體按鈕操控、喇叭出聲
+alwaysApply: true
+---
+
+# 樹莓派實體裝置約束（Morgan / Sleep Airline）
+
+本專案的**主要使用情境是樹莓派實體機**，不是桌面瀏覽器點擊操作。
+
+## 操控
+
+- 使用者透過 **GPIO 實體按鈕／旋鈕** 操作，不是網站滑鼠點擊。
+- GPIO 輪詢觸發的事件 **不算瀏覽器 user gesture**，因此瀏覽器 `Audio` / `AudioContext` 常被 Autoplay 擋住。
+- 設計互動流程時，不要假設「使用者剛點過頁面所以音訊可播」。
+
+## 音訊輸出
+
+- **所有會聽到的聲音都應從樹莓派喇叭出去**（本機 TTS / pygame / `/tts/*` / `/audio/play_url`）。
+- 瀏覽器 `new Audio()` / `audio.play()` 只能當次要後備或桌面除錯用，**不可當正式主路徑**。
+- 優先順序應為：
+  1. 樹莓派本地服務（`http://127.0.0.1:5005`）
+  2. 瀏覽器播放（僅在本機喇叭不可用時）
+- 修改 `captain.mp3`、`takeoff.mp3`、飛機餐音樂、wakeup 音樂、廣播時，預設走 Pi 喇叭。
+
+## TTS
+
+- OpenAI TTS 的生成與播放已在樹莓派端（`/tts/generate`、`/tts/play_cached`）；維持此架構。
+- 不要改成只在瀏覽器端播 TTS 檔。
+
+## 前端部署
+
+- 畫面多半載入 Vercel（`morgan-orcin.vercel.app`），但硬體 I/O 仍在 Pi。
+- 改 Pi 端 Python（`raspberrypi-dsi/`）後，需提醒在裝置上 `git pull` 並重啟對應服務。

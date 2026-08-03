@@ -1,4 +1,105 @@
-/* Raspberry Pi 800x480 螢幕專用樣式 */
+/* === 降落結果彈窗 === */
+.landing-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 999999999 !important;
+}
+
+.landing-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+}
+
+.landing-modal-content {
+    position: relative;
+    z-index: 1;
+    width: min(560px, 92%);
+    margin: 8vh auto 0;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.landing-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid #eee;
+}
+
+.landing-close-btn {
+    border: none;
+    background: transparent;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.landing-modal-body {
+    padding: 18px;
+    color: #111827;
+    line-height: 1.6;
+}
+
+.landing-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 0 18px 18px;
+}
+
+.landing-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.landing-btn-primary {
+    background: #111827;
+    color: #fff;
+}
+
+.landing-btn-secondary {
+    background: #f3f4f6;
+    color: #111;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.badge-early {
+    background: #e6fffa;
+    color: #0d9488;
+}
+
+.badge-ontime {
+    background: #ecfeff;
+    color: #0891b2;
+}
+
+.badge-perfect {
+    background: #fef3c7;
+    color: #d97706;
+    border: 1px solid #fbbf24;
+}
+
+.badge-late {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+/* Raspberry Pi 1280x800 螢幕專用樣式 */
 
 /* === 基本重置和變數 === */
 * {
@@ -26,16 +127,15 @@
 /* === 基礎佈局 === */
 body {
     font-family: 'Press Start 2P', 'Courier Prime', 'Noto Sans CJK TC', 'Noto Sans CJK SC', 'Microsoft YaHei', '微軟雅黑', monospace;
-    font-size: 14px;
-    line-height: 1.2;
+    font-size: 16px;
+    line-height: 1.4;
     color: var(--text-color);
     background-color: var(--background-color);
     overflow-x: hidden;
-    width: 800px;
-    height: 480px;
-    position: fixed;
-    top: 0;
-    left: 0;
+    overflow-y: auto;
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
 }
 
 /* 英文像素字體類 */
@@ -55,7 +155,7 @@ body {
 
 .container {
     width: 100%;
-    height: 100%;
+    min-height: 100vh;
     background-color: var(--surface-color);
     display: flex;
     flex-direction: column;
@@ -505,7 +605,7 @@ body {
 }
 
 /* === 響應式調整 === */
-@media (max-width: 800px) {
+@media (max-width: 1280px) {
     body {
         width: 100vw;
         height: 100vh;
@@ -1207,7 +1307,7 @@ body {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    max-width: 800px !important;
+    max-width: 1280px !important;
     margin: 0 auto !important;
     min-height: 72px !important;
     max-height: 72px !important;
@@ -1290,9 +1390,9 @@ body {
     border: 2px solid #333333 !important;
 }
 
-/* DSI 800x480 螢幕調整 */
-@media (max-width: 800px),
-(max-height: 480px) {
+/* DSI 1280x800 螢幕調整 */
+@media (max-width: 1280px),
+(max-height: 800px) {
     .result-info-panel {
         padding: 15px !important;
         max-height: 420px !important;
@@ -1390,6 +1490,131 @@ body {
     z-index: 1001 !important;
 }
 
+/* === 全屏機長廣播顯示 === */
+.captain-announcement-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.captain-announcement-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    opacity: 0.95;
+}
+
+.captain-announcement-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: white;
+    padding: 40px;
+}
+
+.captain-announcement-icon {
+    font-size: 120px;
+    margin-bottom: 30px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.captain-announcement-title {
+    font-size: 48px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    font-family: 'Press Start 2P', 'Courier Prime', monospace;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+}
+
+.captain-announcement-subtitle {
+    font-size: 24px;
+    margin-bottom: 40px;
+    opacity: 0.9;
+    font-family: 'Press Start 2P', 'Courier Prime', monospace;
+}
+
+.captain-announcement-wave {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 40px;
+}
+
+.captain-announcement-wave .wave-bar {
+    width: 8px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    animation: wave 1.2s ease-in-out infinite;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(4) {
+    animation-delay: 0.6s;
+}
+
+.captain-announcement-wave .wave-bar:nth-child(5) {
+    animation-delay: 0.8s;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes wave {
+
+    0%,
+    100% {
+        transform: scaleY(0.5);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scaleY(1.5);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 /* === 新增：清喉嚨彈出對話框樣式 === */
 .throat-clearing-popup {
     position: fixed;
@@ -1483,6 +1708,7 @@ body {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    display: none;
 }
 
 /* 等待畫面背景地圖樣式已移除 */
@@ -1499,10 +1725,9 @@ body {
     padding: 30px 50px;
     text-align: center;
     z-index: 250 !important;
-    /* 確保在地圖所有元素之上 */
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    display: block !important;
-    visibility: visible !important;
+    display: block;
+    visibility: visible;
     max-width: 450px;
     width: 60%;
     min-height: 220px;
@@ -1558,9 +1783,9 @@ body {
     }
 }
 
-/* 800x480 螢幕調整 */
-@media (max-width: 800px),
-(max-height: 480px) {
+/* 1280x800 螢幕調整 */
+@media (max-width: 1280px),
+(max-height: 800px) {
     .waiting-content-box {
         padding: 30px 40px;
         max-width: 600px;
@@ -1646,9 +1871,9 @@ body {
 
 /* 舊的loading畫面地圖樣式已移除 */
 
-/* 800x480 螢幕調整 */
-@media (max-width: 800px),
-(max-height: 480px) {
+/* 1280x800 螢幕調整 */
+@media (max-width: 1280px),
+(max-height: 800px) {
     .loading-content-box {
         padding: 30px 40px;
         max-width: 600px;
@@ -1709,7 +1934,7 @@ body {
     max-height: 72px !important;
     background: rgba(0, 0, 0, 0.9) !important;
     padding: 15px 20px !important;
-    max-width: 800px !important;
+    max-width: 1280px !important;
     margin: 0 auto !important;
     box-sizing: border-box !important;
     display: block !important;
@@ -1758,9 +1983,9 @@ body {
     z-index: 1001 !important;
 }
 
-/* DSI 800x480 螢幕調整 */
-@media (max-width: 800px),
-(max-height: 480px) {
+/* DSI 1280x800 螢幕調整 */
+@media (max-width: 1280px),
+(max-height: 800px) {
     .map-zoom-controls {
         top: 15px !important;
         right: 15px !important;
@@ -1821,7 +2046,7 @@ body {
     /* 緊急調試邊框 */
     padding: 20px !important;
     pointer-events: auto !important;
-    max-width: 800px !important;
+    max-width: 1280px !important;
     margin: 0 auto !important;
 }
 
@@ -1944,25 +2169,27 @@ body {
 
 /* ===== 遊戲化 UI 樣式 ===== */
 
-/* 遊戲開始畫面 */
+/* 遊戲開始畫面 - 玻璃效果背景 */
 .game-start-state {
-    position: fixed;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b69 100%);
+    min-height: 100vh;
+    background:
+        linear-gradient(135deg, rgba(10, 10, 26, 0.35) 0%, rgba(26, 26, 62, 0.35) 30%, rgba(45, 27, 105, 0.35) 60%, rgba(26, 26, 62, 0.35) 100%),
+        url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2074&q=80') center/cover no-repeat,
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%2346466e" fill-opacity="0.3" d="M0,96L48,112C96,128,192,160,288,165.3C384,171,480,149,576,154.7C672,160,768,192,864,186.7C960,181,1056,139,1152,122.7C1248,107,1344,117,1392,122.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') bottom/cover no-repeat;
+    background-attachment: fixed;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
     z-index: 99999999 !important;
     opacity: 0;
     visibility: hidden;
     transition: all 0.5s ease;
-    overflow: hidden;
+    overflow-y: auto;
+    padding: 0;
 }
 
-/* 科技感背景動畫 */
+/* 夜城市背景模糊效果 */
 .game-start-state::before {
     content: '';
     position: absolute;
@@ -1971,10 +2198,34 @@ body {
     width: 100%;
     height: 100%;
     background:
-        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
-    animation: techPulse 4s ease-in-out infinite;
+        radial-gradient(circle at 20% 80%, rgba(100, 149, 237, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(73, 99, 248, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(72, 61, 139, 0.1) 0%, transparent 50%);
+    animation: techPulse 6s ease-in-out infinite;
+    backdrop-filter: blur(0.5px);
+}
+
+/* 城市燈光效果 */
+.game-start-state::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    background:
+        linear-gradient(to top, rgba(0, 0, 0, 0.4) 0%, transparent 100%),
+        repeating-linear-gradient(90deg,
+            transparent 0px,
+            transparent 50px,
+            rgba(255, 255, 255, 0.03) 50px,
+            rgba(255, 255, 255, 0.03) 52px),
+        repeating-linear-gradient(0deg,
+            transparent 0px,
+            transparent 100px,
+            rgba(255, 255, 255, 0.02) 100px,
+            rgba(255, 255, 255, 0.02) 102px);
+    pointer-events: none;
 }
 
 @keyframes techPulse {
@@ -1995,39 +2246,65 @@ body {
 }
 
 .game-start-container {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 24px;
     padding: 40px;
-    max-width: 1000px;
-    width: 90%;
-    max-height: 600px;
-    height: 80vh;
+    max-width: 1400px;
+    width: 95%;
+    min-height: 80vh;
     box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+        0 8px 32px rgba(0, 0, 0, 0.37),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        'title title'
+        'left  right'
+        'footer footer';
+    gap: 20px;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+    margin: 20px auto;
+    z-index: 1;
 }
 
-/* 科技感邊框效果 */
+/* 玻璃效果光澤 */
 .game-start-container::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.3) 20%,
+            rgba(255, 255, 255, 0.5) 50%,
+            rgba(255, 255, 255, 0.3) 80%,
+            transparent 100%);
+    border-radius: 24px 24px 0 0;
+}
+
+/* 底部光澤 */
+.game-start-container::after {
+    content: '';
+    position: absolute;
     bottom: 0;
-    border-radius: 20px;
-    padding: 2px;
-    background: linear-gradient(45deg, #00d4ff, #ff00ff, #00ff88, #ffaa00);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    animation: borderGlow 3s linear infinite;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(100, 149, 237, 0.2) 20%,
+            rgba(138, 43, 226, 0.2) 50%,
+            rgba(100, 149, 237, 0.2) 80%,
+            transparent 100%);
+    border-radius: 0 0 24px 24px;
 }
 
 @keyframes borderGlow {
@@ -2046,8 +2323,10 @@ body {
 
 /* 遊戲標題 */
 .game-title-section {
+    grid-area: title;
     text-align: center;
-    margin-bottom: 30px;
+    margin: 0;
+    padding: 0 20px;
 }
 
 .game-main-title {
@@ -2055,7 +2334,49 @@ body {
     font-weight: bold;
     color: #ffffff;
     margin: 0 0 10px 0;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    text-shadow:
+        0 0 10px rgba(100, 149, 237, 0.5),
+        0 0 20px rgba(138, 43, 226, 0.3),
+        2px 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 2px;
+}
+
+/* 語言切換按鈕（右上玻璃圓角） */
+.language-toggle {
+    position: absolute;
+    top: 18px;
+    right: 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    color: #e5e7eb;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow:
+        0 4px 16px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    z-index: 100000000;
+}
+
+.language-toggle:hover {
+    background: rgba(37, 56, 140, 0.55);
+    border-color: rgba(255, 255, 255, 0.85);
+    transform: translateY(-1px);
+}
+
+.language-toggle .lang-icon {
+    font-size: 18px;
+}
+
+.language-toggle .lang-code {
+    letter-spacing: 1px;
 }
 
 .game-subtitle {
@@ -2069,10 +2390,11 @@ body {
 .game-resources {
     display: flex;
     flex-direction: row;
-    gap: 30px;
-    margin-bottom: 40px;
+    gap: 40px;
+    margin-bottom: 25px;
     justify-content: center;
     align-items: center;
+    padding: 0 20px;
 }
 
 .resource-bar {
@@ -2139,36 +2461,210 @@ body {
     margin-bottom: 20px;
 }
 
+/* 起床時間選擇樣式 */
+.wake-time-section {
+    margin-bottom: 25px;
+    padding: 25px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.wake-time-section h3 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: white;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.time-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.time-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 15px 20px;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    width: 140px;
+    backdrop-filter: blur(5px);
+}
+
+.time-input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.time-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+.time-presets {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.time-preset {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 12px 20px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.time-preset:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.time-preset.active {
+    background: linear-gradient(135deg, #00ff88, #00cc6f);
+    border-color: #00ff88;
+    color: white;
+    box-shadow: 0 4px 15px rgba(71, 8, 207, 0.3);
+}
+
+.flight-info {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+/* （保留位置，可日後再擴充機票 TASK 樣式） */
+
+.flight-info span {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.flight-info span:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
 .destination-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    max-width: 600px;
-    margin: 0 auto;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    max-width: 100%;
+    margin: 0;
+    justify-items: center;
 }
 
 .destination-option {
-    background: linear-gradient(135deg, #74b9ff, #0984e3);
+    background: linear-gradient(135deg, rgba(116, 185, 255, 0.9), rgba(9, 132, 227, 0.9));
     color: white;
     border: none;
     border-radius: 15px;
-    padding: 20px;
+    /* padding: 20px; */
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(116, 185, 255, 0.3);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    font-weight: bold;
-    font-size: 1.1rem;
-    box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 100%;
+    max-width: none;
+    /* 讓卡片自適應欄寬，變更寬 */
+    padding: 20px;
 }
 
 .destination-option:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(116, 185, 255, 0.4);
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 35px rgba(116, 185, 255, 0.4);
 }
 
 .destination-option.selected {
-    background: linear-gradient(135deg, #00b894, #00a085);
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.9), rgba(0, 204, 111, 0.9));
+    box-shadow: 0 15px 35px rgba(0, 255, 136, 0.4);
     transform: scale(1.05);
+}
+
+.dest-flag-large {
+    font-size: 48px;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3));
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+.dest-info {
+    flex: 1;
+    margin-bottom: 8px;
+}
+
+.dest-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dest-country {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.dest-phrase {
+    display: none;
+}
+
+.dest-price {
+    font-size: 16px;
+    font-weight: 700;
+    color: #00ff88;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px 12px;
+    border-radius: 15px;
+    border: 1px solid rgba(0, 255, 136, 0.3);
 }
 
 .destination-option.locked {
@@ -2264,72 +2760,86 @@ body {
 
 .ticket-actions {
     display: flex;
-    gap: 15px;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    padding: 18px 22px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    border-radius: 14px;
+}
+
+.ticket-actions .price-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1.45rem;
+}
+
+.ticket-actions .button-section {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .confirm-button,
 .change-button {
-    padding: 12px 25px;
+    padding: 15px 30px;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
     font-size: 1rem;
-}
-
-.confirm-button {
-    background: linear-gradient(135deg, #00b894, #00a085);
-    color: white;
-}
-
-.confirm-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 184, 148, 0.4);
-}
-
-.change-button {
-    background: linear-gradient(135deg, #74b9ff, #0984e3);
-    color: white;
-}
-
-.change-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(116, 185, 255, 0.4);
+    min-width: 150px;
 }
 
 /* 開始旅程按鈕 */
 .start-journey-section {
-    display: flex;
-    justify-content: center;
-    margin-top: 30px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 20px;
+
+    /* 與上方的台北面板 padding 30 對齊 */
 }
 
 .start-journey-button {
-    background: linear-gradient(135deg, #00d4ff, #0099cc);
-    border: none;
-    border-radius: 15px;
-    padding: 25px 60px;
+    background: rgba(100, 149, 237, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 18px;
+    padding: 24px 30px;
     color: white;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 8px 25px rgba(0, 212, 255, 0.3);
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    min-width: 300px;
-    max-width: 400px;
+    gap: 8px;
     width: 100%;
+    position: relative;
+    overflow: hidden;
 }
 
 .start-journey-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(0, 212, 255, 0.4);
-    background: linear-gradient(135deg, #00b8e6, #007aa3);
+    background: rgba(138, 43, 226, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow:
+        0 12px 32px rgba(138, 43, 226, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
 }
 
 /* 開始旅程按鈕閃爍效果 */
@@ -2338,6 +2848,7 @@ body {
     overflow: hidden;
 }
 
+/* 可用狀態才顯示閃爍光帶 */
 .start-journey-button::before {
     content: '';
     position: absolute;
@@ -2345,8 +2856,17 @@ body {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
     animation: buttonShimmer 3s ease-in-out infinite;
+}
+
+.start-journey-button[disabled]::before {
+    display: none;
+}
+
+/* 移除禁用狀態的閃爍與特效 */
+.start-journey-button[disabled]::before {
+    display: none;
 }
 
 @keyframes buttonShimmer {
@@ -2367,6 +2887,12 @@ body {
     font-size: 2rem;
 }
 
+.start-journey-button[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .button-text {
     font-size: 1.3rem;
     font-weight: bold;
@@ -2383,7 +2909,8 @@ body {
 
 /* 懸浮視窗樣式 */
 .destination-modal,
-.ticket-modal {
+.ticket-modal,
+.timer-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -2396,9 +2923,11 @@ body {
 }
 
 .destination-modal.active,
-.ticket-modal.active {
+.ticket-modal.active,
+.timer-modal.active {
     opacity: 1;
     visibility: visible;
+    overflow: hidden;
 }
 
 .modal-overlay {
@@ -2416,73 +2945,654 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 30px;
-    max-width: 600px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 28px 32px;
+    max-width: 900px;
+    width: 92%;
+    max-height: 88vh;
+    overflow: hidden;
+    box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: radial-gradient(circle at top left, rgba(100, 149, 237, 0.35), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(138, 43, 226, 0.4), transparent 45%),
+        rgba(10, 10, 26, 0.85);
+}
+
+/* 放大與美化：目的地選擇彈窗專用 */
+.destination-modal .modal-content {
+    max-width: 980px;
+    padding: 20px;
+}
+
+.destination-modal .modal-header {
+    margin: -6px -6px 24px;
+    /* 與內容留出視覺分隔 */
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+    /* 紫色主題的透明效果 */
+    color: #fff;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 目的地彈窗身體：僅此區塊內可捲動 */
+.destination-modal .modal-body {
+    max-height: calc(88vh - 120px);
+    overflow: hidden;
+    /* 外層不捲，由內部左右欄位自行捲動 */
+    padding-right: 0;
+}
+
+/* 目的地彈窗：現在只有目的地選擇，不需要左右佈局 */
+.destination-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.left-settings {
+    max-height: calc(88vh - 140px);
+    overflow: auto;
+    padding-right: 6px;
+}
+
+.right-grid {
+    width: 100%;
+    max-height: calc(88vh - 200px);
+    overflow: auto;
+    padding-right: 6px;
+}
+
+/* 目的地改為 2×2 */
+.destination-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    /* 間隔再縮小 */
+}
+
+.destination-warning {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffefba;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.destination-modal .modal-title {
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.destination-modal .wake-time-section h3 {
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 2px;
+}
+
+.destination-modal .time-preset {
+    font-size: 18px;
+}
+
+.destination-modal .time-input {
+    font-size: 18px;
+}
+
+/* 左側卡片風格與巨型時間輸入 */
+.left-settings .wake-time-section {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 18px;
+    padding: 20px;
+}
+
+.left-settings .time-input {
+    width: 240px;
+    height: 90px;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-align: center;
+    background: #fff;
+    color: #333;
+    border-radius: 18px;
+    border: none;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+    margin: 6px 0 14px;
+}
+
+.left-settings .time-presets {
+    gap: 8px;
+    justify-content: center;
+}
+
+.left-settings .time-preset {
+    padding: 10px 16px;
+    min-width: 88px;
+    border-radius: 12px;
+}
+
+/* 移除左側額外資訊列 */
+.destination-modal .wake-time-section .flight-info {
+    display: none !important;
+}
+
+.destination-modal .flight-info {
+    font-size: 16px;
+}
+
+/* 計時長度選擇視窗樣式 */
+.timer-modal .modal-content {
+    max-width: 720px;
+    padding: 32px 32px 26px;
+    background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.55), transparent 38%),
+        radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.55), transparent 45%),
+        rgba(28, 43, 77, 0.82);
+}
+
+/* 任務選擇視窗：稍微放大、偏亮藍紫色 */
+.task-modal .modal-content {
+    max-width: 720px;
+    padding: 28px 40px 24px;
+    min-height: 46vh;
+    background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.65), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.75), transparent 45%),
+        rgba(15, 23, 42, 0.9);
+}
+
+/* 計時選擇視窗：與任務選擇視窗相同的高度和樣式（只針對純 timer-modal，不影響 task-modal） */
+.timer-modal:not(.task-modal) .modal-content {
+    max-width: 720px;
+    padding: 28px 40px 24px;
+    min-height: 46vh;
+    background: radial-gradient(circle at top left, rgba(129, 140, 248, 0.65), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(196, 181, 253, 0.75), transparent 45%),
+        rgba(15, 23, 42, 0.9);
+}
+
+.task-modal .modal-header {
+    display: none;
+}
+
+/* 計時選擇視窗：隱藏標題欄 */
+.timer-modal .modal-header {
+    display: none;
+}
+
+/* Task 視窗：避免內部再捲動，讓所有按鈕一次看完 */
+.task-modal .modal-body {
+    max-height: none;
+    overflow: visible;
+    padding-bottom: 0;
+}
+
+/* 計時選擇視窗：避免內部再捲動，讓所有按鈕一次看完（只針對純 timer-modal，不影響 task-modal） */
+.timer-modal:not(.task-modal) .modal-body {
+    max-height: none;
+    overflow: visible;
+    padding-bottom: 0;
+}
+
+.timer-selection-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    /* 進一步減少間距為15px */
+    padding: 10px 0;
+}
+
+.timer-selector-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+
+.timer-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+
+.timer-input-wrapper .time-input {
+    width: 200px;
+    height: 90px;
+    font-size: 44px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-align: center;
+    background: #fff;
+    color: #333;
+    border-radius: 18px;
+    border: none;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.timer-label {
+    font-size: 24px;
+    font-weight: 600;
+    color: white;
+}
+
+.timer-confirm-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    position: relative;
+    z-index: 100;
+    /* 提高z-index，確保按鈕在最上層，可以點擊 */
+    pointer-events: auto;
+    /* 確保可以點擊 */
+    /* 移除margin，間距由父容器的gap控制 */
+}
+
+.confirm-timer-btn {
+    background: linear-gradient(135deg, #4ade80, #38bdf8);
+    border: none;
+    border-radius: 18px;
+    padding: 14px 36px;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow:
+        0 10px 24px rgba(15, 23, 42, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.12);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 200;
+    /* 提高z-index，確保按鈕在最上層 */
+    pointer-events: auto;
+    /* 確保可以點擊 */
+}
+
+.confirm-timer-btn:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 14px 30px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.confirm-timer-btn:active {
+    transform: translateY(0);
+}
+
+.timer-modal .time-presets {
+    gap: 12px;
+    justify-content: center;
+}
+
+.timer-modal .time-preset {
+    padding: 14px 24px;
+    min-width: 100px;
+    font-size: 18px;
+}
+
+/* TASK 任務選擇（玻璃效果） */
+.task-selector {
+    margin-top: 0;
+    padding-top: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.task-title {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 25px;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.task-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.task-option {
+    flex: 1 1 48%;
+    min-width: 0;
+    padding: 14px 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    transition: all 0.2s ease;
+    box-shadow:
+        0 4px 12px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.task-option:hover {
+    background: rgba(129, 140, 248, 0.6);
+    border-color: rgba(255, 255, 255, 0.85);
+    transform: translateY(-1px);
+}
+
+.task-option.active {
+    background: linear-gradient(135deg, #60a5fa, #a855f7);
+    border-color: rgba(255, 255, 255, 0.95);
+    box-shadow:
+        0 8px 20px rgba(88, 232, 237, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* 旋鈕風格任務選擇器 */
+.rotary-knob-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 20px 0;
+    /* 減少頂部padding，從30px改為20px */
+    min-height: auto;
+    /* 改為auto，讓內容自然決定高度 */
+    pointer-events: none;
+    /* 讓點擊事件穿透 */
+}
+
+/* 旋鈕選項需要可以點擊（任務選擇和計時選擇都適用） */
+.rotary-knob-container .knob-option,
+#taskModal .knob-option,
+#timerModal .knob-option {
+    pointer-events: auto !important;
+    /* 選項本身可以點擊，使用 !important 確保優先級 */
+    cursor: pointer;
+    /* 顯示手型游標 */
+}
+
+.rotary-knob-wrapper {
+    position: relative;
+    width: 400px;
+    height: 400px;
+    margin: 0 auto -110px;
+    /* 恢復負margin */
+    z-index: 1;
+    /* 確保在正確的層級 */
+    pointer-events: none;
+    /* 讓點擊事件穿透，不阻擋按鈕 */
+}
+
+.rotary-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.25), rgba(168, 85, 247, 0.25));
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 2px 8px rgba(255, 255, 255, 0.15),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+}
+
+.knob-indicator {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 18px;
+    background: linear-gradient(180deg, #60a5fa, #a855f7);
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(96, 165, 250, 0.7);
+}
+
+.knob-options {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.knob-option {
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    opacity: 0.7;
+    /* 使用極座標系統，中心點在 200px, 200px（容器中心） */
+    transform-origin: 200px 200px;
+    /* 確保可以點擊 */
+    pointer-events: auto !important;
+    z-index: 100;
+}
+
+/* 6個選項均勻分布在上側180度扇形內，左右對稱，每個間隔35度，半徑：180px */
+/* 標準座標系：0度在右側（3點），順時針為正 */
+/* 上側180度扇形：從左側(180度)到右側(0度)，左右對稱 */
+/* 左側：讀書(180度), 工作(145度), 創作(110度) - 每個間隔35度 */
+/* 右側：冥想(70度), 遊戲(35度), 休息(0度) - 每個間隔35度，與左側對稱 */
+/* 位置0: 讀書 - 左側 (180度) */
+.knob-option[data-position="0"] {
+    top: 50%;
+    /* sin(180°) = 0 */
+    left: calc(50% - 180px);
+    /* cos(180°) = -1，左側 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置1: 工作 (145度) */
+.knob-option[data-position="1"] {
+    top: calc(50% - 180px * 0.574);
+    /* sin(145°) = 0.574，向上為負 */
+    left: calc(50% - 180px * 0.819);
+    /* cos(145°) = -0.819，左側 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置2: 創作 (110度) */
+.knob-option[data-position="2"] {
+    top: calc(50% - 180px * 0.940);
+    /* sin(110°) = 0.940，向上為負 */
+    left: calc(50% - 180px * 0.342);
+    /* cos(110°) = -0.342，左側 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置3: 休息 - 右側 (0度) */
+.knob-option[data-position="3"] {
+    top: 50%;
+    /* sin(0°) = 0 */
+    left: calc(50% + 180px);
+    /* cos(0°) = 1，右側 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置4: 冥想 (70度) - 與創作對稱 */
+.knob-option[data-position="4"] {
+    top: calc(50% - 180px * 0.940);
+    /* sin(70°) = 0.940，向上為負 */
+    left: calc(50% + 180px * 0.342);
+    /* cos(70°) = 0.342，右側 */
+    transform: translate(-50%, -50%);
+}
+
+/* 位置5: 遊戲 (35度) - 與工作對稱 */
+.knob-option[data-position="5"] {
+    top: calc(50% - 180px * 0.574);
+    /* sin(35°) = 0.574，向上為負 */
+    left: calc(50% + 180px * 0.819);
+    /* cos(35°) = 0.819，右側 */
+    transform: translate(-50%, -50%);
+}
+
+.knob-option:hover {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1.05);
+    border-color: rgba(96, 165, 250, 0.5);
+}
+
+.knob-option.active {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.35), rgba(168, 85, 247, 0.35));
+    border-color: rgba(96, 165, 250, 0.9);
+    box-shadow:
+        0 8px 24px rgba(96, 165, 250, 0.6),
+        inset 0 2px 4px rgba(255, 255, 255, 0.3),
+        0 0 20px rgba(96, 165, 250, 0.4);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.1);
+    z-index: 5;
+}
+
+.knob-option.active .knob-option-icon {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.8));
+}
+
+.knob-option-icon {
+    font-size: 32px;
+    margin-bottom: 6px;
+    transition: all 0.3s ease;
+    line-height: 1;
+}
+
+.knob-option-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+}
+
+.knob-option.active .knob-option-label {
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(96, 165, 250, 0.7);
+    font-weight: 700;
+}
+
+.knob-hint {
+    margin-top: 30px;
+    /* 恢復間距，與旋鈕保持30px距離 */
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    text-align: center;
+    font-style: italic;
+    letter-spacing: 0.5px;
+}
+
+/* 旋鈕旋轉動畫 - 由JS控制transform，這裡只提供平滑過渡 */
+.rotary-knob {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 目的地視窗：提示文字樣式 */
+.destination-info-section {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.destination-hint {
+    color: white;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.destination-hint strong {
+    color: #00ff88;
+    font-size: 20px;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 18px;
+    padding: 0 4px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
 }
 
 .modal-title {
     margin: 0;
-    color: #f1f1f1;
-    font-size: 1.5rem;
+    color: #f9fafb;
+    font-size: 1.4rem;
 }
 
 .modal-close {
-    background: none;
-    border: none;
-    font-size: 2rem;
-    color: #6c757d;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 1.5rem;
+    color: white;
     cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
+    padding: 8px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
 }
 
 .modal-close:hover {
-    background: #f8f9fa;
-    color: #dc3545;
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
 }
 
 /* 橫向登機證設計 */
 .ticket-content {
-    max-width: 900px;
-    width: 95%;
+    max-width: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
 .boarding-pass {
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
     overflow: hidden;
     position: relative;
     width: 100%;
-    max-width: 800px;
     margin: 0 auto;
 }
 
 /* 頂部橫幅 */
 .boarding-header {
-    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    background: linear-gradient(135deg, #5b5ce6, #8b5cf6);
     color: white;
     padding: 15px 20px;
     display: flex;
@@ -2511,45 +3621,46 @@ body {
 .boarding-content {
     display: flex;
     align-items: center;
-    padding: 25px 20px;
+    padding: 18px 16px;
     background: white;
     position: relative;
+    gap: 12px;
 }
 
 .departure-info,
 .arrival-info {
     flex: 1;
     text-align: center;
-    padding: 0 15px;
+    padding: 0 10px;
 }
 
 .from-label,
 .to-label {
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     color: #666;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
     font-weight: 500;
 }
 
 .city-code {
-    font-size: 2rem;
-    font-weight: bold;
+    font-size: 1.6rem;
+    font-weight: 700;
     color: #333;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
     letter-spacing: 1px;
 }
 
 .city-name {
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #555;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .departure-time,
 .arrival-time {
-    font-size: 0.9rem;
-    color: #777;
-    font-weight: 500;
+    font-size: 0.85rem;
+    color: #007bff;
+    font-weight: 600;
 }
 
 /* 中間虛線連接 */
@@ -2588,22 +3699,44 @@ body {
 /* 乘客資訊區域 */
 .passenger-section {
     background: #f8f9fa;
-    padding: 20px;
-    border-top: 1px solid #eee;
+    padding: 18px;
+    border-top: 1px solid #ddd;
 }
 
 .passenger-name {
-    font-size: 1.2rem;
-    font-weight: bold;
+    font-size: 1rem;
+    font-weight: 700;
     color: #333;
     text-align: center;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
 }
 
 .passenger-section .flight-info {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    gap: 12px;
+    text-align: center;
+}
+
+.passenger-section .info-item {
+    text-align: center;
+    flex: 1;
+}
+
+.passenger-section .info-label {
+    display: block;
+    font-size: 0.7rem;
+    color: #000000 !important;
+    margin-bottom: 3px;
+    font-weight: 500;
+}
+
+.passenger-section .info-value {
+    display: block;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #000000 !important;
 }
 
 .info-item {
@@ -2614,7 +3747,7 @@ body {
 .info-label {
     display: block;
     font-size: 0.7rem;
-    color: #666;
+    color: #000000;
     margin-bottom: 3px;
     font-weight: 500;
 }
@@ -2623,7 +3756,7 @@ body {
     display: block;
     font-size: 1rem;
     font-weight: bold;
-    color: #333;
+    color: #000000;
 }
 
 /* 條碼區域 */
@@ -2653,22 +3786,26 @@ body {
 /* 機票動作按鈕區域重新設計 */
 .ticket-actions {
     display: flex;
-    flex-direction: column;
-    gap: 15px;
-    padding: 20px;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    padding: 18px 22px;
     background: #f8f9fa;
     border-top: 1px solid #dee2e6;
+    border-radius: 14px;
 }
 
 .price-section {
-    text-align: center;
-    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
 }
 
-.ticket-price {
-    font-size: 1.5rem;
+.ticket-actions .ticket-price {
+    font-size: 1.45rem;
     font-weight: bold;
-    color: #333;
+    color: #2c3e50;
     background: none;
     padding: 0;
     border-radius: 0;
@@ -2676,10 +3813,11 @@ body {
     position: static;
 }
 
-.button-section {
+.ticket-actions .button-section {
     display: flex;
-    gap: 15px;
-    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 /* 機票頭部 */
@@ -2920,36 +4058,41 @@ body {
 }
 
 .confirm-button {
-    background: linear-gradient(135deg, #28a745, #20c997);
+    background: linear-gradient(135deg, #5b5ce6, #8b5cf6);
     color: white;
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 4px 15px rgba(91, 92, 230, 0.35);
 }
 
 .confirm-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    box-shadow: 0 6px 20px rgba(91, 92, 230, 0.45);
 }
 
 .change-button {
-    background: linear-gradient(135deg, #6c757d, #495057);
-    color: white;
-    box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
+    background: linear-gradient(135deg, #ced4da, #868e96);
+    color: #2d3436;
+    box-shadow: 0 4px 15px rgba(173, 181, 189, 0.3);
 }
 
 .change-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+    box-shadow: 0 6px 20px rgba(173, 181, 189, 0.4);
 }
 
 /* 修正捲動問題 - 確保按鈕可見 */
 .ticket-modal .modal-content {
+    max-width: 1080px;
+    width: 92%;
     max-height: 90vh;
     overflow-y: auto;
-    padding: 20px;
+    padding: 24px 28px 22px;
 }
 
 .ticket-modal .modal-body {
-    max-height: calc(90vh - 120px);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-height: calc(90vh - 130px);
     overflow-y: auto;
     padding: 0;
 }
@@ -3000,7 +4143,13 @@ body {
 
     .ticket-actions {
         flex-direction: column;
-        gap: 10px;
+        align-items: stretch;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .ticket-actions .price-section {
+        justify-content: center;
     }
 
     .confirm-button,
@@ -3016,6 +4165,198 @@ body {
 
     .barcode-number {
         font-size: 0.9rem;
+    }
+}
+
+/* Leaflet 地圖層級與資訊面板強制可見（Raspberry Pi 保護） */
+.sleep-time-popup,
+.flight-status-popup,
+.resource-display-popup,
+.simple-ticket-popup {
+    position: fixed !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    z-index: 11000 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+.leaflet-control-container {
+    z-index: 5000 !important;
+}
+
+.leaflet-pane,
+.leaflet-map-pane {
+    z-index: 0 !important;
+}
+
+/* === 單頁無捲動版面（首頁 1280x800） === */
+.game-start-state {
+    position: relative;
+    height: 100vh;
+    overflow: hidden;
+    /* 關閉整頁捲動，改為區塊內捲動 */
+}
+
+.game-start-container {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+        'title title'
+        'left  right'
+        'footer footer';
+    gap: 16px;
+    padding: 16px;
+}
+
+.game-title-section {
+    grid-area: title;
+    margin: 0;
+    padding: 0;
+}
+
+.taipei-location-panel {
+    grid-area: left;
+    overflow: auto;
+    min-height: 0;
+}
+
+.game-resources {
+    grid-area: right;
+    overflow: auto;
+    min-height: 0;
+}
+
+.start-journey-section {
+    grid-area: footer;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    margin: 0;
+}
+
+/* === 飛行資訊面板樣式 === */
+.flight-info-panel {
+    grid-area: right;
+    background: rgba(138, 43, 226, 0.15);
+    border-radius: 20px;
+    padding: 25px 24px;
+    margin: 0;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 玻璃面板光澤效果 */
+.flight-info-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            transparent 100%);
+}
+
+.info-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.info-icon {
+    font-size: 24px;
+}
+
+.info-title {
+    color: #ffffff;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.info-value {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.start-journey-button {
+    width: 100%;
+    min-width: 0;
+    padding: 16px 20px;
+}
+
+/* 中等尺寸螢幕以下才改成直式一欄；1280x720 保持左右佈局 */
+@media (max-width: 1024px) {
+    .game-start-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        grid-template-areas:
+            'title'
+            'left'
+            'right'
+            'footer';
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .start-journey-section {
+        gap: 12px;
+        padding: 10px 12px;
     }
 }
 
@@ -3080,76 +4421,44 @@ body {
     }
 }
 
-/* 針對樹莓派 800x480 螢幕的特殊優化 */
-@media (max-width: 800px) and (max-height: 480px) {
+/* 針對樹莓派 1280x800 螢幕的特殊優化 */
+@media (max-width: 1280px) and (max-height: 800px) {
     .ticket-modal .modal-content {
-        max-height: 95vh;
-        padding: 15px;
+        max-width: 96%;
+        max-height: 92vh;
+        padding: 22px 24px;
     }
 
     .ticket-modal .modal-body {
-        max-height: calc(95vh - 100px);
+        gap: 20px;
     }
 
-    .ticket-card {
-        padding: 15px;
-        margin-bottom: 15px;
-    }
-
-    .ticket-header {
-        margin-bottom: 15px;
-        padding-bottom: 15px;
-    }
-
-    .airline-logo {
-        font-size: 2rem;
-    }
-
-    .airline-name {
-        font-size: 1.2rem;
-    }
-
-    .ticket-price {
-        font-size: 1.6rem;
-    }
-
-    .ticket-route {
-        padding: 15px;
-        margin-bottom: 15px;
-    }
-
+    .ticket-route,
     .flight-details {
-        padding: 15px;
-        margin-bottom: 15px;
-    }
-
-    .detail-row {
-        margin-bottom: 10px;
-    }
-
-    .detail-item {
-        padding: 8px;
-    }
-
-    .ticket-barcode {
-        padding: 15px;
-        margin-top: 15px;
-    }
-
-    .barcode-text {
-        font-size: 1.1rem;
-        letter-spacing: 2px;
+        padding: 18px;
+        margin-bottom: 18px;
     }
 
     .ticket-actions {
         margin-top: 15px;
         padding-top: 15px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .ticket-actions .price-section {
+        justify-content: center;
+    }
+
+    .ticket-actions .button-section {
+        justify-content: center;
     }
 
     .confirm-button,
     .change-button {
         padding: 12px 20px;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
     }
 }
 
@@ -3216,75 +4525,175 @@ body {
     pointer-events: none !important;
 }
 
-/* 飛行狀態懸浮視窗（右上角） */
+/* 飛行狀態懸浮視窗（左上角） */
 .flight-status-popup {
     position: fixed;
     top: 20px;
-    right: 20px;
+    left: 20px;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(255, 107, 53, 0.3);
+    padding: 12px 14px;
+    padding-bottom: 8px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 107, 53, 0.2);
     z-index: 1000;
-    min-width: 300px;
-    max-width: 400px;
+    width: 280px;
+}
+
+/* 展開/收起按鈕 */
+.expand-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 8px;
+    padding: 4px 0;
+    cursor: pointer;
+    border-top: 1px solid rgba(255, 107, 53, 0.2);
+    transition: all 0.3s ease;
+}
+
+.expand-toggle:hover {
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.expand-arrow {
+    color: #ff6b35;
+    font-size: 16px;
+    font-weight: bold;
+    transition: transform 0.3s ease;
 }
 
 .flight-status-content h3 {
-    margin: 0 0 15px 0;
+    margin: 0 0 8px 0;
     color: #333;
-    font-size: 1.2rem;
+    font-size: 0.95rem;
     text-align: center;
     border-bottom: 2px solid #ff6b35;
-    padding-bottom: 10px;
+    padding-bottom: 6px;
 }
 
-.flight-info {
+.flight-status-popup .flight-info {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
-.info-item {
+.flight-status-popup .info-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
+    font-size: 0.78rem;
+    padding: 4px 0;
+    background: none;
+    border: none;
 }
 
-.info-item:last-child {
-    border-bottom: none;
+.flight-status-popup .info-item.timer-item .value {
+    color: #e67e22;
+    font-weight: 700;
+    font-size: 0.85rem;
 }
 
-.info-item .label {
-    font-weight: 500;
+.flight-status-popup .info-item.progress-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.flight-status-popup .progress-container {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.flight-status-popup .progress-bar {
+    flex: 1;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.flight-status-popup .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00ff88, #00cc6f);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 255, 136, 0.3);
+}
+
+.flight-status-popup .progress-text {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.75rem;
+    min-width: 35px;
+    text-align: right;
+}
+
+.flight-status-popup .info-item span {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    color: inherit;
+}
+
+.flight-status-popup .label {
     color: #666;
+    font-weight: 500;
+    min-width: 80px;
+}
+
+.flight-status-popup .value {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-align: right;
+}
+
+.flight-status-popup .flight-status {
+    color: #e67e22;
+    font-weight: 700;
+    font-size: 0.82rem;
+}
+
+/* 英文版 Flight Status：字稍微縮小避免換行太多 */
+.flight-status-popup.lang-en {
+    width: 300px;
+}
+
+.flight-status-popup.lang-en .flight-status-content h3 {
     font-size: 0.9rem;
 }
 
-.info-item .value {
-    font-weight: bold;
-    color: #333;
-    font-size: 1rem;
+.flight-status-popup.lang-en .info-item {
+    font-size: 0.7rem;
 }
 
-.flight-status {
-    color: #ff6b35 !important;
-    animation: statusPulse 1s ease-in-out infinite;
+.flight-status-popup.lang-en .label {
+    font-size: 0.7rem;
+    font-weight: 500;
 }
 
-@keyframes statusPulse {
+.flight-status-popup.lang-en .value {
+    font-size: 0.75rem;
+    font-weight: 700;
+}
 
-    0%,
-    100% {
-        opacity: 1;
-    }
+.flight-status-popup.lang-en .info-item.timer-item .value {
+    font-size: 0.7rem;
+}
 
-    50% {
-        opacity: 0.7;
+@media (max-width: 768px) {
+    .flight-status-popup {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        max-width: none;
+        padding: 10px 12px;
     }
 }
 
@@ -3305,140 +4714,247 @@ body {
 }
 
 .resource-display-content h3 {
-    margin: 0 0 10px 0;
-    color: #333;
-    font-size: 1rem;
-    text-align: center;
-    border-bottom: 2px solid #007bff;
-    padding-bottom: 8px;
+    margin: 0 0 8px 0;
+    color: #111827;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-shadow: none;
 }
 
-.resource-info {
+/* 使用與首頁一致的圓角長條圖樣式 */
+.resource-display-popup .resource-info {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.resource-item {
+.resource-display-popup .resource-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.resource-display-popup .resource-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+}
+
+.resource-display-popup .resource-label {
+    color: #374151;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-shadow: none;
+}
+
+.resource-display-popup .resource-progress {
+    position: relative;
+    background: rgba(17, 24, 39, 0.14);
+    /* 提高對比度 */
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 999px;
+    height: 18px;
+    /* 加高，增強可見度 */
+    overflow: hidden;
+}
+
+.resource-display-popup .resource-bar-fill {
+    width: 100%;
+    height: 18px;
+    background: #ecf0f1;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.resource-display-popup .resource-fill {
+    height: 100%;
+    transition: width 0.35s ease;
+    border-radius: 999px;
+}
+
+.resource-display-popup .money-fill {
+    background: linear-gradient(90deg, #00cc6f, #00ff88);
+}
+
+.resource-display-popup .fuel-fill {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.resource-display-popup .money-bar {
+    background: linear-gradient(90deg, #00cc6f, #00ff88);
+}
+
+.resource-display-popup .fuel-bar {
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.resource-display-popup .resource-value {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.68rem;
+}
+
+.resource-display-popup .resource-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 5px 0;
 }
 
-.resource-label {
+.resource-display-popup .resource-label {
     font-weight: 500;
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.72rem;
 }
 
-.resource-value {
-    font-weight: bold;
-    color: #333;
-    font-size: 1rem;
+.resource-display-popup .resource-value {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.68rem;
 }
 
 /* 簡單機票（左下角） */
 .simple-ticket-popup {
     position: fixed;
-    bottom: 20px;
+    top: 280px;
     left: 20px;
     background: rgba(255, 255, 255, 0.95);
-    border-radius: 8px;
-    padding: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(255, 107, 53, 0.3);
+    border-radius: 12px;
+    padding: 12px 14px;
+    padding-top: 8px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 107, 53, 0.2);
     z-index: 1000;
-    min-width: 360px;
-    max-width: 420px;
-    transform: scale(0.8);
-    transform-origin: bottom left;
+    width: 280px;
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: all 0.3s ease;
+    transform-origin: top;
+    margin-top: 10px;
+}
+
+/* 收起按鈕（在下方面板頂部） */
+.collapse-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 4px 0;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 107, 53, 0.2);
+    transition: all 0.3s ease;
+}
+
+.collapse-toggle:hover {
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.collapse-arrow {
+    color: #ff6b35;
+    font-size: 16px;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+}
+
+/* 收起狀態 */
+.simple-ticket-popup.collapsed {
+    max-height: 0;
+    padding: 0 14px;
+    margin-top: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: scaleY(0);
 }
 
 .simple-ticket-content {
-    font-family: 'Press Start 2P', 'Courier Prime', monospace;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .simple-ticket-content .ticket-header {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #ff6b35;
 }
 
 .airline-icon {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     color: #ff6b35;
 }
 
 .airline-name {
-    font-size: 0.8rem;
+    font-size: 1rem;
     color: #333;
-    font-weight: bold;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 .ticket-route {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    font-size: 0.9rem;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding: 10px;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: 8px;
 }
 
 .from,
 .to {
-    font-weight: bold;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: #333;
+    letter-spacing: 1px;
 }
 
 .arrow {
     color: #ff6b35;
-    font-size: 1.2rem;
+    font-size: 1.4rem;
+    font-weight: bold;
 }
 
 .simple-ticket-content .ticket-details {
-    font-size: 0.6rem;
-    color: #666;
-    text-align: center;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     margin-top: 12px;
 }
 
-.flight-number {
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 5px;
-}
-
-.seat-gate {
-    line-height: 1.4;
+.simple-ticket-content .detail-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
 }
 
 .simple-ticket-content .detail-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 10px;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
-    font-size: 0.5rem;
-    min-height: 20px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 6px;
 }
 
 .detail-label {
-    font-weight: bold;
-    color: #333;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .detail-value {
-    color: #666;
-    font-weight: normal;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #333;
 }
 
 /* 地圖彈窗樣式 */
@@ -3560,6 +5076,53 @@ body {
     border-top: 1px solid rgba(255, 107, 53, 0.2);
 }
 
+/* === 樹莓派穩定性：確保地圖面板長駐顯示，避免被動畫/覆蓋隱藏 === */
+.sleep-time-popup,
+.flight-status-popup,
+.resource-display-popup,
+.simple-ticket-popup {
+    position: fixed !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    z-index: 10000 !important;
+    /* 高於 Leaflet 控制元件 */
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
+/* === 低功耗模式：停用重型效果，避免捲動卡頓與閃爍 === */
+.low-power *,
+.low-power *::before,
+.low-power *::after {
+    transition: none !important;
+    animation: none !important;
+}
+
+.low-power .modal-overlay,
+.low-power .modal-content,
+.low-power .flight-status-popup,
+.low-power .resource-display-popup,
+.low-power .sleep-time-popup,
+.low-power .simple-ticket-popup,
+.low-power .destination-modal .modal-content,
+.low-power .ticket-modal .modal-content {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18) !important;
+}
+
+.low-power .plane-icon {
+    animation: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
 .time-control-item {
     display: flex;
     align-items: center;
@@ -3629,7 +5192,7 @@ body {
     color: white;
     padding: 15px 25px;
     border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(40, 167, 69, 0.3);
+    box-shadow: 0 8px 32px rgba(53, 192, 85, 0.3);
     font-weight: 600;
     text-align: center;
 }
@@ -3650,8 +5213,8 @@ body {
 @media (max-width: 768px) {
     .flight-status-popup {
         top: 10px;
-        right: 10px;
         left: 10px;
+        right: 10px;
         min-width: auto;
         max-width: none;
     }
@@ -3699,7 +5262,8 @@ body {
     }
 
     .destination-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
     }
 
     .ticket-actions {
@@ -3715,4 +5279,955 @@ body {
         width: 95%;
         padding: 20px;
     }
+}
+
+/* 新的目的地統計樣式 */
+.dest-country {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 10px;
+}
+
+.dest-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 5px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+.stat-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #00ff88;
+}
+
+.loading-destinations,
+.error-destinations {
+    text-align: center;
+    padding: 40px 20px;
+    font-size: 16px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    margin: 20px 0;
+}
+
+/* === 台北資訊面板樣式 === */
+.taipei-location-panel {
+    grid-area: left;
+    background: rgba(100, 149, 237, 0.15);
+    border-radius: 20px;
+    padding: 25px 24px;
+    margin: 0;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 地圖效果背景 */
+.taipei-location-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(100, 149, 237, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(100, 149, 237, 0.1) 0%, transparent 50%),
+        linear-gradient(135deg, rgba(100, 149, 237, 0.05) 0%, rgba(100, 149, 237, 0.15) 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.taipei-location-panel>* {
+    position: relative;
+    z-index: 1;
+}
+
+/* 玻璃面板光澤效果 */
+.taipei-location-panel::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            transparent 100%);
+    z-index: 2;
+}
+
+/* 當前位置面板縮小為圖示（購票後） */
+.taipei-location-panel.collapsed {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    overflow: auto;
+}
+
+.taipei-location-panel.collapsed .location-header,
+.taipei-location-panel.collapsed .ai-generated-content,
+.taipei-location-panel.collapsed .taipei-features {
+    display: none !important;
+}
+
+.taipei-location-panel.ticket-only {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 0;
+    padding: 0;
+    overflow: visible;
+}
+
+.taipei-location-panel.ticket-only .location-ticket-map-style {
+    margin: 0;
+    width: 100%;
+    border-radius: 20px;
+}
+
+.location-mini-icon {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    width: fit-content;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.location-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.location-icon {
+    font-size: 48px;
+    margin-right: 15px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+        transform: translateY(0);
+    }
+
+    40% {
+        transform: translateY(-10px);
+    }
+
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+.location-info {
+    flex: 1;
+}
+
+#currentCityName,
+.location-title {
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0 0 5px 0;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+#currentCityName {
+    margin: 0;
+    line-height: 1.3;
+}
+
+.location-subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    margin: 0 0 10px 0;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.weather-info {
+    display: flex;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 12px;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.weather-icon {
+    margin-right: 5px;
+    font-size: 16px;
+}
+
+.taipei-features {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.feature-item {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.feature-item:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.feature-icon {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 5px;
+}
+
+.feature-text {
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+.ai-fact {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fact-icon {
+    margin-right: 5px;
+    font-size: 14px;
+}
+
+.fact-text {
+    display: inline;
+}
+
+/* 位置面板中的機票樣式 */
+.location-ticket {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 15px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 2px solid #dee2e6;
+    color: #2c3e50;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.location-ticket .ticket-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.location-ticket .airline-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.location-ticket .airline-icon {
+    font-size: 20px;
+}
+
+.location-ticket .airline-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: #667eea;
+}
+
+.location-ticket .ticket-status {
+    font-size: 12px;
+    color: #28a745;
+    font-weight: 600;
+    background: rgba(40, 167, 69, 0.1);
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.location-ticket .ticket-route {
+    margin-bottom: 15px;
+}
+
+.location-ticket .route-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.location-ticket .location-info {
+    text-align: center;
+    flex: 1;
+}
+
+.location-ticket .location-code {
+    font-size: 20px;
+    font-weight: 700;
+    color: #667eea;
+}
+
+.location-ticket .location-name {
+    font-size: 12px;
+    color: #666;
+}
+
+.location-ticket .flight-arrow {
+    font-size: 20px;
+    color: #667eea;
+    margin: 0 15px;
+}
+
+.location-ticket .ticket-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.location-ticket .detail-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 8px;
+}
+
+.location-ticket .detail-label {
+    font-size: 10px;
+    color: #666;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.location-ticket .detail-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: #667eea;
+}
+
+/* === 固定右下角按鈕 === */
+.fixed-action-button {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 9999 !important;
+}
+
+/* 移除 pulse-glow 動畫定義，避免閃爍效果 */
+
+.action-btn {
+    background: linear-gradient(135deg, #00ff88, #00cc6f);
+    /* 還原亮綠色，仍無動畫/發光 */
+    border: none;
+    border-radius: 25px;
+    padding: 18px 35px;
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: none;
+    /* 移除旋光陰影 */
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 180px;
+    justify-content: center;
+}
+
+.action-btn:hover {
+    opacity: 0.9;
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+.btn-text {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* === 舒眠效果 === */
+.sleep-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460);
+    background-size: 400% 400%;
+    animation: sleepGradient 15s ease infinite;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 2s ease;
+}
+
+.sleep-mode.active {
+    opacity: 0.3;
+    pointer-events: auto;
+}
+
+@keyframes sleepGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.sleep-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.sleep-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: floatUp 8s linear infinite;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(100vh) translateX(0);
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-100px) translateX(50px);
+        opacity: 0;
+    }
+}
+
+.sleep-audio-controls {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10000;
+    display: flex;
+    gap: 10px;
+}
+
+.sleep-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    padding: 12px 20px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.sleep-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.sleep-btn.active {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: #4caf50;
+}
+
+.sleep-btn.active::before {
+    content: '🔊 ';
+}
+
+.sleep-btn::before {
+    content: '🔇 ';
+}
+
+/* === 響應式設計 === */
+@media (max-width: 1200px) {
+    .game-start-container {
+        max-width: 1200px;
+        width: 98%;
+        padding: 25px;
+    }
+
+    .fixed-action-button {
+        bottom: 20px;
+        right: 20px;
+    }
+
+    .action-btn {
+        padding: 15px 30px;
+        font-size: 16px;
+        min-width: 160px;
+    }
+}
+
+@media (max-width: 768px) {
+    .game-start-container {
+        width: 95%;
+        padding: 20px;
+        margin: 10px auto;
+    }
+
+    .game-main-title {
+        font-size: 2rem;
+    }
+
+    .game-resources {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .resource-bar {
+        min-width: 150px;
+        max-width: 200px;
+    }
+
+    .start-journey-button {
+        padding: 20px 40px;
+        font-size: 1rem;
+        min-width: 180px;
+    }
+
+    .fixed-action-button {
+        bottom: 20px;
+        right: 20px;
+    }
+
+    .action-btn {
+        padding: 12px 25px;
+        font-size: 14px;
+        min-width: 140px;
+    }
+}
+
+/* 舊版甦醒面板預設隱藏，避免遮擋地圖 */
+.result-info-panel,
+.voice-loading-bar,
+#resultInfoPanel,
+#voiceLoadingBar {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* 航空地圖樣式調整 */
+.custom-zoom-controls {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 20000;
+    pointer-events: auto;
+}
+
+.custom-zoom-controls .zoom-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(240, 240, 240, 0.95));
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    font-size: 28px;
+    font-weight: 700;
+    color: #374151;
+    cursor: pointer;
+    outline: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.custom-zoom-controls .zoom-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+}
+
+.custom-zoom-controls .zoom-btn:active {
+    transform: translateY(0) scale(0.97);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 1024px) {
+    .custom-zoom-controls {
+        right: 16px;
+    }
+
+    .custom-zoom-controls .zoom-btn {
+        width: 46px;
+        height: 46px;
+        font-size: 24px;
+    }
+}
+
+/* 地圖風格的機票樣式 */
+.location-ticket-map-style {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(100, 149, 237, 0.3);
+}
+
+.taipei-location-panel.ticket-only .location-ticket-map-style {
+    border-radius: 20px;
+    padding: 25px 24px;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.ticket-map-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(100, 149, 237, 0.2);
+}
+
+.ticket-map-header .airline-icon {
+    font-size: 20px;
+    margin-right: 8px;
+}
+
+.ticket-map-header .airline-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2c3e50;
+    flex: 1;
+}
+
+.ticket-map-header .ticket-status {
+    font-size: 12px;
+    color: #4caf50;
+    font-weight: 600;
+}
+
+.ticket-map-route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 12px;
+    background: rgba(100, 149, 237, 0.1);
+    border-radius: 8px;
+}
+
+.map-route-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.map-location-code {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+    letter-spacing: 1px;
+}
+
+.map-location-name {
+    font-size: 12px;
+    color: #666;
+}
+
+.map-route-arrow {
+    font-size: 20px;
+    color: #6495ed;
+    font-weight: bold;
+}
+
+.ticket-map-details {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.map-detail-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    background: rgba(100, 149, 237, 0.05);
+    border-radius: 6px;
+}
+
+.map-detail-label {
+    display: block;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.map-detail-value {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* 飛行歷史視窗樣式 */
+.flight-history-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20000;
+    backdrop-filter: blur(4px);
+}
+
+.history-modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.history-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid rgba(100, 149, 237, 0.3);
+}
+
+.history-modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.history-modal-close {
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.history-modal-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.history-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.history-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    font-size: 16px;
+}
+
+.history-item {
+    background: rgba(100, 149, 237, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(100, 149, 237, 0.2);
+    transition: all 0.3s ease;
+}
+
+.history-item:hover {
+    background: rgba(100, 149, 237, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.history-route {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+}
+
+.history-origin,
+.history-destination {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.history-city-code {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+    letter-spacing: 1px;
+}
+
+.history-city-name {
+    font-size: 12px;
+    color: #666;
+}
+
+.history-arrow {
+    font-size: 18px;
+    color: #6495ed;
+    font-weight: bold;
+}
+
+.history-details {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.history-detail-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+}
+
+.history-label {
+    display: block;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.history-value {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.history-value.status-perfect {
+    color: #ffd700;
+}
+
+.history-value.status-early {
+    color: #ffa500;
+}
+
+.history-value.status-ontime {
+    color: #4caf50;
+}
+
+.history-value.status-late {
+    color: #f44336;
 }

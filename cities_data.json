@@ -6,20 +6,20 @@
     "country_zh": "南極洲",
     "country_iso_code": "AQ",
     "timezone": "Antarctica/McMurdo",
-    "latitude": -77.8460,
+    "latitude": -77.846,
     "longitude": 166.6763
-},
-{
+  },
+  {
     "city": "Amundsen-Scott South Pole Station",
     "city_zh": "阿蒙森-斯科特南極站",
     "country": "Antarctica",
     "country_zh": "南極洲",
     "country_iso_code": "AQ",
     "timezone": "Antarctica/South_Pole",
-    "latitude": -90.0000,
-    "longitude": 0.0000
-},
-{
+    "latitude": -90.0,
+    "longitude": 0.0
+  },
+  {
     "city": "Palmer Station",
     "city_zh": "帕爾默站",
     "country": "Antarctica",
@@ -28,8 +28,8 @@
     "timezone": "Antarctica/Palmer",
     "latitude": -64.7744,
     "longitude": -64.0533
-},
-{
+  },
+  {
     "city": "Rothera Research Station",
     "city_zh": "羅瑟拉研究站",
     "country": "Antarctica",
@@ -37,9 +37,9 @@
     "country_iso_code": "AQ",
     "timezone": "Antarctica/Rothera",
     "latitude": -67.5675,
-    "longitude": -68.1250
-},
-{
+    "longitude": -68.125
+  },
+  {
     "city": "Halley Research Station",
     "city_zh": "哈雷研究站",
     "country": "Antarctica",
@@ -48,8 +48,8 @@
     "timezone": "Antarctica/Halley",
     "latitude": -75.5772,
     "longitude": -26.1933
-},
-{
+  },
+  {
     "city": "Casey Station",
     "city_zh": "凱西站",
     "country": "Antarctica",
@@ -58,8 +58,8 @@
     "timezone": "Antarctica/Casey",
     "latitude": -66.2828,
     "longitude": 110.5275
-},
-{
+  },
+  {
     "city": "Davis Station",
     "city_zh": "戴維斯站",
     "country": "Antarctica",
@@ -68,8 +68,8 @@
     "timezone": "Antarctica/Davis",
     "latitude": -68.5767,
     "longitude": 77.9675
-},
-{
+  },
+  {
     "city": "Mawson Station",
     "city_zh": "莫森站",
     "country": "Antarctica",
@@ -78,8 +78,8 @@
     "timezone": "Antarctica/Mawson",
     "latitude": -67.6028,
     "longitude": 62.8733
-},
-{
+  },
+  {
     "city": "Vostok Station",
     "city_zh": "東方站",
     "country": "Antarctica",
@@ -88,18 +88,18 @@
     "timezone": "Antarctica/Vostok",
     "latitude": -78.4647,
     "longitude": 106.8375
-},
-{
+  },
+  {
     "city": "Concordia Station",
     "city_zh": "協和站",
     "country": "Antarctica",
     "country_zh": "南極洲",
     "country_iso_code": "AQ",
     "timezone": "Antarctica/Syowa",
-    "latitude": -75.1000,
-    "longitude": 123.3500
-},
-{
+    "latitude": -75.1,
+    "longitude": 123.35
+  },
+  {
     "city": "Ushuaia",
     "city_zh": "烏斯懷亞",
     "country": "Argentina",
@@ -107,9 +107,9 @@
     "country_iso_code": "AR",
     "timezone": "America/Argentina/Ushuaia",
     "latitude": -54.8019,
-    "longitude": -68.3030
-},
-{
+    "longitude": -68.303
+  },
+  {
     "city": "Punta Arenas",
     "city_zh": "蓬塔阿雷納斯",
     "country": "Chile",
@@ -118,8 +118,8 @@
     "timezone": "America/Punta_Arenas",
     "latitude": -53.1638,
     "longitude": -70.9171
-},
-{
+  },
+  {
     "city": "Puerto Williams",
     "city_zh": "威廉斯港",
     "country": "Chile",
@@ -128,8 +128,8 @@
     "timezone": "America/Punta_Arenas",
     "latitude": -54.9333,
     "longitude": -67.6167
-},
-{
+  },
+  {
     "city": "Stanley",
     "city_zh": "斯坦利",
     "country": "Falkland Islands",
@@ -137,9 +137,9 @@
     "country_iso_code": "FK",
     "timezone": "Atlantic/Stanley",
     "latitude": -51.6938,
-    "longitude": -57.8570
-},
-{
+    "longitude": -57.857
+  },
+  {
     "city": "Grytviken",
     "city_zh": "古利德維肯",
     "country": "South Georgia and the South Sandwich Islands",
@@ -148,8 +148,8 @@
     "timezone": "Atlantic/South_Georgia",
     "latitude": -54.2811,
     "longitude": -36.5092
-},
-{
+  },
+  {
     "city": "King Edward Point",
     "city_zh": "愛德華王角",
     "country": "South Georgia and the South Sandwich Islands",
@@ -157,19 +157,19 @@
     "country_iso_code": "GS",
     "timezone": "Atlantic/South_Georgia",
     "latitude": -54.2833,
-    "longitude": -36.5000
-},
-{
+    "longitude": -36.5
+  },
+  {
     "city": "Port-aux-Français",
     "city_zh": "法蘭西港",
     "country": "French Southern Territories",
     "country_zh": "法屬南部領地",
     "country_iso_code": "TF",
     "timezone": "Indian/Kerguelen",
-    "latitude": -49.3500,
+    "latitude": -49.35,
     "longitude": 70.2167
-},
-{
+  },
+  {
     "city": "Tristan da Cunha",
     "city_zh": "特里斯坦-達庫尼亞",
     "country": "Saint Helena, Ascension and Tristan da Cunha",
@@ -178,8 +178,8 @@
     "timezone": "Atlantic/St_Helena",
     "latitude": -37.1136,
     "longitude": -12.2836
-},
-{
+  },
+  {
     "city": "Gough Island",
     "city_zh": "戈夫島",
     "country": "Saint Helena, Ascension and Tristan da Cunha",
@@ -188,17 +188,17 @@
     "timezone": "Atlantic/St_Helena",
     "latitude": -40.3194,
     "longitude": -9.9333
-},
-{
+  },
+  {
     "city": "Inaccessible Island",
     "city_zh": "無障礙島",
     "country": "Saint Helena, Ascension and Tristan da Cunha",
     "country_zh": "聖赫勒拿、阿森松和特里斯坦-達庫尼亞",
     "country_iso_code": "SH",
     "timezone": "Atlantic/St_Helena",
-    "latitude": -37.3000,
+    "latitude": -37.3,
     "longitude": -12.6833
-},
+  },
   {
     "city": "Longyearbyen",
     "city_zh": "朗伊爾城",
@@ -208,8 +208,8 @@
     "timezone": "Arctic/Longyearbyen",
     "latitude": 78.2232,
     "longitude": 15.6267
-},
-{
+  },
+  {
     "city": "Murmansk",
     "city_zh": "摩爾曼斯克",
     "country": "Russia",
@@ -218,8 +218,8 @@
     "timezone": "Europe/Moscow",
     "latitude": 68.9792,
     "longitude": 33.0925
-},
-{
+  },
+  {
     "city": "Rovaniemi",
     "city_zh": "羅瓦涅米",
     "country": "Finland",
@@ -228,8 +228,8 @@
     "timezone": "Europe/Helsinki",
     "latitude": 66.5039,
     "longitude": 25.7294
-},
-{
+  },
+  {
     "city": "Kiruna",
     "city_zh": "基律納",
     "country": "Sweden",
@@ -238,8 +238,8 @@
     "timezone": "Europe/Stockholm",
     "latitude": 67.8558,
     "longitude": 20.2253
-},
-{
+  },
+  {
     "city": "Nuuk",
     "city_zh": "努克",
     "country": "Greenland",
@@ -248,8 +248,8 @@
     "timezone": "America/Nuuk",
     "latitude": 64.1836,
     "longitude": -51.7214
-},
-{
+  },
+  {
     "city": "Iqaluit",
     "city_zh": "伊魁特",
     "country": "Canada",
@@ -257,19 +257,19 @@
     "country_iso_code": "CA",
     "timezone": "America/Iqaluit",
     "latitude": 63.7467,
-    "longitude": -68.5170
-},
-{
+    "longitude": -68.517
+  },
+  {
     "city": "Yellowknife",
     "city_zh": "黃刀鎮",
     "country": "Canada",
     "country_zh": "加拿大",
     "country_iso_code": "CA",
     "timezone": "America/Yellowknife",
-    "latitude": 62.4540,
+    "latitude": 62.454,
     "longitude": -114.3718
-},
-{
+  },
+  {
     "city": "Whitehorse",
     "city_zh": "白馬市",
     "country": "Canada",
@@ -278,8 +278,8 @@
     "timezone": "America/Whitehorse",
     "latitude": 60.7212,
     "longitude": -135.0568
-},
-{
+  },
+  {
     "city": "Anchorage",
     "city_zh": "安克拉治",
     "country": "United States",
@@ -288,8 +288,8 @@
     "timezone": "America/Anchorage",
     "latitude": 61.2181,
     "longitude": -149.9003
-},
-{
+  },
+  {
     "city": "Fairbanks",
     "city_zh": "費爾班克斯",
     "country": "United States",
@@ -298,8 +298,8 @@
     "timezone": "America/Anchorage",
     "latitude": 64.8378,
     "longitude": -147.7164
-},
-{
+  },
+  {
     "city": "Barrow",
     "city_zh": "巴羅",
     "country": "United States",
@@ -308,8 +308,8 @@
     "timezone": "America/Anchorage",
     "latitude": 71.2906,
     "longitude": -156.7887
-},
-{
+  },
+  {
     "city": "Nome",
     "city_zh": "諾姆",
     "country": "United States",
@@ -318,8 +318,8 @@
     "timezone": "America/Anchorage",
     "latitude": 64.5011,
     "longitude": -165.4064
-},
-{
+  },
+  {
     "city": "Kotzebue",
     "city_zh": "科策布",
     "country": "United States",
@@ -328,8 +328,8 @@
     "timezone": "America/Anchorage",
     "latitude": 66.8983,
     "longitude": -162.5967
-},
-{
+  },
+  {
     "city": "Bethel",
     "city_zh": "伯特利",
     "country": "United States",
@@ -338,8 +338,8 @@
     "timezone": "America/Anchorage",
     "latitude": 60.7922,
     "longitude": -161.7558
-},
-{
+  },
+  {
     "city": "Dillingham",
     "city_zh": "迪林厄姆",
     "country": "United States",
@@ -348,18 +348,18 @@
     "timezone": "America/Anchorage",
     "latitude": 59.0397,
     "longitude": -158.4575
-},
-{
+  },
+  {
     "city": "Kodiak",
     "city_zh": "科迪亞克",
     "country": "United States",
     "country_zh": "美國",
     "country_iso_code": "US",
     "timezone": "America/Anchorage",
-    "latitude": 57.7900,
+    "latitude": 57.79,
     "longitude": -152.4072
-},
-{
+  },
+  {
     "city": "Seward",
     "city_zh": "蘇厄德",
     "country": "United States",
@@ -368,8 +368,8 @@
     "timezone": "America/Anchorage",
     "latitude": 60.1042,
     "longitude": -149.4422
-},
-{
+  },
+  {
     "city": "Homer",
     "city_zh": "荷馬",
     "country": "United States",
@@ -378,8 +378,8 @@
     "timezone": "America/Anchorage",
     "latitude": 59.6425,
     "longitude": -151.5483
-},
-{
+  },
+  {
     "city": "Kenai",
     "city_zh": "基奈",
     "country": "United States",
@@ -388,8 +388,8 @@
     "timezone": "America/Anchorage",
     "latitude": 60.5544,
     "longitude": -151.2583
-},
-{
+  },
+  {
     "city": "Wasilla",
     "city_zh": "瓦西拉",
     "country": "United States",
@@ -398,7 +398,7 @@
     "timezone": "America/Anchorage",
     "latitude": 61.5814,
     "longitude": -149.4394
-},
+  },
   {
     "city": "Oslo",
     "city_zh": "奧斯陸",
@@ -603,7 +603,7 @@
     "country": "GB",
     "country_zh": "英國",
     "timezone": "Europe/London",
-    "latitude": 56.4620,
+    "latitude": 56.462,
     "longitude": -2.9707
   },
   {
@@ -612,7 +612,7 @@
     "country": "GB",
     "country_zh": "英國",
     "timezone": "Europe/London",
-    "latitude": 56.3950,
+    "latitude": 56.395,
     "longitude": -3.4308
   },
   {
@@ -105872,7 +105872,7 @@
     "country_zh": "列支敦斯登",
     "country_iso_code": "LI",
     "timezone": "Europe/Vaduz",
-    "latitude": 47.1410,
+    "latitude": 47.141,
     "longitude": 9.5209,
     "population": 5696
   },
@@ -105905,7 +105905,7 @@
     "country_zh": "格陵蘭",
     "country_iso_code": "GL",
     "timezone": "America/Thule",
-    "latitude": 77.4840,
+    "latitude": 77.484,
     "longitude": -69.3632,
     "population": 656
   },
@@ -105985,5 +105985,515 @@
     "latitude": 71.6872,
     "longitude": 128.8694,
     "population": 5063
+  },
+  {
+    "city": "Tarapoto",
+    "city_zh": "塔拉波托",
+    "country": "Peru",
+    "country_zh": "秘魯",
+    "country_iso_code": "PE",
+    "timezone": "America/Lima",
+    "latitude": -6.4833,
+    "longitude": -76.3667
+  },
+  {
+    "city": "Lubumbashi",
+    "city_zh": "盧本巴希",
+    "country": "DR Congo",
+    "country_zh": "剛果民主共和國",
+    "country_iso_code": "CD",
+    "timezone": "Africa/Lubumbashi",
+    "latitude": -11.6642,
+    "longitude": 27.4794
+  },
+  {
+    "city": "Kisangani",
+    "city_zh": "基桑加尼",
+    "country": "DR Congo",
+    "country_zh": "剛果民主共和國",
+    "country_iso_code": "CD",
+    "timezone": "Africa/Lubumbashi",
+    "latitude": 0.5167,
+    "longitude": 25.2
+  },
+  {
+    "city": "Lamu",
+    "city_zh": "拉穆",
+    "country": "Kenya",
+    "country_zh": "肯亞",
+    "country_iso_code": "KE",
+    "timezone": "Africa/Nairobi",
+    "latitude": -2.2694,
+    "longitude": 40.9006
+  },
+  {
+    "city": "Cádiz",
+    "city_zh": "加的斯",
+    "country": "Spain",
+    "country_zh": "西班牙",
+    "country_iso_code": "ES",
+    "timezone": "Europe/Madrid",
+    "latitude": 36.527,
+    "longitude": -6.2886
+  },
+  {
+    "city": "San Sebastián",
+    "city_zh": "聖塞瓦斯蒂安",
+    "country": "Spain",
+    "country_zh": "西班牙",
+    "country_iso_code": "ES",
+    "timezone": "Europe/Madrid",
+    "latitude": 43.3183,
+    "longitude": -1.9812
+  },
+  {
+    "city": "Padua",
+    "city_zh": "帕多瓦",
+    "country": "Italy",
+    "country_zh": "義大利",
+    "country_iso_code": "IT",
+    "timezone": "Europe/Rome",
+    "latitude": 45.4064,
+    "longitude": 11.8768
+  },
+  {
+    "city": "Faro",
+    "city_zh": "法魯",
+    "country": "Portugal",
+    "country_zh": "葡萄牙",
+    "country_iso_code": "PT",
+    "timezone": "Europe/Lisbon",
+    "latitude": 37.0194,
+    "longitude": -7.9322
+  },
+  {
+    "city": "Patras",
+    "city_zh": "帕特雷",
+    "country": "Greece",
+    "country_zh": "希臘",
+    "country_iso_code": "GR",
+    "timezone": "Europe/Athens",
+    "latitude": 38.2466,
+    "longitude": 21.7346
+  },
+  {
+    "city": "Heraklion",
+    "city_zh": "伊拉克利翁",
+    "country": "Greece",
+    "country_zh": "希臘",
+    "country_iso_code": "GR",
+    "timezone": "Europe/Athens",
+    "latitude": 35.308,
+    "longitude": 25.0775
+  },
+  {
+    "city": "Rhodes",
+    "city_zh": "羅德島",
+    "country": "Greece",
+    "country_zh": "希臘",
+    "country_iso_code": "GR",
+    "timezone": "Europe/Athens",
+    "latitude": 36.4412,
+    "longitude": 28.2229
+  },
+  {
+    "city": "Qasigiannguit",
+    "city_zh": "卡西吉安吉特",
+    "country": "Greenland",
+    "country_zh": "格陵蘭",
+    "country_iso_code": "GL",
+    "timezone": "America/Godthab",
+    "latitude": 68.8194,
+    "longitude": -51.1922
+  },
+  {
+    "city": "Maniitsoq",
+    "city_zh": "馬尼特索克",
+    "country": "Greenland",
+    "country_zh": "格陵蘭",
+    "country_iso_code": "GL",
+    "timezone": "America/Godthab",
+    "latitude": 65.4167,
+    "longitude": -52.9
+  },
+  {
+    "city": "Paamiut",
+    "city_zh": "帕米烏特",
+    "country": "Greenland",
+    "country_zh": "格陵蘭",
+    "country_iso_code": "GL",
+    "timezone": "America/Godthab",
+    "latitude": 61.9944,
+    "longitude": -49.6678
+  },
+  {
+    "city": "Nanortalik",
+    "city_zh": "納諾塔利克",
+    "country": "Greenland",
+    "country_zh": "格陵蘭",
+    "country_iso_code": "GL",
+    "timezone": "America/Godthab",
+    "latitude": 60.1417,
+    "longitude": -45.2406
+  },
+  {
+    "city": "Qeqertarsuaq",
+    "city_zh": "凱凱塔蘇瓦克",
+    "country": "Greenland",
+    "country_zh": "格陵蘭",
+    "country_iso_code": "GL",
+    "timezone": "America/Godthab",
+    "latitude": 69.2472,
+    "longitude": -53.5367
+  },
+  {
+    "city": "Uummannaq",
+    "city_zh": "烏馬納克",
+    "country": "Greenland",
+    "country_zh": "格陵蘭",
+    "country_iso_code": "GL",
+    "timezone": "America/Godthab",
+    "latitude": 70.6747,
+    "longitude": -52.1264
+  },
+  {
+    "city": "Ittoqqortoormiit",
+    "city_zh": "伊托科托爾米特",
+    "country": "Greenland",
+    "country_zh": "格陵蘭",
+    "country_iso_code": "GL",
+    "timezone": "America/Scoresbysund",
+    "latitude": 70.4853,
+    "longitude": -21.9667
+  },
+  {
+    "city": "Vardø",
+    "city_zh": "瓦爾德",
+    "country": "Norway",
+    "country_zh": "挪威",
+    "country_iso_code": "NO",
+    "timezone": "Europe/Oslo",
+    "latitude": 70.3704,
+    "longitude": 31.1107
+  },
+  {
+    "city": "Honningsvåg",
+    "city_zh": "洪寧斯沃格",
+    "country": "Norway",
+    "country_zh": "挪威",
+    "country_iso_code": "NO",
+    "timezone": "Europe/Oslo",
+    "latitude": 70.9821,
+    "longitude": 25.9707
+  },
+  {
+    "city": "Longyearbyen",
+    "city_zh": "朗伊爾城",
+    "country": "Svalbard",
+    "country_zh": "斯瓦爾巴",
+    "country_iso_code": "SJ",
+    "timezone": "Arctic/Longyearbyen",
+    "latitude": 78.2232,
+    "longitude": 15.6267
+  },
+  {
+    "city": "Barentsburg",
+    "city_zh": "巴倫支堡",
+    "country": "Svalbard",
+    "country_zh": "斯瓦爾巴",
+    "country_iso_code": "SJ",
+    "timezone": "Arctic/Longyearbyen",
+    "latitude": 78.0667,
+    "longitude": 14.2167
+  },
+  {
+    "city": "Pyramiden",
+    "city_zh": "金字塔",
+    "country": "Svalbard",
+    "country_zh": "斯瓦爾巴",
+    "country_iso_code": "SJ",
+    "timezone": "Arctic/Longyearbyen",
+    "latitude": 78.65,
+    "longitude": 16.3333
+  },
+  {
+    "city": "Kandalaksha",
+    "city_zh": "坎達拉克沙",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 67.1569,
+    "longitude": 32.4117
+  },
+  {
+    "city": "Kirovsk",
+    "city_zh": "基洛夫斯克",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 67.6147,
+    "longitude": 33.6728
+  },
+  {
+    "city": "Monchegorsk",
+    "city_zh": "蒙切戈爾斯克",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 67.9397,
+    "longitude": 32.8739
+  },
+  {
+    "city": "Polyarny",
+    "city_zh": "波利亞爾內",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 69.1989,
+    "longitude": 33.4478
+  },
+  {
+    "city": "Zapolyarny",
+    "city_zh": "扎波利亞爾內",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 69.4167,
+    "longitude": 30.8167
+  },
+  {
+    "city": "Inta",
+    "city_zh": "因塔",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 66.0317,
+    "longitude": 60.1658
+  },
+  {
+    "city": "Usinsk",
+    "city_zh": "烏辛斯克",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 65.9939,
+    "longitude": 57.5281
+  },
+  {
+    "city": "Naryan-Mar",
+    "city_zh": "納里揚馬爾",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Europe/Moscow",
+    "latitude": 67.6375,
+    "longitude": 53.0064
+  },
+  {
+    "city": "Salekhard",
+    "city_zh": "薩列哈爾德",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Asia/Yekaterinburg",
+    "latitude": 66.5297,
+    "longitude": 66.6147
+  },
+  {
+    "city": "Nadym",
+    "city_zh": "納德姆",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Asia/Yekaterinburg",
+    "latitude": 65.5333,
+    "longitude": 72.5167
+  },
+  {
+    "city": "Novy Urengoy",
+    "city_zh": "新烏連戈伊",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Asia/Yekaterinburg",
+    "latitude": 66.0833,
+    "longitude": 76.6333
+  },
+  {
+    "city": "Gubkinsky",
+    "city_zh": "古布金斯基",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Asia/Yekaterinburg",
+    "latitude": 64.4333,
+    "longitude": 76.5
+  },
+  {
+    "city": "Muravlenko",
+    "city_zh": "穆拉夫連科",
+    "country": "Russia",
+    "country_zh": "俄羅斯",
+    "country_iso_code": "RU",
+    "timezone": "Asia/Yekaterinburg",
+    "latitude": 63.7833,
+    "longitude": 74.5167
+  },
+  {
+    "city": "Kotzebue",
+    "city_zh": "科策布",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Nome",
+    "latitude": 66.8986,
+    "longitude": -162.5967
+  },
+  {
+    "city": "Bethel",
+    "city_zh": "伯特利",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Anchorage",
+    "latitude": 60.7922,
+    "longitude": -161.7558
+  },
+  {
+    "city": "Dillingham",
+    "city_zh": "迪靈厄姆",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Anchorage",
+    "latitude": 59.0397,
+    "longitude": -158.4575
+  },
+  {
+    "city": "Kodiak",
+    "city_zh": "科迪亞克",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Anchorage",
+    "latitude": 57.79,
+    "longitude": -152.4072
+  },
+  {
+    "city": "Sitka",
+    "city_zh": "錫特卡",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Sitka",
+    "latitude": 57.0531,
+    "longitude": -135.33
+  },
+  {
+    "city": "Juneau",
+    "city_zh": "朱諾",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Juneau",
+    "latitude": 58.3019,
+    "longitude": -134.4197
+  },
+  {
+    "city": "Ketchikan",
+    "city_zh": "凱奇坎",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Sitka",
+    "latitude": 55.3422,
+    "longitude": -131.6461
+  },
+  {
+    "city": "Unalaska",
+    "city_zh": "烏納拉斯卡",
+    "country": "USA",
+    "country_zh": "美國",
+    "country_iso_code": "US",
+    "timezone": "America/Anchorage",
+    "latitude": 53.8736,
+    "longitude": -166.5367
+  },
+  {
+    "city": "Kingstown",
+    "city_zh": "金斯敦",
+    "country": "Saint Vincent",
+    "country_zh": "聖文森",
+    "country_iso_code": "VC",
+    "timezone": "America/St_Vincent",
+    "latitude": 13.1583,
+    "longitude": -61.2247
+  },
+  {
+    "city": "Castries",
+    "city_zh": "卡斯特里",
+    "country": "Saint Lucia",
+    "country_zh": "聖露西亞",
+    "country_iso_code": "LC",
+    "timezone": "America/St_Lucia",
+    "latitude": 14.0101,
+    "longitude": -60.9875
+  },
+  {
+    "city": "Roseau",
+    "city_zh": "羅索",
+    "country": "Dominica",
+    "country_zh": "多米尼克",
+    "country_iso_code": "DM",
+    "timezone": "America/Dominica",
+    "latitude": 15.301,
+    "longitude": -61.3881
+  },
+  {
+    "city": "Basse-Terre",
+    "city_zh": "巴斯特爾",
+    "country": "Guadeloupe",
+    "country_zh": "瓜德羅普",
+    "country_iso_code": "GP",
+    "timezone": "America/Guadeloupe",
+    "latitude": 16.0104,
+    "longitude": -61.7055
+  },
+  {
+    "city": "Tuxtla Gutiérrez",
+    "city_zh": "圖斯特拉古鐵雷斯",
+    "country": "Mexico",
+    "country_zh": "墨西哥",
+    "country_iso_code": "MX",
+    "timezone": "America/Mexico_City",
+    "latitude": 16.7597,
+    "longitude": -93.1131
+  },
+  {
+    "city": "Acapulco",
+    "city_zh": "阿卡普爾科",
+    "country": "Mexico",
+    "country_zh": "墨西哥",
+    "country_iso_code": "MX",
+    "timezone": "America/Mexico_City",
+    "latitude": 16.8531,
+    "longitude": -99.8237
+  },
+  {
+    "city": "Panama City",
+    "city_zh": "巴拿馬市",
+    "country": "Panama",
+    "country_zh": "巴拿馬",
+    "country_iso_code": "PA",
+    "timezone": "America/Panama",
+    "latitude": 8.9824,
+    "longitude": -79.5199
   }
 ]

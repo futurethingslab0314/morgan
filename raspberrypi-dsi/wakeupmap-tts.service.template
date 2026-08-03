@@ -1,0 +1,24 @@
+[Unit]
+Description=WakeUpMap local TTS / speaker server (port 5005)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+WorkingDirectory=/home/%i/morgan/raspberrypi-dsi
+# 載入專案根目錄 .env（含 OPENAI_API_KEY）
+EnvironmentFile=-/home/%i/morgan/.env
+Environment=PATH=/home/%i/morgan/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=XDG_RUNTIME_DIR=/run/user/%U
+Environment=PULSE_RUNTIME_PATH=/run/user/%U/pulse
+ExecStartPre=/bin/mkdir -p /home/%i/morgan/logs
+ExecStart=/home/%i/morgan/venv/bin/python3 /home/%i/morgan/raspberrypi-dsi/web_tts_server.py --host 0.0.0.0 --port 5005
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/%i/morgan/logs/tts-server.log
+StandardError=append:/home/%i/morgan/logs/tts-server-error.log
+
+[Install]
+WantedBy=multi-user.target
