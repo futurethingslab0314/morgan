@@ -19,6 +19,11 @@
             box-sizing: border-box;
         }
 
+        :root {
+            /* 實體螢幕視覺微左移（負值向左；可再微調） */
+            --screen-offset-x: -14px;
+        }
+
         html, body {
             width: 100%;
             height: 100vh;
@@ -39,6 +44,7 @@
             align-items: flex-start;
             gap: 20px;
             padding: 0 20px 20px 20px; /* 🔧 移除頂部 padding，讓視窗貼齊頂部 */
+            transform: translateX(var(--screen-offset-x));
         }
 
         /* 視窗容器：保持 800x1080，視窗與頂部對齊，bar 與底部對齊 */
@@ -480,56 +486,100 @@
             padding: 0 !important;
         }
         
-        /* 星星條容器 - 類似選睡眠時長的樣式 */
+        /* 星星條容器 - 精緻艙內評價列 */
         #stateFlightFeedback .feedback-stars-container {
             display: flex;
-            gap: 12px;
-            margin-top: -23px !important; /* 🔧 往上移動星星更多（從 -23px 改為 -30px，再往上移動 7px） 
+            gap: 10px;
+            margin-top: -23px !important;
             align-items: center;
             justify-content: center;
             width: 100%;
-            max-width: 600px;
-            align-self: center; /* 🔧 確保星星容器在垂直方向上置中 */
+            max-width: 560px;
+            align-self: center;
+            padding: 10px 12px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 252, 248, 0.95) 0%, rgba(248, 242, 236, 0.9) 100%);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 8px 24px rgba(80, 48, 24, 0.06);
         }
         
-        /* 單個星星選項 - 類似 timer-segment-fill */
+        /* 單個星星選項 */
         #stateFlightFeedback .feedback-star-segment {
             flex: 1;
-            min-width: 80px;
-            max-width: 120px;
+            min-width: 56px;
+            max-width: 88px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         
-        /* 星星填充區域 - 類似 timer-segment-fill */
+        /* 星星格：米白底＋細線，避免黃星＋橘底像國旗 */
         #stateFlightFeedback .feedback-star-fill {
             width: 100%;
-            height: 60px; /* 固定高度，所有格子相同 */
-            background: transparent; /* 預設透明（只有邊框） */
-            border: 2px solid #ffb399;
-            border-radius: 8px;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(196, 160, 132, 0.45);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
-            transition: all 0.2s ease;
-            color: #ffb399; /* 預設星星顏色（未選中） */
+            transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+            color: transparent; /* 不再用 emoji 上色 */
+        }
+
+        #stateFlightFeedback .feedback-star-icon {
+            width: 28px;
+            height: 28px;
+            display: block;
+            flex-shrink: 0;
+        }
+
+        #stateFlightFeedback .feedback-star-icon .star-outline {
+            fill: none;
+            stroke: #c4a084;
+            stroke-width: 1.4;
+            stroke-linejoin: round;
+            transition: stroke 0.22s ease, fill 0.22s ease, filter 0.22s ease;
+        }
+
+        #stateFlightFeedback .feedback-star-icon .star-core {
+            fill: rgba(196, 160, 132, 0.18);
+            stroke: none;
+            transition: fill 0.22s ease;
         }
         
-        /* 選中的星星 - 填充橙色 */
+        /* 選中：淡蜜桃色底＋琥珀星，不要實心橘紅底 */
         #stateFlightFeedback .feedback-star-segment.active .feedback-star-fill {
-            background: #ff6b35; /* 選中的完全填充橙色 */
-            border-color: #ff6b35;
-            box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
-            color: #fff; /* 選中時星星變白色 */
+            background: linear-gradient(165deg, #fff8f2 0%, #ffe8d6 100%);
+            border-color: rgba(232, 140, 90, 0.55);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.95),
+                0 0 0 1px rgba(255, 180, 120, 0.25),
+                0 4px 14px rgba(232, 120, 70, 0.18);
+            transform: translateY(-1px);
+        }
+
+        #stateFlightFeedback .feedback-star-segment.active .feedback-star-icon .star-outline {
+            stroke: #d9783a;
+            fill: #f0b35a;
+            filter: drop-shadow(0 1px 2px rgba(200, 110, 40, 0.25));
+        }
+
+        #stateFlightFeedback .feedback-star-segment.active .feedback-star-icon .star-core {
+            fill: #f6c76b;
         }
         
-        /* 未選中的星星保持邊框樣式 */
+        /* 未選中 */
         #stateFlightFeedback .feedback-star-segment:not(.active) .feedback-star-fill {
-            background: transparent;
-            border-color: #ffb399;
-            color: #ffb399;
+            background: rgba(255, 255, 255, 0.72);
+            border-color: rgba(196, 160, 132, 0.45);
+        }
+
+        #stateFlightFeedback .feedback-title {
+            letter-spacing: 0.04em;
+            font-weight: 500;
         }
 
         .info-state.active {
@@ -1410,17 +1460,52 @@
         body.night-mode .angle-option,
         body.night-mode .timer-option,
         body.night-mode .feedback-star-fill {
-            background: rgba(255, 255, 255, 0.05) !important; /* 半透明深色背景 */
-            border-color: rgba(255, 140, 90, 0.4) !important; /* 暖橙色邊框 */
-            color: #e0e0e0 !important; /* 淺色文字 */
+            background: rgba(255, 255, 255, 0.06) !important;
+            border-color: rgba(255, 180, 140, 0.35) !important;
+            color: #e0e0e0 !important;
+        }
+
+        body.night-mode .feedback-stars-container {
+            background: linear-gradient(180deg, rgba(40, 32, 28, 0.92) 0%, rgba(28, 22, 20, 0.95) 100%) !important;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                0 8px 24px rgba(0, 0, 0, 0.35) !important;
+        }
+
+        body.night-mode .feedback-star-icon .star-outline {
+            stroke: rgba(255, 190, 150, 0.55) !important;
+            fill: none !important;
+        }
+
+        body.night-mode .feedback-star-icon .star-core {
+            fill: rgba(255, 190, 150, 0.12) !important;
         }
         
         body.night-mode .angle-option.active,
-        body.night-mode .timer-option.active,
-        body.night-mode .feedback-star-segment.active .feedback-star-fill {
-            background: #ff8c5a !important; /* 暖橙色背景 */
+        body.night-mode .timer-option.active {
+            background: #ff8c5a !important;
             border-color: #ff8c5a !important;
-            color: #0d0d0d !important; /* 🔧 更暗的文字顏色（從 #1a1a1a 改為 #0d0d0d） */
+            color: #0d0d0d !important;
+        }
+
+        body.night-mode .feedback-star-segment.active .feedback-star-fill {
+            background: linear-gradient(165deg, rgba(80, 48, 36, 0.95) 0%, rgba(60, 36, 28, 0.98) 100%) !important;
+            border-color: rgba(255, 170, 120, 0.55) !important;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                0 0 0 1px rgba(255, 160, 100, 0.2),
+                0 4px 14px rgba(0, 0, 0, 0.35) !important;
+            color: #f6c76b !important;
+        }
+
+        body.night-mode .feedback-star-segment.active .feedback-star-icon .star-outline {
+            stroke: #f0b35a !important;
+            fill: #e8a04a !important;
+            filter: drop-shadow(0 0 4px rgba(240, 170, 80, 0.35));
+        }
+
+        body.night-mode .feedback-star-segment.active .feedback-star-icon .star-core {
+            fill: #f6c76b !important;
         }
         
         body.night-mode .feedback-title {
@@ -1830,19 +1915,29 @@
             <!-- 單一星星條，包含 5 顆星星，根據旋鈕位置（0-4）顯示對應數量的亮星星（1-5 顆） -->
             <div class="feedback-stars-container">
                 <div class="feedback-star-segment" data-position="0">
-                    <div class="feedback-star-fill">⭐</div>
-            </div>
+                    <div class="feedback-star-fill" aria-hidden="true">
+                        <svg class="feedback-star-icon" viewBox="0 0 24 24"><path class="star-core" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/><path class="star-outline" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/></svg>
+                    </div>
+                </div>
                 <div class="feedback-star-segment" data-position="1">
-                    <div class="feedback-star-fill">⭐</div>
-            </div>
+                    <div class="feedback-star-fill" aria-hidden="true">
+                        <svg class="feedback-star-icon" viewBox="0 0 24 24"><path class="star-core" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/><path class="star-outline" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/></svg>
+                    </div>
+                </div>
                 <div class="feedback-star-segment" data-position="2">
-                    <div class="feedback-star-fill">⭐</div>
-            </div>
+                    <div class="feedback-star-fill" aria-hidden="true">
+                        <svg class="feedback-star-icon" viewBox="0 0 24 24"><path class="star-core" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/><path class="star-outline" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/></svg>
+                    </div>
+                </div>
                 <div class="feedback-star-segment" data-position="3">
-                    <div class="feedback-star-fill">⭐</div>
-            </div>
+                    <div class="feedback-star-fill" aria-hidden="true">
+                        <svg class="feedback-star-icon" viewBox="0 0 24 24"><path class="star-core" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/><path class="star-outline" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/></svg>
+                    </div>
+                </div>
                 <div class="feedback-star-segment" data-position="4">
-                    <div class="feedback-star-fill">⭐</div>
+                    <div class="feedback-star-fill" aria-hidden="true">
+                        <svg class="feedback-star-icon" viewBox="0 0 24 24"><path class="star-core" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/><path class="star-outline" d="M12 3.2l2.4 5.2 5.6.6-4.2 3.8 1.2 5.5L12 15.8 6.9 18.3l1.2-5.5L4 9l5.6-.6L12 3.2z"/></svg>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1933,6 +2028,9 @@
         let midnightServiceTriggered = false; // 標記飛機餐是否已觸發（一次旅程只觸發一次）
         let selectedDirection = null;
         let currentPosition = 0;
+        // 進入時長／氣候畫面時，等旋鈕讀值成功再亮選項，避免先閃錯再跳對
+        let knobSelectionSyncToken = 0;
+        let awaitingKnobSelectionSync = false;
         let destinationData = null;
         let destinationImageUrl = null;
         let sleepStartTime = null;
@@ -2291,14 +2389,10 @@
                 }
             }
             
-            // 如果切換到時間選擇或氣候帶選擇，立即讀取旋鈕位置
+            // 切到時長／氣候：先清亮點，等旋鈕讀到正確位置再顯示（不要先閃預設 0）
             if (newState === State.TIMER || newState === State.ANGLE) {
-                // 重置 lastKnobPosition，確保能立即讀取並選擇
                 lastKnobPosition = null;
-                // 延遲一點點，確保 UI 已經更新
-                setTimeout(() => {
-                    readKnobPositionAndSelect();
-                }, 100);
+                beginKnobSelectionSync(newState);
             }
             
             // 如果切換到機票回顧狀態，重置旋鈕位置追蹤並讀取位置
@@ -2315,6 +2409,70 @@
             return true;
         }
 
+        // 進入時長／氣候選單：清掉舊亮點，只在旋鈕讀值後顯示一次
+        function clearTimerSelectionHighlight() {
+            document.querySelectorAll('.timer-progress-segment').forEach((segment) => {
+                segment.classList.remove('active');
+            });
+            document.querySelectorAll('.timer-option').forEach((option) => {
+                option.classList.remove('active');
+            });
+        }
+
+        function clearAngleSelectionHighlight() {
+            document.querySelectorAll('.angle-option').forEach((option) => {
+                option.classList.remove('active');
+            });
+        }
+
+        function beginKnobSelectionSync(forState) {
+            const token = ++knobSelectionSyncToken;
+            awaitingKnobSelectionSync = true;
+
+            if (forState === State.TIMER) {
+                selectedTimer = null;
+                clearTimerSelectionHighlight();
+            } else if (forState === State.ANGLE) {
+                selectedDirection = null;
+                clearAngleSelectionHighlight();
+            }
+            currentPosition = -1;
+            updateNextButton();
+
+            const applyFallback = () => {
+                if (token !== knobSelectionSyncToken) return;
+                if (!awaitingKnobSelectionSync) return;
+                if (currentState !== forState) return;
+                console.warn('⚠️ 旋鈕同步逾時，使用位置 0 作為後備');
+                awaitingKnobSelectionSync = false;
+                if (forState === State.TIMER) {
+                    selectByPosition(0, 'timer');
+                } else if (forState === State.ANGLE) {
+                    selectByPosition(0, 'angle');
+                }
+            };
+
+            // UI 切完立刻讀；失敗再短重試，仍失敗才 fallback
+            const trySync = async (attempt) => {
+                if (token !== knobSelectionSyncToken) return;
+                await readKnobPositionAndSelect();
+                if (token !== knobSelectionSyncToken) return;
+                if (!awaitingKnobSelectionSync) return;
+                if (attempt < 2) {
+                    setTimeout(() => trySync(attempt + 1), 120);
+                    return;
+                }
+                applyFallback();
+            };
+
+            // 等一幀讓 state UI 顯示後再讀，避免與錯誤預設搶亮
+            requestAnimationFrame(() => {
+                if (token !== knobSelectionSyncToken) return;
+                trySync(0);
+            });
+            setTimeout(applyFallback, 800);
+        }
+
         // 選擇時間
         async function selectTimer(position) {
             if (position < 0 || position >= timerOptions.length) {
@@ -2325,6 +2483,7 @@
             // 立即更新 UI，不等待 Firebase
             currentPosition = position;
             selectedTimer = timerOptions[position];
+            awaitingKnobSelectionSync = false;
             
             // 更新進度條：累積效果（選中 position N，前 N+1 個格子都亮）
             // 所有格子高度相同，選中的填充橙色，未選中的只有邊框
@@ -2491,6 +2650,7 @@
             
             currentPosition = position;
             selectedDirection = position;
+            awaitingKnobSelectionSync = false;
             const selectedClimateZone = climateZoneOptions[position];
             
             // 更新 UI 高亮
@@ -2714,10 +2874,7 @@
                     console.log('按鈕：從國家顯示切換到時間選擇');
                     switchToPhase(Phase.TIME_SELECTION);
                     switchState(State.TIMER);
-                    // 預設選擇第一個時間選項
-            setTimeout(() => {
-                        selectTimer(0);
-                    }, 100);
+                    // 亮點由旋鈕同步決定，不先強制 selectTimer(0)
                     break;
                 case State.TIMER:
                     // 從選擇時長 → 選擇氣候帶
@@ -2726,7 +2883,6 @@
                         // 🔧 確保在切換前已檢查氣候帶可用性
                         // （如果還沒檢查，會在 selectTimer 中觸發檢查）
                 switchState(State.ANGLE);
-                currentPosition = 0;
                         // 如果已經有可用性檢查結果，確保 UI 更新
                         if (selectedTimer) {
                             checkClimateZoneAvailability(selectedTimer).catch(err => {
@@ -2992,6 +3148,10 @@
                 
                 clearTimeout(timeoutId);
                 
+                if (!response) {
+                    return;
+                }
+
                 // 即使返回 503 也嘗試解析
                 if (!response.ok) {
                     if (response.status === 503) {
@@ -3202,9 +3362,9 @@
                     }
                     
                     if (currentState === State.TIMER) {
-                        selectTimer(pos);
+                        selectByPosition(pos, 'timer');
                     } else if (currentState === State.ANGLE) {
-                        selectAngle(pos);
+                        selectByPosition(pos, 'angle');
                     } else if (currentState === 'TICKET_REVIEW') {
                         // 機票回顧狀態：用旋鈕切換不同的航程
                         if (pos >= 0 && pos < flightHistoryRecords.length) {
@@ -4545,12 +4705,7 @@
                     console.log('✅ 按鈕：從國家顯示切換到時間選擇');
                     switchToPhase(Phase.TIME_SELECTION);
                     switchState(State.TIMER);
-                    // 自動選擇第一個時間選項
-                    setTimeout(() => {
-                        if (!selectedTimer) {
-                            selectTimer(0);
-                        }
-                    }, 100);
+                    // 亮點由旋鈕同步決定，不先強制 selectTimer(0)
                     break;
                     
                 case State.TIMER:
@@ -4584,7 +4739,6 @@
                         // 重置 lastKnobPosition，確保旋鈕位置能立即讀取
                         lastKnobPosition = null;
                         switchState(State.ANGLE);
-                        currentPosition = 0;
                         console.log('✅ 已切換到氣候帶選擇狀態');
                     } else {
                         console.error('❌ 無法設置 selectedTimer，請檢查 selectTimer 函數');
@@ -13657,38 +13811,36 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                     }
                 }
                 
-                // 經典橢圓舷窗視角：有厚度／內框，窗外城市＋機翼
+                // 細邊橢圓舷窗：風景為主，窗框只佔邊緣層次／反光
                 let prompt = 'CRITICAL REQUIREMENTS: ' +
-                    '1. Viewed from inside a commercial airplane cabin THROUGH a classic oval airplane porthole window. ' +
-                    'The window MUST be clearly visible: thick rounded oval frame, inner bezel, soft cabin-side padding, subtle double-glass reflection and slight edge vignette. ' +
-                    'Do NOT make a full-bleed borderless photo; the oval window frame is an essential foreground element framing the outside view. ' +
-                    '2. Outside the window: standard commercial airliner wing (Boeing 737 or Airbus A320 style), NO visible engine nacelles, NO jet engine intakes, clean simple wing. ' +
+                    '1. First-person view from inside a commercial airplane cabin looking OUT through a classic oval airplane porthole. ' +
+                    'The glass opening must dominate the image: about 75–85% of the frame is clear outside scenery through the glass. ' +
+                    'The window frame must be SLIM and discreet — a thin oval rim with subtle layered bevel, soft inner lip, and gentle glass edge reflections only. ' +
+                    'Do NOT use a thick bulky multi-ring plastic frame; do NOT let the frame occupy large empty beige areas; keep cabin surround minimal at the very edges. ' +
+                    '2. Outside the glass: standard commercial airliner wing (Boeing 737 or Airbus A320 style), NO visible engine nacelles, NO jet engine intakes, clean simple wing. ' +
                     '3. Time and weather must match exactly: ' + (timeOfDayVisual || timeSegment) + ' time with ' + weatherDescription + ', ' + skyCondition + '. ' +
                     (hour >= 21 || hour < 5 ? 'MUST be night scene: dark sky, city lights illuminated, stars visible, no daylight. ' : '') +
-                    (realWeatherData && (realWeatherData.condition?.toLowerCase().includes('rain') || realWeatherData.condition?.toLowerCase().includes('雨')) ? 'MUST show rain: raindrops on the glass, overcast sky, wet surfaces, atmospheric rain. ' : '') +
-                    'Square 1024x1024 composition, first-person passenger seat view looking outward through the oval porthole, ' +
-                    'WINDOW FRAME: prominent classic airplane oval porthole with dimensional thickness, inner lip, soft gray/white cabin surround, gentle glass reflections — centered so the outside scenery is seen through the oval opening. ' +
-                    'WING: Large commercial airliner wing extending diagonally beyond the glass in the lower portion of the outside view, ' +
-                    'clean white or light gray wing surface, simple wing design, NO engine nacelles visible, NO jet engines, NO engine intakes, ' +
-                    'seen from passenger seat perspective inside cabin, ' +
-                    'slightly upturned wingtip visible when composition allows, ' +
-                    'subtle panel lines on wing surface, ' +
-                    'wing occupies the lower outside view beyond the glass, creating immersive cabin-to-sky depth. ' +
-                    'VIEWPOINT: First-person perspective from inside airplane cabin looking out through the oval window; cabin interior barely hinted at the frame edges only. ' +
-                    'COMPOSITION: The oval window frame must remain visible around the scenery; do not crop away the frame; do not use rectangular monitor bezels; use a true aircraft porthole oval. ' +
+                    (realWeatherData && (realWeatherData.condition?.toLowerCase().includes('rain') || realWeatherData.condition?.toLowerCase().includes('雨')) ? 'MUST show rain: light raindrops on the glass, overcast sky, wet surfaces, atmospheric rain. ' : '') +
+                    'Square 1024x1024 composition, passenger seat POV looking outward, ' +
+                    'WINDOW FRAME: slim classic oval porthole — thin dimensional edge, soft highlight/reflection on glass perimeter, tiny depth only; scenery fills most of the oval interior. ' +
+                    'WING: commercial airliner wing visible in the lower part of the outside view beyond the glass, ' +
+                    'clean white or light gray wing, NO engines, ' +
+                    'subtle panel lines, immersive cabin-to-sky depth. ' +
+                    'VIEWPOINT: close to the glass so the landscape is large and readable; frame is a delicate border, not the subject. ' +
+                    'COMPOSITION: maximize scenic area inside the oval; avoid heavy padded surrounds; true aircraft porthole oval, not a rectangular monitor bezel. ' +
                     'BACKGROUND (outside glass): ' + city + ', ' + country + ' cityscape below and beyond wing, ' +
                     (timeOfDayVisual || timeSegment) + ' time (' + (lightingDescription || 'appropriate lighting for ' + timeSegment) + '), ' +
                     weatherDescription + ', ' + skyCondition + ', ' +
                     'aerial view 30° down, medium distance, highly detailed buildings, prominent coastline, recognizable landmarks, city skyline visible beyond wing, ' +
                     (realWeatherData ? `realistic weather conditions matching: ${realWeatherData.condition || ''}, temperature ${realWeatherData.temperature || ''}°C, ${realWeatherData.description || ''}. ` : '') +
                     'STYLE: 3D Pixar animation, clean vector colors, soft volumetric lighting, calm arrival mood, no motion blur, vibrant saturated colors like travel poster. ' +
-                    'FINAL REQUIREMENT: Classic oval airplane porthole with visible thickness and inner frame, glass reflection, wing prominent outside the glass, cityscape visible below and beyond, immersive passenger first-person view.';
+                    'FINAL REQUIREMENT: Slim oval porthole with subtle edge layers and glass reflections only; large glass scenic area; wing and cityscape clearly visible through the opening.';
                 
                 // 如果有參考圖片，在 prompt 開頭加入風格參考說明（可覆蓋參考圖無窗框的習慣）
                 if (referenceImageBase64) {
                     prompt = 'Generate an image with a similar visual style, color palette, lighting, and artistic treatment as the reference image, ' +
-                        'BUT composition MUST include a classic oval airplane porthole window frame with thickness and inner bezel framing the outside view. ' +
-                        'Do not copy a borderless full-bleed crop; keep the oval window as a clear foreground element. ' +
+                        'BUT composition MUST include a SLIM classic oval airplane porthole with only a thin frame and subtle glass-edge reflections; ' +
+                        'outside scenery must fill most of the image through a large glass opening — avoid thick bulky window surrounds. ' +
                         prompt;
                 }
                 
