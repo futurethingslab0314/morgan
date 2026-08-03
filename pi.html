@@ -6326,19 +6326,29 @@
             try {
                 await landingVideo.play();
                 videoPlayed = true;
-                // takeoff.mp3 走一次性聲道，保留 wakeup 背景音樂繼續播
+                // takeoff.mp3 走一次性聲道；先壓低 wakeup，避免與全音量特效疊加爆音
                 landingResult.landingOneshotStarted = true;
                 landingOneshotStarted = true;
-                playLocalSoundViaPi('sounds/takeoff.mp3', 15, 1.0)
-                    .then((ok) => {
+                const LANDING_TAKEOFF_VOLUME = 0.42;
+                const LANDING_WAKEUP_DUCK = 0.12;
+                (async () => {
+                    try {
+                        if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                            await setPhase7MusicVolume(LANDING_WAKEUP_DUCK, 250);
+                        }
+                    } catch (duckErr) {
+                        console.warn('⚠️ [landing.mp4] 壓低 wakeup 失敗:', duckErr);
+                    }
+                    try {
+                        const ok = await playLocalSoundViaPi('sounds/takeoff.mp3', 15, LANDING_TAKEOFF_VOLUME);
                         if (!ok) {
                             console.warn('⚠️ [landing.mp4] 降落音效未成功啟動，繼續降落流程');
                         }
-                    })
-                    .catch((error) => {
+                    } catch (error) {
                         console.warn('⚠️ [landing.mp4] 降落音效啟動失敗，繼續降落流程:', error);
-                    });
-                console.log('▶️ [landing.mp4] 開始播放（muted；takeoff.mp3 走 oneshot，wakeup 續播）');
+                    }
+                })();
+                console.log('▶️ [landing.mp4] 開始播放（muted；takeoff.mp3 oneshot 降音量，wakeup 先 duck）');
             } catch (e) {
                 console.warn('⚠️ [landing.mp4] 連 muted 也播不出，跳過影片直接進情緒表:', e && e.message ? e.message : e);
             }
@@ -6363,6 +6373,10 @@
                     });
                 } catch (error) {
                     console.warn('⚠️ [landing.mp4] 停止降落 oneshot 音效失敗，繼續降落流程:', error);
+                }
+                // oneshot 結束後把 wakeup 緩緩拉回，避免硬切爆音
+                if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
+                    setPhase7MusicVolume(0.55, 800).catch(() => {});
                 }
             }
             
@@ -8009,7 +8023,11 @@
                     });
                     const duckTo = CAPTAIN_TTS.duckMusicVolume;
                     console.log(`🔉 播放語音時自動調小${name}音量（${music.volume.toFixed(2)} → ${duckTo}）`);
-                    music.volume = duckTo; // 壓低背景音樂，凸顯機長語音
+                    music.volume = duckTo;
+                    // Pi 背景聲道必須打 /audio/volume，只改 JS 屬性不會真的壓低喇叭
+                    if (music.source === 'pi') {
+                        setLocalBackgroundVolume(duckTo, 200).catch(() => {});
+                    }
                 }
             };
             
@@ -8025,6 +8043,9 @@
                     if (music && !music.paused) {
                         console.log(`🔉 語音播放完成，恢復${name}音量（${CAPTAIN_TTS.duckMusicVolume} → ${originalVolume.toFixed(2)}）`);
                         music.volume = originalVolume;
+                        if (music.source === 'pi') {
+                            setLocalBackgroundVolume(originalVolume, 400).catch(() => {});
+                        }
                     }
                 });
             };
@@ -9545,6 +9566,7 @@
                     if (buttonPressHandled) return;
                     buttonPressHandled = true;
                     knobSelectionActive = false;
+                    window._feedbackWaitingForButton = false;
                     
                     clearInterval(knobSelectionInterval);
                     clearInterval(buttonCheckInterval);
@@ -9939,47 +9961,21 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                     console.log('⚠️ [showLandingCountryInfo] 未找到已生成的資訊，重新生成...');
                     destinationInfo = await generateDestinationInfo(destination);
                 }
-                
-                // 從 sleepcity.json 獲取 flag（優先使用 sleepcity.json 的 flag）
-                let flagEmoji = '🏳️'; // 預設國旗
-                try {
-                    const sleepCityResponse = await fetch('sleepcity.json');
-                    if (sleepCityResponse.ok) {
-                        const sleepCityData = await sleepCityResponse.json();
-                        const matchingCity = sleepCityData.cities.find(city => 
-                            (city.city === destination.city || city.city_zh === destination.city_zh) &&
-                            (city.country === destination.country || city.country_zh === destination.country_zh)
-                        );
-                        if (matchingCity && matchingCity.flag) {
-                            flagEmoji = matchingCity.flag;
-                            console.log('✅ 從 sleepcity.json 獲取國旗:', flagEmoji);
-                        } else {
-                            // 如果找不到匹配的城市，嘗試用國家代碼生成
-                            const countryCode = destination.country_iso_code || '';
-                            if (countryCode && countryCode.length === 2) {
-                                const codePoints = countryCode.toUpperCase().split('').map(char => 
-                                    0x1F1E6 + char.charCodeAt(0) - 65
-                                );
-                                if (codePoints.length === 2) {
-                                    flagEmoji = String.fromCodePoint(...codePoints);
-                                    console.log('✅ 使用國家代碼生成國旗:', flagEmoji);
-                                }
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.warn('⚠️ 無法載入 sleepcity.json，使用預設國旗:', error);
-                    // 如果載入失敗，使用國家代碼生成
-                    const countryCode = destination.country_iso_code || '';
-                    if (countryCode && countryCode.length === 2) {
-                        const codePoints = countryCode.toUpperCase().split('').map(char => 
+
+                const flagFromIso = (code) => {
+                    if (!code || String(code).length !== 2) return '🏳️';
+                    try {
+                        const codePoints = String(code).toUpperCase().split('').map(char =>
                             0x1F1E6 + char.charCodeAt(0) - 65
                         );
-                        if (codePoints.length === 2) {
-                            flagEmoji = String.fromCodePoint(...codePoints);
-                        }
+                        return String.fromCodePoint(...codePoints);
+                    } catch (_) {
+                        return '🏳️';
                     }
-                }
+                };
+
+                // 先用 ISO 立刻出旗，不阻塞等 sleepcity.json
+                let flagEmoji = flagFromIso(destination.country_iso_code);
                 
                 // 🔧 改進：整合顯示目的地資訊，只使用 stateLandingCountryInfo（移除重複的 stateCountry）
                 const countryInfoState = document.getElementById('stateLandingCountryInfo');
@@ -10028,7 +10024,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                         // 🔧 改進：Phase 7 顯示降落時的天氣（不即時更新），時間即時更新，保留活動建議（移除問候語，因為太長）
                         // 保持原本的結構，使用原本的樣式類
                         descEl.innerHTML = `
-                            <div id="landingTimeDisplay" style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${destinationInfo.time}</div>
+                            <div id="landingTimeDisplay" style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${destinationInfo.time || '--:--'}</div>
                             <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">☀️ ${destinationInfo.weather || ''}</div>
                             <div style="font-size: 14px; color: #ff6b35; font-weight: 500; display: flex; align-items: center; gap: 6px;">✨ ${destinationInfo.feature || ''}</div>
                         `;
@@ -10082,6 +10078,25 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 // 🔧 改進：不在此處播放語音，語音播放統一在 handleLanding 中處理
                 // 只負責顯示 UI，不播放語音
                 console.log('✅ [showLandingCountryInfo] 只顯示 UI，不播放語音（語音播放統一在 handleLanding 中處理）');
+
+                // 背景升級國旗（不阻塞跳轉）
+                fetch('sleepcity.json')
+                    .then((res) => (res.ok ? res.json() : null))
+                    .then((sleepCityData) => {
+                        if (!sleepCityData || !sleepCityData.cities) return;
+                        const matchingCity = sleepCityData.cities.find(city =>
+                            (city.city === destination.city || city.city_zh === destination.city_zh) &&
+                            (city.country === destination.country || city.country_zh === destination.country_zh)
+                        );
+                        if (matchingCity && matchingCity.flag) {
+                            const flagEl = document.getElementById('landingCountryFlag');
+                            if (flagEl) flagEl.textContent = matchingCity.flag;
+                            console.log('✅ 從 sleepcity.json 獲取國旗:', matchingCity.flag);
+                        }
+                    })
+                    .catch((error) => {
+                        console.warn('⚠️ 無法載入 sleepcity.json，沿用 ISO 國旗:', error);
+                    });
                 
                 resolve();
             });
@@ -11659,7 +11674,7 @@ ${activitySuggestion ? `- 已建議活動：${activitySuggestion}` : ''}
                 
                 // 不阻塞影片：背景播 takeoff 音效
                 (async () => {
-                    const ok = await playLocalSoundViaPi('sounds/takeoff.mp3', null, 1.0);
+                    const ok = await playLocalSoundViaPi('sounds/takeoff.mp3', null, 0.7);
                     if (ok) {
                         takeoffViaPi = true;
                         console.log('✅ takeoff.mp3 已由樹莓派喇叭播放');
@@ -14142,9 +14157,9 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             // captain.mp3 播放完後，立即播放已預先生成的語音A
             if (landingData && landingData.announcement) {
                 console.log('5️⃣ [Phase 7] captain.mp3 播放完成，立即播放語音A...');
-                // 語音播放期間再確認背景音樂維持極低
+                // 語音播放期間再確認背景音樂維持極低（短淡入，避免瞬間硬切爆音）
                 if (window._phase7WakeupMusic && !window._phase7WakeupMusic.paused) {
-                    await setPhase7MusicVolume(CAPTAIN_TTS.duckMusicVolume, 0);
+                    await setPhase7MusicVolume(CAPTAIN_TTS.duckMusicVolume, 250);
                 }
                 
                 // 如果語音A已預先生成，使用 playCachedTts 播放
@@ -14358,77 +14373,123 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                 feedbackData = '3';
             }
             
-            setBoardingStatus(true, '抵達資訊整理中...');
-            
-            // 圖片：最多再等 8 秒，沒好就略過（之後背景仍可能補上）
-            let finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
-            if (!finalImageUrl && landingImagePromise) {
-                try {
-                    finalImageUrl = await Promise.race([
-                        landingImagePromise,
-                        new Promise(resolve => setTimeout(() => resolve(null), 8000))
-                    ]);
-                    if (finalImageUrl) {
-                        window._manualLandingImageUrl = finalImageUrl;
-                        destinationImageUrl = finalImageUrl;
-                        console.log('✅ [Phase 7] 圖片A就緒:', finalImageUrl);
-                    } else {
-                        console.warn('⚠️ [Phase 7] 圖片A尚未就緒，先繼續歡迎流程');
-                    }
-                } catch (imgErr) {
-                    console.warn('⚠️ [Phase 7] 等待圖片A失敗:', imgErr);
-                }
-            }
-            if (finalImageUrl && document.querySelector('.window-content')) {
+            setBoardingStatus(false);
+
+            // 滿意度按下後立刻跳國家介紹：圖片／語音改背景，不擋 UI
+            const applyPhase7LandingImage = (imageUrl) => {
+                if (!imageUrl) return;
                 const windowContent = document.querySelector('.window-content');
-                const proxiedUrl = getProxiedImageUrl(finalImageUrl);
-                if (!windowContent.style.backgroundImage || !windowContent.style.backgroundImage.includes(proxiedUrl)) {
-                    windowContent.innerHTML = '';
-                    windowContent.style.zIndex = '1000';
-                    windowContent.style.position = 'relative';
-                    windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
-                    windowContent.style.backgroundSize = 'cover';
-                    windowContent.style.backgroundPosition = 'center';
-                    windowContent.style.backgroundRepeat = 'no-repeat';
-                    console.log('🖼️ [Phase 7] 圖片A已顯示');
+                if (!windowContent) return;
+                const proxiedUrl = getProxiedImageUrl(imageUrl);
+                if (windowContent.style.backgroundImage && windowContent.style.backgroundImage.includes(proxiedUrl)) {
+                    return;
                 }
+                windowContent.innerHTML = '';
+                windowContent.style.zIndex = '1000';
+                windowContent.style.position = 'relative';
+                windowContent.style.backgroundImage = 'url(' + proxiedUrl + ')';
+                windowContent.style.backgroundSize = 'cover';
+                windowContent.style.backgroundPosition = 'center';
+                windowContent.style.backgroundRepeat = 'no-repeat';
+                console.log('🖼️ [Phase 7] 圖片A已顯示');
+            };
+
+            let finalImageUrl = window._manualLandingImageUrl || destinationImageUrl;
+            if (finalImageUrl) {
+                applyPhase7LandingImage(finalImageUrl);
+            } else if (landingImagePromise) {
+                landingImagePromise.then((url) => {
+                    if (!url) return;
+                    finalImageUrl = url;
+                    window._manualLandingImageUrl = url;
+                    destinationImageUrl = url;
+                    applyPhase7LandingImage(url);
+                }).catch((imgErr) => {
+                    console.warn('⚠️ [Phase 7] 背景等待圖片A失敗:', imgErr);
+                });
             }
-            
+
             const videoContainerEl = document.getElementById('videoContainer');
             if (videoContainerEl) {
                 videoContainerEl.style.display = 'none';
             }
-            
+
             // ============================================================================
-            // 步驟 7: 文字B／語音B（硬超時，絕不永久卡住）
+            // 步驟 7: 立刻顯示文字B UI；語音B 就緒後再播（不擋跳轉）
             // ============================================================================
-            console.log('8️⃣ [Phase 7] 等待文字B／語音B（有超時）...');
-            
-            const destinationInfo = await destinationInfoPromise;
-            console.log('✅ [Phase 7] 文字B:', destinationInfo);
-            
+            console.log('8️⃣ [Phase 7] 立刻顯示國家介紹（語音B背景就緒）...');
+
+            const buildLandingInfoStub = () => ({
+                city: finalDestination.city_zh || finalDestination.city || '',
+                country: finalDestination.country_zh || finalDestination.country || '',
+                time: '--:--',
+                weather: '',
+                feature: '歡迎抵達'
+            });
+
+            // 若文字B已好就用；否則先 stub，畫面立刻跳
+            let destinationInfo = null;
+            try {
+                destinationInfo = await Promise.race([
+                    destinationInfoPromise,
+                    new Promise((resolve) => setTimeout(() => resolve(null), 80))
+                ]);
+            } catch (infoErr) {
+                console.warn('⚠️ [Phase 7] 讀取文字B失敗，使用暫代資訊:', infoErr);
+            }
+            if (!destinationInfo) {
+                destinationInfo = buildLandingInfoStub();
+                console.log('ℹ️ [Phase 7] 文字B尚未就緒，先顯示暫代國家介紹');
+            }
+
+            console.log('9️⃣ [Phase 7] 顯示文字B（滿意度後立刻跳轉）...');
+            await showLandingCountryInfo(finalDestination, destinationInfo);
+
+            // 文字B稍後補齊時更新畫面（不重複整段流程）
+            destinationInfoPromise.then((fullInfo) => {
+                if (!fullInfo) return;
+                destinationInfo = fullInfo;
+                const nameEl = document.getElementById('landingCountryName');
+                const descEl = document.getElementById('landingCountryDesc');
+                if (nameEl) {
+                    nameEl.textContent = `${fullInfo.city}，${fullInfo.country}`;
+                }
+                if (descEl) {
+                    descEl.innerHTML = `
+                        <div id="landingTimeDisplay" style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">🕐 ${fullInfo.time || '--:--'}</div>
+                        <div style="font-size: 14px; color: #666; display: flex; align-items: center; gap: 6px;">☀️ ${fullInfo.weather || ''}</div>
+                        <div style="font-size: 14px; color: #ff6b35; font-weight: 500; display: flex; align-items: center; gap: 6px;">✨ ${fullInfo.feature || ''}</div>
+                    `;
+                }
+                console.log('✅ [Phase 7] 文字B已補齊更新');
+            }).catch(() => {});
+
             try {
                 await withTimeout(voiceBPromise, 40000, 'voiceB');
                 console.log('✅ [Phase 7] 語音B就緒');
             } catch (error) {
                 console.warn('⚠️ [Phase 7] 語音B逾時／失敗，改備援播放:', error && error.message ? error.message : error);
             }
-            
-            setBoardingStatus(false);
-            
+
             // 顯示文字B並播放語音B：國家介紹開始時，wakeup 約 2 秒淡出並同時播語音 B
             if (destinationInfo) {
-                console.log('9️⃣ [Phase 7] 顯示文字B並播放語音B...');
-                await showLandingCountryInfo(finalDestination, destinationInfo);
-
                 phase7MusicGeneration.cancel();
                 const remainingPhase7Music = window._phase7WakeupMusic;
                 const wakeupPlaybackId = remainingPhase7Music && remainingPhase7Music.playbackId;
                 window._landingAudioStopFailed = false;
 
+                // 先快速 duck，再長淡出，避免語音一開聲就與音樂疊爆
+                try {
+                    if (remainingPhase7Music && !remainingPhase7Music.paused) {
+                        await setPhase7MusicVolume(0.1, 250);
+                    }
+                } catch (duckErr) {
+                    console.warn('⚠️ [Phase 7] 語音B前 duck wakeup 失敗:', duckErr);
+                }
+
                 // 先啟動淡出，不阻塞語音 B
                 if (remainingPhase7Music && remainingPhase7Music.source !== 'pi') {
-                    setPhase7MusicVolume(0, 2000).then(() => {
+                    setPhase7MusicVolume(0, 1800).then(() => {
                         try {
                             remainingPhase7Music.pause();
                             remainingPhase7Music.currentTime = 0;
@@ -14440,7 +14501,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         console.warn('⚠️ [Phase 7] wakeup 淡出失敗:', fadeErr);
                     });
                 } else if (remainingPhase7Music) {
-                    setPhase7MusicVolume(0, 2000).catch((fadeErr) => {
+                    setPhase7MusicVolume(0, 1800).catch((fadeErr) => {
                         console.warn('⚠️ [Phase 7] wakeup 淡出失敗:', fadeErr);
                     });
                     setTimeout(() => {
@@ -14454,17 +14515,25 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                                 window._phase7WakeupMusic = null;
                             }
                         }).catch(() => {});
-                    }, 2000);
+                    }, 1800);
                 }
 
-                // 與淡出同時播放語音 B
+                // 與淡出同時播放語音 B（略降音量，減少與殘餘音樂疊加）
                 console.log('🔊 [Phase 7] 播放語音B（新城市介紹，wakeup 同步淡出）...');
                 if (window._phase7VoiceBAudioId) {
                     console.log('✅ [Phase 7] 使用已預先生成的語音B，audio_id:', window._phase7VoiceBAudioId);
-                    await playCachedTts(window._phase7VoiceBAudioId);
+                    await playCachedTts(window._phase7VoiceBAudioId, 0.9);
                     console.log('✅ 語音B播放完成');
                 } else {
                     console.warn('⚠️ [Phase 7] 語音B未預先生成，使用 playAnnouncement 生成並播放');
+                    // 優先用最新完整文字B
+                    try {
+                        const latestInfo = await Promise.race([
+                            destinationInfoPromise,
+                            Promise.resolve(destinationInfo)
+                        ]);
+                        if (latestInfo) destinationInfo = latestInfo;
+                    } catch (_) {}
                     const welcomeMessage = window._phase7WelcomeMessage ||
                         `歡迎來到${finalDestination.city_zh || finalDestination.city}，${finalDestination.country_zh || finalDestination.country}！當地時間是${destinationInfo.time}，${destinationInfo.weather}，${destinationInfo.feature}。`;
                     await playAnnouncement(welcomeMessage, 'zh-TW', {
@@ -14472,7 +14541,7 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
                         gender: CAPTAIN_TTS.gender,
                         rate: CAPTAIN_TTS.landingRate,
                         pitch: CAPTAIN_TTS.landingPitch,
-                        volume: 1.0,
+                        volume: 0.9,
                         waitForCompletion: true
                     });
                     console.log('✅ 語音B播放完成');
@@ -14494,6 +14563,17 @@ ${realWeatherData ? `真實天氣：${realWeatherData.condition || ''}，溫度 
             // 步驟 8: 保存到 Firebase
             // ============================================================================
             console.log('🔟 [Phase 7] 保存到 Firebase...');
+
+            // 儲存前盡量補齊文字B（不超過短等待，避免卡住）
+            try {
+                const fullDestinationInfo = await Promise.race([
+                    destinationInfoPromise,
+                    new Promise((resolve) => setTimeout(() => resolve(null), 1500))
+                ]);
+                if (fullDestinationInfo) {
+                    destinationInfo = fullDestinationInfo;
+                }
+            } catch (_) {}
             
             // 獲取氣候帶名稱
             const climateZoneName = destinationData?.climateZone?.name || 
